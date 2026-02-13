@@ -1,0 +1,27 @@
+# Claude Code workflow state (user-specific)
+.claude/rigorous-dev-state.yaml
+.claude/rigorous-dev-artifacts/
+.claude/rigorous-dev.local.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.backup
+*.bak

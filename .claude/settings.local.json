@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(test:*)",
+      "Bash(python3:*)",
+      "Bash(for schema in /Users/zaphar/projects/personal/claude-rigor-plugin/schemas/*.yaml)",
+      "Bash(do)",
+      "Bash(exit:*)",
+      "Bash(done)",
+      "Bash(ln:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

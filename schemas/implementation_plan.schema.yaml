@@ -1,0 +1,315 @@
+# JSON Schema for Implementation Plan (in YAML format)
+# This schema validates the output of the Implementation Planner personality
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Implementation Plan
+type: object
+required:
+  - metadata
+  - overview
+  - phases
+  - requirements_mapping
+  - dependencies
+additionalProperties: false
+
+properties:
+  metadata:
+    type: object
+    required:
+      - title
+      - version
+      - created
+      - status
+      - requirements_version
+      - architecture_version
+      - ux_specification_version
+    properties:
+      title:
+        type: string
+        description: Name of the implementation plan
+      version:
+        type: string
+        description: Version of this implementation plan
+      created:
+        type: string
+        format: date
+      updated:
+        type: string
+        format: date
+      status:
+        type: string
+        enum: [draft, review, approved]
+        description: Current status of the plan
+      requirements_version:
+        type: string
+        description: Version of requirements document this plan addresses
+      architecture_version:
+        type: string
+        description: Version of architecture specification this follows
+      ux_specification_version:
+        type: string
+        description: Version of UX specification this implements
+
+  overview:
+    type: object
+    required:
+      - strategy
+      - total_phases
+      - rationale
+    properties:
+      strategy:
+        type: string
+        description: High-level implementation strategy (e.g., "Vertical slices prioritizing core user flows")
+      total_phases:
+        type: integer
+        minimum: 1
+        maximum: 20
+        description: Total number of phases in this plan
+      rationale:
+        type: string
+        description: Why this phasing strategy was chosen
+      phase_one_approach:
+        type: string
+        description: Strategy for Phase 1 (end-to-end vs alternative) and rationale
+      key_risks:
+        type: array
+        items:
+          type: object
+          required:
+            - risk
+            - mitigation
+          properties:
+            risk:
+              type: string
+              description: Description of the risk
+            mitigation:
+              type: string
+              description: How this risk will be mitigated
+            phase:
+              type: integer
+              description: Which phase this risk affects
+      assumptions:
+        type: array
+        items:
+          type: string
+        description: Planning assumptions made
+
+  phases:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required:
+        - phase_number
+        - name
+        - type
+        - goal
+        - requirements
+        - entry_criteria
+        - exit_criteria
+        - complexity
+      properties:
+        phase_number:
+          type: integer
+          minimum: 1
+          description: Sequential phase number
+        name:
+          type: string
+          description: Short descriptive name for this phase
+        type:
+          type: string
+          enum: [feature, infrastructure]
+          description: Type of phase - feature (user-facing) or infrastructure (foundational)
+        goal:
+          type: string
+          description: User-visible value or technical outcome delivered by this phase
+        requirements:
+          type: array
+          items:
+            type: string
+            pattern: "^REQ-[0-9]{3}$"
+          description: Requirements implemented in this phase
+        flows:
+          type: array
+          items:
+            type: string
+            pattern: "^FLOW-[0-9]{3}$"
+          description: User flows functional after this phase
+        screens:
+          type: array
+          items:
+            type: string
+            pattern: "^SCREEN-[0-9]{3}$"
+          description: Screens built in this phase
+        components:
+          type: array
+          items:
+            type: string
+            pattern: "^COMP-[0-9]{3}$"
+          description: Components implemented in this phase
+        api_endpoints:
+          type: array
+          items:
+            type: object
+            required:
+              - method
+              - path
+              - description
+            properties:
+              method:
+                type: string
+                enum: [GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD]
+              path:
+                type: string
+              description:
+                type: string
+          description: API endpoints implemented in this phase
+        database_changes:
+          type: array
+          items:
+            type: object
+            required:
+              - migration_name
+              - description
+            properties:
+              migration_name:
+                type: string
+                description: Name of the database migration
+              description:
+                type: string
+                description: What this migration does
+              tables_affected:
+                type: array
+                items:
+                  type: string
+                description: Tables created, modified, or deleted
+          description: Database migrations needed for this phase
+        entry_criteria:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: What must be complete before starting this phase
+        exit_criteria:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: Definition of done for this phase
+        complexity:
+          type: string
+          enum: [XS, S, M, L, XL]
+          description: T-shirt size estimate for agent work
+        can_run_in_parallel_with:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: Array of phase numbers this phase can run in parallel with
+        review_checkpoint:
+          type: boolean
+          description: If true, specifications may be updated after this phase completes
+        checkpoint_focus:
+          type: array
+          items:
+            type: string
+            enum: [requirements, architecture, ux]
+          description: Which specifications should be reviewed at this checkpoint
+        technical_risks:
+          type: array
+          items:
+            type: object
+            required:
+              - risk
+              - mitigation
+            properties:
+              risk:
+                type: string
+              mitigation:
+                type: string
+          description: Technical risks specific to this phase
+        notes:
+          type: string
+          description: Additional notes or context for this phase
+
+  requirements_mapping:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required:
+        - requirement_id
+        - phase_number
+        - priority
+      properties:
+        requirement_id:
+          type: string
+          pattern: "^REQ-[0-9]{3}$"
+          description: Requirement identifier
+        phase_number:
+          type: integer
+          minimum: 1
+          description: Which phase implements this requirement
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+          description: Priority level of this requirement
+        notes:
+          type: string
+          description: Additional context about this mapping
+
+  dependencies:
+    type: object
+    properties:
+      phase_dependencies:
+        type: array
+        items:
+          type: object
+          required:
+            - phase
+            - depends_on
+          properties:
+            phase:
+              type: integer
+              minimum: 1
+              description: Phase number that has dependencies
+            depends_on:
+              type: array
+              items:
+                type: integer
+                minimum: 1
+              description: List of phase numbers that must complete first
+            reason:
+              type: string
+              description: Why this dependency exists
+      external_dependencies:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - description
+            - risk_level
+          properties:
+            name:
+              type: string
+              description: Name of the external dependency
+            description:
+              type: string
+              description: What this dependency provides
+            phase:
+              type: integer
+              description: Which phase needs this dependency
+            risk_level:
+              type: string
+              enum: [low, medium, high, critical]
+              description: Risk level if this dependency is unavailable
+            mitigation:
+              type: string
+              description: How to mitigate risk of dependency failure
+
+  critical_path:
+    type: array
+    items:
+      type: integer
+      minimum: 1
+    description: Ordered list of phase numbers representing the critical path (longest dependency chain)

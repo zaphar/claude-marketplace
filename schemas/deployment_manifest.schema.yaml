@@ -1,0 +1,310 @@
+# JSON Schema for Deployment Manifest (in YAML format)
+# This schema validates the output of the Release Engineer personality
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Deployment Manifest
+type: object
+required:
+  - metadata
+  - summary
+  - pipeline
+  - artifacts
+additionalProperties: false
+
+properties:
+  metadata:
+    type: object
+    required:
+      - version
+      - created
+      - requirements_version
+      - architecture_version
+      - implementation_version
+    properties:
+      version:
+        type: string
+      created:
+        type: string
+        format: date-time
+      requirements_version:
+        type: string
+      architecture_version:
+        type: string
+      implementation_version:
+        type: string
+      test_report_version:
+        type: string
+
+  summary:
+    type: object
+    required:
+      - deployment_targets
+      - status
+    properties:
+      deployment_targets:
+        type: array
+        items:
+          type: string
+          enum: [private-cloud, local-executable]
+      status:
+        type: string
+        enum: [ready, not_ready, blocked]
+      blockers:
+        type: array
+        items:
+          type: string
+
+  pipeline:
+    type: object
+    required:
+      - platform
+      - stages
+    properties:
+      platform:
+        type: string
+        description: CI/CD platform (e.g., GitHub Actions, GitLab CI, Jenkins)
+      configuration_files:
+        type: array
+        items:
+          type: string
+      stages:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - purpose
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+            triggers:
+              type: array
+              items:
+                type: string
+            steps:
+              type: array
+              items:
+                type: string
+            quality_gates:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  condition:
+                    type: string
+                  failure_action:
+                    type: string
+                    enum: [block, warn, notify]
+
+  quality_gates:
+    type: object
+    properties:
+      schema_validation:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          schemas_validated:
+            type: array
+            items:
+              type: string
+      test_requirements:
+        type: object
+        properties:
+          minimum_coverage_line:
+            type: number
+          minimum_coverage_branch:
+            type: number
+          all_tests_pass:
+            type: boolean
+          security_scan_pass:
+            type: boolean
+      build_requirements:
+        type: object
+        properties:
+          zero_warnings:
+            type: boolean
+          zero_errors:
+            type: boolean
+          lint_pass:
+            type: boolean
+
+  environments:
+    type: array
+    items:
+      type: object
+      required:
+        - name
+        - deployment_method
+      properties:
+        name:
+          type: string
+          enum: [development, staging, production]
+        deployment_method:
+          type: string
+        url:
+          type: string
+        infrastructure:
+          type: object
+          properties:
+            provider:
+              type: string
+            resources:
+              type: array
+              items:
+                type: string
+        configuration:
+          type: object
+          properties:
+            environment_variables:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  source:
+                    type: string
+                    enum: [secret, config, hardcoded]
+                  description:
+                    type: string
+        rollback_procedure:
+          type: string
+
+  artifacts:
+    type: object
+    required:
+      - produced
+    properties:
+      produced:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - type
+          properties:
+            name:
+              type: string
+            type:
+              type: string
+              enum: [container-image, binary, archive, package, installer]
+            registry:
+              type: string
+            versioning:
+              type: string
+              enum: [semantic, git-sha, timestamp, custom]
+            platforms:
+              type: array
+              items:
+                type: string
+      signing:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          method:
+            type: string
+
+  local_executable:
+    type: object
+    description: Configuration for single-file download scenario
+    properties:
+      supported_platforms:
+        type: array
+        items:
+          type: string
+          enum: [linux-amd64, linux-arm64, darwin-amd64, darwin-arm64, windows-amd64]
+      installation_method:
+        type: string
+      distribution:
+        type: object
+        properties:
+          channels:
+            type: array
+            items:
+              type: string
+          update_mechanism:
+            type: string
+
+  secrets_management:
+    type: object
+    properties:
+      provider:
+        type: string
+      secrets_required:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+            rotation_policy:
+              type: string
+
+  monitoring_integration:
+    type: object
+    properties:
+      health_checks:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            endpoint:
+              type: string
+            interval:
+              type: string
+      alerting:
+        type: object
+        properties:
+          provider:
+            type: string
+          channels:
+            type: array
+            items:
+              type: string
+
+  runbooks:
+    type: array
+    items:
+      type: object
+      required:
+        - name
+        - scenario
+        - steps
+      properties:
+        name:
+          type: string
+        scenario:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+        rollback_steps:
+          type: array
+          items:
+            type: string
+
+  review_checklist:
+    type: object
+    properties:
+      pipeline_tested:
+        type: boolean
+      secrets_secured:
+        type: boolean
+      rollback_tested:
+        type: boolean
+      environments_parity:
+        type: boolean
+      quality_gates_enforced:
+        type: boolean
+      all_deployment_targets_supported:
+        type: boolean

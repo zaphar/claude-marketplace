@@ -1,0 +1,16 @@
+{
+  "name": "rigorous-dev",
+  "version": "0.1.0",
+  "description": "Rigorous SDLC workflow with producer-critic validation patterns for high-quality software development",
+  "author": {
+    "name": "zaphar"
+  },
+  "keywords": [
+    "sdlc",
+    "workflow",
+    "requirements",
+    "architecture",
+    "quality",
+    "validation"
+  ]
+}
