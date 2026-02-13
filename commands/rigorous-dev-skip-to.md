@@ -152,7 +152,7 @@ phase_status:
 
 Load the appropriate agent for the target phase:
 
-- `requirements` → `agents/requirements_interviewer.md`
+- `requirements` → `agents/requirements_analyst.md`
 - `ux_design` → `agents/ux_designer.md`
 - `architecture` → `agents/backend_architect.md`
 - `planning` → `agents/implementation_planner.md`

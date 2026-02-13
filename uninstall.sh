@@ -26,7 +26,6 @@ echo "  ✓ Commands removed"
 
 # Remove agents
 echo "🧹 Removing agents..."
-rm -f "$PROJECT_DIR/$CLAUDE_DIR_NAME/agents/requirements_interviewer.md"
 rm -f "$PROJECT_DIR/$CLAUDE_DIR_NAME/agents/requirements_analyst.md"
 rm -f "$PROJECT_DIR/$CLAUDE_DIR_NAME/agents/requirements_critic.md"
 rm -f "$PROJECT_DIR/$CLAUDE_DIR_NAME/agents/ux_designer.md"

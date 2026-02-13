@@ -59,16 +59,15 @@ phase_status:
 
 For each phase, follow this pattern:
 
-#### Requirements Phase (Special Case)
+#### Requirements Phase
 
-1. Load `agents/requirements_interviewer.md`
-2. Conduct conversational interview with user
-3. When interview complete, load `agents/requirements_analyst.md`
-4. Analyst produces `requirements.yaml` in artifacts directory
-5. Load `agents/requirements_critic.md` to validate
-6. If approved: transition to UX Design phase
-7. If rejected: iterate (max 3 times)
-8. Validate against `schemas/requirements.schema.yaml`
+1. Load `agents/requirements_analyst.md`
+2. Analyst conducts conversational interview with user
+3. Analyst produces `requirements.yaml` in artifacts directory
+4. Load `agents/requirements_critic.md` to validate
+5. If approved: transition to UX Design phase
+6. If rejected: iterate (max 3 times)
+7. Validate against `schemas/requirements.schema.yaml`
 
 #### All Other Phases (Standard Pattern)
 
@@ -100,7 +99,7 @@ For each phase, follow this pattern:
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
-| Requirements | `agents/requirements_interviewer.md` + `agents/requirements_analyst.md` | `agents/requirements_critic.md` |
+| Requirements | `agents/requirements_analyst.md` | `agents/requirements_critic.md` |
 | UX Design | `agents/ux_designer.md` | `agents/ux_critic.md` |
 | Architecture | `agents/backend_architect.md` | `agents/architecture_critic.md` |
 | Planning | `agents/implementation_planner.md` | `agents/implementation_plan_critic.md` |
@@ -298,13 +297,11 @@ Revising artifact...
 
 1. User runs `/rigorous-dev:start`
 2. Command initializes state, loads this skill
-3. Skill loads `requirements_interviewer.md`
-4. Interview completes
-5. Skill loads `requirements_analyst.md`
-6. Analyst produces `requirements.yaml`
-7. Skill loads `requirements_critic.md`
-8. Critic approves
-9. Skill transitions to UX Design phase
+3. Skill loads `requirements_analyst.md`
+4. Analyst conducts interview and produces `requirements.yaml`
+5. Skill loads `requirements_critic.md`
+6. Critic approves
+7. Skill transitions to UX Design phase
 10. Skill loads `ux_designer.md`
 11. Designer interviews and produces `ux_specification.yaml`
 12. Skill loads `ux_critic.md`

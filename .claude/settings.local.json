@@ -10,7 +10,10 @@
       "Bash(done)",
       "Bash(ln:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(jj log:*)",
+      "Bash(jj status:*)",
+      "Bash(jj new:*)"
     ]
   }
 }

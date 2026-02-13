@@ -71,7 +71,7 @@ Based on the current phase and its status, load the appropriate agent:
 - Load the producer agent for that phase (continue work)
 
 **Phase-to-Agent Mapping:**
-- `requirements` → `agents/requirements_interviewer.md` (if iteration_count = 0) or `agents/requirements_analyst.md` (if iteration_count > 0)
+- `requirements` → `agents/requirements_analyst.md`
 - `ux_design` → `agents/ux_designer.md`
 - `architecture` → `agents/backend_architect.md`
 - `planning` → `agents/implementation_planner.md`

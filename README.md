@@ -25,8 +25,7 @@ Each phase uses specialized agents with producer-critic patterns to ensure quali
 ## Agents
 
 ### Requirements Phase
-- **Requirements Interviewer**: Conducts conversational interviews to gather requirements
-- **Requirements Analyst**: Produces formal requirements specification
+- **Requirements Analyst**: Conducts conversational interviews and produces formal requirements specification
 - **Requirements Critic**: Validates requirements for completeness and consistency
 
 ### Architecture/Design Phase
@@ -255,7 +254,6 @@ rigorous-dev/
 ├── README.md                      # This file
 ├── rigorous-dev.md               # Main skill definition
 ├── agents/                        # Agent personality files
-│   ├── requirements_interviewer.md
 │   ├── requirements_analyst.md
 │   ├── requirements_critic.md
 │   ├── backend_architect.md

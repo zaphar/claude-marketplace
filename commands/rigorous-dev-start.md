@@ -140,7 +140,7 @@ Load skills/rigorous-dev/SKILL.md and begin with Requirements phase.
 
 ### 6. Start Requirements Phase
 
-Inform the user that the workflow has started and load the requirements_interviewer agent:
+Inform the user that the workflow has started and load the requirements_analyst agent:
 
 ```
 ✓ Workflow initialized successfully!
@@ -149,10 +149,10 @@ Project: <project_name>
 Artifacts: <artifacts_directory>
 
 Starting Requirements Phase...
-Loading Requirements Interviewer agent.
+Loading Requirements Analyst agent.
 ```
 
-Then load and execute `agents/requirements_interviewer.md` to begin the conversational interview.
+Then load and execute `agents/requirements_analyst.md` to begin the conversational interview.
 
 ## Success Message
 

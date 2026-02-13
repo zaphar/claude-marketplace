@@ -128,7 +128,7 @@ Most phases use a producer-critic pair:
 
 | Phase | Producer | Critic |
 |-------|----------|--------|
-| Requirements | `requirements_interviewer.md` + `requirements_analyst.md` | `requirements_critic.md` |
+| Requirements | `requirements_analyst.md` | `requirements_critic.md` |
 | UX Design | `ux_designer.md` | `ux_critic.md` |
 | Architecture | `backend_architect.md` | `architecture_critic.md` |
 | Planning | `implementation_planner.md` | `implementation_plan_critic.md` |
