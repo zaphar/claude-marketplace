@@ -21,7 +21,7 @@ These rules govern how you interact with the user to establish the design direct
 - After each answer, acknowledge it briefly and ask the next relevant question.
 - **Summarize-and-confirm**: After gathering enough answers to synthesize a design direction, describe what it will look and feel like in plain language. Get confirmation before proceeding to design work.
 - If the user isn't sure or gives brief answers ("just make it look clean"), that's fine — make reasonable choices, explain your rationale, and confirm before proceeding.
-- **Show, don't just tell**: When a question or discussion would benefit from a visual example, generate a quick focused SVG to illustrate the concept (e.g., two navigation layout options, a color palette comparison, a component style). Showing the user a concrete example is often faster and clearer than describing it in words.
+- **Show, don't just tell**: When a question or discussion would benefit from a visual example, generate a quick focused HTML sample to illustrate the concept (e.g., two navigation layout options, a color palette comparison, a component style). Showing the user a concrete example is often faster and clearer than describing it in words.
 - **Proactive suggestions**: You have UX expertise the user likely doesn't — raise concerns and ideas when relevant. For example:
     - "This workflow has 6 steps — users might abandon it. Want me to explore a progressive disclosure approach?"
     - "Mobile users will struggle with this data-dense layout — should I design a simplified mobile view?"
@@ -36,10 +36,10 @@ Cover these topics during the interview (in roughly this order):
 - Who are the users and what devices will they primarily use?
 - What industry or domain is this for? (e.g., IT/dev tools, manufacturing, social, government, healthcare, finance, education) — industry conventions influence design tone and user expectations
 - Any existing brand colors, logos, or guidelines to follow?
-- Preferences for primary and accent colors or color palette choices
+- Preferences for primary and accent colors or color palette choices — when the user expresses a preference (or when you're proposing options), **generate an HTML swatch sheet** showing the candidate palettes side by side so they can compare visually rather than imagining hex codes
 - Do they want light/dark mode support? (Light/dark mode is the default — only omit if the user explicitly declines)
 - Apps or products they like the look and feel of (examples help more than adjectives)
-- How the interface should feel — pick a few spectrums that seem relevant to the project:
+- How the interface should feel — pick a few spectrums that seem relevant to the project. When narrowing down the aesthetic, **generate a small HTML mood sample** (e.g., a card or button rendered in each candidate style) so the user can react to concrete visuals:
     - Spacious vs. information-dense
     - Playful vs. serious
     - Minimal vs. decorative
@@ -91,7 +91,7 @@ Build these first, then **stop and show the user for approval** before continuin
     - Component library for reference by implementors
     - Branding guidelines
 2. Pick 1-2 representative screens — choose the most important or most complex screens (e.g., the primary dashboard, the main workflow screen).
-3. **Create at least 3 distinct variations** of the design system and sample screens. Each variation should explore a meaningfully different direction (not just color swaps) — e.g., different layout approaches, different visual densities, different tonal directions. Label them clearly (e.g., Variation A, B, C).
+3. **Create at least 3 distinct variations** of the design system and sample screens as HTML files. Each variation should explore a meaningfully different direction (not just color swaps) — e.g., different layout approaches, different visual densities, different tonal directions. Label them clearly (e.g., Variation A, B, C). Each variation should include the color palette, typography samples, and representative screen rendered in HTML so the user can open them in a browser.
 4. Present all variations to the user. Explain the design rationale behind each. Ask the user to:
     - Pick the variation they prefer, **or**
     - Identify specific elements they like from different variations to combine (e.g., "I like the layout from A but the colors from C")
@@ -144,7 +144,7 @@ Once the user approves the design direction:
 **Produces:**
 
 - UX specification in YAML format validated against `schemas/ux_specification.schema.yaml`
-- A design system document, in SVG, that shows the chosen typography, colors, components, etc...
+- A design system document, in HTML, that shows the chosen typography, colors, components, etc...
 - A set of mockups in HTML showing each component/screen
     - With navigation
 - Every user-facing requirement ID must appear in the requirements_mapping section
