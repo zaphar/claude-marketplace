@@ -1,0 +1,19 @@
+{
+  "name": "claude-zaphar",
+  "owner": {
+    "name": "zaphar"
+  },
+  "metadata": {
+    "description": "Rigorous software development workflow plugins"
+  },
+  "plugins": [
+    {
+      "name": "rigorous-dev",
+      "source": "./plugins/rigorous-dev",
+      "description": "Rigorous SDLC workflow with producer-critic validation patterns for high-quality software development",
+      "version": "0.1.0",
+      "category": "workflow",
+      "tags": ["sdlc", "quality-assurance", "development-process"]
+    }
+  ]
+}

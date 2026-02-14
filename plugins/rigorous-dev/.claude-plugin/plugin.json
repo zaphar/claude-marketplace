@@ -5,12 +5,17 @@
   "author": {
     "name": "zaphar"
   },
+  "homepage": "https://dev.zaphar.net/zaphar/claude-zaphar",
+  "repository": "https://dev.zaphar.net/zaphar/claude-zaphar.git",
+  "license": "MIT",
   "keywords": [
     "sdlc",
     "workflow",
     "requirements",
     "architecture",
     "quality",
-    "validation"
+    "validation",
+    "producer-critic",
+    "rigorous-development"
   ]
 }
