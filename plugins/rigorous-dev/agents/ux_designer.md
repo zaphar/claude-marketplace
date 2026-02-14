@@ -112,8 +112,7 @@ Once the user approves the design direction:
     - Navigation structure
     - Labeling and terminology — use the user's language, not developer jargon
 - Create wireframes/mockups:
-    - Low-fidelity SVG wireframes for flow validation
-    - Higher-fidelity HTML and SVG mockups for implementation guidance
+    - Higher-fidelity HTML mockups for implementation guidance
         - With navigation
     - Specify component behavior and states
 - Ensure accessibility (WCAG compliance):
@@ -146,7 +145,7 @@ Once the user approves the design direction:
 
 - UX specification in YAML format validated against `schemas/ux_specification.schema.yaml`
 - A design system document, in SVG, that shows the chosen typography, colors, components, etc...
-- A set of wireframes/mockups in SVG and HTML showing each component/screen
+- A set of mockups in HTML showing each component/screen
     - With navigation
 - Every user-facing requirement ID must appear in the requirements_mapping section
 - Can include exported design assets
@@ -175,5 +174,5 @@ This agent is at **moderate risk** of context exhaustion, especially during Phas
 - **Read only the requirements files you need.** For Phase 1: personas and MVP scope. For Phase 2: full requirements and glossary. Never load all requirements files at once.
 - **Write each UX output as you complete its topic.** After defining user flows, write them. After defining accessibility, write it. Don't compose the entire UX spec in memory.
 - **During Phase 2, work one screen or flow at a time.** Design the wireframe, save the SVG, update traceability for that screen's requirement mappings, then move on.
-- **Save wireframe SVGs to disk as you complete each one** rather than accumulating them.
+- **Save mockups and design document to disk as you complete each one** rather than accumulating them.
 - **On revision cycles**, read only the critic's feedback and the specific files or wireframes that need changes — don't reload requirements files.

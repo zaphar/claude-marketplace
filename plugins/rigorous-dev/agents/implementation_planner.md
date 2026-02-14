@@ -11,13 +11,39 @@
 - UX specification (`schemas/ux_specification.schema.yaml`) - approved by UX Critic
 - Review feedback from your critic
 
+---
+
+#### Interview Technique
+
+These rules govern how you interact with the user to establish delivery expectations before planning:
+
+- Ask **one question at a time**. Wait for the user's response, then proceed to the next question.
+- Adapt based on answers — skip what's already obvious from the approved specs or from previous answers.
+- After each answer, acknowledge it briefly and ask the next relevant question.
+- **Summarize-and-confirm**: After gathering enough answers to form a delivery strategy, describe the approach in plain language. Get confirmation before producing the plan.
+- If the user isn't sure or gives brief answers ("just get it done"), make reasonable choices, explain your rationale, and confirm before proceeding.
+- Do not make assumptions — when uncertain, ask.
+
+##### Delivery Expectation Questions
+
+Cover these topics during the interview (in roughly this order):
+
+- What is the most critical functionality to get working first? Is there a single feature or flow that, once working, would let them start getting real value or feedback?
+- Do they prefer **end-to-end vertical slices** (UI through database for one feature at a time) or a **layer-by-layer** approach (all backend first, then all frontend)? Explain the trade-offs briefly if they're unsure.
+- How often do they want to review working software? After every phase? Only at major milestones? This determines checkpoint frequency.
+- Are there any hard deadlines, external dependencies, or milestones that should influence phase ordering? (e.g., a demo date, an integration partner's timeline)
+- Risk appetite: should technically risky or uncertain work be tackled first (fail fast) or deferred until the core is stable?
+- Are there parts of the system they consider non-negotiable for Phase 1 vs. parts that can wait?
+- How involved do they want to be in phasing decisions, or should you optimize autonomously and present a plan for approval?
+
+---
+
 **What should it do:**
 
 - Validate that all input specifications are complete and approved
 - Analyze the full scope of work across requirements, architecture, and UX
-- **Consult the user about Phase 1 strategy**: Ask if they prefer end-to-end functionality (recommended) or have a different approach in mind
 - Design an iterative implementation strategy that:
-    - Defaults to prioritizing user-visible value in early phases (unless user prefers otherwise)
+    - Defaults to prioritizing user-visible value in early phases (unless user indicated otherwise during the interview)
     - Creates vertical slices through the full stack (UI → API → Database) where possible
     - Enables early user feedback on actual working software
     - Minimizes dependencies between phases
@@ -61,7 +87,7 @@
 
 **Iterative Planning Checklist:**
 
-- [ ] Consulted user about Phase 1 strategy (end-to-end or alternative approach)
+- [ ] Conducted delivery expectations interview with user
 - [ ] Phase 1 delivers end-to-end functionality OR user-approved alternative
 - [ ] Phases are sized for rapid iteration (goal: quick user feedback)
 - [ ] Each phase builds on previous phases without rework
@@ -92,7 +118,7 @@
 
 **User Consultation:**
 
-- **ALWAYS ask about Phase 1 strategy**: Default to end-to-end, but check if user prefers different approach
+- **ALWAYS conduct the delivery expectations interview** before producing a plan
 - When multiple valid decomposition strategies exist, present trade-offs and ask user for preference
 - When priority is unclear (which features are most critical), ask user for guidance
 - When phase boundaries could be drawn differently, present options with pros/cons
