@@ -57,6 +57,12 @@
     - All blockers with severity and affected requirements
     - Recommendations for improvement
 
+**Artifact Organization:**
+
+Organize output files into subdirectories within your phase directory:
+- `screenshots/` — captured screenshots from wireframe comparison testing
+- Primary YAML artifact (`test_report.yaml`) stays at the phase directory root
+
 **Handoff:**
 
 - Output is submitted to **QA Critic** for validation

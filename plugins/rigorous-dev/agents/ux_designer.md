@@ -150,6 +150,13 @@ Once the user approves the design direction:
 - Every user-facing requirement ID must appear in the requirements_mapping section
 - Can include exported design assets
 - Ensure data requirements per screen are explicit in user flows and wireframes (consumed by Backend Architect for API design)
+
+**Artifact Organization:**
+
+Organize output files into subdirectories within your phase directory:
+- `design-system/` — design system HTML and any supporting assets (e.g., font samples, icon sheets)
+- `mockups/` — all screen mockups as HTML files, named after the screen (e.g., `dashboard.html`, `settings.html`)
+- Primary YAML artifact (`ux_specification.yaml`) stays at the phase directory root
 - DOES NOT: Write implementation code
 - DOES NOT: Design backend architecture (that's the Backend Architect's role)
 

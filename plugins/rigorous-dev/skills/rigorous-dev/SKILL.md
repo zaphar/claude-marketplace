@@ -134,16 +134,22 @@ Artifacts are organized by phase with iteration history:
 ├── requirements/
 │   ├── iteration-1/
 │   │   └── requirements.yaml
-│   ├── iteration-2/
-│   │   └── requirements.yaml
 │   └── requirements.yaml (final approved)
 ├── ux_design/
 │   ├── iteration-1/
-│   │   └── ux_specification.yaml
-│   └── ux_specification.yaml (final)
+│   │   ├── ux_specification.yaml
+│   │   ├── design-system/
+│   │   │   └── design-system.html
+│   │   └── mockups/
+│   │       ├── dashboard.html
+│   │       └── settings.html
+│   ├── ux_specification.yaml (final)
+│   ├── design-system/
+│   │   └── design-system.html
+│   └── mockups/
+│       ├── dashboard.html
+│       └── settings.html
 ├── architecture/
-│   ├── iteration-1/
-│   │   └── backend_architecture.yaml
 │   └── backend_architecture.yaml (final)
 ├── planning/
 │   └── implementation_plan.yaml
@@ -153,9 +159,15 @@ Artifacts are organized by phase with iteration history:
 │   └── phase-2/
 │       └── implementation_manifest.yaml
 ├── qa/
-│   └── test_report.yaml
+│   ├── test_report.yaml
+│   └── screenshots/
+│       └── dashboard-actual.png
 ├── documentation/
-│   └── documentation_manifest.yaml
+│   ├── documentation_manifest.yaml
+│   ├── user-guide/
+│   │   └── getting-started.md
+│   └── api/
+│       └── api-reference.md
 └── release/
     └── deployment_manifest.yaml
 ```
@@ -197,6 +209,7 @@ Use these patterns to construct paths:
 - Preserve iteration history (never delete iteration directories)
 - Default artifacts directory: `.claude/rigorous-dev-artifacts/`
 - User-configurable via state file
+- **Subdirectory organization**: When a phase produces multiple files beyond the primary YAML artifact, organize them into descriptive subdirectories (e.g., `mockups/`, `design-system/`, `user-guide/`, `screenshots/`). This keeps each phase directory navigable as artifact count grows.
 
 **Schema Validation:**
 - Each artifact has a corresponding schema in `schemas/`

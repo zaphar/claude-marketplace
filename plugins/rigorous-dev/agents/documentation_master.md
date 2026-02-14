@@ -52,6 +52,15 @@
     - Verification status
     - Assets created (screenshots, diagrams)
 
+**Artifact Organization:**
+
+Organize documentation files into subdirectories by audience within your phase directory:
+- `user-guide/` — getting started, feature docs, configuration, troubleshooting, FAQ
+- `api/` — API reference and endpoint documentation
+- `operator/` — deployment guide, runbooks, monitoring
+- `developer/` — architecture overview, contributing guide, ADR index
+- Primary YAML artifact (`documentation_manifest.yaml`) stays at the phase directory root
+
 **Handoff:**
 
 - Output is submitted to **Documentation Critic** for validation

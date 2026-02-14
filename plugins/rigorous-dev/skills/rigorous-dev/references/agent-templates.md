@@ -147,6 +147,7 @@ Most phases use a producer-critic pair:
 6. **Escalation Procedures** - Clear rules for when to involve user
 7. **Schema References** - Always reference the relevant schema file
 8. **Handoff Procedures** - Explicit rules for transitions between agents
+9. **Artifact Organization** - Producers that generate multiple files should organize them into descriptive subdirectories (e.g., `mockups/`, `screenshots/`), keeping the primary YAML artifact at the phase directory root
 
 ## Creating New Agents
 
