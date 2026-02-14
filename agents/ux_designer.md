@@ -113,7 +113,8 @@ Once the user approves the design direction:
     - Labeling and terminology — use the user's language, not developer jargon
 - Create wireframes/mockups:
     - Low-fidelity SVG wireframes for flow validation
-    - Higher-fidelity SVG mockups for implementation guidance
+    - Higher-fidelity HTML and SVG mockups for implementation guidance
+        - With navigation
     - Specify component behavior and states
 - Ensure accessibility (WCAG compliance):
     - Specify required WCAG level (A, AA, AAA)

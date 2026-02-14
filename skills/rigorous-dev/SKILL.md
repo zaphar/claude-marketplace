@@ -63,11 +63,15 @@ For each phase, follow this pattern:
 
 1. Load `agents/requirements_analyst.md`
 2. Analyst conducts conversational interview with user
-3. Analyst produces `requirements.yaml` in artifacts directory
-4. Load `agents/requirements_critic.md` to validate
-5. If approved: transition to UX Design phase
-6. If rejected: iterate (max 3 times)
-7. Validate against `schemas/requirements.schema.yaml`
+3. Analyst produces `requirements.yaml` in iteration directory:
+   - Path: `{artifacts_dir}/{workflow_id}/requirements/iteration-{iteration_count}/requirements.yaml`
+4. Load `agents/requirements_critic.md` to validate against `schemas/requirements.schema.yaml`
+5. **If approved:**
+   - Copy artifact to final location: `{artifacts_dir}/{workflow_id}/requirements/requirements.yaml`
+   - Transition to UX Design phase
+6. **If rejected:**
+   - Iterate (max 3 times), incrementing iteration_count each time
+   - Next iteration will use iteration-{iteration_count+1} directory
 
 #### All Other Phases (Standard Pattern)
 
@@ -75,21 +79,26 @@ For each phase, follow this pattern:
 
 1. Load producer agent for phase (ux_designer, backend_architect, etc.)
 2. Producer conducts interview (if needed) and creates artifact
-3. Save artifact to artifacts directory
+3. Save artifact to iteration directory:
+   - Path: `{artifacts_dir}/{workflow_id}/{phase}/iteration-{iteration_count}/{artifact_name}`
+   - Create iteration directory if it doesn't exist
+   - Record iteration path in state (optional tracking)
 4. Load critic agent for phase
 5. Critic validates against:
    - Relevant schema in `schemas/`
    - Completeness checklist
    - Quality standards
 6. **If approved:**
+   - Copy artifact from iteration directory to phase root (final location)
+   - Final path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
    - Update phase status to "completed"
    - Record `approved_by` critic name
-   - Record `artifact_path`
+   - Record `artifact_path` (final location)
    - Auto-save state
    - Transition to next phase
 7. **If rejected:**
    - Increment `iteration_count`
-   - If `iteration_count` < 3: loop back to producer with feedback
+   - If `iteration_count` < 3: loop back to producer with feedback (next iteration will be iteration-N+1)
    - If `iteration_count` >= 3: escalate to user for guidance
    - Auto-save state
 
@@ -116,6 +125,41 @@ For each phase, follow this pattern:
 
 ### 4. Artifact Management
 
+**Directory Structure:**
+
+Artifacts are organized by phase with iteration history:
+
+```
+.claude/rigorous-dev-artifacts/<workflow-id>/
+├── requirements/
+│   ├── iteration-1/
+│   │   └── requirements.yaml
+│   ├── iteration-2/
+│   │   └── requirements.yaml
+│   └── requirements.yaml (final approved)
+├── ux_design/
+│   ├── iteration-1/
+│   │   └── ux_specification.yaml
+│   └── ux_specification.yaml (final)
+├── architecture/
+│   ├── iteration-1/
+│   │   └── backend_architecture.yaml
+│   └── backend_architecture.yaml (final)
+├── planning/
+│   └── implementation_plan.yaml
+├── implementation/
+│   ├── phase-1/
+│   │   └── implementation_manifest.yaml
+│   └── phase-2/
+│       └── implementation_manifest.yaml
+├── qa/
+│   └── test_report.yaml
+├── documentation/
+│   └── documentation_manifest.yaml
+└── release/
+    └── deployment_manifest.yaml
+```
+
 **Artifact Naming Convention:**
 - `requirements.yaml`
 - `ux_specification.yaml`
@@ -126,10 +170,33 @@ For each phase, follow this pattern:
 - `documentation_manifest.yaml`
 - `deployment_manifest.yaml`
 
-**Artifact Storage:**
-- All artifacts go in the directory specified by `state.artifacts_directory`
-- Default: `.claude/rigorous-dev-artifacts/`
-- User-configurable (may be version-controlled)
+**Artifact Paths:**
+
+When working on an artifact:
+- **Iteration path**: `<artifacts_dir>/<workflow_id>/<phase>/iteration-<N>/<artifact_name>`
+- **Final path**: `<artifacts_dir>/<workflow_id>/<phase>/<artifact_name>`
+
+When a critic approves an artifact:
+- Copy from iteration directory to phase root (final location)
+- Update `artifact_path` in state to point to final location
+
+Implementation phase uses sub-phase directories instead:
+- `<artifacts_dir>/<workflow_id>/implementation/phase-<N>/<artifact_name>`
+
+**Path Helpers:**
+
+Use these patterns to construct paths:
+- Phase directory: `{artifacts_directory}/{workflow_id}/{phase_name}/`
+- Current iteration: `{phase_directory}/iteration-{iteration_count}/`
+- Final artifact: `{phase_directory}/{artifact_filename}`
+- Implementation sub-phase: `{phase_directory}/phase-{phase_number}/`
+
+**Storage Rules:**
+- Always save working artifacts to iteration directories
+- Only copy to final location when critic approves
+- Preserve iteration history (never delete iteration directories)
+- Default artifacts directory: `.claude/rigorous-dev-artifacts/`
+- User-configurable via state file
 
 **Schema Validation:**
 - Each artifact has a corresponding schema in `schemas/`
@@ -216,9 +283,13 @@ The implementation phase is unique:
 
 **Sub-phases:**
 - Track `current_phase_number` (1, 2, 3, etc.)
-- Each sub-phase is a chunk of work
+- Each sub-phase is a chunk of work stored in its own directory:
+  - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
 - Senior Developer implements, Senior Developer Critic reviews
+- Each sub-phase directory preserves the manifest for that phase of work
 - Only after all sub-phases complete does phase transition to QA
+
+**Note:** Implementation uses sub-phase directories instead of iteration directories because phases are sequential chunks of planned work, not revision iterations.
 
 ## Critical Rules
 

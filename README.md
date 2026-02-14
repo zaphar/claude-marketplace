@@ -309,16 +309,40 @@ artifacts:
 
 ## Artifacts
 
-All artifacts are stored in `.claude/rigorous-dev-artifacts/<workflow-id>/`:
+Artifacts are organized by phase with iteration history in `.claude/rigorous-dev-artifacts/<workflow-id>/`:
 
-- `requirements.yaml` - Formal requirements specification
-- `backend_architecture.yaml` - Backend architecture specification
-- `ux_specification.yaml` - UX design specification
-- `implementation_plan.yaml` - Phased implementation plan
-- `implementation_manifest.yaml` - Implementation tracking
-- `test_report.yaml` - QA test results
-- `documentation_manifest.yaml` - Documentation manifest
-- `deployment_manifest.yaml` - Deployment configuration
+```
+.claude/rigorous-dev-artifacts/<workflow-id>/
+├── requirements/
+│   ├── iteration-1/requirements.yaml
+│   ├── iteration-2/requirements.yaml
+│   └── requirements.yaml              # Final approved version
+├── ux_design/
+│   ├── iteration-1/ux_specification.yaml
+│   └── ux_specification.yaml          # Final approved version
+├── architecture/
+│   ├── iteration-1/backend_architecture.yaml
+│   └── backend_architecture.yaml      # Final approved version
+├── planning/
+│   └── implementation_plan.yaml
+├── implementation/
+│   ├── phase-1/implementation_manifest.yaml
+│   ├── phase-2/implementation_manifest.yaml
+│   └── phase-N/implementation_manifest.yaml
+├── qa/
+│   └── test_report.yaml
+├── documentation/
+│   └── documentation_manifest.yaml
+└── release/
+    └── deployment_manifest.yaml
+```
+
+**Key Points:**
+- Each phase has its own directory
+- Iteration subdirectories preserve the history of revisions during producer-critic loops
+- Final approved artifacts are stored at the phase root level
+- Implementation phase uses `phase-N` directories for sequential implementation phases
+- This structure makes it easy to track changes and understand the evolution of artifacts
 
 ## Customization
 
