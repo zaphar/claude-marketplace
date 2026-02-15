@@ -14,7 +14,10 @@
       "Bash(jj log:*)",
       "Bash(jj status:*)",
       "Bash(jj new:*)",
-      "Bash(jj show:*)"
+      "Bash(jj show:*)",
+      "Bash(jj diff:*)",
+      "Bash(jj describe:*)",
+      "Bash(jj split:*)"
     ]
   }
 }

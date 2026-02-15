@@ -50,6 +50,10 @@
 - DOES NOT: Write implementation code
 - DOES NOT: Design UI/UX (that's the UX Designer's role)
 
+**Persistent Artifact:**
+
+The architecture specification is a living document written directly at the phase root and updated in-place. When revisiting this phase during a checkpoint revision, read the existing `backend_architecture.yaml` and evolve it rather than starting from scratch. Preserve prior decisions (especially ADRs) and add new ones as the design evolves.
+
 **Handoff:**
 
 - Output is submitted to **Architecture Critic** for validation

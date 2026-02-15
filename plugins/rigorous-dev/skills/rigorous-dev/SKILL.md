@@ -37,6 +37,9 @@ created_at: ISO8601 timestamp
 updated_at: ISO8601 timestamp
 current_phase: string  # requirements | ux_design | architecture | planning | implementation | qa | documentation | release
 artifacts_directory: string
+iteration_number: number  # starts at 1, incremented by new-iteration
+status: string            # "active" | "closed"
+closed_at: ISO8601 | null
 notes: string
 phase_status:
   <phase_name>:
@@ -73,11 +76,38 @@ For each phase, follow this pattern:
    - Iterate (max 3 times), incrementing iteration_count each time
    - Next iteration will use iteration-{iteration_count+1} directory
 
-#### All Other Phases (Standard Pattern)
+#### Persistent Artifact Phases (UX Design, Architecture)
 
 **Producer-Critic Loop:**
 
-1. Load producer agent for phase (ux_designer, backend_architect, etc.)
+1. Load producer agent for phase (ux_designer, backend_architect)
+2. Producer conducts interview (if needed) and creates or updates artifact
+3. Write artifact directly to phase root (no iteration directory):
+   - Path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
+   - On first creation, this establishes the persistent artifact
+   - On checkpoint revisions, the producer updates the existing files in-place
+4. Load critic agent for phase
+5. Critic validates against:
+   - Relevant schema in `schemas/`
+   - Completeness checklist
+   - Quality standards
+6. **If approved:**
+   - Update phase status to "completed"
+   - Record `approved_by` critic name
+   - Record `artifact_path` (phase root location)
+   - Auto-save state
+   - Transition to next phase
+7. **If rejected:**
+   - Increment `iteration_count`
+   - If `iteration_count` < 3: loop back to producer with feedback (producer updates in-place)
+   - If `iteration_count` >= 3: escalate to user for guidance
+   - Auto-save state
+
+#### All Other Phases (Versioned Pattern — excludes Implementation)
+
+**Producer-Critic Loop:**
+
+1. Load producer agent for phase
 2. Producer conducts interview (if needed) and creates artifact
 3. Save artifact to iteration directory:
    - Path: `{artifacts_dir}/{workflow_id}/{phase}/iteration-{iteration_count}/{artifact_name}`
@@ -127,48 +157,41 @@ For each phase, follow this pattern:
 
 **Directory Structure:**
 
-Artifacts are organized by phase with iteration history:
+Artifacts are organized by phase. Some artifacts are persistent (updated in-place), others are versioned (with iteration history):
 
 ```
 .claude/rigorous-dev-artifacts/<workflow-id>/
-├── requirements/
+├── requirements/                          # versioned
 │   ├── iteration-1/
 │   │   └── requirements.yaml
 │   └── requirements.yaml (final approved)
-├── ux_design/
-│   ├── iteration-1/
-│   │   ├── ux_specification.yaml
-│   │   ├── design-system/
-│   │   │   └── design-system.html
-│   │   └── mockups/
-│   │       ├── dashboard.html
-│   │       └── settings.html
-│   ├── ux_specification.yaml (final)
+├── ux_design/                             # persistent — updated in-place
+│   ├── ux_specification.yaml
 │   ├── design-system/
 │   │   └── design-system.html
 │   └── mockups/
 │       ├── dashboard.html
 │       └── settings.html
-├── architecture/
-│   └── backend_architecture.yaml (final)
-├── planning/
+├── architecture/                          # persistent — updated in-place
+│   └── backend_architecture.yaml
+├── planning/                              # versioned
 │   └── implementation_plan.yaml
-├── implementation/
+├── implementation/                        # sub-phased
 │   ├── phase-1/
 │   │   └── implementation_manifest.yaml
 │   └── phase-2/
 │       └── implementation_manifest.yaml
-├── qa/
+├── qa/                                    # versioned
 │   ├── test_report.yaml
 │   └── screenshots/
 │       └── dashboard-actual.png
-├── documentation/
+├── documentation/                         # versioned
 │   ├── documentation_manifest.yaml
 │   ├── user-guide/
 │   │   └── getting-started.md
 │   └── api/
 │       └── api-reference.md
-└── release/
+└── release/                               # versioned
     └── deployment_manifest.yaml
 ```
 
@@ -184,15 +207,18 @@ Artifacts are organized by phase with iteration history:
 
 **Artifact Paths:**
 
-When working on an artifact:
+*Persistent artifacts* (architecture, UX design):
+- Write directly to phase root: `<artifacts_dir>/<workflow_id>/<phase>/<artifact_name>`
+- Update in-place on revisions — no iteration directories
+- Record `artifact_path` in state on first creation
+
+*Versioned artifacts* (all others):
 - **Iteration path**: `<artifacts_dir>/<workflow_id>/<phase>/iteration-<N>/<artifact_name>`
 - **Final path**: `<artifacts_dir>/<workflow_id>/<phase>/<artifact_name>`
-
-When a critic approves an artifact:
-- Copy from iteration directory to phase root (final location)
+- When a critic approves: copy from iteration directory to phase root
 - Update `artifact_path` in state to point to final location
 
-Implementation phase uses sub-phase directories instead:
+*Implementation phase* uses sub-phase directories instead:
 - `<artifacts_dir>/<workflow_id>/implementation/phase-<N>/<artifact_name>`
 
 **Path Helpers:**
@@ -204,12 +230,24 @@ Use these patterns to construct paths:
 - Implementation sub-phase: `{phase_directory}/phase-{phase_number}/`
 
 **Storage Rules:**
-- Always save working artifacts to iteration directories
-- Only copy to final location when critic approves
-- Preserve iteration history (never delete iteration directories)
 - Default artifacts directory: `.claude/rigorous-dev-artifacts/`
 - User-configurable via state file
 - **Subdirectory organization**: When a phase produces multiple files beyond the primary YAML artifact, organize them into descriptive subdirectories (e.g., `mockups/`, `design-system/`, `user-guide/`, `screenshots/`). This keeps each phase directory navigable as artifact count grows.
+
+**Artifact Lifecycle — Persistent vs Versioned:**
+
+Some artifacts are **persistent** — they live at the phase root and are updated in-place across checkpoint revisions. Others are **versioned** — they use iteration directories and get copied to the phase root on approval.
+
+- **Persistent artifacts** (updated in-place, no iteration directories):
+    - `architecture/backend_architecture.yaml` — the architecture is a living document that evolves as the project progresses through checkpoints
+    - `ux_design/ux_specification.yaml`, `ux_design/design-system/`, `ux_design/mockups/` — UX design docs, mockups, and the design system HTML are living documents updated as the design matures
+    - These are written directly at the phase root from the start. When a checkpoint triggers a revision, the producer updates them in-place.
+    - Producers should still submit persistent artifacts to their critic for validation on every update.
+- **Versioned artifacts** (use iteration directories):
+    - All other artifacts (requirements, implementation manifests, test reports, etc.)
+    - Save working copies to iteration directories
+    - Only copy to final location when critic approves
+    - Preserve iteration history (never delete iteration directories)
 
 **Schema Validation:**
 - Each artifact has a corresponding schema in `schemas/`
@@ -286,23 +324,110 @@ When loading an agent, provide context:
 
 ### 8. Implementation Phase Special Handling
 
-The implementation phase is unique:
+The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
 
-**Checkpoints:**
-- Implementation plan defines checkpoints (usually after Phase 1)
-- At each checkpoint: pause and review with user
-- User can provide feedback or adjustments
-- Update `implementation_manifest.yaml` with checkpoint status
+**Determining Sub-phases:**
+- Read the approved implementation plan artifact (`implementation_plan.yaml`)
+- The `phases` array defines the sub-phases, each with a `phase_number`
+- The `overview.total_phases` field gives the total count
+- Process sub-phases sequentially (or in parallel if `can_run_in_parallel_with` allows)
 
-**Sub-phases:**
-- Track `current_phase_number` (1, 2, 3, etc.)
-- Each sub-phase is a chunk of work stored in its own directory:
-  - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
-- Senior Developer implements, Senior Developer Critic reviews
-- Each sub-phase directory preserves the manifest for that phase of work
-- Only after all sub-phases complete does phase transition to QA
+**Sub-phase Producer-Critic Loop:**
 
-**Note:** Implementation uses sub-phase directories instead of iteration directories because phases are sequential chunks of planned work, not revision iterations.
+For each sub-phase (starting at `current_phase_number: 1`):
+
+1. Set `current_phase_number` to the sub-phase number in state
+2. Reset `iteration_count` to 0
+3. Auto-save state
+4. Load `agents/senior_developer.md`
+5. Developer implements the work defined for this sub-phase in the plan
+6. Developer saves manifest to sub-phase directory:
+   - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
+   - Create the directory if it doesn't exist
+7. Load `agents/senior_developer_critic.md`
+8. Critic validates against:
+   - `schemas/implementation_manifest.schema.yaml`
+   - Code review checklist (build, tests, security, quality)
+   - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX
+9. **If approved:**
+   - Record `approved_by: "senior_developer_critic"`
+   - Auto-save state
+   - Check if this sub-phase is a review checkpoint (see below)
+   - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
+   - If all sub-phases complete: transition to QA phase
+10. **If rejected:**
+    - Increment `iteration_count`
+    - If `iteration_count` < 3: loop back to step 4 with critic feedback
+    - If `iteration_count` >= 3: escalate to user for guidance
+    - Auto-save state
+
+**Review Checkpoints:**
+
+When a sub-phase has `review_checkpoint: true` in the implementation plan:
+
+1. Complete the sub-phase fully (critic must approve)
+2. Hand off to QA Engineer for validation of delivered functionality so far
+3. Pause for user/stakeholder review
+4. If specs are updated based on feedback:
+   - Updated specs go through their respective critic review
+   - Implementation Planner revises the plan; plan critic approves
+   - Resume implementation with the updated plan
+5. If no changes needed: continue with the next sub-phase
+
+**Phase Completion:**
+
+The implementation phase as a whole is only marked `"completed"` after:
+- All sub-phases have been approved by the critic
+- The final `artifact_path` is set to the implementation directory: `{artifacts_dir}/{workflow_id}/implementation/`
+- Phase transitions to QA
+
+**Note:** Implementation uses sub-phase directories (`phase-{N}/`) instead of iteration directories (`iteration-{N}/`) because sub-phases are sequential chunks of planned work, not revision iterations. The `iteration_count` within each sub-phase tracks producer-critic revision loops.
+
+### 9. Workflow Iterations
+
+The workflow supports an iteration lifecycle for iterative development. Users can close a completed (or partially completed) iteration and start a new one while preserving prior work as reference.
+
+**Iteration Lifecycle:**
+
+```
+active → close → closed → new-iteration → active (iteration N+1)
+```
+
+**State Fields:**
+- `iteration_number`: Starts at 1, incremented by each `new-iteration` command
+- `status`: `"active"` or `"closed"` — controls whether resume/skip-to are allowed
+- `closed_at`: ISO8601 timestamp when closed, `null` when active
+
+**Backward Compatibility:**
+- Missing `iteration_number` → treat as `1`
+- Missing `status` → treat as `"active"`
+- Missing `closed_at` → treat as `null`
+
+**Archive Directory Convention:**
+
+When a new iteration starts, the current artifacts directory is renamed:
+```
+{artifacts_dir}/{workflow_id}/ → {artifacts_dir}/{workflow_id}-iteration-{N}/
+```
+
+A fresh `{artifacts_dir}/{workflow_id}/` is then created for the new iteration.
+
+**Persistent Artifacts Carry Forward:**
+
+After archiving, persistent artifact directories (`ux_design/`, `architecture/`) are copied from the archive into the new iteration's fresh directory. These are living documents that evolve across iterations and serve as starting points for re-evaluation. Versioned artifacts (requirements, planning, implementation, etc.) start fresh.
+
+**Referencing Prior Iteration Artifacts:**
+
+When working in a new iteration, agents should be aware of:
+- The archive path: `{artifacts_dir}/{workflow_id}-iteration-{N}/`
+- Carried-forward persistent artifacts in the current directory
+- Prior requirements, plans, and implementation manifests in the archive for reference
+- The state snapshot: `{artifacts_dir}/{workflow_id}-iteration-{N}/rigorous-dev-state-closed.yaml`
+
+**Guards:**
+- `resume` and `skip-to` commands refuse to operate on closed workflows
+- `close` refuses to operate on already-closed workflows
+- `new-iteration` refuses to operate on active workflows
 
 ## Critical Rules
 

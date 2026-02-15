@@ -30,7 +30,9 @@
     - [ ] All personas have their goals addressed
     - [ ] User flows documented for all key tasks
     - [ ] Information architecture defined
-    - [ ] Wireframes created for all screens/views
+    - [ ] Every SCREEN-XXX in the spec has a corresponding HTML mockup file in `mockups/`
+    - [ ] Navigation elements in mockups link to other mockup files via relative hrefs (clickable between screens)
+    - [ ] Adding a new screen updated navigation in existing mockups
     - [ ] Visual design system documented
     - [ ] Responsive behavior specified
     - [ ] Error states defined

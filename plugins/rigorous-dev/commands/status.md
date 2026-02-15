@@ -44,6 +44,9 @@ Present the status in a clear, visual format:
 
 Project: <project_name>
 Workflow ID: <workflow_id>
+Iteration: <iteration_number> (default 1 if missing)
+Status: <active|closed>
+<if closed>Closed at: <closed_at></if>
 Artifacts: <artifacts_directory>
 Created: <created_at>
 Last Updated: <updated_at>
@@ -86,6 +89,11 @@ Workflow Notes:
 
 Generated Artifacts:
 <list all artifact files that exist in artifacts_directory>
+
+<if status is "closed">
+This workflow is closed. To start a new iteration:
+  /rigorous-dev:new-iteration
+</if>
 ```
 
 **Status Indicators:**
@@ -121,6 +129,8 @@ Write the updated state back to `.claude/rigorous-dev-state.yaml`.
 
 Project: My Project
 Workflow ID: rigorous-dev-workflow
+Iteration: 1
+Status: active
 Artifacts: .claude/rigorous-dev-artifacts
 Created: 2026-02-12T19:00:00Z
 Last Updated: 2026-02-12T21:30:00Z

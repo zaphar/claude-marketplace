@@ -32,7 +32,20 @@ if [ ! -f .claude/rigorous-dev-state.yaml ]; then
 fi
 ```
 
-### 2. Load Workflow State
+### 2. Check Workflow Status
+
+After loading the state, check if the workflow is closed:
+
+- If `status` field is missing, treat as `"active"` (backward compatibility)
+- If `status == "closed"`, display error:
+
+```
+ERROR: This workflow is closed (iteration <iteration_number>).
+A closed workflow cannot be resumed.
+Use /rigorous-dev:new-iteration to start a new iteration.
+```
+
+### 3. Load Workflow State
 
 Read and parse `.claude/rigorous-dev-state.yaml` to extract:
 - Project name
@@ -42,7 +55,7 @@ Read and parse `.claude/rigorous-dev-state.yaml` to extract:
 - Iteration counts
 - Notes
 
-### 3. Display Status Summary
+### 4. Display Status Summary
 
 Show a concise summary of the workflow state:
 
@@ -59,11 +72,11 @@ Completed Phases:
 Resuming <current_phase> phase...
 ```
 
-### 4. Load Rigorous Dev Skill
+### 5. Load Rigorous Dev Skill
 
 Load the rigorous-dev skill with the current state context so it knows where to continue.
 
-### 5. Continue Current Phase
+### 6. Continue Current Phase
 
 Based on the current phase and its status, load the appropriate agent:
 
@@ -84,7 +97,7 @@ Based on the current phase and its status, load the appropriate agent:
 - Should not happen; workflow should have advanced to next phase
 - Display error and suggest running `/rigorous-dev:status` to check state
 
-### 6. Context Handoff
+### 7. Context Handoff
 
 When loading the agent, provide context about:
 - What artifacts already exist

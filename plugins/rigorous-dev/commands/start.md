@@ -29,6 +29,7 @@ First, check if `.claude/rigorous-dev-state.yaml` already exists:
 if [ -f .claude/rigorous-dev-state.yaml ]; then
   echo "ERROR: A workflow already exists in this project."
   echo "Use /rigorous-dev:resume to continue the existing workflow."
+  echo "Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh."
   exit 1
 fi
 ```
@@ -61,6 +62,9 @@ created_at: "<current_timestamp_ISO8601>"
 updated_at: "<current_timestamp_ISO8601>"
 current_phase: "requirements"
 artifacts_directory: "<user_configured_path>"
+iteration_number: 1
+status: "active"
+closed_at: null
 notes: ""
 phase_status:
   requirements:

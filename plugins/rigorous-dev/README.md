@@ -120,6 +120,8 @@ After installation, you'll have these commands available in Claude Code:
 - `/rigorous-dev-resume` - Resume an existing workflow from saved state
 - `/rigorous-dev-status` - Display current workflow status and progress
 - `/rigorous-dev-skip-to <phase>` - Skip to a specific phase (advanced use only)
+- `/rigorous-dev-close` - Close the current workflow iteration
+- `/rigorous-dev-new-iteration` - Start a new iteration from a closed workflow
 
 ### Starting a New Workflow
 
@@ -168,6 +170,31 @@ Displays:
 ⚠️ **Use with caution.** This bypasses validation and requires user confirmation. Only use when you have existing artifacts from previous work.
 
 Valid phases: `requirements`, `ux-design`, `architecture`, `planning`, `implementation`, `qa`, `documentation`, `release`
+
+### Workflow Iterations
+
+When you've completed (or partially completed) a workflow and want to start fresh while preserving prior work:
+
+1. **Close the current iteration:**
+   ```
+   /rigorous-dev-close
+   ```
+   This marks the workflow as closed and snapshots the state.
+
+2. **Start a new iteration:**
+   ```
+   /rigorous-dev-new-iteration
+   ```
+   This archives the current artifacts (renaming the directory to include the iteration number), creates a fresh artifacts directory, copies persistent artifacts (UX design, architecture) forward as starting points, and resets all phases.
+
+**What carries forward:**
+- Persistent artifacts (`ux_design/`, `architecture/`) are copied into the new iteration as starting points for re-evaluation
+- The archived iteration's artifacts remain accessible for reference
+
+**What starts fresh:**
+- All versioned artifacts (requirements, planning, implementation, QA, docs, release)
+- All phase statuses reset to pending
+- The workflow begins again at the Requirements phase
 
 ## Workflow Details
 

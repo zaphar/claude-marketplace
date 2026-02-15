@@ -65,11 +65,23 @@ Valid phases:
 - release
 ```
 
-### 3. Load Current State
+### 3. Load Current State and Check Workflow Status
 
 Read `.claude/rigorous-dev-state.yaml` to get:
 - Current phase
 - Phase status
+- Workflow status
+
+Check if the workflow is closed:
+
+- If `status` field is missing, treat as `"active"` (backward compatibility)
+- If `status == "closed"`, display error:
+
+```
+ERROR: This workflow is closed (iteration <iteration_number>).
+A closed workflow cannot be modified.
+Use /rigorous-dev:new-iteration to start a new iteration.
+```
 
 ### 4. Check if Already at Target
 
