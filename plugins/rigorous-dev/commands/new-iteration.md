@@ -9,15 +9,15 @@ allowed-tools:
 
 # New Iteration — Rigorous Development Workflow
 
-Start a new workflow iteration after closing the previous one. Archives prior artifacts and resets phases while preserving persistent design artifacts as starting points.
+Start a new workflow iteration after closing the previous one. Commits current artifacts to VCS for history, then deletes versioned artifacts so they start fresh. Persistent design artifacts remain in place.
 
 ## What This Command Does
 
 1. Validates workflow exists and is closed
 2. Shows previous iteration summary
 3. Asks user for confirmation
-4. Archives current artifacts directory
-5. Creates fresh artifacts directory with persistent artifacts carried forward
+4. Commits all current artifacts to VCS (preserving history)
+5. Deletes versioned artifact directories (they start fresh)
 6. Resets state for the new iteration
 7. Begins Requirements phase with context from prior iteration
 
@@ -49,7 +49,7 @@ Use /rigorous-dev:close to close the current iteration before starting a new one
 
 ### 3. Display Previous Iteration Summary
 
-Show a summary of the iteration being archived:
+Show a summary of the iteration being closed out:
 
 ```
 Previous Iteration Summary
@@ -61,8 +61,8 @@ Closed at: <closed_at>
 Phase Results:
 <for each phase: name, status, artifact_path if present>
 
-This iteration's artifacts will be archived to:
-  <artifacts_dir>/<workflow_id>-iteration-<iteration_number>/
+Versioned artifacts will be deleted (retrievable from VCS history).
+Persistent artifacts (ux_design/, architecture/) will remain in place.
 ```
 
 ### 4. Ask for Confirmation
@@ -70,7 +70,7 @@ This iteration's artifacts will be archived to:
 Use AskUserQuestion to confirm:
 
 ```
-Start a new iteration? This will archive the current artifacts and reset all phases.
+Start a new iteration? This will commit current artifacts to VCS, then delete versioned artifact directories.
 ```
 
 Options:
@@ -84,36 +84,39 @@ Use /rigorous-dev:resume is not available for closed workflows.
 Use /rigorous-dev:new-iteration when ready to start a new iteration.
 ```
 
-### 5. Archive Current Artifacts
+### 5. Commit Artifacts to VCS
 
-Rename the current workflow artifacts directory to include the iteration number:
+Before deleting anything, commit all current artifacts to VCS so the full state is preserved in history. Detect which VCS is in use and commit accordingly:
 
 ```bash
-mv "<artifacts_dir>/<workflow_id>" "<artifacts_dir>/<workflow_id>-iteration-<iteration_number>"
+# Detect VCS and commit
+if [ -d .jj ]; then
+  # Jujutsu — just describe the current change with a message
+  jj commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+elif [ -d .git ]; then
+  # Git — stage the artifacts directory and commit
+  git add "<artifacts_dir>/<workflow_id>/"
+  git commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+fi
 ```
 
-This preserves all artifacts from the completed iteration.
+This ensures the complete artifact state is retrievable from VCS history even after versioned directories are deleted.
 
-### 6. Create Fresh Artifacts Directory and Copy Persistent Artifacts
+### 6. Delete Versioned Artifact Directories
 
-Create a new empty artifacts directory for the new iteration:
-
-```bash
-mkdir -p "<artifacts_dir>/<workflow_id>"
-```
-
-Copy persistent artifacts forward from the archive. These are living documents that carry forward as starting points for re-evaluation in the new iteration:
+Remove the directories that start fresh each iteration. Persistent artifacts (`ux_design/`, `architecture/`) remain in place untouched.
 
 ```bash
-# Copy UX design artifacts (if they exist)
-if [ -d "<artifacts_dir>/<workflow_id>-iteration-<N>/ux_design" ]; then
-  cp -r "<artifacts_dir>/<workflow_id>-iteration-<N>/ux_design" "<artifacts_dir>/<workflow_id>/ux_design"
-fi
+# Delete versioned artifact directories
+rm -rf "<artifacts_dir>/<workflow_id>/requirements"
+rm -rf "<artifacts_dir>/<workflow_id>/planning"
+rm -rf "<artifacts_dir>/<workflow_id>/implementation"
+rm -rf "<artifacts_dir>/<workflow_id>/qa"
+rm -rf "<artifacts_dir>/<workflow_id>/documentation"
+rm -rf "<artifacts_dir>/<workflow_id>/release"
 
-# Copy architecture artifacts (if they exist)
-if [ -d "<artifacts_dir>/<workflow_id>-iteration-<N>/architecture" ]; then
-  cp -r "<artifacts_dir>/<workflow_id>-iteration-<N>/architecture" "<artifacts_dir>/<workflow_id>/architecture"
-fi
+# Delete the close snapshot (no longer needed)
+rm -f "<artifacts_dir>/<workflow_id>/rigorous-dev-state-closed.yaml"
 ```
 
 ### 7. Rewrite State File
@@ -125,7 +128,7 @@ Update `.claude/rigorous-dev-state.yaml` with:
 - Set `closed_at: null`
 - Set `current_phase: "requirements"`
 - Update `updated_at: "<current_timestamp_ISO8601>"`
-- Append archive path info to `notes` field: `"New iteration started. Prior iteration archived at: <archive_path>"`
+- Set `notes` field to: `"New iteration started. Prior iteration artifacts preserved in VCS history."`
 - Reset all phase statuses to initial state:
 
 ```yaml
@@ -205,23 +208,23 @@ Load the rigorous-dev skill and start the Requirements phase, informing the agen
 Workflow iteration <new_iteration_number> started!
 
 Project: <project_name>
-Previous iteration archived at: <archive_path>
-Persistent artifacts carried forward: ux_design/, architecture/ (if they existed)
+Prior iteration artifacts preserved in VCS history.
+Persistent artifacts remain in place: ux_design/, architecture/ (if they exist)
 
 Starting Requirements Phase...
 Loading Requirements Analyst agent.
 ```
 
 Provide the Requirements Analyst with context:
-- Path to archived prior iteration artifacts: `<artifacts_dir>/<workflow_id>-iteration-<prev_N>/`
-- Note that persistent artifacts (UX design, architecture) have been copied into the new iteration directory as starting points
+- Prior iteration artifacts are available in VCS history (use VCS log/diff to review if needed)
+- Persistent artifacts (UX design, architecture) remain in the current directory as starting points
 - The analyst should reference prior requirements but conduct a fresh interview to capture changes
 
 Then load and execute `agents/requirements_analyst.md` to begin the conversational interview.
 
 ## Important Notes
 
-- The archive directory preserves all artifacts from the previous iteration
-- Persistent artifacts (ux_design, architecture) are copied forward as starting points, not as final approved artifacts — they will be re-evaluated by their respective phases
-- The state snapshot from `/rigorous-dev:close` remains in the archive for reference
+- VCS history preserves all artifacts from previous iterations — nothing is lost
+- Persistent artifacts (ux_design, architecture) stay in place and are re-evaluated by their respective phases
 - Versioned artifacts (requirements, planning, implementation, etc.) start completely fresh
+- The close state snapshot is cleaned up since VCS history serves the same purpose

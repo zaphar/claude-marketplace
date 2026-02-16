@@ -175,16 +175,16 @@ When you've completed (or partially completed) a workflow and want to start fres
    ```
    /rigorous-dev:new-iteration
    ```
-   This archives the current artifacts (renaming the directory to include the iteration number), creates a fresh artifacts directory, copies persistent artifacts (UX design, architecture) forward as starting points, and resets all phases.
+   This commits all current artifacts to VCS (preserving history), then deletes versioned artifact directories so they start fresh. Persistent artifacts stay in place.
 
-**What carries forward:**
-- Persistent artifacts (`ux_design/`, `architecture/`) are copied into the new iteration as starting points for re-evaluation
-- The archived iteration's artifacts remain accessible for reference
+**What stays in place:**
+- Persistent artifacts (`ux_design/`, `architecture/`) remain untouched as starting points for re-evaluation
 
 **What starts fresh:**
-- All versioned artifacts (requirements, planning, implementation, QA, docs, release)
+- Versioned artifacts (requirements, planning, implementation, QA, docs, release) are deleted after being committed to VCS
 - All phase statuses reset to pending
 - The workflow begins again at the Requirements phase
+- Prior artifacts are retrievable from VCS history
 
 ## Workflow Details
 

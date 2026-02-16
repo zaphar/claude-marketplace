@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -403,26 +403,21 @@ active → close → closed → new-iteration → active (iteration N+1)
 - Missing `status` → treat as `"active"`
 - Missing `closed_at` → treat as `null`
 
-**Archive Directory Convention:**
+**VCS-Based Iteration Cleanup:**
 
-When a new iteration starts, the current artifacts directory is renamed:
-```
-{artifacts_dir}/{workflow_id}/ → {artifacts_dir}/{workflow_id}-iteration-{N}/
-```
+When a new iteration starts, the `new-iteration` command:
+1. Commits all current artifacts to VCS (jj or git) to preserve the full state in history
+2. Deletes versioned artifact directories (`requirements/`, `planning/`, `implementation/`, `qa/`, `documentation/`, `release/`) and the close state snapshot
+3. Persistent artifacts (`ux_design/`, `architecture/`) remain in place untouched
 
-A fresh `{artifacts_dir}/{workflow_id}/` is then created for the new iteration.
-
-**Persistent Artifacts Carry Forward:**
-
-After archiving, persistent artifact directories (`ux_design/`, `architecture/`) are copied from the archive into the new iteration's fresh directory. These are living documents that evolve across iterations and serve as starting points for re-evaluation. Versioned artifacts (requirements, planning, implementation, etc.) start fresh.
+This avoids redundant file copies. Nothing is moved or renamed — files either stay (persistent) or are deleted after being committed to VCS (versioned).
 
 **Referencing Prior Iteration Artifacts:**
 
 When working in a new iteration, agents should be aware of:
-- The archive path: `{artifacts_dir}/{workflow_id}-iteration-{N}/`
-- Carried-forward persistent artifacts in the current directory
-- Prior requirements, plans, and implementation manifests in the archive for reference
-- The state snapshot: `{artifacts_dir}/{workflow_id}-iteration-{N}/rigorous-dev-state-closed.yaml`
+- Prior iteration artifacts are preserved in VCS history (use VCS log/diff to review)
+- Persistent artifacts remain in the current directory as starting points for re-evaluation
+- Prior requirements, plans, and implementation manifests can be retrieved from VCS history if needed
 
 **Guards:**
 - `resume` and `skip-to` commands refuse to operate on closed workflows
