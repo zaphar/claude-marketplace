@@ -178,10 +178,10 @@ When you've completed (or partially completed) a workflow and want to start fres
    This commits all current artifacts to VCS (preserving history), then deletes versioned artifact directories so they start fresh. Persistent artifacts stay in place.
 
 **What stays in place:**
-- Persistent artifacts (`ux_design/`, `architecture/`) remain untouched as starting points for re-evaluation
+- Persistent artifacts (`ux_design/`, `architecture/`, `documentation/`) remain untouched as starting points for re-evaluation
 
 **What starts fresh:**
-- Versioned artifacts (requirements, planning, implementation, QA, docs, release) are deleted after being committed to VCS
+- Versioned artifacts (requirements, planning, implementation, QA, release) are deleted after being committed to VCS
 - All phase statuses reset to pending
 - The workflow begins again at the Requirements phase
 - Prior artifacts are retrievable from VCS history

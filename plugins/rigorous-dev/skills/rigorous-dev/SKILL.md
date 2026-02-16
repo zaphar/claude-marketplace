@@ -76,11 +76,11 @@ For each phase, follow this pattern:
    - Iterate (max 3 times), incrementing iteration_count each time
    - Next iteration will use iteration-{iteration_count+1} directory
 
-#### Persistent Artifact Phases (UX Design, Architecture)
+#### Persistent Artifact Phases (UX Design, Architecture, Documentation)
 
 **Producer-Critic Loop:**
 
-1. Load producer agent for phase (ux_designer, backend_architect)
+1. Load producer agent for phase (ux_designer, backend_architect, documentation_master)
 2. Producer conducts interview (if needed) and creates or updates artifact
 3. Write artifact directly to phase root (no iteration directory):
    - Path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
@@ -185,7 +185,7 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 │   ├── test_report.yaml
 │   └── screenshots/
 │       └── dashboard-actual.png
-├── documentation/                         # versioned
+├── documentation/                         # persistent — updated in-place
 │   ├── documentation_manifest.yaml
 │   ├── user-guide/
 │   │   └── getting-started.md
@@ -241,6 +241,7 @@ Some artifacts are **persistent** — they live at the phase root and are update
 - **Persistent artifacts** (updated in-place, no iteration directories):
     - `architecture/backend_architecture.yaml` — the architecture is a living document that evolves as the project progresses through checkpoints
     - `ux_design/ux_specification.yaml`, `ux_design/design-system/`, `ux_design/mockups/` — UX design docs, mockups, and the design system HTML are living documents updated as the design matures
+    - `documentation/documentation_manifest.yaml`, `documentation/user-guide/`, `documentation/api/` — documentation is a living artifact that evolves across iterations
     - These are written directly at the phase root from the start. When a checkpoint triggers a revision, the producer updates them in-place.
     - Producers should still submit persistent artifacts to their critic for validation on every update.
 - **Versioned artifacts** (use iteration directories):
@@ -412,7 +413,7 @@ active → close → closed → new-iteration → active (iteration N+1)
 
 When a new iteration starts, the `new-iteration` command:
 1. Commits all current artifacts to VCS (jj or git) to preserve the full state in history
-2. Deletes versioned artifact directories (`requirements/`, `planning/`, `implementation/`, `qa/`, `documentation/`, `release/`) and the close state snapshot
+2. Deletes versioned artifact directories (`requirements/`, `planning/`, `implementation/`, `qa/`, `release/`) and the close state snapshot
 3. Persistent artifacts (`ux_design/`, `architecture/`) remain in place untouched
 
 This avoids redundant file copies. Nothing is moved or renamed — files either stay (persistent) or are deleted after being committed to VCS (versioned).

@@ -15,6 +15,7 @@
 
 **What should it do:**
 
+- Do not run builds or tests — those are already verified by prior phases
 - Validate that all input specifications are complete and approved
 - Create user documentation:
     - Getting started guide

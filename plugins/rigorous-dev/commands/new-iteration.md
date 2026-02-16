@@ -112,7 +112,6 @@ rm -rf "<artifacts_dir>/<workflow_id>/requirements"
 rm -rf "<artifacts_dir>/<workflow_id>/planning"
 rm -rf "<artifacts_dir>/<workflow_id>/implementation"
 rm -rf "<artifacts_dir>/<workflow_id>/qa"
-rm -rf "<artifacts_dir>/<workflow_id>/documentation"
 rm -rf "<artifacts_dir>/<workflow_id>/release"
 
 # Delete the close snapshot (no longer needed)

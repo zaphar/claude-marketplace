@@ -14,6 +14,7 @@
 
 **What should it do:**
 
+- Do not run builds or tests — those are already verified by prior phases
 - Validate the documentation manifest against the JSON schema
 - Verify all user-facing requirements have documentation coverage
 - Verify accuracy against code and specifications
@@ -37,7 +38,7 @@
     - [ ] All user-facing REQ-XXX have documentation
 - Accuracy:
     - [ ] No hallucinated features (verify against code/requirements)
-    - [ ] Code samples are tested and work
+    - [ ] Code samples are accurate (verify against source, do not run them)
     - [ ] Screenshots match current UI
     - [ ] Version numbers are correct
     - [ ] Links are not broken
