@@ -46,6 +46,9 @@
     - Prefer reusable fakes of external systems rather than mocking frameworks
     - Uses well defined contracts for server client interactions (e.g. browser frontend and server backend)
     - Uses types to make invalid states unrepresentable
+- Write unit tests that:
+    - Ensure serialized objects have round trip tests
+    - Pure functions have full line and branch coverage
 - Track implementation status for each requirement and component
 - Document any blockers that prevent implementation and forward for human review
 - Self-review code before submitting for critic review

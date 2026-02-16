@@ -31,9 +31,9 @@
 - Verify that we are progressing on implementing the documented User Flows in our UX specification
     - Identify where we skipped pages in a flow
     - Identify if we are implementing items not in a specific flow
-- Verify that the software can run if it's a service or application and not a library.
-    - This is not the same as running tests or building and running linters.
-- Give estimates as if a llm agent was doing the work.
+- Verify that the software can run if it's a service or application and not a library
+    - This is not the same as running tests or building and running linters
+- Verify that all objects which get sent over the wire or stored have round trip unit tests
 
 **Code Review Checklist:**
 
