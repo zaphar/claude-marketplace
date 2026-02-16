@@ -56,59 +56,40 @@ Each phase uses specialized agents with producer-critic patterns to ensure quali
 
 ## Installation
 
-### Quick Install (Recommended)
+### Remote Marketplace Install
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/zaphar/claude-rigor-plugin.git
-   cd claude-rigor-plugin
-   ```
+Add the marketplace directly from the Gitea repo and install the plugin inside Claude Code:
 
-2. Run the installer from your project directory:
-   ```bash
-   cd /path/to/your/project
-   /path/to/claude-rigor-plugin/install.sh
-   ```
-
-3. Restart Claude Code
-
-The installer will:
-- ✅ Install commands, agents, and skills into your project's `.claude/` directory
-- ✅ Copy validation schemas
-- ✅ Create example settings file
-- ✅ Update `.gitignore`
-
-### Uninstall
-
-To remove the plugin from a project:
-
-```bash
-cd /path/to/your/project
-/path/to/claude-rigor-plugin/uninstall.sh
+```
+/plugin marketplace add https://dev.zaphar.net/zaphar/claude-zaphar
+/plugin install rigorous-dev@claude-zaphar
 ```
 
-This preserves your workflow state and artifacts by default.
+### Local Marketplace Install
 
-### Manual Installation
-
-If you prefer manual setup, you can symlink the components directly:
+Alternatively, clone the repository and add it as a local marketplace:
 
 ```bash
-cd your-project
-mkdir -p .claude/{commands,agents,skills}
-
-# Link commands
-ln -s /path/to/claude-rigor-plugin/commands/*.md .claude/commands/
-
-# Link agents
-ln -s /path/to/claude-rigor-plugin/agents/*.md .claude/agents/
-
-# Link skill
-ln -s /path/to/claude-rigor-plugin/skills/rigorous-dev .claude/skills/
-
-# Copy schemas
-cp -r /path/to/claude-rigor-plugin/schemas .claude/rigorous-dev-schemas
+# Clone the repository
+git clone https://dev.zaphar.net/zaphar/claude-zaphar.git
 ```
+
+Then inside Claude Code, add the cloned repo as a local marketplace and install:
+
+```
+/plugin marketplace add /path/to/claude-zaphar
+/plugin install rigorous-dev@claude-zaphar
+```
+
+### Using `--plugin-dir`
+
+If you prefer to load the plugin for a single session without installing (useful for trying it out or plugin development):
+
+```bash
+claude --plugin-dir /path/to/claude-zaphar/plugins/rigorous-dev
+```
+
+This loads the plugin for the current session without copying anything into your project.
 
 ## Usage
 
@@ -116,17 +97,18 @@ cp -r /path/to/claude-rigor-plugin/schemas .claude/rigorous-dev-schemas
 
 After installation, you'll have these commands available in Claude Code:
 
-- `/rigorous-dev-start` - Initialize a new rigorous development workflow
-- `/rigorous-dev-resume` - Resume an existing workflow from saved state
-- `/rigorous-dev-status` - Display current workflow status and progress
-- `/rigorous-dev-skip-to <phase>` - Skip to a specific phase (advanced use only)
-- `/rigorous-dev-close` - Close the current workflow iteration
-- `/rigorous-dev-new-iteration` - Start a new iteration from a closed workflow
+- `/rigorous-dev:start` - Initialize a new rigorous development workflow
+- `/rigorous-dev:onboard` - Bootstrap workflow from an existing codebase (documents current UX and architecture)
+- `/rigorous-dev:resume` - Resume an existing workflow from saved state
+- `/rigorous-dev:status` - Display current workflow status and progress
+- `/rigorous-dev:skip-to <phase>` - Skip to a specific phase (advanced use only)
+- `/rigorous-dev:close` - Close the current workflow iteration
+- `/rigorous-dev:new-iteration` - Start a new iteration from a closed workflow
 
 ### Starting a New Workflow
 
 ```
-/rigorous-dev-start
+/rigorous-dev:start
 ```
 
 Claude will guide you through:
@@ -140,10 +122,18 @@ Claude will guide you through:
 8. Documentation generation
 9. Release preparation
 
+### Onboarding an Existing Codebase
+
+```
+/rigorous-dev:onboard
+```
+
+For existing projects, use `onboard` instead of `start`. This explores the codebase and documents the existing UX design and architecture rather than conducting interviews. After onboarding, the workflow is ready for its first requirements iteration where you define what to build or change next.
+
 ### Resuming an Existing Workflow
 
 ```
-/rigorous-dev-resume
+/rigorous-dev:resume
 ```
 
 Loads your saved workflow state and continues from the current phase.
@@ -151,7 +141,7 @@ Loads your saved workflow state and continues from the current phase.
 ### Checking Status
 
 ```
-/rigorous-dev-status
+/rigorous-dev:status
 ```
 
 Displays:
@@ -164,7 +154,7 @@ Displays:
 ### Skipping to a Phase (Advanced)
 
 ```
-/rigorous-dev-skip-to architecture
+/rigorous-dev:skip-to architecture
 ```
 
 ⚠️ **Use with caution.** This bypasses validation and requires user confirmation. Only use when you have existing artifacts from previous work.
@@ -177,13 +167,13 @@ When you've completed (or partially completed) a workflow and want to start fres
 
 1. **Close the current iteration:**
    ```
-   /rigorous-dev-close
+   /rigorous-dev:close
    ```
    This marks the workflow as closed and snapshots the state.
 
 2. **Start a new iteration:**
    ```
-   /rigorous-dev-new-iteration
+   /rigorous-dev:new-iteration
    ```
    This archives the current artifacts (renaming the directory to include the iteration number), creates a fresh artifacts directory, copies persistent artifacts (UX design, architecture) forward as starting points, and resets all phases.
 
@@ -403,12 +393,12 @@ vim schemas/requirements.schema.yaml
 3. **Use checkpoints**: Review and adjust after Phase 1 implementation
 4. **Iterate freely**: The producer-critic loop is designed for refinement
 5. **Document assumptions**: Capture decisions in the artifacts
-6. **Save frequently**: State is saved automatically, but you can manually save with `/rigorous-dev status`
+6. **Save frequently**: State is saved automatically, but you can manually check with `/rigorous-dev:status`
 
 ## Troubleshooting
 
 ### "Workflow state not found"
-- Start a new workflow with `/rigorous-dev start`
+- Start a new workflow with `/rigorous-dev:start`
 
 ### "Schema validation failed"
 - Check the artifact against the schema in `schemas/`
