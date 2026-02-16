@@ -352,6 +352,7 @@ For each sub-phase (starting at `current_phase_number: 1`):
 9. **If approved:**
    - Record `approved_by: "senior_developer_critic"`
    - Auto-save state
+   - Compact agent context (see below)
    - Check if this sub-phase is a review checkpoint (see below)
    - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
    - If all sub-phases complete: transition to QA phase
@@ -373,6 +374,10 @@ When a sub-phase has `review_checkpoint: true` in the implementation plan:
    - Implementation Planner revises the plan; plan critic approves
    - Resume implementation with the updated plan
 5. If no changes needed: continue with the next sub-phase
+
+**Context Compaction Between Sub-phases:**
+
+After a sub-phase is approved by the critic, compact the agent context before moving to the next sub-phase. Implementation sub-phases can consume significant context window space, so compacting between them prevents context exhaustion and keeps the agent effective for later sub-phases.
 
 **Phase Completion:**
 

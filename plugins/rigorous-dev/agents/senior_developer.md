@@ -61,6 +61,7 @@
    - Estimates should assume llm agents are doing the work.
 - After you are done and before you hand off commit your changes
     - Your commit should mention which personality you are.
+- After each implementation sub-phase is approved, compact your agent context before moving to the next sub-phase. This prevents context exhaustion across long implementation sessions.
 
 **Produces:**
 
