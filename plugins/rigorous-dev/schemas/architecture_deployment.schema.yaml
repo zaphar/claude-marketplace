@@ -1,0 +1,46 @@
+# JSON Schema for Architecture Deployment (in YAML format)
+# Deployment architecture and infrastructure
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Architecture Deployment
+type: object
+required:
+  - target
+additionalProperties: false
+
+properties:
+  target:
+    type: string
+    enum: [private-cloud, local-executable, both]
+  environments:
+    type: array
+    items:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          enum: [development, staging, production]
+        infrastructure:
+          type: array
+          items:
+            type: string
+  containerization:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+      runtime:
+        type: string
+      orchestration:
+        type: string
+  scaling:
+    type: object
+    properties:
+      strategy:
+        type: string
+        enum: [horizontal, vertical, none]
+      triggers:
+        type: array
+        items:
+          type: string

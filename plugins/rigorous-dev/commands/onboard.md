@@ -123,6 +123,14 @@ phase_status:
     approved_by: null
     iteration_count: 0
     notes: ""
+  audit:
+    status: "pending"
+    started_at: null
+    completed_at: null
+    artifact_path: null
+    approved_by: null
+    iteration_count: 0
+    notes: ""
   documentation:
     status: "pending"
     started_at: null
@@ -273,15 +281,23 @@ Load `agents/backend_architect.md`, then apply these **Documentation Mode Overri
 - Document actual deployment targets found in configs, not hypothetical ones
 - Record architectural decisions that are evident from the code (e.g., "chose SQLite for embedded storage" evident from dependencies)
 
-**Output artifact:**
-- `backend_architecture.yaml` — validated against `schemas/backend_architecture.schema.yaml`
+**Output artifacts** (modular architecture files):
+- `architecture_index.yaml` — validated against `schemas/architecture_index.schema.yaml`
+- `architecture_components.yaml` — validated against `schemas/architecture_components.schema.yaml`
+- `architecture_data_model.yaml` — validated against `schemas/architecture_data_model.schema.yaml`
+- `architecture_deployment.yaml` — validated against `schemas/architecture_deployment.schema.yaml`
+- `architecture_security.yaml` — validated against `schemas/architecture_security.schema.yaml`
+- `architecture_observability.yaml` — validated against `schemas/architecture_observability.schema.yaml`
+- `architecture_traceability.yaml` — validated against `schemas/architecture_traceability.schema.yaml`
+- `architecture_dependencies.yaml` — validated against `schemas/architecture_dependencies.schema.yaml`
+- `api_spec.yaml` — OpenAPI format (if API endpoints exist)
 
 **Schema compliance for onboarding:**
 - `metadata.requirements_version`: set to `"onboarding-inferred"`
 - `metadata.ux_specification_version`: set to `"onboarding-inferred"` (or reference the version from the just-produced UX spec if one was created in step 6)
-- `requirements_mapping` (required, minItems: 1): Create placeholder entries with `REQ-001`, `REQ-002`, etc. describing inferred functionality areas. Each entry maps to the components that implement it.
+- `requirements_mapping` in traceability (required, minItems: 1): Create placeholder entries with `REQ-001`, `REQ-002`, etc. describing inferred functionality areas. Each entry maps to the components that implement it.
 - `components` (required, minItems: 1): Map discovered source modules to `COMP-XXX` identifiers
-- `technology_choices.language` and `technology_choices.language_rationale`: Extract from project config; rationale can note "existing codebase choice"
+- `technology_choices.language` in index: Extract from project config; rationale can note "existing codebase choice"
 
 #### 7b. Run Architecture Critic with Onboarding Override
 
@@ -293,10 +309,10 @@ Load `agents/architecture_critic.md`, then apply these **Onboarding Critic Overr
 - Verification against requirements or UX specification documents
 
 **FOCUS on these checks instead:**
-- Schema compliance: document validates against `schemas/backend_architecture.schema.yaml`
+- Schema compliance: each architecture file validates against its corresponding `schemas/architecture_*.schema.yaml`
 - Completeness: are the major architectural components captured?
 - Accuracy: do technology choices match what's actually in the code?
-- Internal consistency: do component dependencies form a valid DAG, do IDs cross-reference correctly?
+- Internal consistency: do component dependencies form a valid DAG, do IDs cross-reference correctly across files?
 - Accept `"onboarding-inferred"` as valid for `requirements_version` and `ux_specification_version`
 - Accept placeholder `REQ-XXX` entries in `requirements_mapping`
 

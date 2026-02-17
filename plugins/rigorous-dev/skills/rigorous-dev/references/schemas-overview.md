@@ -56,29 +56,28 @@ All schemas are located at: `schemas/<artifact-name>.schema.yaml`
 - Design system must specify primary, secondary, and accent colors
 - Typography must define at least heading and body fonts
 
-### 3. backend_architecture.schema.yaml
+### 3. Architecture Schemas (Modular)
 
-**Artifact:** `backend_architecture.yaml`
+The architecture specification is split across multiple schemas, each validating one concern:
+
 **Producer:** backend_architect
 **Critic:** architecture_critic
 
-**Purpose:** Validates backend architecture specification
+| Schema | Artifact | Purpose |
+|--------|----------|---------|
+| `architecture_index.schema.yaml` | `architecture_index.yaml` | Metadata, overview, technology choices, linters |
+| `architecture_components.schema.yaml` | `architecture_components.yaml` | Components with interfaces, dependencies, integration test boundaries |
+| `architecture_data_model.schema.yaml` | `architecture_data_model.yaml` | Data entities with attributes and relationships |
+| `architecture_deployment.schema.yaml` | `architecture_deployment.yaml` | Deployment target, environments, containerization, scaling |
+| `architecture_security.schema.yaml` | `architecture_security.yaml` | Authentication, authorization, data protection, secrets |
+| `architecture_observability.schema.yaml` | `architecture_observability.yaml` | Logging, metrics, tracing, health checks |
+| `architecture_traceability.schema.yaml` | `architecture_traceability.yaml` | Requirements-to-component mapping |
+| `architecture_dependencies.schema.yaml` | `architecture_dependencies.yaml` | Dependency manifest with health assessments |
+| `architecture_adr.schema.yaml` | `architecture_adr.yaml` | Architecture Decision Records with alternatives and research sources |
 
-**Key Sections:**
-- Technology stack (languages, frameworks, databases)
-- System components with responsibilities
-- API specifications (endpoints, methods, authentication)
-- Data models with schemas
-- External services and integrations
-- Security patterns (authentication, authorization, encryption)
-- Observability (logging, monitoring, alerting)
-- Deployment architecture
+The architect also produces `api_spec.yaml` (OpenAPI format) as the authoritative API contract.
 
-**Validation Rules:**
-- All API endpoints must specify HTTP method and authentication
-- Data models must define fields with types
-- Security patterns must address authentication and authorization
-- Observability must specify logging and monitoring strategy
+**Note:** The old monolithic `backend_architecture.schema.yaml` is deprecated. Use the modular schemas above.
 
 ### 4. implementation_plan.schema.yaml
 
@@ -159,7 +158,7 @@ All schemas are located at: `schemas/<artifact-name>.schema.yaml`
 **Validation Rules:**
 - All documentation types must be represented
 - Each document must have a path
-- API documentation must cover all endpoints from backend_architecture.yaml
+- API documentation must cover all endpoints from api_spec.yaml
 
 ### 8. deployment_manifest.schema.yaml
 

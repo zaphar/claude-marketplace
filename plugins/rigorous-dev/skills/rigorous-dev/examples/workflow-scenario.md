@@ -198,69 +198,71 @@ Next: Architecture
 
 ### Architecture Specification
 
-The Backend Architect produces `backend_architecture.yaml`:
+The Backend Architect produces modular architecture files:
 
+- `architecture_index.yaml` — metadata, technology choices, linters
+- `architecture_components.yaml` — system components with integration test boundaries
+- `architecture_data_model.yaml` — data entities and relationships
+- `architecture_deployment.yaml` — deployment targets and environments
+- `architecture_security.yaml` — authentication, authorization, secrets management
+- `architecture_observability.yaml` — logging, metrics, tracing
+- `architecture_traceability.yaml` — requirements-to-component mapping
+- `architecture_dependencies.yaml` — dependency manifest with health assessments
+- `api_spec.yaml` — OpenAPI specification
+
+Example `architecture_index.yaml`:
 ```yaml
-project:
-  name: "Task Management API"
+metadata:
+  project_name: "Task Management API"
+  requirements_version: "1.0.0"
 
-technology_stack:
+overview:
+  description: "REST API for task management across projects"
+  architecture_style: "Layered monolith"
+
+technology_choices:
   language: "TypeScript"
   runtime: "Node.js 20.x"
   framework: "Express.js 4.x"
   database: "PostgreSQL 15 (AWS RDS)"
   caching: "Redis (AWS ElastiCache)"
-  authentication: "JWT (jsonwebtoken library)"
 
-system_components:
-  - name: "API Gateway"
-    responsibility: "Route requests, rate limiting, CORS"
-    technology: "AWS API Gateway"
+linters:
+  - tool: "eslint"
+    language: "TypeScript"
+    ruleset: "@typescript-eslint/recommended-type-checked"
+```
 
-  - name: "Application Server"
-    responsibility: "Business logic, request handling"
-    technology: "Express.js on ECS Fargate"
+Example `architecture_components.yaml`:
+```yaml
+components:
+  - id: "COMP-001"
+    name: "API Gateway"
+    purpose: "Route requests, rate limiting, CORS"
+    type: "infrastructure"
+    integration_test_boundaries:
+      - target_component: "COMP-002"
+        boundary_type: "api_call"
+        correct_behavior: "Routes requests to application server"
 
-  - name: "Database"
-    responsibility: "Persistent data storage"
-    technology: "PostgreSQL on RDS"
-
-api_specifications:
-  - endpoint: "/api/v1/auth/register"
-    method: "POST"
-    authentication: "none"
-    request_body:
-      email: "string"
-      password: "string"
-    response:
-      user_id: "uuid"
-      token: "jwt string"
-# ... additional endpoints ...
-
-data_models:
-  - name: "User"
-    table: "users"
-    fields:
-      - name: "id"
-        type: "uuid"
-        primary_key: true
-      - name: "email"
-        type: "string"
-        unique: true
-      - name: "password_hash"
-        type: "string"
-# ... additional models ...
+  - id: "COMP-002"
+    name: "Application Server"
+    purpose: "Business logic, request handling"
+    type: "service"
+# ... additional components ...
 ```
 
 ### Architecture Validation
 
-**Architecture Critic:** Reviewing backend_architecture.yaml...
+**Architecture Critic:** Reviewing architecture files...
 
 ✓ Technology stack appropriate for requirements
-✓ All API endpoints from UX spec covered
+✓ All API endpoints from UX spec covered in api_spec.yaml
 ✓ Data models support all requirements
-✓ Security patterns comprehensive
+✓ Security architecture comprehensive
 ✓ Observability strategy defined
+✓ Dependency manifest complete with health assessments
+✓ Integration test boundaries defined
 
 **Verdict:** APPROVED
 
@@ -268,7 +270,7 @@ data_models:
 ```
 ✅ Architecture Complete
 
-Artifact: .claude/rigorous-dev-artifacts/backend_architecture.yaml
+Artifact: .claude/rigorous-dev-artifacts/architecture/
 Approved by: architecture_critic
 Duration: 40 minutes
 
@@ -394,7 +396,7 @@ Next: Implementation
 ✓ All files follow TypeScript best practices
 ✓ Zero warnings in build
 ✓ Test coverage exceeds 80%
-✓ API matches backend_architecture.yaml specification
+✓ API matches api_spec.yaml specification
 ✓ Security patterns correctly implemented
 ✓ Error handling comprehensive
 
@@ -478,7 +480,35 @@ Next: QA
 
 ---
 
-## Phases 7-8: Documentation & Release
+## Phase 7: Audit
+
+**Security Auditor:** Auditing codebase for vulnerabilities...
+
+*[OWASP Top 10 review, data flow tracing, dependency audit, configuration review]*
+
+**Security Audit Critic:** Reviewing security audit report...
+
+✓ All OWASP categories examined
+✓ Findings backed by evidence with file:line locations
+✓ Remediation suggestions are technically correct
+
+**Verdict:** APPROVED
+
+**Performance Auditor:** Auditing codebase for performance issues...
+
+*[Database query analysis, memory patterns, API response analysis]*
+
+**Performance Audit Critic:** Reviewing performance audit report...
+
+✓ All performance areas covered
+✓ Findings include impact estimates
+✓ No high/critical severity issues found
+
+**Verdict:** APPROVED
+
+---
+
+## Phases 8-9: Documentation & Release
 
 *[Similar pattern continues through Documentation and Release phases]*
 
@@ -504,16 +534,19 @@ Progress:
 ✅ Planning (completed 2026-02-12 12:30)
 ✅ Implementation (completed 2026-02-12 18:00)
 ✅ QA (completed 2026-02-12 19:00)
+✅ Audit (completed 2026-02-12 19:45)
 ✅ Documentation (completed 2026-02-12 20:00)
 ✅ Release (completed 2026-02-12 20:30)
 
 Generated Artifacts:
 - requirements.yaml
 - ux_specification.yaml
-- backend_architecture.yaml
+- architecture/ (index, components, data model, deployment, security, observability, traceability, dependencies, ADR, api_spec)
 - implementation_plan.yaml
 - implementation_manifest.yaml
 - test_report.yaml
+- security_audit.md
+- performance_audit.md
 - documentation_manifest.yaml
 - deployment_manifest.yaml
 

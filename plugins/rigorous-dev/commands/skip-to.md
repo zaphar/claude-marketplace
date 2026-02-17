@@ -45,6 +45,7 @@ Check that a phase argument was provided and is valid:
 - `planning`
 - `implementation`
 - `qa`
+- `audit`
 - `documentation`
 - `release`
 
@@ -61,6 +62,7 @@ Valid phases:
 - planning
 - implementation
 - qa
+- audit
 - documentation
 - release
 ```
@@ -101,8 +103,9 @@ Determine which phases will be skipped based on the standard workflow order:
 4. planning
 5. implementation
 6. qa
-7. documentation
-8. release
+7. audit
+8. documentation
+9. release
 
 List all phases between current and target that will be marked as "skipped".
 
@@ -170,6 +173,7 @@ Load the appropriate agent for the target phase:
 - `planning` → `agents/implementation_planner.md`
 - `implementation` → `agents/senior_developer.md`
 - `qa` → `agents/qa_engineer.md`
+- `audit` → `agents/security_auditor.md` + `agents/performance_auditor.md` (parallel)
 - `documentation` → `agents/documentation_master.md`
 - `release` → `agents/release_engineer.md`
 

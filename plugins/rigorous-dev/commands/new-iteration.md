@@ -104,14 +104,14 @@ This ensures the complete artifact state is retrievable from VCS history even af
 
 ### 6. Delete Versioned Artifact Directories
 
-Remove the directories that start fresh each iteration. Persistent artifacts (`ux_design/`, `architecture/`) remain in place untouched.
+Remove the directories that start fresh each iteration. Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain in place untouched.
 
 ```bash
 # Delete versioned artifact directories
 rm -rf "<artifacts_dir>/<workflow_id>/requirements"
-rm -rf "<artifacts_dir>/<workflow_id>/planning"
 rm -rf "<artifacts_dir>/<workflow_id>/implementation"
 rm -rf "<artifacts_dir>/<workflow_id>/qa"
+rm -rf "<artifacts_dir>/<workflow_id>/audit"
 rm -rf "<artifacts_dir>/<workflow_id>/release"
 
 # Delete the close snapshot (no longer needed)
@@ -174,6 +174,14 @@ phase_status:
     current_phase_number: null
     notes: ""
   qa:
+    status: "pending"
+    started_at: null
+    completed_at: null
+    artifact_path: null
+    approved_by: null
+    iteration_count: 0
+    notes: ""
+  audit:
     status: "pending"
     started_at: null
     completed_at: null

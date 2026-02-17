@@ -1,3 +1,16 @@
+# DEPRECATED: This monolithic schema has been split into modular schemas:
+#   architecture_index.schema.yaml — overview, technology choices, linters
+#   architecture_components.schema.yaml — components, interfaces, integration test boundaries
+#   architecture_data_model.schema.yaml — data model and relationships
+#   architecture_deployment.schema.yaml — deployment architecture
+#   architecture_security.schema.yaml — security architecture
+#   architecture_observability.schema.yaml — observability strategy
+#   architecture_traceability.schema.yaml — requirements-to-architecture mapping
+#   architecture_dependencies.schema.yaml — approved dependency manifest
+#   architecture_adr.schema.yaml — individual architectural decision records
+#   API spec uses OpenAPI 3.x format (standard OpenAPI schema)
+#
+# This file is retained for backward compatibility with agents not yet updated.
 # JSON Schema for Backend Architecture Specification (in YAML format)
 # This schema validates the output of the Backend Architect personality
 $schema: "https://json-schema.org/draft/2020-12/schema"

@@ -1,0 +1,57 @@
+# JSON Schema for Architecture Security (in YAML format)
+# Authentication, authorization, data protection, secrets management
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Architecture Security
+type: object
+additionalProperties: false
+
+properties:
+  authentication:
+    type: object
+    properties:
+      method:
+        type: string
+        enum: [jwt, session, api-key, oauth2, oidc, none]
+      provider:
+        type: string
+      token_expiry:
+        type: string
+      refresh_strategy:
+        type: string
+  authorization:
+    type: object
+    properties:
+      model:
+        type: string
+        enum: [RBAC, ABAC, ACL, none]
+      description:
+        type: string
+      roles:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            permissions:
+              type: array
+              items:
+                type: string
+  data_protection:
+    type: object
+    properties:
+      encryption_at_rest:
+        type: boolean
+      encryption_in_transit:
+        type: boolean
+      pii_handling:
+        type: string
+      key_management:
+        type: string
+  secrets_management:
+    type: object
+    properties:
+      provider:
+        type: string
+      rotation_policy:
+        type: string

@@ -7,7 +7,7 @@ A comprehensive Claude Code plugin that guides you through creating or modifying
 This plugin implements a complete Software Development Life Cycle (SDLC) with the following phases:
 
 ```
-Requirements → UX Design → Architecture → Planning → Implementation → QA → Documentation → Release
+Requirements → UX Design → Architecture → Planning → Implementation → QA → Audit → Documentation → Release
 ```
 
 Each phase uses specialized agents with producer-critic patterns to ensure quality and completeness. UX design happens before architecture to ensure the backend is designed to support the user experience.
@@ -43,8 +43,14 @@ Each phase uses specialized agents with producer-critic patterns to ensure quali
 - **Senior Developer Critic**: Reviews code quality and adherence to architecture
 
 ### QA Phase
-- **QA Engineer**: Tests implementation and produces test reports
+- **QA Engineer**: Tests implementation with E2E tests and produces test reports
 - **QA Critic**: Validates test coverage and quality
+
+### Audit Phase
+- **Security Auditor**: Deep OWASP code-level security audit
+- **Security Audit Critic**: Validates security audit thoroughness
+- **Performance Auditor**: Deep code-level performance audit
+- **Performance Audit Critic**: Validates performance audit thoroughness
 
 ### Documentation Phase
 - **Documentation Master**: Creates comprehensive documentation
@@ -119,8 +125,9 @@ Claude will guide you through:
 5. Implementation planning with checkpoints
 6. Iterative implementation with review
 7. QA testing and validation
-8. Documentation generation
-9. Release preparation
+8. Security and performance auditing
+9. Documentation generation
+10. Release preparation
 
 ### Onboarding an Existing Codebase
 
@@ -159,7 +166,7 @@ Displays:
 
 ⚠️ **Use with caution.** This bypasses validation and requires user confirmation. Only use when you have existing artifacts from previous work.
 
-Valid phases: `requirements`, `ux-design`, `architecture`, `planning`, `implementation`, `qa`, `documentation`, `release`
+Valid phases: `requirements`, `ux-design`, `architecture`, `planning`, `implementation`, `qa`, `audit`, `documentation`, `release`
 
 ### Workflow Iterations
 
@@ -178,10 +185,10 @@ When you've completed (or partially completed) a workflow and want to start fres
    This commits all current artifacts to VCS (preserving history), then deletes versioned artifact directories so they start fresh. Persistent artifacts stay in place.
 
 **What stays in place:**
-- Persistent artifacts (`ux_design/`, `architecture/`, `documentation/`) remain untouched as starting points for re-evaluation
+- Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain untouched as starting points for re-evaluation
 
 **What starts fresh:**
-- Versioned artifacts (requirements, planning, implementation, QA, release) are deleted after being committed to VCS
+- Versioned artifacts (requirements, implementation, QA, audit, release) are deleted after being committed to VCS
 - All phase statuses reset to pending
 - The workflow begins again at the Requirements phase
 - Prior artifacts are retrievable from VCS history
@@ -211,7 +218,7 @@ Output: `requirements.yaml` validated against `schemas/requirements.schema.yaml`
 - Defines design system (colors, typography, spacing)
 - Specifies component hierarchy
 
-Outputs: `backend_architecture.yaml` and `ux_specification.yaml`
+Outputs: Modular architecture YAML files (`architecture_index.yaml`, `architecture_components.yaml`, etc.), `api_spec.yaml`, and `ux_specification.yaml`
 
 ### 3. Planning Phase
 
@@ -238,14 +245,22 @@ Output: `implementation_manifest.yaml` + working codebase
 ### 5. QA Phase
 
 The QA Engineer validates the implementation:
-- Executes test suites
+- Implements E2E tests from planner-defined scenarios
 - Verifies acceptance criteria
+- Builds unified traceability matrix
 - Documents bugs and issues
-- Confirms all requirements are met
 
 Output: `test_report.yaml`
 
-### 6. Documentation Phase
+### 6. Audit Phase
+
+Security and Performance Auditors run in parallel:
+- **Security Auditor**: OWASP Top 10 review, data flow tracing, dependency audit
+- **Performance Auditor**: Database query analysis, memory patterns, algorithm review
+
+Output: `security_audit.md`, `performance_audit.md`
+
+### 7. Documentation Phase
 
 The Documentation Master creates:
 - User documentation
@@ -255,7 +270,7 @@ The Documentation Master creates:
 
 Output: `documentation_manifest.yaml`
 
-### 7. Release Phase
+### 8. Release Phase
 
 The Release Engineer prepares:
 - Deployment manifest
@@ -283,13 +298,25 @@ rigorous-dev/
 │   ├── senior_developer_critic.md
 │   ├── qa_engineer.md
 │   ├── qa_critic.md
+│   ├── security_auditor.md
+│   ├── security_audit_critic.md
+│   ├── performance_auditor.md
+│   ├── performance_audit_critic.md
 │   ├── documentation_master.md
 │   ├── documentation_critic.md
 │   ├── release_engineer.md
 │   └── release_critic.md
 └── schemas/                       # YAML schemas for validation
     ├── requirements.schema.yaml
-    ├── backend_architecture.schema.yaml
+    ├── architecture_index.schema.yaml
+    ├── architecture_components.schema.yaml
+    ├── architecture_data_model.schema.yaml
+    ├── architecture_deployment.schema.yaml
+    ├── architecture_security.schema.yaml
+    ├── architecture_observability.schema.yaml
+    ├── architecture_traceability.schema.yaml
+    ├── architecture_dependencies.schema.yaml
+    ├── architecture_adr.schema.yaml
     ├── ux_specification.schema.yaml
     ├── implementation_plan.schema.yaml
     ├── implementation_manifest.schema.yaml
@@ -334,13 +361,22 @@ Artifacts are organized by phase with iteration history in `.claude/rigorous-dev
 │   ├── iteration-1/requirements.yaml
 │   ├── iteration-2/requirements.yaml
 │   └── requirements.yaml              # Final approved version
-├── ux_design/
-│   ├── iteration-1/ux_specification.yaml
-│   └── ux_specification.yaml          # Final approved version
-├── architecture/
-│   ├── iteration-1/backend_architecture.yaml
-│   └── backend_architecture.yaml      # Final approved version
-├── planning/
+├── ux_design/                             # persistent — updated in-place
+│   ├── ux_specification.yaml
+│   ├── design-system/
+│   └── mockups/
+├── architecture/                          # persistent — updated in-place
+│   ├── architecture_index.yaml
+│   ├── architecture_components.yaml
+│   ├── architecture_data_model.yaml
+│   ├── architecture_deployment.yaml
+│   ├── architecture_security.yaml
+│   ├── architecture_observability.yaml
+│   ├── architecture_traceability.yaml
+│   ├── architecture_dependencies.yaml
+│   ├── architecture_adr.yaml
+│   └── api_spec.yaml
+├── planning/                              # persistent — updated in-place
 │   └── implementation_plan.yaml
 ├── implementation/
 │   ├── phase-1/implementation_manifest.yaml
@@ -348,18 +384,23 @@ Artifacts are organized by phase with iteration history in `.claude/rigorous-dev
 │   └── phase-N/implementation_manifest.yaml
 ├── qa/
 │   └── test_report.yaml
-├── documentation/
-│   └── documentation_manifest.yaml
+├── audit/
+│   ├── security_audit.md
+│   └── performance_audit.md
+├── documentation/                         # persistent — updated in-place
+│   ├── documentation_manifest.yaml
+│   ├── user-guide/
+│   └── api/
 └── release/
     └── deployment_manifest.yaml
 ```
 
 **Key Points:**
 - Each phase has its own directory
-- Iteration subdirectories preserve the history of revisions during producer-critic loops
-- Final approved artifacts are stored at the phase root level
+- **Persistent artifacts** (ux_design, architecture, planning, documentation) are updated in-place — no iteration directories
+- **Versioned artifacts** (requirements, implementation, qa, audit, release) use iteration directories during producer-critic loops
+- Final approved versioned artifacts are copied to the phase root level
 - Implementation phase uses `phase-N` directories for sequential implementation phases
-- This structure makes it easy to track changes and understand the evolution of artifacts
 
 ## Customization
 

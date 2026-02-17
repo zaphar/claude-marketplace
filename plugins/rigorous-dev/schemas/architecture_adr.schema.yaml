@@ -1,0 +1,59 @@
+# JSON Schema for Architecture Decision Record (in YAML format)
+# One file per architectural decision
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Architecture Decision Record
+type: object
+required:
+  - id
+  - title
+  - status
+  - decision
+  - rationale
+additionalProperties: false
+
+properties:
+  id:
+    type: string
+    pattern: "^ADR-[0-9]{3}$"
+  title:
+    type: string
+  status:
+    type: string
+    enum: [proposed, accepted, deprecated, superseded]
+  date:
+    type: string
+    format: date
+  context:
+    type: string
+  decision:
+    type: string
+  rationale:
+    type: string
+  alternatives_considered:
+    type: array
+    items:
+      type: object
+      properties:
+        option:
+          type: string
+        pros:
+          type: array
+          items:
+            type: string
+        cons:
+          type: array
+          items:
+            type: string
+  consequences:
+    type: array
+    items:
+      type: string
+  research_sources:
+    type: array
+    description: Links to documentation, benchmarks, or other sources consulted
+    items:
+      type: string
+  superseded_by:
+    type: string
+    pattern: "^ADR-[0-9]{3}$"
+    description: If deprecated/superseded, the ADR that replaces this one

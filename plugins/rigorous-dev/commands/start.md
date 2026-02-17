@@ -116,6 +116,14 @@ phase_status:
     approved_by: null
     iteration_count: 0
     notes: ""
+  audit:
+    status: "pending"
+    started_at: null
+    completed_at: null
+    artifact_path: null
+    approved_by: null
+    iteration_count: 0
+    notes: ""
   documentation:
     status: "pending"
     started_at: null

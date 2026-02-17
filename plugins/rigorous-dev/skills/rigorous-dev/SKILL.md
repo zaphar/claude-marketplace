@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.4.0
+version: 0.5.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -18,8 +18,9 @@ The workflow follows these phases in order:
 4. **Planning** - Interview → Plan → Validate
 5. **Implementation** - Build → Review → Validate (with checkpoints)
 6. **QA** - Test → Review → Validate
-7. **Documentation** - Document → Review → Validate
-8. **Release** - Prepare → Review → Validate
+7. **Audit** - Security Audit + Performance Audit (parallel) → Validate
+8. **Documentation** - Document → Review → Validate
+9. **Release** - Prepare → Review → Validate
 
 Each phase (except Requirements) uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 iteration loops before escalating to the user.
 
@@ -35,7 +36,7 @@ workflow_id: string
 project_name: string
 created_at: ISO8601 timestamp
 updated_at: ISO8601 timestamp
-current_phase: string  # requirements | ux_design | architecture | planning | implementation | qa | documentation | release
+current_phase: string  # requirements | ux_design | architecture | planning | implementation | qa | audit | documentation | release
 artifacts_directory: string
 iteration_number: number  # starts at 1, incremented by new-iteration
 status: string            # "active" | "closed"
@@ -76,11 +77,11 @@ For each phase, follow this pattern:
    - Iterate (max 3 times), incrementing iteration_count each time
    - Next iteration will use iteration-{iteration_count+1} directory
 
-#### Persistent Artifact Phases (UX Design, Architecture, Documentation)
+#### Persistent Artifact Phases (UX Design, Architecture, Planning, Documentation)
 
 **Producer-Critic Loop:**
 
-1. Load producer agent for phase (ux_designer, backend_architect, documentation_master)
+1. Load producer agent for phase (ux_designer, backend_architect, implementation_planner, documentation_master)
 2. Producer conducts interview (if needed) and creates or updates artifact
 3. Write artifact directly to phase root (no iteration directory):
    - Path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
@@ -144,6 +145,8 @@ For each phase, follow this pattern:
 | Planning | `agents/implementation_planner.md` | `agents/implementation_plan_critic.md` |
 | Implementation | `agents/senior_developer.md` | `agents/senior_developer_critic.md` |
 | QA | `agents/qa_engineer.md` | `agents/qa_critic.md` |
+| Audit (Security) | `agents/security_auditor.md` | `agents/security_audit_critic.md` |
+| Audit (Performance) | `agents/performance_auditor.md` | `agents/performance_audit_critic.md` |
 | Documentation | `agents/documentation_master.md` | `agents/documentation_critic.md` |
 | Release | `agents/release_engineer.md` | `agents/release_critic.md` |
 
@@ -173,8 +176,17 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 │       ├── dashboard.html
 │       └── settings.html
 ├── architecture/                          # persistent — updated in-place
-│   └── backend_architecture.yaml
-├── planning/                              # versioned
+│   ├── architecture_index.yaml
+│   ├── architecture_components.yaml
+│   ├── architecture_data_model.yaml
+│   ├── architecture_deployment.yaml
+│   ├── architecture_security.yaml
+│   ├── architecture_observability.yaml
+│   ├── architecture_traceability.yaml
+│   ├── architecture_dependencies.yaml
+│   ├── architecture_adr.yaml
+│   └── api_spec.yaml
+├── planning/                              # persistent — updated in-place
 │   └── implementation_plan.yaml
 ├── implementation/                        # sub-phased
 │   ├── phase-1/
@@ -185,6 +197,9 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 │   ├── test_report.yaml
 │   └── screenshots/
 │       └── dashboard-actual.png
+├── audit/                                 # versioned
+│   ├── security_audit.md
+│   └── performance_audit.md
 ├── documentation/                         # persistent — updated in-place
 │   ├── documentation_manifest.yaml
 │   ├── user-guide/
@@ -198,10 +213,11 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 **Artifact Naming Convention:**
 - `requirements.yaml`
 - `ux_specification.yaml`
-- `backend_architecture.yaml`
+- `architecture_index.yaml`, `architecture_components.yaml`, `architecture_data_model.yaml`, `architecture_deployment.yaml`, `architecture_security.yaml`, `architecture_observability.yaml`, `architecture_traceability.yaml`, `architecture_dependencies.yaml`, `architecture_adr.yaml`, `api_spec.yaml`
 - `implementation_plan.yaml`
 - `implementation_manifest.yaml`
 - `test_report.yaml`
+- `security_audit.md`, `performance_audit.md`
 - `documentation_manifest.yaml`
 - `deployment_manifest.yaml`
 
@@ -239,8 +255,9 @@ Use these patterns to construct paths:
 Some artifacts are **persistent** — they live at the phase root and are updated in-place across checkpoint revisions. Others are **versioned** — they use iteration directories and get copied to the phase root on approval.
 
 - **Persistent artifacts** (updated in-place, no iteration directories):
-    - `architecture/backend_architecture.yaml` — the architecture is a living document that evolves as the project progresses through checkpoints
+    - `architecture/*.yaml` — the architecture files are living documents that evolve as the project progresses through checkpoints
     - `ux_design/ux_specification.yaml`, `ux_design/design-system/`, `ux_design/mockups/` — UX design docs, mockups, and the design system HTML are living documents updated as the design matures
+    - `planning/implementation_plan.yaml` — the implementation plan evolves at checkpoints as specs are revised and phases are re-planned
     - `documentation/documentation_manifest.yaml`, `documentation/user-guide/`, `documentation/api/` — documentation is a living artifact that evolves across iterations
     - These are written directly at the phase root from the start. When a checkpoint triggers a revision, the producer updates them in-place.
     - Producers should still submit persistent artifacts to their critic for validation on every update.
@@ -272,7 +289,7 @@ When transitioning between phases:
 
 **Phase Order (Standard):**
 ```
-requirements → ux_design → architecture → planning → implementation → qa → documentation → release
+requirements → ux_design → architecture → planning → implementation → qa → audit → documentation → release
 ```
 
 **Special Cases:**
@@ -389,7 +406,48 @@ The implementation phase as a whole is only marked `"completed"` after:
 
 **Note:** Implementation uses sub-phase directories (`phase-{N}/`) instead of iteration directories (`iteration-{N}/`) because sub-phases are sequential chunks of planned work, not revision iterations. The `iteration_count` within each sub-phase tracks producer-critic revision loops.
 
-### 9. Workflow Iterations
+### 9. Audit Phase Special Handling
+
+The audit phase runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before advancing to the Documentation phase.
+
+**Parallel Tracks:**
+
+1. **Security Track:**
+   - Load `agents/security_auditor.md` → produces security audit report
+   - Load `agents/security_audit_critic.md` → validates the report
+   - Standard producer-critic loop (max 3 iterations)
+
+2. **Performance Track:**
+   - Load `agents/performance_auditor.md` → produces performance audit report
+   - Load `agents/performance_audit_critic.md` → validates the report
+   - Standard producer-critic loop (max 3 iterations)
+
+Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.
+
+**Remediation Threshold:**
+
+Findings from both audits are combined for the remediation threshold:
+- Any high or critical severity finding triggers remediation
+- 5+ medium findings (accumulated across both audits) triggers remediation
+
+**Remediation Cycle (if triggered):**
+
+1. Senior Developer fixes the identified issues
+2. QA Engineer re-tests affected areas
+3. Auditors re-audit only the changed files and previous findings
+4. Repeat until no high/critical findings remain and medium count is below threshold
+
+**Artifact Storage:**
+
+Save audit reports to the audit directory:
+- `{artifacts_dir}/{workflow_id}/audit/security_audit.md`
+- `{artifacts_dir}/{workflow_id}/audit/performance_audit.md`
+
+**Phase Completion:**
+
+The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit reports. Both reports must show no unresolved high/critical findings.
+
+### 10. Workflow Iterations
 
 The workflow supports an iteration lifecycle for iterative development. Users can close a completed (or partially completed) iteration and start a new one while preserving prior work as reference.
 
@@ -413,8 +471,8 @@ active → close → closed → new-iteration → active (iteration N+1)
 
 When a new iteration starts, the `new-iteration` command:
 1. Commits all current artifacts to VCS (jj or git) to preserve the full state in history
-2. Deletes versioned artifact directories (`requirements/`, `planning/`, `implementation/`, `qa/`, `release/`) and the close state snapshot
-3. Persistent artifacts (`ux_design/`, `architecture/`) remain in place untouched
+2. Deletes versioned artifact directories (`requirements/`, `implementation/`, `qa/`, `audit/`, `release/`) and the close state snapshot
+3. Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain in place untouched
 
 This avoids redundant file copies. Nothing is moved or renamed — files either stay (persistent) or are deleted after being committed to VCS (versioned).
 

@@ -1,0 +1,53 @@
+# JSON Schema for Architecture Dependencies (in YAML format)
+# Approved dependency manifest with justifications and health assessments
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Architecture Dependencies
+type: object
+required:
+  - dependencies
+additionalProperties: false
+
+properties:
+  dependency_policy:
+    type: string
+    description: Overall policy on third-party dependencies (e.g., minimal, moderate, liberal)
+
+  dependencies:
+    type: array
+    items:
+      type: object
+      required:
+        - package
+        - purpose
+        - justification
+        - adr_reference
+      properties:
+        package:
+          type: string
+        version_constraint:
+          type: string
+        purpose:
+          type: string
+        justification:
+          type: string
+          description: Why this dependency is needed rather than building in-house
+        adr_reference:
+          type: string
+          pattern: "^ADR-[0-9]{3}$"
+        health_assessment:
+          type: object
+          properties:
+            maintenance_activity:
+              type: string
+              description: Recent commits, release cadence, issue response time
+            community_adoption:
+              type: string
+              description: Download counts, GitHub stars, production usage
+            transitive_dependencies:
+              type: integer
+              description: Number of transitive dependencies pulled in
+            license:
+              type: string
+            single_maintainer_risk:
+              type: boolean
+              description: Whether the package depends on a single maintainer

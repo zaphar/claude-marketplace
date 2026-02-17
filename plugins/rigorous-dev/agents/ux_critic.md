@@ -10,14 +10,33 @@
 - Schema: `schemas/ux_specification.schema.yaml`
 - Requirements specification (for traceability verification)
 
-**What should it do:**
+**What You Do:**
 
-- Validate the specification against the JSON schema
-- Verify all user-facing requirements are mapped to UX elements
-- Assess UX quality against established criteria
-- Verify accessibility compliance
+This critic operates in two review phases that correspond to the UX Designer's two-phase workflow:
+
+*Phase 1 Review — Design Direction:*
+
+When reviewing the design direction (design system + sample screens before full mockups are built):
+
+- Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
+- Review the design system for internal consistency and accessibility compliance
+- Review the sample screens for alignment with the design system
+- Verify the design direction addresses the stated user personas and goals
+- **Do NOT check for full mockup completeness** — that comes in Phase 2
+- Use only the applicable items from the Review Checklist below (design system, usability, accessibility, consistency sections)
 - Provide specific, actionable feedback on any deficiencies
-- Track review iterations and improvement between versions
+
+*Phase 2 Review — Full Mockup Set:*
+
+When reviewing the complete set of mockups after design direction is approved:
+
+- Append a new review with a dated heading and revision number
+- Apply the **full Review Checklist** including completeness and traceability
+- Verify all user-facing requirements are mapped to UX elements
+- Assess UX quality against all established criteria
+- Verify accessibility compliance across all screens
+- Provide specific, actionable feedback on any deficiencies
+- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents to reference.
 
 **Review Checklist:**
 
@@ -25,7 +44,7 @@
     - [ ] Document validates against `schemas/ux_specification.schema.yaml`
     - [ ] All required fields present
     - [ ] All IDs follow correct patterns (FLOW-XXX, SCREEN-XXX, PERSONA-XXX)
-- Completeness:
+- Completeness (Phase 2 only):
     - [ ] All user-facing requirements mapped to UX elements
     - [ ] All personas have their goals addressed
     - [ ] User flows documented for all key tasks
@@ -37,7 +56,7 @@
     - [ ] Responsive behavior specified
     - [ ] Error states defined
     - [ ] Loading/empty states defined
-    - [ ] Fonts and colors should be consistent with the design system document
+    - [ ] Fonts and colors consistent with the design system document
 - Usability:
     - [ ] Flows minimize steps to complete tasks
     - [ ] Navigation is intuitive
@@ -55,31 +74,39 @@
     - [ ] Design system is internally consistent
     - [ ] Similar actions have similar patterns
     - [ ] Component behavior is predictable
+    - [ ] Peer-level screens use consistent structural patterns (e.g., if one section uses tabs, peer sections should too unless there's a justified reason not to)
 - Implementability:
     - [ ] Designs are achievable with specified technology
     - [ ] Data requirements for each screen are clearly documented (for Backend Architect)
     - [ ] Performance implications considered (animations, images)
-- Traceability:
+- Traceability (Phase 2 only):
     - [ ] Every user-facing REQ-XXX has UX coverage
     - [ ] Flows map to personas and their goals
 
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`
-- If approved: Sign-off for handoff to Senior Developer
+- If approved: Sign-off for handoff to Backend Architect
 - If needs_revision: Specific list of issues to address, categorized by:
-    - **Blocking**: Must fix before approval
+    - **Blocking**: Must fix before approval — any checklist failure, quality gap, or substantive improvement the designer should reasonably deliver
     - **Recommended**: Should fix, but not blocking
-    - **Suggestion**: Optional improvements
+    - **Suggestion**: Truly optional enhancements that don't affect correctness, completeness, or quality
 
 **Handoff:**
 
-- On approval, the UX specification proceeds to Senior Developer
+- On approval, the UX specification proceeds to Backend Architect
 - On rejection, returns to UX Designer with feedback
+
+**Context Management:**
+
+- **During Phase 1 review**, read only the design system document and sample screen mockups.
+- **During Phase 2 review**, work through mockups one at a time: review a screen against user flows and traceability, write findings, move on.
+- **Read requirements selectively.** For traceability, read requirements for user-facing requirement IDs. For persona coverage, read personas. Don't load other requirements files.
+- **On re-review cycles**, read only the previous review's issues and the specific mockups or files that changed — don't reload everything.
+- **Write review findings as you work through each section** rather than accumulating everything before writing.
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, escalate to human reviewer
-- If UX appears fundamentally flawed (accessibility, usability), escalate to stakeholders
-- If requirements themselves are the root cause, escalate to Requirements Analyst
-- If schema itself appears insufficient, escalate to project maintainers
+- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
+- If UX appears fundamentally flawed, pause and explain the core usability/accessibility problems to the user. Write the issue to `planning/BLOCKERS.md`.
+- If requirements are the root cause, pause and tell the user the requirements need revision first. Write the issue to `planning/BLOCKERS.md`.

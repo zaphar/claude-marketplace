@@ -1,0 +1,162 @@
+# JSON Schema for Architecture Index (in YAML format)
+# Overview, technology choices, and linter configuration
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Architecture Index
+type: object
+required:
+  - metadata
+  - overview
+  - technology_choices
+additionalProperties: false
+
+properties:
+  metadata:
+    type: object
+    required:
+      - title
+      - version
+      - created
+      - status
+      - requirements_version
+    properties:
+      title:
+        type: string
+      version:
+        type: string
+      created:
+        type: string
+        format: date
+      updated:
+        type: string
+        format: date
+      status:
+        type: string
+        enum: [draft, review, approved]
+      requirements_version:
+        type: string
+        description: Version of requirements document this architecture addresses
+      ux_specification_version:
+        type: string
+        description: Version of UX specification this coordinates with
+
+  overview:
+    type: object
+    required:
+      - description
+      - principles
+    properties:
+      description:
+        type: string
+      principles:
+        type: array
+        items:
+          type: string
+      diagrams:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            path:
+              type: string
+            description:
+              type: string
+
+  technology_choices:
+    type: object
+    required:
+      - language
+      - language_rationale
+    properties:
+      language:
+        type: string
+        description: Primary implementation language (must be strongly typed)
+      language_rationale:
+        type: string
+      strict_typing_config:
+        type: string
+        description: Strictest typing configuration for the chosen language (e.g., TypeScript strict true, Python mypy --strict)
+      frameworks:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - purpose
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+            version:
+              type: string
+      databases:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - purpose
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+            type:
+              type: string
+              enum: [relational, document, key-value, graph, time-series, other]
+      message_queues:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+      caching:
+        type: object
+        properties:
+          strategy:
+            type: string
+          technology:
+            type: string
+      external_services:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - purpose
+          properties:
+            name:
+              type: string
+            purpose:
+              type: string
+            integration_method:
+              type: string
+
+  linters:
+    type: array
+    description: Linters and static analyzers for the chosen language
+    items:
+      type: object
+      required:
+        - tool
+        - language
+        - ruleset
+      properties:
+        tool:
+          type: string
+        language:
+          type: string
+        ruleset:
+          type: string
+          description: Configuration or ruleset name (e.g., strict, pedantic, recommended)
+        config_file:
+          type: string
+          description: Path to configuration file
+        build_integration:
+          type: string
+          description: How the linter integrates into the build pipeline

@@ -134,6 +134,8 @@ Most phases use a producer-critic pair:
 | Planning | `implementation_planner.md` | `implementation_plan_critic.md` |
 | Implementation | `senior_developer.md` | `senior_developer_critic.md` |
 | QA | `qa_engineer.md` | `qa_critic.md` |
+| Audit (Security) | `security_auditor.md` | `security_audit_critic.md` |
+| Audit (Performance) | `performance_auditor.md` | `performance_audit_critic.md` |
 | Documentation | `documentation_master.md` | `documentation_critic.md` |
 | Release | `release_engineer.md` | `release_critic.md` |
 
@@ -186,7 +188,7 @@ You review the UX specification and backend architecture to ensure they align an
 **Inputs:**
 - Design review report from Design Reviewer
 - Schema: `schemas/design_review.schema.yaml`
-- Prior artifacts: ux_specification.yaml, backend_architecture.yaml
+- Prior artifacts: ux_specification.yaml, architecture/*.yaml
 
 [... additional sections ...]
 ```

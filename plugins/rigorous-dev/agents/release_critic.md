@@ -10,16 +10,21 @@
 - Schema: `schemas/deployment_manifest.schema.yaml`
 - CI/CD pipeline configuration
 - Deployment scripts and runbooks
-- Requirements specification (for deployment requirements)
+- `CHANGELOG.md`
+- Requirements specification (for deployment requirements and quality standards)
+- Review feedback from previous iterations (if any)
+- `planning/project-memory.md` (if it exists)
 
-**What should it do:**
+**What You Do:**
 
-- Validate the deployment manifest against the JSON schema
+- Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
+- Validate the deployment manifest against the YAML schema
 - Verify all deployment targets are supported
-- Verify quality gates are comprehensive
+- Verify quality gates are comprehensive and *enforcing* (not just checking)
 - Assess deployment reliability and security
+- Verify CHANGELOG.md exists and is properly formatted
 - Provide specific, actionable feedback on any deficiencies
-- Track review iterations and improvement between versions
+- Record significant lessons or recurring patterns to `planning/project-memory.md`.
 
 **Review Checklist:**
 
@@ -34,15 +39,20 @@
     - [ ] Artifact versioning implemented
     - [ ] Secrets management configured
     - [ ] Rollback procedures documented
-    - [ ] Runbooks created
+    - [ ] Operational runbooks created (deployment, rollback, infrastructure troubleshooting)
     - [ ] Monitoring integration configured
-- Quality gates verify:
+    - [ ] `CHANGELOG.md` exists at repository root in Keep a Changelog format
+- Quality gates enforce (pipeline must *fail* when these aren't met, not just warn):
     - [ ] Schema validation of upstream artifacts
     - [ ] Zero warnings build
+    - [ ] Linter pass (using configured linters from architecture)
     - [ ] All tests pass
-    - [ ] Coverage thresholds met
+    - [ ] Coverage thresholds enforced (pipeline fails if below threshold, not just reports)
     - [ ] Security scan pass
-    - [ ] Lint pass
+- Runbook scope:
+    - [ ] Runbooks cover deployment, rollback, and infrastructure troubleshooting
+    - [ ] Runbooks do NOT duplicate user-facing troubleshooting (that belongs in Documentation Master's user guide)
+    - [ ] Troubleshooting covers common deployment and infrastructure issues
 - Security:
     - [ ] No secrets in pipeline configuration
     - [ ] Secrets injected securely at runtime
@@ -60,18 +70,14 @@
     - [ ] All required platforms supported
     - [ ] Installation instructions created
     - [ ] Update mechanism defined (if applicable)
-- Documentation:
-    - [ ] Runbooks are complete and accurate
-    - [ ] Troubleshooting covers common issues
-    - [ ] Deployment procedures are step-by-step
 
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`
 - If approved: Sign-off for production deployment
 - If needs_revision: Specific list of issues to address, categorized by:
-    - **Blocking**: Must fix before approval (security issues, missing quality gates)
-    - **Recommended**: Should fix, but not blocking (documentation gaps)
+    - **Blocking**: Must fix before approval (security issues, missing quality gates, coverage not enforced, missing CHANGELOG)
+    - **Recommended**: Should fix, but not blocking (runbook gaps, minor documentation issues)
     - **Suggestion**: Optional improvements
 
 **Handoff:**
@@ -80,9 +86,17 @@
 - Output consumed by Documentation Master
 - On rejection, returns to Release Engineer with feedback
 
+**Context Management:**
+
+- **Read the deployment manifest in full** — it's your primary review target.
+- **Read CI/CD pipeline configuration in full** — verify quality gates.
+- **Read requirements selectively** — deployment requirements and quality standards only.
+- **Read runbooks selectively** — spot-check 1-2 procedures for completeness and accuracy.
+- **Read CHANGELOG.md** — verify format and content.
+- **On re-review cycles**, read only the previous review's issues and the updated sections.
+
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, escalate to human reviewer
-- If security issues are found, escalate immediately
-- If infrastructure constraints block deployment, escalate to stakeholders
-- If schema itself appears insufficient, escalate to project maintainers
+- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
+- If security issues are found in pipeline configuration, pause and tell the user immediately. Write to `planning/BLOCKERS.md`.
+- If infrastructure constraints block deployment, pause and describe the constraint. Write to `planning/BLOCKERS.md`.
