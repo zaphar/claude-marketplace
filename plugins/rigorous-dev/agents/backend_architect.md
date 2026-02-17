@@ -60,6 +60,16 @@ The architecture specification is a living document written directly at the phas
 - Upon critic approval, output is consumed by the Senior Developer
 - Stakeholder sign-off should be obtained before proceeding to implementation
 
+**Bug Fix Architecture:**
+
+When the iteration addresses a bug fix:
+
+- Study the codebase to understand how the bug's root pattern arose — was it a missing abstraction, a weak contract, an unchecked invariant, or a structural gap?
+- Design architectural changes that prevent the entire class of bug, not just the specific instance reported
+- Consider whether type system enforcement, stronger contracts, or structural constraints can make the bug pattern unrepresentable
+- Evaluate whether similar patterns exist elsewhere in the codebase and address them in the architecture
+- Document in an ADR why the bug pattern was possible and what architectural guardrail prevents recurrence
+
 **User Consultation:**
 
 - When multiple viable technology options exist, present trade-offs and ask user for preference

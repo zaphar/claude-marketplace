@@ -46,6 +46,7 @@
     - Prefer reusable fakes of external systems rather than mocking frameworks
     - Uses well defined contracts for server client interactions (e.g. browser frontend and server backend)
     - Uses types to make invalid states unrepresentable
+    - Avoids circular dependencies
 - Write unit tests that:
     - Ensure serialized objects have round trip tests
     - Pure functions have full line and branch coverage
@@ -62,6 +63,16 @@
 - After you are done and before you hand off commit your changes
     - Your commit should mention which personality you are.
 - After each implementation sub-phase is approved, compact your agent context before moving to the next sub-phase. This prevents context exhaustion across long implementation sessions.
+
+**Bug Fix Implementation:**
+
+When implementing a bug fix:
+
+- Study the root pattern that allowed the bug — understand *why* it was possible, not just *what* went wrong
+- Proactively search the codebase for other instances of the same vulnerable pattern and fix them as part of this iteration
+- Prefer structural fixes (stronger types, tighter contracts, compile-time checks) over behavioral fixes (runtime checks, extra validation) when feasible
+- Add tests that verify the pattern is prevented, not just that the specific bug is fixed
+- If the fix touches a module boundary, consider whether the interface itself should be tightened to make the bug class unrepresentable
 
 **Produces:**
 

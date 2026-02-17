@@ -59,6 +59,16 @@
     - [ ] Component dependencies form a valid DAG (no cycles)
     - [ ] ADRs justify significant decisions
 
+**Bug Fix Review (when applicable):**
+
+When reviewing architecture for a bug fix iteration:
+
+- Verify the architecture addresses the root pattern that allowed the bug, not just the specific symptom
+- Check that the proposed changes prevent the entire class of similar bugs from recurring
+- Look for other locations in the architecture where the same vulnerable pattern exists and flag them
+- Verify an ADR documents why the bug was possible and how the architectural change prevents recurrence
+- If the architecture only patches the specific instance without systemic prevention, mark as **Blocking**
+
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`

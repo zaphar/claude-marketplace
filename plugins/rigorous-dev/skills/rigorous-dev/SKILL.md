@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.3.1
+version: 0.4.0
 ---
 
 # Rigorous Development Workflow Orchestration

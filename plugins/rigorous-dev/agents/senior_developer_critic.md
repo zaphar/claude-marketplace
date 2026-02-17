@@ -84,6 +84,16 @@
     - [ ] Every COMP-XXX maps to code modules
     - [ ] Dependencies are justified
 
+**Bug Fix Review (when applicable):**
+
+When reviewing a bug fix implementation:
+
+- Verify the fix addresses the root pattern, not just the specific reported symptom
+- Check that the developer searched for and addressed other instances of the same vulnerable pattern in the codebase
+- Verify tests cover the pattern prevention, not just the single bug scenario
+- If the fix is purely behavioral (runtime check) where a structural fix (type/contract enforcement) was feasible, flag as **Recommended**
+- If other instances of the same vulnerable pattern remain unaddressed, flag as **Blocking**
+
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`
