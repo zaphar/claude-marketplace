@@ -20,7 +20,8 @@
       "Bash(jj split:*)",
       "Bash(cargo build:*)",
       "Bash(rustup show:*)",
-      "Bash(nix develop:*)"
+      "Bash(nix develop:*)",
+      "Bash(jj bookmark set:*)"
     ]
   }
 }
