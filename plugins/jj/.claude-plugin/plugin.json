@@ -1,0 +1,18 @@
+{
+  "name": "jj",
+  "version": "0.1.0",
+  "description": "Native Jujutsu (jj) version control commands for Claude Code",
+  "author": {
+    "name": "zaphar"
+  },
+  "homepage": "https://dev.zaphar.net/zaphar/claude-zaphar",
+  "repository": "https://dev.zaphar.net/zaphar/claude-zaphar.git",
+  "license": "MIT",
+  "keywords": [
+    "jj",
+    "jujutsu",
+    "version-control",
+    "vcs",
+    "commit"
+  ]
+}
