@@ -115,31 +115,7 @@ phase_status:
     iteration_count: 0
     current_phase_number: null
     notes: ""
-  qa:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  audit:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
   documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  release:
     status: "pending"
     started_at: null
     completed_at: null
@@ -165,7 +141,7 @@ phase_status:
     status: "in_progress"
     started_at: "<current_timestamp_ISO8601>"
     notes: "Onboarding: documenting existing architecture from codebase"
-  # ... all other phases "pending" as above
+  # ... all other phases (planning, implementation, documentation) "pending" as above
 ```
 
 ### 5. Load Rigorous Dev Skill

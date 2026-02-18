@@ -4,13 +4,19 @@ A comprehensive Claude Code plugin that guides you through creating or modifying
 
 ## Overview
 
-This plugin implements a complete Software Development Life Cycle (SDLC) with the following phases:
+This plugin implements a complete Software Development Life Cycle (SDLC) split into two workflows:
 
+**Development Workflow** (fast iteration):
 ```
-Requirements → UX Design → Architecture → Planning → Implementation → QA → Audit → Documentation → Release
+Requirements → UX Design → Architecture → Planning → Implementation → Documentation
 ```
 
-Each phase uses specialized agents with producer-critic patterns to ensure quality and completeness. UX design happens before architecture to ensure the backend is designed to support the user experience.
+**Release Workflow** (pre-release verification):
+```
+QA → Audit → Release
+```
+
+The development workflow runs fast iteration loops. When ready to ship, the release workflow provides thorough verification. Each phase uses specialized agents with producer-critic patterns to ensure quality and completeness.
 
 ## Features
 
@@ -24,39 +30,43 @@ Each phase uses specialized agents with producer-critic patterns to ensure quali
 
 ## Agents
 
-### Requirements Phase
+### Development Workflow Agents
+
+#### Requirements Phase
 - **Requirements Analyst**: Conducts conversational interviews and produces formal requirements specification
 - **Requirements Critic**: Validates requirements for completeness and consistency
 
-### Architecture/Design Phase
+#### Architecture/Design Phase
 - **Backend Architect**: Designs backend architecture, APIs, data models
 - **Architecture Critic**: Validates architectural decisions
 - **UX Designer**: Creates user experience specifications and wireframes
 - **UX Critic**: Validates UX design decisions
 
-### Planning Phase
+#### Planning Phase
 - **Implementation Planner**: Creates phased implementation plan with strategic checkpoints
 - **Implementation Plan Critic**: Validates phasing strategy and dependencies
 
-### Implementation Phase
+#### Implementation Phase
 - **Senior Developer**: Implements code following the plan
 - **Senior Developer Critic**: Reviews code quality and adherence to architecture
 
-### QA Phase
+#### Documentation Phase
+- **Documentation Master**: Creates comprehensive documentation
+- **Documentation Critic**: Validates documentation completeness
+
+### Release Workflow Agents
+
+#### QA Phase
 - **QA Engineer**: Tests implementation with E2E tests and produces test reports
 - **QA Critic**: Validates test coverage and quality
 
-### Audit Phase
+#### Audit Phase
 - **Security Auditor**: Deep OWASP code-level security audit
 - **Security Audit Critic**: Validates security audit thoroughness
 - **Performance Auditor**: Deep code-level performance audit
 - **Performance Audit Critic**: Validates performance audit thoroughness
 
-### Documentation Phase
-- **Documentation Master**: Creates comprehensive documentation
-- **Documentation Critic**: Validates documentation completeness
-
-### Release Phase
+#### Release Phase
 - **Release Engineer**: Prepares deployment and release
 - **Release Critic**: Validates release readiness
 
@@ -103,6 +113,7 @@ This loads the plugin for the current session without copying anything into your
 
 After installation, you'll have these commands available in Claude Code:
 
+**Development Workflow:**
 - `/rigorous-dev:start` - Initialize a new rigorous development workflow
 - `/rigorous-dev:onboard` - Bootstrap workflow from an existing codebase (documents current UX and architecture)
 - `/rigorous-dev:resume` - Resume an existing workflow from saved state
@@ -111,23 +122,27 @@ After installation, you'll have these commands available in Claude Code:
 - `/rigorous-dev:close` - Close the current workflow iteration
 - `/rigorous-dev:new-iteration` - Start a new iteration from a closed workflow
 
+**Release Workflow:**
+- `/rigorous-dev:start-release` - Start the release workflow (QA, audit, release)
+- `/rigorous-dev:resume-release` - Resume an existing release workflow
+- `/rigorous-dev:release-status` - Display release workflow status
+
 ### Starting a New Workflow
 
 ```
 /rigorous-dev:start
 ```
 
-Claude will guide you through:
+Claude will guide you through the development workflow:
 1. Project configuration (name, artifacts directory)
 2. Requirements interview and analysis
 3. UX design and validation
 4. Backend architecture design
 5. Implementation planning with checkpoints
 6. Iterative implementation with review
-7. QA testing and validation
-8. Security and performance auditing
-9. Documentation generation
-10. Release preparation
+7. Documentation generation
+
+When ready to ship, start the release workflow with `/rigorous-dev:start-release`.
 
 ### Onboarding an Existing Codebase
 
@@ -166,7 +181,7 @@ Displays:
 
 ⚠️ **Use with caution.** This bypasses validation and requires user confirmation. Only use when you have existing artifacts from previous work.
 
-Valid phases: `requirements`, `ux-design`, `architecture`, `planning`, `implementation`, `qa`, `audit`, `documentation`, `release`
+Valid phases: `requirements`, `ux-design`, `architecture`, `planning`, `implementation`, `documentation`
 
 ### Workflow Iterations
 
@@ -188,14 +203,17 @@ When you've completed (or partially completed) a workflow and want to start fres
 - Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain untouched as starting points for re-evaluation
 
 **What starts fresh:**
-- Versioned artifacts (requirements, implementation, QA, audit, release) are deleted after being committed to VCS
-- All phase statuses reset to pending
+- Dev-owned versioned artifacts (requirements, implementation) are deleted after being committed to VCS
+- All dev phase statuses reset to pending
 - The workflow begins again at the Requirements phase
 - Prior artifacts are retrievable from VCS history
+- Release workflow artifacts (qa, audit, release) are owned by the release workflow and not affected
 
 ## Workflow Details
 
-### 1. Requirements Phase
+### Development Workflow
+
+#### 1. Requirements Phase
 
 The Requirements Interviewer conducts a conversational interview covering:
 - Problem statement and user personas
@@ -206,7 +224,7 @@ The Requirements Interviewer conducts a conversational interview covering:
 
 Output: `requirements.yaml` validated against `schemas/requirements.schema.yaml`
 
-### 2. Architecture/Design Phase
+#### 2. Architecture/Design Phase
 
 **Backend Track:**
 - Defines technology stack, APIs, data models
@@ -220,7 +238,7 @@ Output: `requirements.yaml` validated against `schemas/requirements.schema.yaml`
 
 Outputs: Modular architecture YAML files (`architecture_index.yaml`, `architecture_components.yaml`, etc.), `api_spec.yaml`, and `ux_specification.yaml`
 
-### 3. Planning Phase
+#### 3. Planning Phase
 
 The Implementation Planner creates a phased plan:
 - Breaks work into iterative phases (typically 3-5)
@@ -231,7 +249,7 @@ The Implementation Planner creates a phased plan:
 
 Output: `implementation_plan.yaml`
 
-### 4. Implementation Phase
+#### 4. Implementation Phase
 
 The Senior Developer implements each phase:
 - Follows the plan sequentially (or in parallel where allowed)
@@ -242,7 +260,19 @@ The Senior Developer implements each phase:
 
 Output: `implementation_manifest.yaml` + working codebase
 
-### 5. QA Phase
+#### 5. Documentation Phase
+
+The Documentation Master creates:
+- User documentation
+- API documentation
+- Deployment guides (if release workflow has run)
+- Architecture documentation
+
+Output: `documentation_manifest.yaml`
+
+### Release Workflow
+
+#### 1. QA Phase
 
 The QA Engineer validates the implementation:
 - Implements E2E tests from planner-defined scenarios
@@ -252,7 +282,7 @@ The QA Engineer validates the implementation:
 
 Output: `test_report.yaml`
 
-### 6. Audit Phase
+#### 2. Audit Phase
 
 Security and Performance Auditors run in parallel:
 - **Security Auditor**: OWASP Top 10 review, data flow tracing, dependency audit
@@ -260,17 +290,7 @@ Security and Performance Auditors run in parallel:
 
 Output: `security_audit.md`, `performance_audit.md`
 
-### 7. Documentation Phase
-
-The Documentation Master creates:
-- User documentation
-- API documentation
-- Deployment guides
-- Architecture documentation
-
-Output: `documentation_manifest.yaml`
-
-### 8. Release Phase
+#### 3. Release Phase
 
 The Release Engineer prepares:
 - Deployment manifest
@@ -398,7 +418,8 @@ Artifacts are organized by phase with iteration history in `.claude/rigorous-dev
 **Key Points:**
 - Each phase has its own directory
 - **Persistent artifacts** (ux_design, architecture, planning, documentation) are updated in-place — no iteration directories
-- **Versioned artifacts** (requirements, implementation, qa, audit, release) use iteration directories during producer-critic loops
+- **Dev versioned artifacts** (requirements, implementation) use iteration directories during producer-critic loops
+- **Release workflow artifacts** (qa, audit, release) are owned by the release workflow and use iteration directories
 - Final approved versioned artifacts are copied to the phase root level
 - Implementation phase uses `phase-N` directories for sequential implementation phases
 

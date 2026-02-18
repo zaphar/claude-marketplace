@@ -89,9 +89,7 @@ Based on the current phase and its status, load the appropriate agent:
 - `architecture` → `agents/backend_architect.md`
 - `planning` → `agents/implementation_planner.md`
 - `implementation` → `agents/senior_developer.md`
-- `qa` → `agents/qa_engineer.md`
 - `documentation` → `agents/documentation_master.md`
-- `release` → `agents/release_engineer.md`
 
 **If phase status is "completed":**
 - Should not happen; workflow should have advanced to next phase

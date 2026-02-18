@@ -38,16 +38,13 @@ fi
 
 Check that a phase argument was provided and is valid:
 
-**Valid phases:**
+**Valid phases (development workflow only):**
 - `requirements`
 - `ux-design` (maps to `ux_design` in state)
 - `architecture`
 - `planning`
 - `implementation`
-- `qa`
-- `audit`
 - `documentation`
-- `release`
 
 If invalid or missing:
 ```
@@ -55,16 +52,16 @@ ERROR: Invalid or missing phase argument.
 
 Usage: /rigorous-dev:skip-to <phase>
 
-Valid phases:
+Valid phases (development workflow):
 - requirements
 - ux-design
 - architecture
 - planning
 - implementation
-- qa
-- audit
 - documentation
-- release
+
+Note: QA, audit, and release phases are part of the release workflow.
+Use /rigorous-dev:start-release to begin the release workflow.
 ```
 
 ### 3. Load Current State and Check Workflow Status
@@ -102,10 +99,7 @@ Determine which phases will be skipped based on the standard workflow order:
 3. architecture
 4. planning
 5. implementation
-6. qa
-7. audit
-8. documentation
-9. release
+6. documentation
 
 List all phases between current and target that will be marked as "skipped".
 
@@ -172,10 +166,7 @@ Load the appropriate agent for the target phase:
 - `architecture` → `agents/backend_architect.md`
 - `planning` → `agents/implementation_planner.md`
 - `implementation` → `agents/senior_developer.md`
-- `qa` → `agents/qa_engineer.md`
-- `audit` → `agents/security_auditor.md` + `agents/performance_auditor.md` (parallel)
 - `documentation` → `agents/documentation_master.md`
-- `release` → `agents/release_engineer.md`
 
 ### 9. Inform User
 

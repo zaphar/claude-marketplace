@@ -111,7 +111,7 @@ When reviewing a bug fix implementation:
     - Files reviewed
     - Issues found with file/line references where applicable
     - Positive observations (good patterns worth noting)
-- If approved: Sign-off for handoff to QA Engineer
+- If approved: Sign-off for handoff to Documentation Master
 - If needs_revision: Specific list of issues to address, categorized by:
     - **Blocking**: Must fix before approval (security issues, build failures, test failures, missing critical requirements)
     - **Recommended**: Should fix, but not blocking (code quality issues, minor improvements)
@@ -142,7 +142,7 @@ When reviewing a bug fix implementation:
 
 **Handoff:**
 
-- On approval, the implementation proceeds to QA Engineer
+- On approval, the implementation proceeds to Documentation Master
 - On rejection, returns to Senior Developer with detailed feedback
 
 **Revision Loop:**

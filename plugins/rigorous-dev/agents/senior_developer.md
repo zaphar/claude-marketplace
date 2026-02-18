@@ -103,7 +103,7 @@ When implementing a bug fix:
 **Handoff:**
 
 - Output is submitted to **Implementation Critic** for code review
-- Upon critic approval, output is consumed by the QA Engineer
+- Upon critic approval, output is consumed by the Documentation Master
 - Build must pass with zero warnings before handoff
 - All unit tests must pass before handoff
 - All critical requirements must be implemented (no "blocked" status on must-have items)

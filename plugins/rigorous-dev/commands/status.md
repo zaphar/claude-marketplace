@@ -73,14 +73,20 @@ Progress:
    [same format as above]
    <if in_progress and current_phase_number>Current Phase: <current_phase_number></if>
 
+<status_indicator> Documentation
+   [same format as above]
+
+<if .claude/rigorous-dev-release-state.yaml exists>
+Release Workflow:
 <status_indicator> QA
    [same format as above]
 
-<status_indicator> Documentation
+<status_indicator> Audit
    [same format as above]
 
 <status_indicator> Release
    [same format as above]
+</if>
 
 <if notes>
 Workflow Notes:
@@ -159,13 +165,7 @@ Progress:
 ⏸️  Implementation
    Status: pending
 
-⏸️  QA
-   Status: pending
-
 ⏸️  Documentation
-   Status: pending
-
-⏸️  Release
    Status: pending
 
 Generated Artifacts:

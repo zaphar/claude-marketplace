@@ -82,7 +82,7 @@
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`
-- If approved: Sign-off for release
+- If approved: Sign-off completing the development workflow
 - If needs_revision: Specific list of issues to address, categorized by:
     - **Blocking**: Must fix before approval (inaccurate information, missing critical docs, scope determination gaps)
     - **Recommended**: Should fix, but not blocking (clarity issues, peer inconsistency, minor gaps)
@@ -90,7 +90,7 @@
 
 **Handoff:**
 
-- On approval, documentation is ready for release
+- On approval, the development workflow is complete
 - On rejection, returns to Documentation Master with feedback
 
 **Context Management:**

@@ -107,16 +107,15 @@ This ensures the complete artifact state is retrievable from VCS history even af
 Remove the directories that start fresh each iteration. Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain in place untouched.
 
 ```bash
-# Delete versioned artifact directories
+# Delete dev-owned versioned artifact directories
 rm -rf "<artifacts_dir>/<workflow_id>/requirements"
 rm -rf "<artifacts_dir>/<workflow_id>/implementation"
-rm -rf "<artifacts_dir>/<workflow_id>/qa"
-rm -rf "<artifacts_dir>/<workflow_id>/audit"
-rm -rf "<artifacts_dir>/<workflow_id>/release"
 
 # Delete the close snapshot (no longer needed)
 rm -f "<artifacts_dir>/<workflow_id>/rigorous-dev-state-closed.yaml"
 ```
+
+**Note:** Release workflow artifacts (`qa/`, `audit/`, `release/`) are owned by the release workflow and are NOT deleted here. If an active release workflow exists (`.claude/rigorous-dev-release-state.yaml`), warn the user that it will reference the previous iteration's dev artifacts.
 
 ### 7. Rewrite State File
 
@@ -173,31 +172,7 @@ phase_status:
     iteration_count: 0
     current_phase_number: null
     notes: ""
-  qa:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  audit:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
   documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  release:
     status: "pending"
     started_at: null
     completed_at: null

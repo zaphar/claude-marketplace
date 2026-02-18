@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.5.0
+version: 0.6.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -10,17 +10,24 @@ You are orchestrating a rigorous Software Development Life Cycle (SDLC) workflow
 
 ## Workflow Overview
 
-The workflow follows these phases in order:
+The plugin provides two separate workflows:
+
+### Development Workflow (fast iteration)
 
 1. **Requirements** - Interview → Analyze → Validate
 2. **UX Design** - Interview → Design → Validate
 3. **Architecture** - Interview → Design → Validate
 4. **Planning** - Interview → Plan → Validate
 5. **Implementation** - Build → Review → Validate (with checkpoints)
-6. **QA** - Test → Review → Validate
-7. **Audit** - Security Audit + Performance Audit (parallel) → Validate
-8. **Documentation** - Document → Review → Validate
-9. **Release** - Prepare → Review → Validate
+6. **Documentation** - Document → Review → Validate
+
+### Release Workflow (pre-release verification)
+
+1. **QA** - Test → Review → Validate
+2. **Audit** - Security Audit + Performance Audit (parallel) → Validate
+3. **Release** - Prepare → Review → Validate
+
+The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, release prep). The release workflow reads dev artifacts from the same artifacts directory.
 
 Each phase (except Requirements) uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 iteration loops before escalating to the user.
 
@@ -36,7 +43,7 @@ workflow_id: string
 project_name: string
 created_at: ISO8601 timestamp
 updated_at: ISO8601 timestamp
-current_phase: string  # requirements | ux_design | architecture | planning | implementation | qa | audit | documentation | release
+current_phase: string  # requirements | ux_design | architecture | planning | implementation | documentation
 artifacts_directory: string
 iteration_number: number  # starts at 1, incremented by new-iteration
 status: string            # "active" | "closed"
@@ -45,6 +52,44 @@ notes: string
 phase_status:
   <phase_name>:
     status: string  # pending | in_progress | completed | skipped
+    started_at: ISO8601 | null
+    completed_at: ISO8601 | null
+    artifact_path: string | null
+    approved_by: string | null
+    iteration_count: number
+    notes: string
+```
+
+**Release Workflow State:**
+
+The release workflow uses a separate state file at `.claude/rigorous-dev-release-state.yaml`:
+
+```yaml
+workflow_id: string       # matches dev workflow_id
+project_name: string
+created_at: ISO8601 timestamp
+updated_at: ISO8601 timestamp
+status: string            # "active" | "completed"
+artifacts_directory: string  # same as dev workflow
+phase_status:
+  qa:
+    status: string  # pending | in_progress | completed
+    started_at: ISO8601 | null
+    completed_at: ISO8601 | null
+    artifact_path: string | null
+    approved_by: string | null
+    iteration_count: number
+    notes: string
+  audit:
+    status: string
+    started_at: ISO8601 | null
+    completed_at: ISO8601 | null
+    artifact_path: string | null
+    approved_by: string | null
+    iteration_count: number
+    notes: string
+  release:
+    status: string
     started_at: ISO8601 | null
     completed_at: ISO8601 | null
     artifact_path: string | null
@@ -135,7 +180,7 @@ For each phase, follow this pattern:
 
 ### 3. Agent Loading
 
-**Agent-to-File Mapping:**
+**Development Workflow Agents:**
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
@@ -144,10 +189,15 @@ For each phase, follow this pattern:
 | Architecture | `agents/backend_architect.md` | `agents/architecture_critic.md` |
 | Planning | `agents/implementation_planner.md` | `agents/implementation_plan_critic.md` |
 | Implementation | `agents/senior_developer.md` | `agents/senior_developer_critic.md` |
+| Documentation | `agents/documentation_master.md` | `agents/documentation_critic.md` |
+
+**Release Workflow Agents:**
+
+| Phase | Producer Agent | Critic Agent |
+|-------|----------------|--------------|
 | QA | `agents/qa_engineer.md` | `agents/qa_critic.md` |
 | Audit (Security) | `agents/security_auditor.md` | `agents/security_audit_critic.md` |
 | Audit (Performance) | `agents/performance_auditor.md` | `agents/performance_audit_critic.md` |
-| Documentation | `agents/documentation_master.md` | `agents/documentation_critic.md` |
 | Release | `agents/release_engineer.md` | `agents/release_critic.md` |
 
 **When loading agents:**
@@ -155,6 +205,7 @@ For each phase, follow this pattern:
 - Follow the instructions and adopt the personality
 - Use the phase's schema for validation
 - Reference prior artifacts as context
+- **User questions must reach the human:** When an agent says "ask the user", "interview the user", "consult the user", or "ask for preference", these questions MUST be surfaced to the actual human user. Never answer on behalf of the user using information from prior artifacts or your own judgment. Use AskUserQuestion for structured choices; use direct conversation for open-ended interview questions. The orchestrator's role is to facilitate the conversation between the agent personality and the human, not to stand in for the human.
 
 ### 4. Artifact Management
 
@@ -193,11 +244,11 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 │   │   └── implementation_manifest.yaml
 │   └── phase-2/
 │       └── implementation_manifest.yaml
-├── qa/                                    # versioned
+├── qa/                                    # release workflow — versioned
 │   ├── test_report.yaml
 │   └── screenshots/
 │       └── dashboard-actual.png
-├── audit/                                 # versioned
+├── audit/                                 # release workflow — versioned
 │   ├── security_audit.md
 │   └── performance_audit.md
 ├── documentation/                         # persistent — updated in-place
@@ -206,7 +257,7 @@ Artifacts are organized by phase. Some artifacts are persistent (updated in-plac
 │   │   └── getting-started.md
 │   └── api/
 │       └── api-reference.md
-└── release/                               # versioned
+└── release/                               # release workflow — versioned
     └── deployment_manifest.yaml
 ```
 
@@ -262,10 +313,12 @@ Some artifacts are **persistent** — they live at the phase root and are update
     - These are written directly at the phase root from the start. When a checkpoint triggers a revision, the producer updates them in-place.
     - Producers should still submit persistent artifacts to their critic for validation on every update.
 - **Versioned artifacts** (use iteration directories):
-    - All other artifacts (requirements, implementation manifests, test reports, etc.)
+    - Dev workflow: requirements, implementation manifests
+    - Release workflow: test reports, audit reports, deployment manifests
     - Save working copies to iteration directories
     - Only copy to final location when critic approves
     - Preserve iteration history (never delete iteration directories)
+    - Release workflow artifacts (`qa/`, `audit/`, `release/`) are owned by the release workflow and not cleaned by dev `new-iteration`
 
 **Schema Validation:**
 - Each artifact has a corresponding schema in `schemas/`
@@ -287,9 +340,14 @@ When transitioning between phases:
 6. Load producer agent for new phase
 7. Inform user of transition
 
-**Phase Order (Standard):**
+**Development Workflow Phase Order:**
 ```
-requirements → ux_design → architecture → planning → implementation → qa → audit → documentation → release
+requirements → ux_design → architecture → planning → implementation → documentation
+```
+
+**Release Workflow Phase Order:**
+```
+qa → audit → release
 ```
 
 **Special Cases:**
@@ -373,7 +431,7 @@ For each sub-phase (starting at `current_phase_number: 1`):
    - Compact agent context (see below)
    - Check if this sub-phase is a review checkpoint (see below)
    - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
-   - If all sub-phases complete: transition to QA phase
+   - If all sub-phases complete: transition to Documentation phase
 10. **If rejected:**
     - Increment `iteration_count`
     - If `iteration_count` < 3: loop back to step 4 with critic feedback
@@ -402,13 +460,13 @@ After a sub-phase is approved by the critic, compact the agent context before mo
 The implementation phase as a whole is only marked `"completed"` after:
 - All sub-phases have been approved by the critic
 - The final `artifact_path` is set to the implementation directory: `{artifacts_dir}/{workflow_id}/implementation/`
-- Phase transitions to QA
+- Phase transitions to Documentation
 
 **Note:** Implementation uses sub-phase directories (`phase-{N}/`) instead of iteration directories (`iteration-{N}/`) because sub-phases are sequential chunks of planned work, not revision iterations. The `iteration_count` within each sub-phase tracks producer-critic revision loops.
 
-### 9. Audit Phase Special Handling
+### 9. Audit Phase Special Handling (Release Workflow)
 
-The audit phase runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before advancing to the Documentation phase.
+The audit phase is part of the **release workflow** and runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before advancing to the Release phase.
 
 **Parallel Tracks:**
 
@@ -447,7 +505,42 @@ Save audit reports to the audit directory:
 
 The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit reports. Both reports must show no unresolved high/critical findings.
 
-### 10. Workflow Iterations
+### 10. Development Workflow Completion
+
+When the Documentation phase is approved by the Documentation Critic, the development workflow is complete. At this point:
+
+1. Update documentation phase status to "completed"
+2. Inform the user that the development workflow is complete
+3. Suggest next steps:
+
+```
+Development Workflow Complete!
+
+All development phases have been completed and approved.
+
+Next steps:
+- To run pre-release verification (QA, audit, release): /rigorous-dev:start-release
+- To close this iteration and start a new one: /rigorous-dev:close
+- To check status: /rigorous-dev:status
+```
+
+The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigorous-dev:start-release` when ready to ship.
+
+### 11. Release Workflow Orchestration
+
+The release workflow is triggered by `/rigorous-dev:start-release` and uses a separate state file (`.claude/rigorous-dev-release-state.yaml`). It reads dev artifacts from the same artifacts directory.
+
+**Release Workflow Phases:**
+
+1. **QA Phase**: Load QA Engineer, run tests, produce test report. Standard producer-critic loop.
+2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 9). Standard producer-critic loops with remediation cycles.
+3. **Release Phase**: Load Release Engineer, prepare deployment. Standard producer-critic loop.
+
+**Release Workflow Completion:**
+
+When the Release Critic approves the deployment manifest, update the release state status to "completed" and inform the user that the release workflow is complete.
+
+### 12. Workflow Iterations
 
 The workflow supports an iteration lifecycle for iterative development. Users can close a completed (or partially completed) iteration and start a new one while preserving prior work as reference.
 
@@ -471,8 +564,9 @@ active → close → closed → new-iteration → active (iteration N+1)
 
 When a new iteration starts, the `new-iteration` command:
 1. Commits all current artifacts to VCS (jj or git) to preserve the full state in history
-2. Deletes versioned artifact directories (`requirements/`, `implementation/`, `qa/`, `audit/`, `release/`) and the close state snapshot
+2. Deletes dev-owned versioned artifact directories (`requirements/`, `implementation/`) and the close state snapshot
 3. Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain in place untouched
+4. Release workflow artifacts (`qa/`, `audit/`, `release/`) are owned by the release workflow and are not cleaned by `new-iteration`
 
 This avoids redundant file copies. Nothing is moved or renamed — files either stay (persistent) or are deleted after being committed to VCS (versioned).
 
@@ -497,6 +591,7 @@ When working in a new iteration, agents should be aware of:
 5. **Sequential phases** - Never skip ahead unless explicitly commanded
 6. **Context preservation** - Always pass artifacts and feedback between agents
 7. **User escalation** - When stuck, involve the user for guidance
+8. **Never answer for the user** - When an agent needs user input (interviews, preferences, decisions, clarifications), always surface the question to the human. Do not infer answers from prior artifacts or make decisions on the user's behalf.
 
 ## Error Handling
 
@@ -563,6 +658,8 @@ Revising artifact...
 
 ## Example Workflow Flow
 
+**Development Workflow:**
+
 1. User runs `/rigorous-dev:start`
 2. Command initializes state, loads this skill
 3. Skill loads `requirements_analyst.md`
@@ -570,16 +667,25 @@ Revising artifact...
 5. Skill loads `requirements_critic.md`
 6. Critic approves
 7. Skill transitions to UX Design phase
-10. Skill loads `ux_designer.md`
-11. Designer interviews and produces `ux_specification.yaml`
-12. Skill loads `ux_critic.md`
-13. Critic rejects (iteration 1)
-14. Skill loops back to designer with feedback
-15. Designer revises `ux_specification.yaml`
-16. Skill loads critic again
-17. Critic approves
-18. Skill transitions to Architecture phase
-19. ... continues through all phases
+8. Skill loads `ux_designer.md`
+9. Designer interviews and produces `ux_specification.yaml`
+10. Skill loads `ux_critic.md`
+11. Critic rejects (iteration 1)
+12. Skill loops back to designer with feedback
+13. Designer revises `ux_specification.yaml`
+14. Skill loads critic again
+15. Critic approves
+16. Skill transitions to Architecture phase
+17. ... continues through Planning → Implementation → Documentation
+18. Documentation approved — dev workflow complete
+
+**Release Workflow (when ready to ship):**
+
+1. User runs `/rigorous-dev:start-release`
+2. Command validates dev workflow has completed implementation
+3. Creates release state, begins QA phase
+4. QA → Audit → Release phases run with producer-critic validation
+5. Release approved — ready for production
 
 ## Tips for Success
 

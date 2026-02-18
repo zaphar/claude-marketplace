@@ -82,8 +82,7 @@
 
 **Handoff:**
 
-- On approval, deployment is ready for production
-- Output consumed by Documentation Master
+- On approval, the release workflow is complete and deployment is ready for production
 - On rejection, returns to Release Engineer with feedback
 
 **Context Management:**

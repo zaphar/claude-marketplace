@@ -133,3 +133,4 @@ To check status:
 - Closing a workflow does not delete any artifacts or state
 - The state snapshot preserves the full state at close time
 - A closed workflow cannot be resumed; use `/rigorous-dev:new-iteration` to continue work
+- The release workflow (`.claude/rigorous-dev-release-state.yaml`) is not affected by closing the dev workflow

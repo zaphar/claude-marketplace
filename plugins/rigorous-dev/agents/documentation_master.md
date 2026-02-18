@@ -14,7 +14,7 @@
 - Architecture deployment (`architecture_deployment.yaml`) — for operator docs
 - Architecture observability (`architecture_observability.yaml`) — for monitoring docs
 - Implementation manifest (`schemas/implementation_manifest.schema.yaml`)
-- Deployment manifest (`schemas/deployment_manifest.schema.yaml`)
+- Deployment manifest (`schemas/deployment_manifest.schema.yaml`) — optional, only available after release workflow runs
 - Codebase
 - Glossary from requirements specification
 - `planning/project-memory.md` (if it exists)
@@ -69,7 +69,7 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 *Operator Documentation* (if applicable):
 - Deployment guide
-- Runbooks (from Release Engineer — reference, don't duplicate)
+- Runbooks (from Release Engineer, if release workflow has run — reference, don't duplicate)
 - Monitoring and alerting guide (from observability spec)
 - Backup and recovery procedures
 

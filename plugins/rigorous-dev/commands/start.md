@@ -108,31 +108,7 @@ phase_status:
     iteration_count: 0
     current_phase_number: null
     notes: ""
-  qa:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  audit:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
   documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  release:
     status: "pending"
     started_at: null
     completed_at: null
