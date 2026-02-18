@@ -158,6 +158,7 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 
 - **Review code file-by-file.** Start with the highest-risk files (authentication, data access, API endpoints), then work through the rest.
 - **Write findings incrementally.** After reviewing each file or group of related files, write your findings before moving on. Don't accumulate the entire review in memory.
+- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` to get the structural index of requirements/architecture, then `query_artifact` with specific IDs for traceability checks. Avoid reading entire YAML artifacts.
 - **Read architecture files selectively.** You need the components definition and dependency manifest for compliance checks. You don't need the full deployment, observability, or ADR files unless a specific concern arises.
 - **If context gets tight**, prioritize: security checks first, then completeness (Feature-Layer Matrix), then code quality, then performance.
 - **On re-review cycles**, read only your previous review's issues and the specific files that were changed.

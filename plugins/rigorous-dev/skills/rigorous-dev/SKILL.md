@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.6.0
+version: 0.9.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -45,6 +45,7 @@ created_at: ISO8601 timestamp
 updated_at: ISO8601 timestamp
 current_phase: string  # requirements | ux_design | architecture | planning | implementation | documentation
 artifacts_directory: string
+critic_model: string   # "sonnet" (default) | "haiku" | "opus" — model for critic agents
 iteration_number: number  # starts at 1, incremented by new-iteration
 status: string            # "active" | "closed"
 closed_at: ISO8601 | null
@@ -110,15 +111,16 @@ For each phase, follow this pattern:
 
 #### Requirements Phase
 
-1. Load `agents/requirements_analyst.md`
+1. Load `rigorous-dev:requirements_analyst`
 2. Analyst conducts conversational interview with user
 3. Analyst produces `requirements.yaml` in iteration directory:
    - Path: `{artifacts_dir}/{workflow_id}/requirements/iteration-{iteration_count}/requirements.yaml`
-4. Load `agents/requirements_critic.md` to validate against `schemas/requirements.schema.yaml`
-5. **If approved:**
+4. **Schema pre-validation:** Call `validate_artifact` with the artifact path and `requirements.schema.yaml`. If validation fails, send the structured errors back to the analyst for correction — do not load the critic agent. Only proceed to step 5 when schema validation passes.
+5. Load `rigorous-dev:requirements_critic` to validate against `schemas/requirements.schema.yaml`
+6. **If approved:**
    - Copy artifact to final location: `{artifacts_dir}/{workflow_id}/requirements/requirements.yaml`
    - Transition to UX Design phase
-6. **If rejected:**
+7. **If rejected:**
    - Iterate (max 3 times), incrementing iteration_count each time
    - Next iteration will use iteration-{iteration_count+1} directory
 
@@ -132,18 +134,19 @@ For each phase, follow this pattern:
    - Path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
    - On first creation, this establishes the persistent artifact
    - On checkpoint revisions, the producer updates the existing files in-place
-4. Load critic agent for phase
-5. Critic validates against:
+4. **Schema pre-validation:** Call `validate_artifact` with the artifact path and the appropriate schema name (see mapping table). If validation fails, send errors back to the producer for correction — do not load the critic agent. Only proceed to step 5 when schema validation passes.
+5. Load critic agent for phase
+6. Critic validates against:
    - Relevant schema in `schemas/`
    - Completeness checklist
    - Quality standards
-6. **If approved:**
+7. **If approved:**
    - Update phase status to "completed"
    - Record `approved_by` critic name
    - Record `artifact_path` (phase root location)
    - Auto-save state
    - Transition to next phase
-7. **If rejected:**
+8. **If rejected:**
    - Increment `iteration_count`
    - If `iteration_count` < 3: loop back to producer with feedback (producer updates in-place)
    - If `iteration_count` >= 3: escalate to user for guidance
@@ -159,12 +162,13 @@ For each phase, follow this pattern:
    - Path: `{artifacts_dir}/{workflow_id}/{phase}/iteration-{iteration_count}/{artifact_name}`
    - Create iteration directory if it doesn't exist
    - Record iteration path in state (optional tracking)
-4. Load critic agent for phase
-5. Critic validates against:
+4. **Schema pre-validation:** Call `validate_artifact` with the artifact path and the appropriate schema name (see mapping table). If validation fails, send errors back to the producer for correction — do not load the critic agent. Only proceed to step 5 when schema validation passes.
+5. Load critic agent for phase
+6. Critic validates against:
    - Relevant schema in `schemas/`
    - Completeness checklist
    - Quality standards
-6. **If approved:**
+7. **If approved:**
    - Copy artifact from iteration directory to phase root (final location)
    - Final path: `{artifacts_dir}/{workflow_id}/{phase}/{artifact_name}`
    - Update phase status to "completed"
@@ -172,7 +176,7 @@ For each phase, follow this pattern:
    - Record `artifact_path` (final location)
    - Auto-save state
    - Transition to next phase
-7. **If rejected:**
+8. **If rejected:**
    - Increment `iteration_count`
    - If `iteration_count` < 3: loop back to producer with feedback (next iteration will be iteration-N+1)
    - If `iteration_count` >= 3: escalate to user for guidance
@@ -184,28 +188,32 @@ For each phase, follow this pattern:
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
-| Requirements | `agents/requirements_analyst.md` | `agents/requirements_critic.md` |
-| UX Design | `agents/ux_designer.md` | `agents/ux_critic.md` |
-| Architecture | `agents/backend_architect.md` | `agents/architecture_critic.md` |
-| Planning | `agents/implementation_planner.md` | `agents/implementation_plan_critic.md` |
-| Implementation | `agents/senior_developer.md` | `agents/senior_developer_critic.md` |
-| Documentation | `agents/documentation_master.md` | `agents/documentation_critic.md` |
+| Requirements | `rigorous-dev:requirements_analyst` | `rigorous-dev:requirements_critic` |
+| UX Design | `rigorous-dev:ux_designer` | `rigorous-dev:ux_critic` |
+| Architecture | `rigorous-dev:backend_architect` | `rigorous-dev:architecture_critic` |
+| Planning | `rigorous-dev:implementation_planner` | `rigorous-dev:implementation_plan_critic` |
+| Implementation | `rigorous-dev:senior_developer` | `rigorous-dev:senior_developer_critic` |
+| Documentation | `rigorous-dev:documentation_master` | `rigorous-dev:documentation_critic` |
 
 **Release Workflow Agents:**
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
-| QA | `agents/qa_engineer.md` | `agents/qa_critic.md` |
-| Audit (Security) | `agents/security_auditor.md` | `agents/security_audit_critic.md` |
-| Audit (Performance) | `agents/performance_auditor.md` | `agents/performance_audit_critic.md` |
-| Release | `agents/release_engineer.md` | `agents/release_critic.md` |
+| QA | `rigorous-dev:qa_engineer` | `rigorous-dev:qa_critic` |
+| Audit (Security) | `rigorous-dev:security_auditor` | `rigorous-dev:security_audit_critic` |
+| Audit (Performance) | `rigorous-dev:performance_auditor` | `rigorous-dev:performance_audit_critic` |
+| Release | `rigorous-dev:release_engineer` | `rigorous-dev:release_critic` |
 
 **When loading agents:**
-- Read the agent personality file
+- Load the agent by its namespaced name (e.g., `rigorous-dev:requirements_analyst`)
 - Follow the instructions and adopt the personality
 - Use the phase's schema for validation
 - Reference prior artifacts as context
 - **User questions must reach the human:** When an agent says "ask the user", "interview the user", "consult the user", or "ask for preference", these questions MUST be surfaced to the actual human user. Never answer on behalf of the user using information from prior artifacts or your own judgment. Use AskUserQuestion for structured choices; use direct conversation for open-ended interview questions. The orchestrator's role is to facilitate the conversation between the agent personality and the human, not to stand in for the human.
+
+**Critic Model Selection:** When loading any critic agent, read `critic_model` from the workflow state file and pass it as the `model` parameter to the Task tool. If `critic_model` is not set in state (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
+
+**Artifact Query Tools:** Agents have access to `list_artifact_ids` and `query_artifact` MCP tools for efficient artifact consumption. These let agents load a structural index first (all IDs with summary metadata), then query full details for specific items by ID or filter — instead of reading entire YAML files. Agent personality files include guidance on when to use these tools. The orchestrator does not need to manage this — agents use the tools directly.
 
 ### 4. Artifact Management
 
@@ -325,6 +333,29 @@ Some artifacts are **persistent** — they live at the phase root and are update
 - Always validate artifacts against their schema
 - Schema files: `schemas/<artifact_name>.schema.yaml`
 
+**Schema Name Mapping:**
+
+| Artifact | Schema Name |
+|----------|-------------|
+| requirements.yaml | requirements.schema.yaml |
+| ux_specification.yaml | ux_specification.schema.yaml |
+| architecture_index.yaml | architecture_index.schema.yaml |
+| architecture_components.yaml | architecture_components.schema.yaml |
+| architecture_data_model.yaml | architecture_data_model.schema.yaml |
+| architecture_deployment.yaml | architecture_deployment.schema.yaml |
+| architecture_security.yaml | architecture_security.schema.yaml |
+| architecture_observability.yaml | architecture_observability.schema.yaml |
+| architecture_traceability.yaml | architecture_traceability.schema.yaml |
+| architecture_dependencies.yaml | architecture_dependencies.schema.yaml |
+| architecture_adr.yaml | architecture_adr.schema.yaml |
+| implementation_plan.yaml | implementation_plan.schema.yaml |
+| implementation_manifest.yaml | implementation_manifest.schema.yaml |
+| test_report.yaml | test_report.schema.yaml |
+| security_audit.md | *(no schema — markdown)* |
+| performance_audit.md | *(no schema — markdown)* |
+| documentation_manifest.yaml | documentation_manifest.schema.yaml |
+| deployment_manifest.yaml | deployment_manifest.schema.yaml |
+
 ### 5. Phase Transitions
 
 When transitioning between phases:
@@ -337,8 +368,9 @@ When transitioning between phases:
 3. Update `current_phase` in state root
 4. Update `updated_at` timestamp
 5. Auto-save state
-6. Load producer agent for new phase
-7. Inform user of transition
+6. **Compact context** before loading the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the approved artifact and state file — they don't need to remain in working context.
+7. Load producer agent for new phase
+8. Inform user of transition
 
 **Development Workflow Phase Order:**
 ```
@@ -415,24 +447,25 @@ For each sub-phase (starting at `current_phase_number: 1`):
 1. Set `current_phase_number` to the sub-phase number in state
 2. Reset `iteration_count` to 0
 3. Auto-save state
-4. Load `agents/senior_developer.md`
+4. Load `rigorous-dev:senior_developer`
 5. Developer implements the work defined for this sub-phase in the plan
 6. Developer saves manifest to sub-phase directory:
    - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
    - Create the directory if it doesn't exist
-7. Load `agents/senior_developer_critic.md`
-8. Critic validates against:
+7. **Schema pre-validation:** Call `validate_artifact` with the manifest path and `implementation_manifest.schema.yaml`. If validation fails, send errors back to the developer for correction — do not load the critic agent. Only proceed to step 8 when schema validation passes.
+8. Load `rigorous-dev:senior_developer_critic`
+9. Critic validates against:
    - `schemas/implementation_manifest.schema.yaml`
    - Code review checklist (build, tests, security, quality)
    - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX
-9. **If approved:**
-   - Record `approved_by: "senior_developer_critic"`
-   - Auto-save state
-   - Compact agent context (see below)
-   - Check if this sub-phase is a review checkpoint (see below)
-   - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
-   - If all sub-phases complete: transition to Documentation phase
-10. **If rejected:**
+10. **If approved:**
+    - Record `approved_by: "senior_developer_critic"`
+    - Auto-save state
+    - Compact agent context (see below)
+    - Check if this sub-phase is a review checkpoint (see below)
+    - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
+    - If all sub-phases complete: transition to Documentation phase
+11. **If rejected:**
     - Increment `iteration_count`
     - If `iteration_count` < 3: loop back to step 4 with critic feedback
     - If `iteration_count` >= 3: escalate to user for guidance
@@ -471,13 +504,13 @@ The audit phase is part of the **release workflow** and runs two independent pro
 **Parallel Tracks:**
 
 1. **Security Track:**
-   - Load `agents/security_auditor.md` → produces security audit report
-   - Load `agents/security_audit_critic.md` → validates the report
+   - Load `rigorous-dev:security_auditor` → produces security audit report
+   - Load `rigorous-dev:security_audit_critic` → validates the report
    - Standard producer-critic loop (max 3 iterations)
 
 2. **Performance Track:**
-   - Load `agents/performance_auditor.md` → produces performance audit report
-   - Load `agents/performance_audit_critic.md` → validates the report
+   - Load `rigorous-dev:performance_auditor` → produces performance audit report
+   - Load `rigorous-dev:performance_audit_critic` → validates the report
    - Standard producer-critic loop (max 3 iterations)
 
 Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.
@@ -662,14 +695,14 @@ Revising artifact...
 
 1. User runs `/rigorous-dev:start`
 2. Command initializes state, loads this skill
-3. Skill loads `requirements_analyst.md`
+3. Skill loads `rigorous-dev:requirements_analyst`
 4. Analyst conducts interview and produces `requirements.yaml`
-5. Skill loads `requirements_critic.md`
+5. Skill loads `rigorous-dev:requirements_critic`
 6. Critic approves
 7. Skill transitions to UX Design phase
-8. Skill loads `ux_designer.md`
+8. Skill loads `rigorous-dev:ux_designer`
 9. Designer interviews and produces `ux_specification.yaml`
-10. Skill loads `ux_critic.md`
+10. Skill loads `rigorous-dev:ux_critic`
 11. Critic rejects (iteration 1)
 12. Skill loops back to designer with feedback
 13. Designer revises `ux_specification.yaml`
@@ -726,6 +759,9 @@ You have access to:
 - **Write** - Create/update state file, save artifacts
 - **Bash** - Validate schemas, manage files
 - **AskUserQuestion** - Escalate decisions to user
+- **validate_artifact** (MCP tool) - Validate a YAML artifact against a JSON Schema before loading critic agents. Inputs: `artifact_path` (absolute path to artifact), `schema_name` (e.g. `requirements.schema.yaml`). Returns `{ valid, errors, schema_name }`.
+- **list_artifact_ids** (MCP tool) - Get a structural index of a YAML artifact: every item ID with summary fields (name, category, type). Agents should call this first to orient before querying specific items. Input: `artifact_path`. Returns `{ artifact_type, items: [{id, name, category, ...}], sections: [available top-level keys] }`.
+- **query_artifact** (MCP tool) - Query a YAML artifact for specific items. Three modes: (1) by IDs — `ids: ["REQ-001", "COMP-002"]`; (2) by field filter — `field: "category", value: "security"`; (3) by section — `section: "personas"`. Input: `artifact_path` plus one query mode. Returns full entries matching the query.
 
 Use these tools to manage the workflow effectively.
 

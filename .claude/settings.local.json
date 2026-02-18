@@ -21,7 +21,14 @@
       "Bash(cargo build:*)",
       "Bash(rustup show:*)",
       "Bash(nix develop:*)",
-      "Bash(jj bookmark set:*)"
+      "Bash(jj bookmark set:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(node -e:*)",
+      "Bash(for f in /Users/zaphar/projects/personal/claude-zaphar/plugins/rigorous-dev/agents/*/agent.md)",
+      "Bash(timeout:*)"
     ]
   }
 }

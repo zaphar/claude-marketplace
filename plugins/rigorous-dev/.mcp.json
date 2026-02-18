@@ -1,0 +1,9 @@
+{
+  "schema-validator": {
+    "command": "bash",
+    "args": [
+      "-c",
+      "cd \"${CLAUDE_PLUGIN_ROOT}/mcp-server\" && npm install --silent --prefer-offline 2>/dev/null; exec node server.js"
+    ]
+  }
+}

@@ -79,9 +79,9 @@ Load the rigorous-dev skill with the current release state context.
 Based on the current phase and its status, load the appropriate agent:
 
 **Phase-to-Agent Mapping:**
-- `qa` → `agents/qa_engineer.md`
-- `audit` → `agents/security_auditor.md` + `agents/performance_auditor.md` (parallel)
-- `release` → `agents/release_engineer.md`
+- `qa` → `rigorous-dev:qa_engineer`
+- `audit` → `rigorous-dev:security_auditor` + `rigorous-dev:performance_auditor` (parallel)
+- `release` → `rigorous-dev:release_engineer`
 
 **If phase status is "in_progress":**
 - Load the producer agent for that phase (continue work)

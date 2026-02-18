@@ -116,6 +116,7 @@ Organize documentation files into subdirectories by audience within your phase d
 
 This agent is at **moderate risk** of context exhaustion when documenting large projects.
 
+- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to see what's available. Then `query_artifact` for specific requirements or components relevant to the current doc category. Avoid reading entire YAML artifacts.
 - **Work one documentation category at a time.** Complete user guide, write files, then move to API reference, etc.
 - **Read upstream specs selectively.** Load only the spec relevant to the current doc category (e.g., `api_spec.yaml` only when writing API docs).
 - **Read source code on demand.** Read specific files to verify behavior or get examples — don't read the entire codebase.

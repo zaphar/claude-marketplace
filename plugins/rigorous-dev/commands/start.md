@@ -40,6 +40,10 @@ Use AskUserQuestion to prompt for:
 
 - **Project name**: Default to current directory name if not provided
 - **Artifacts directory**: Default to `.claude/rigorous-dev-artifacts`
+- **Critic model**: What effort level should critic agents use for review?
+  - **Sonnet (Recommended)** — Best balance of quality and cost
+  - **Haiku** — Budget-friendly, good for small projects
+  - **Opus** — Maximum rigor for mission-critical work
 
 If user wants artifacts version-controlled, suggest a non-.claude path like `./docs/sdlc-artifacts`.
 
@@ -62,6 +66,7 @@ created_at: "<current_timestamp_ISO8601>"
 updated_at: "<current_timestamp_ISO8601>"
 current_phase: "requirements"
 artifacts_directory: "<user_configured_path>"
+critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
 iteration_number: 1
 status: "active"
 closed_at: null
@@ -140,7 +145,7 @@ Starting Requirements Phase...
 Loading Requirements Analyst agent.
 ```
 
-Then load and execute `agents/requirements_analyst.md` to begin the conversational interview.
+Then load and execute `rigorous-dev:requirements_analyst` to begin the conversational interview.
 
 ## Success Message
 

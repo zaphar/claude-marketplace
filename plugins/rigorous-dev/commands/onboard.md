@@ -45,6 +45,10 @@ Use AskUserQuestion to prompt for:
 - **Project name**: Default to current directory name if not provided
 - **Artifacts directory**: Default to `.claude/rigorous-dev-artifacts`
 - **Project type**: Whether the project has a visual UI (web/desktop/mobile app) or is non-visual (CLI/library/API-only). This determines whether the UX design phase runs or is skipped.
+- **Critic model**: What effort level should critic agents use for review?
+  - **Sonnet (Recommended)** — Best balance of quality and cost
+  - **Haiku** — Budget-friendly, good for small projects
+  - **Opus** — Maximum rigor for mission-critical work
 
 If user wants artifacts version-controlled, suggest a non-.claude path like `./docs/sdlc-artifacts`.
 
@@ -69,6 +73,7 @@ created_at: "<current_timestamp_ISO8601>"
 updated_at: "<current_timestamp_ISO8601>"
 current_phase: "ux_design"
 artifacts_directory: "<user_configured_path>"
+critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
 iteration_number: 1
 status: "active"
 closed_at: null
@@ -130,6 +135,7 @@ phase_status:
 ```yaml
 # Same structure as above, but with these differences:
 current_phase: "architecture"
+critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
 phase_status:
   requirements:
     status: "skipped"
@@ -154,7 +160,7 @@ After state file is created, load the rigorous-dev skill (`skills/rigorous-dev/S
 
 #### 6a. Load UX Designer with Documentation Mode Override
 
-Load `agents/ux_designer.md`, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
+Load `rigorous-dev:ux_designer`, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - User interviews and design direction questions
@@ -192,7 +198,7 @@ Load `agents/ux_designer.md`, then apply these **Documentation Mode Overrides** 
 
 #### 6b. Run UX Critic with Onboarding Override
 
-Load `agents/ux_critic.md`, then apply these **Onboarding Critic Overrides**:
+Load `rigorous-dev:ux_critic`, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every user-facing REQ-XXX has UX coverage") — there are no real requirements yet
@@ -224,7 +230,7 @@ After approval, transition to architecture phase: set `architecture.status: "in_
 
 #### 7a. Load Backend Architect with Documentation Mode Override
 
-Load `agents/backend_architect.md`, then apply these **Documentation Mode Overrides**:
+Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Overrides**:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - Validating requirements and UX specifications as inputs (they don't exist yet, or were just produced by onboarding)
@@ -277,7 +283,7 @@ Load `agents/backend_architect.md`, then apply these **Documentation Mode Overri
 
 #### 7b. Run Architecture Critic with Onboarding Override
 
-Load `agents/architecture_critic.md`, then apply these **Onboarding Critic Overrides**:
+Load `rigorous-dev:architecture_critic`, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every REQ-XXX has corresponding architectural coverage") — requirements are placeholders

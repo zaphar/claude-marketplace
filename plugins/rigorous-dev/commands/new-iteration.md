@@ -202,7 +202,7 @@ Provide the Requirements Analyst with context:
 - Persistent artifacts (UX design, architecture) remain in the current directory as starting points
 - The analyst should reference prior requirements but conduct a fresh interview to capture changes
 
-Then load and execute `agents/requirements_analyst.md` to begin the conversational interview.
+Then load and execute `rigorous-dev:requirements_analyst` to begin the conversational interview.
 
 ## Important Notes
 

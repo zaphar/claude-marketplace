@@ -161,12 +161,12 @@ phase_status:
 
 Load the appropriate agent for the target phase:
 
-- `requirements` → `agents/requirements_analyst.md`
-- `ux_design` → `agents/ux_designer.md`
-- `architecture` → `agents/backend_architect.md`
-- `planning` → `agents/implementation_planner.md`
-- `implementation` → `agents/senior_developer.md`
-- `documentation` → `agents/documentation_master.md`
+- `requirements` → `rigorous-dev:requirements_analyst`
+- `ux_design` → `rigorous-dev:ux_designer`
+- `architecture` → `rigorous-dev:backend_architect`
+- `planning` → `rigorous-dev:implementation_planner`
+- `implementation` → `rigorous-dev:senior_developer`
+- `documentation` → `rigorous-dev:documentation_master`
 
 ### 9. Inform User
 

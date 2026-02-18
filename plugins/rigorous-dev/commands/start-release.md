@@ -118,7 +118,7 @@ Starting QA Phase...
 Loading QA Engineer agent.
 ```
 
-Then load and execute `agents/qa_engineer.md` to begin testing.
+Then load and execute `rigorous-dev:qa_engineer` to begin testing.
 
 ## Success Message
 
