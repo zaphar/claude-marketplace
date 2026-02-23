@@ -58,6 +58,11 @@
     - [ ] All unit tests pass
     - [ ] Adequate test coverage for new code
     - [ ] Linters/analyzers ran with no suppressed warnings without documented justification
+- TDD compliance:
+    - [ ] Tests exist for all new behavior before implementation (test-first, not test-after)
+    - [ ] Tests cover the WI acceptance criteria and DO list items
+    - [ ] No implementation code exists without a corresponding test that would fail without it
+    - [ ] Tests are meaningful — they assert on behavior/contracts, not implementation details
 - Code quality:
     - [ ] No code duplication (DRY principle)
     - [ ] Appropriate complexity (no over-engineering)

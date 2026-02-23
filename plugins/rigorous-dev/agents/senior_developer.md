@@ -20,8 +20,12 @@
 #### WI-Based Workflow
 
 - On session start, find next unblocked WI with status `not_started`. Read only that WI file.
-- Implement per scope boundary (DO list). Do not implement DO NOT items.
-- When complete, update WI status to `complete`.
+- For each WI, follow strict TDD (Red-Green-Refactor):
+  1. **Red:** Write tests first based on the WI's DO list and acceptance criteria. Run them — they must fail. If a test passes before you write implementation code, the test is not testing new behavior; fix or remove it.
+  2. **Green:** Write the minimum implementation code to make all failing tests pass. Do not write code that is not driven by a failing test.
+  3. **Refactor:** Clean up implementation and tests while keeping all tests green. Apply coding standards, remove duplication, improve naming.
+- Do not implement DO NOT items.
+- When complete (all tests green, WI scope covered), update WI status to `complete`.
 - After all WIs in a phase, verify Feature-Layer Matrix: every marked cell (UI, API, Data) has code.
 - Commit before moving to next WI.
 
@@ -31,15 +35,23 @@
 - Use requirements glossary for naming (domain terms, not jargon)
 - Run linters from architecture; treat warnings as errors
 - Do not add dependencies beyond `architecture_dependencies.yaml` — flag unapproved needs for architect
-- Write code that: compiles with zero warnings, follows idiomatic patterns, is modular with small composable interfaces, handles errors appropriately, implements observability per architecture, uses TDD practices, prefers reusable fakes over mocking frameworks, uses well-defined contracts for client-server interactions, uses types to make invalid states unrepresentable, avoids circular dependencies
+- Write code that: compiles with zero warnings, follows idiomatic patterns, is modular with small composable interfaces, handles errors appropriately, implements observability per architecture, prefers reusable fakes over mocking frameworks, uses well-defined contracts for client-server interactions, uses types to make invalid states unrepresentable, avoids circular dependencies
+- **TDD is mandatory.** Never write implementation code without a failing test that demands it. See WI-Based Workflow for the required Red-Green-Refactor cycle.
 - Before implementing a feature, check for analogous features in codebase — match their patterns for consistency
 
 #### Implementation Tasks
 
-- Ensure database/storage modifications are in place for current feature
-- Use appropriate consistency enforcement (transactions, constraints)
-- Implement full user flows: API endpoints, data model/migrations, UI components (referencing mockups and design system)
-- Write unit tests: round-trip tests for serialized objects, full coverage for pure functions
+For each WI, apply TDD to these areas in order:
+
+1. **Write tests first** for the WI scope:
+   - Unit tests: round-trip tests for serialized objects, full coverage for pure functions
+   - Integration tests for API endpoints and data flows
+   - Run tests — confirm they fail (Red phase)
+2. **Then implement** to make tests pass (Green phase):
+   - Database/storage modifications for current feature
+   - Appropriate consistency enforcement (transactions, constraints)
+   - Full user flows: API endpoints, data model/migrations, UI components (referencing mockups and design system)
+3. **Refactor** while all tests remain green
 
 #### Self-Review
 
