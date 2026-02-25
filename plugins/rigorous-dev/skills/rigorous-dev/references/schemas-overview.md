@@ -103,7 +103,7 @@ The architect also produces `api_spec.yaml` (OpenAPI format) as the authoritativ
 ### 5. implementation_manifest.schema.yaml
 
 **Artifact:** `implementation_manifest.yaml`
-**Producer:** senior_developer
+**Producer:** senior_developer (in the implementation step, after the test_writer step has been approved)
 **Critic:** senior_developer_critic
 
 **Purpose:** Tracks implementation progress and artifacts

@@ -132,7 +132,8 @@ Most phases use a producer-critic pair:
 | UX Design | `ux_designer.md` | `ux_critic.md` |
 | Architecture | `backend_architect.md` | `architecture_critic.md` |
 | Planning | `implementation_planner.md` | `implementation_plan_critic.md` |
-| Implementation | `senior_developer.md` | `senior_developer_critic.md` |
+| Implementation (tests) | `test_writer.md` | `test_writer_critic.md` |
+| Implementation (code) | `senior_developer.md` | `senior_developer_critic.md` |
 | QA | `qa_engineer.md` | `qa_critic.md` |
 | Audit (Security) | `security_auditor.md` | `security_audit_critic.md` |
 | Audit (Performance) | `performance_auditor.md` | `performance_audit_critic.md` |

@@ -72,6 +72,7 @@ Progress:
 <status_indicator> Implementation
    [same format as above]
    <if in_progress and current_phase_number>Current Phase: <current_phase_number></if>
+   <if in_progress and current_step>Step: <current_step></if>
 
 <status_indicator> Documentation
    [same format as above]

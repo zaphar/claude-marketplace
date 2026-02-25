@@ -88,7 +88,9 @@ Based on the current phase and its status, load the appropriate agent:
 - `ux_design` → `rigorous-dev:ux_designer`
 - `architecture` → `rigorous-dev:backend_architect`
 - `planning` → `rigorous-dev:implementation_planner`
-- `implementation` → `rigorous-dev:senior_developer`
+- `implementation` → Check `current_step` in state:
+  - If `"test_writing"` → `rigorous-dev:test_writer`
+  - If `"implementation"` or missing → `rigorous-dev:senior_developer`
 - `documentation` → `rigorous-dev:documentation_master`
 
 **If phase status is "completed":**

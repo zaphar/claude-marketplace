@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.9.0
+version: 0.10.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -192,7 +192,8 @@ For each phase, follow this pattern:
 | UX Design | `rigorous-dev:ux_designer` | `rigorous-dev:ux_critic` |
 | Architecture | `rigorous-dev:backend_architect` | `rigorous-dev:architecture_critic` |
 | Planning | `rigorous-dev:implementation_planner` | `rigorous-dev:implementation_plan_critic` |
-| Implementation | `rigorous-dev:senior_developer` | `rigorous-dev:senior_developer_critic` |
+| Implementation (tests) | `rigorous-dev:test_writer` | `rigorous-dev:test_writer_critic` |
+| Implementation (code) | `rigorous-dev:senior_developer` | `rigorous-dev:senior_developer_critic` |
 | Documentation | `rigorous-dev:documentation_master` | `rigorous-dev:documentation_critic` |
 
 **Release Workflow Agents:**
@@ -384,7 +385,7 @@ qa → audit → release
 
 **Special Cases:**
 - If phase is "skipped", proceed to next non-skipped phase
-- Implementation phase may have multiple sub-phases (tracked in `current_phase_number`)
+- Implementation phase may have multiple sub-phases (tracked in `current_phase_number`) and a two-step loop per sub-phase (tracked in `current_step`: `"test_writing"` or `"implementation"`). Missing `current_step` defaults to `"implementation"` for backward compatibility.
 
 ### 6. Iteration Management
 
@@ -440,34 +441,64 @@ The implementation phase uses sub-phase directories instead of iteration directo
 - The `overview.total_phases` field gives the total count
 - Process sub-phases sequentially (or in parallel if `can_run_in_parallel_with` allows)
 
-**Sub-phase Producer-Critic Loop:**
+**Sub-phase Two-Step Loop:**
+
+Each sub-phase has two steps: **test writing** then **implementation**. This enforces TDD structurally — tests are written and validated before any implementation begins.
 
 For each sub-phase (starting at `current_phase_number: 1`):
 
 1. Set `current_phase_number` to the sub-phase number in state
-2. Reset `iteration_count` to 0
-3. Auto-save state
-4. Load `rigorous-dev:senior_developer`
-5. Developer implements the work defined for this sub-phase in the plan
-6. Developer saves manifest to sub-phase directory:
-   - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
-   - Create the directory if it doesn't exist
-7. **Schema pre-validation:** Call `validate_artifact` with the manifest path and `implementation_manifest.schema.yaml`. If validation fails, send errors back to the developer for correction — do not load the critic agent. Only proceed to step 8 when schema validation passes.
-8. Load `rigorous-dev:senior_developer_critic`
-9. Critic validates against:
-   - `schemas/implementation_manifest.schema.yaml`
-   - Code review checklist (build, tests, security, quality)
-   - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX
-10. **If approved:**
+2. Set `current_step: "test_writing"`
+3. Reset `iteration_count` to 0
+4. Auto-save state
+
+**Step 1 — Test Writing:**
+
+5. Load `rigorous-dev:test_writer`
+6. Test Writer reads WI files for this sub-phase, writes failing tests and minimal compilation stubs
+7. Load `rigorous-dev:test_writer_critic` (using `critic_model` from state)
+8. Critic validates:
+   - Project compiles with new test files and stubs
+   - All new tests fail (red state) for the right reason
+   - Every acceptance criterion has test coverage
+   - No implementation logic in stubs
+9. **If approved:**
+   - Set `current_step: "implementation"`
+   - Reset `iteration_count` to 0
+   - Auto-save state
+   - Compact agent context
+   - Proceed to Step 2
+10. **If rejected:**
+    - Increment `iteration_count`
+    - If `iteration_count` < 3: loop back to step 5 with critic feedback
+    - If `iteration_count` >= 3: escalate to user for guidance
+    - Auto-save state
+
+**Step 2 — Implementation:**
+
+11. Load `rigorous-dev:senior_developer`
+12. Developer reads existing failing tests and implements minimum code to make them pass
+13. Developer saves manifest to sub-phase directory:
+    - Path: `{artifacts_dir}/{workflow_id}/implementation/phase-{phase_number}/implementation_manifest.yaml`
+    - Create the directory if it doesn't exist
+14. **Schema pre-validation:** Call `validate_artifact` with the manifest path and `implementation_manifest.schema.yaml`. If validation fails, send errors back to the developer for correction — do not load the critic agent. Only proceed to step 15 when schema validation passes.
+15. Load `rigorous-dev:senior_developer_critic` (using `critic_model` from state)
+16. Critic validates:
+    - `schemas/implementation_manifest.schema.yaml`
+    - All pre-written tests pass, no pre-existing tests broken, full test suite passes
+    - No test files modified or deleted
+    - Code review checklist (build, security, quality)
+    - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX
+17. **If approved:**
     - Record `approved_by: "senior_developer_critic"`
     - Auto-save state
     - Compact agent context (see below)
     - Check if this sub-phase is a review checkpoint (see below)
     - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
     - If all sub-phases complete: transition to Documentation phase
-11. **If rejected:**
+18. **If rejected:**
     - Increment `iteration_count`
-    - If `iteration_count` < 3: loop back to step 4 with critic feedback
+    - If `iteration_count` < 3: loop back to step 11 with critic feedback
     - If `iteration_count` >= 3: escalate to user for guidance
     - Auto-save state
 
