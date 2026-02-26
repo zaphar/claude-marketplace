@@ -14,5 +14,7 @@
     "version-control",
     "vcs",
     "commit"
-  ]
+  ],
+  "skills": "skills/",
+  "commands": "commands/"
 }

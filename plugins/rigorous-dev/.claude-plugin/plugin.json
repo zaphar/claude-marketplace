@@ -17,5 +17,8 @@
     "validation",
     "producer-critic",
     "rigorous-development"
-  ]
+  ],
+  "agents": "agents/",
+  "skills": "skills/",
+  "commands": "commands/"
 }
