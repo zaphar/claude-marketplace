@@ -11,7 +11,7 @@
       "name": "rigorous-dev",
       "source": "./plugins/rigorous-dev",
       "description": "Rigorous SDLC workflow with producer-critic validation patterns for high-quality software development",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "category": "workflow",
       "tags": ["sdlc", "quality-assurance", "development-process"]
     },
@@ -19,7 +19,7 @@
       "name": "jj",
       "source": "./plugins/jj",
       "description": "Native Jujutsu (jj) version control commands for Claude Code",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "version-control",
       "tags": ["jj", "jujutsu", "version-control", "vcs", "commit"]
     }
