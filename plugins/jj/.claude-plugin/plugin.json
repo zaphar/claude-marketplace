@@ -15,6 +15,6 @@
     "vcs",
     "commit"
   ],
-  "skills": "skills/",
-  "commands": "commands/"
+  "skills": ["./skills/"],
+  "commands": ["./commands/"]
 }
