@@ -211,6 +211,7 @@ For each phase, follow this pattern:
 - Use the phase's schema for validation
 - Reference prior artifacts as context
 - **User questions must reach the human:** When an agent says "ask the user", "interview the user", "consult the user", or "ask for preference", these questions MUST be surfaced to the actual human user. Never answer on behalf of the user using information from prior artifacts or your own judgment. Use AskUserQuestion for structured choices; use direct conversation for open-ended interview questions. The orchestrator's role is to facilitate the conversation between the agent personality and the human, not to stand in for the human.
+- **Prepend to every agent prompt:** "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text (`<function_calls>`, `<invoke>`, etc.) — use the structured tool interface directly."
 
 **Critic Model Selection:** When loading any critic agent, read `critic_model` from the workflow state file and pass it as the `model` parameter to the Task tool. If `critic_model` is not set in state (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
 

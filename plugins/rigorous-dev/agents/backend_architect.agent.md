@@ -89,5 +89,6 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 - Read UX selectively (flows and traceability, not design system or mockups).
 - Write each architecture file as you complete its topic.
 - Research one technology at a time; write ADR before researching next.
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user, write to `planning/BLOCKERS.md`.

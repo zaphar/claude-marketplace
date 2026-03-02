@@ -104,6 +104,7 @@ This agent is at **moderate risk** of context exhaustion during testing of large
 - **Read source code selectively.** Read only the files relevant to the current requirement or test scenario.
 - **Write tests and report incrementally.** After testing each requirement or group of related requirements, write the test files and update the report before moving on.
 - **On re-test cycles** (after developer fixes), run only the previously-failing tests and their related regression tests.
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:**
 

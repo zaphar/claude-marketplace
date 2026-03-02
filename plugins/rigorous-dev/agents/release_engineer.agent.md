@@ -91,6 +91,7 @@ tools: ["view", "grep", "glob", "bash", "edit", "create"]
 - **Read source code selectively** — only build configs, CI/CD files, and deployment scripts.
 - **Read requirements selectively** — deployment requirements and quality standards only.
 - **Write incrementally.** Create pipeline config, then deployment scripts, then runbooks, then changelog — updating the manifest after each.
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:**
 

@@ -116,4 +116,6 @@ This agent is at **high risk** of context exhaustion.
 
 *Pass 2:* Work one phase at a time. Use `query_artifact` to load only the specific requirements, components, and flows needed per WI. Write each WI immediately. If context exhausts, continue from first phase missing WI files.
 
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
+
 **Escalation:** If specs have gaps/conflicts, scope is too large (>10 phases), or circular dependencies exist — pause, tell user, write to `planning/BLOCKERS.md`.

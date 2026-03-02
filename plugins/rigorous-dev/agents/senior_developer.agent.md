@@ -86,8 +86,9 @@ High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
 - **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to get the structural index, then `query_artifact` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
-- After completing WI, write to disk, commit, compact context.
-- After completing phase, verify Feature-Layer Matrix, commit, compact.
+- After completing WI, write to disk and commit.
+- After completing phase, verify Feature-Layer Matrix and commit.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user, write to `planning/BLOCKERS.md`. Escalate after 3 revision cycles.

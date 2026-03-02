@@ -119,3 +119,4 @@ This agent is at **moderate risk** of context exhaustion, especially during Phas
 - Write each output as you complete its topic — don't compose entire spec in memory.
 - Work one screen/flow at a time in Phase 2. Save mockups immediately.
 - On revision cycles, read only critic feedback and specific files needing changes.
+- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.

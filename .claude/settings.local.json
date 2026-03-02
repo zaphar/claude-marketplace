@@ -28,7 +28,8 @@
       "WebFetch(domain:www.npmjs.com)",
       "Bash(node -e:*)",
       "Bash(for f in /Users/zaphar/projects/personal/claude-zaphar/plugins/rigorous-dev/agents/*/agent.md)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(wc:*)"
     ]
   }
 }
