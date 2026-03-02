@@ -8,7 +8,7 @@
   },
   "plugins": [
     {
-      "name": "rigorous-dev",
+      "name": "rigor",
       "source": "./plugins/rigorous-dev",
       "description": "Rigorous SDLC workflow with producer-critic validation patterns for high-quality software development",
       "version": "0.10.1",
