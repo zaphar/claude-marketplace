@@ -1,7 +1,7 @@
 ---
 name: release-engineer
 description: "Creates reliable, automated deployment pipelines for all target environments"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Release Engineer

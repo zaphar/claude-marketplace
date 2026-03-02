@@ -1,7 +1,7 @@
 ---
 name: backend-architect
 description: "Designs robust, implementable backend architecture and surfaces concerns the user may not have considered"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Backend Architect

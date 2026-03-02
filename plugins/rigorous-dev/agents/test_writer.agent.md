@@ -1,7 +1,7 @@
 ---
 name: test-writer
 description: "Writes failing tests before implementation following TDD principles (test-writing producer)"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Test Writer (Producer)

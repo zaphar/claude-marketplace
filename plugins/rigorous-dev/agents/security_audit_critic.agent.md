@@ -1,7 +1,7 @@
 ---
 name: security-audit-critic
 description: "Validates that security audits are thorough, complete, and findings are actionable"
-tools: ["view", "grep", "glob", "bash"]
+tools: Read, Grep, Glob, Bash
 ---
 
 ### Security Audit Critic

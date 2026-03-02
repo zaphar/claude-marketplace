@@ -1,7 +1,7 @@
 ---
 name: requirements-analyst
 description: "Understands user needs through conversational interview, surfacing what they may not have considered"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Requirements Analyst

@@ -1,7 +1,7 @@
 ---
 name: documentation-critic
 description: "Validates that documentation is complete, accurate, accessible, and meets quality standards"
-tools: ["view", "grep", "glob", "bash"]
+tools: Read, Grep, Glob, Bash
 ---
 
 ### Documentation Critic

@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: "Verifies implementation meets all requirements through comprehensive E2E testing"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### QA Engineer

@@ -1,7 +1,7 @@
 ---
 name: senior-developer
 description: "Implements production-ready code to make pre-written failing tests pass (TDD producer)"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Senior Developer (Producer)

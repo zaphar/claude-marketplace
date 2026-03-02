@@ -1,7 +1,7 @@
 ---
 name: ux-designer
 description: "Designs intuitive, accessible user experiences and surfaces UX concerns not yet considered"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### UX Designer

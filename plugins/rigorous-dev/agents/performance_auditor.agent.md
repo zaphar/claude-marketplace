@@ -1,7 +1,7 @@
 ---
 name: performance-auditor
 description: "Deep code-level performance audit finding bottlenecks and anti-patterns beyond requirement-driven benchmarking"
-tools: ["view", "grep", "glob", "bash"]
+tools: Read, Grep, Glob, Bash
 ---
 
 ### Performance Auditor

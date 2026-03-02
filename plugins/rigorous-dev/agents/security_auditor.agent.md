@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: "Deep code-level security audit finding vulnerabilities beyond requirement-driven testing"
-tools: ["view", "grep", "glob", "bash"]
+tools: Read, Grep, Glob, Bash
 ---
 
 ### Security Auditor

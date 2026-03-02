@@ -1,7 +1,7 @@
 ---
 name: senior-developer-critic
 description: "Code reviewer for the implementation phase, validates correctness and quality"
-tools: ["view", "grep", "glob", "bash"]
+tools: Read, Grep, Glob, Bash
 ---
 
 ### Implementation Critic (Code Reviewer)

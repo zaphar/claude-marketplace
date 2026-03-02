@@ -1,7 +1,7 @@
 ---
 name: implementation-planner
 description: "Creates a phased implementation plan that prioritizes iterative delivery of user value"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Implementation Planner

@@ -1,7 +1,7 @@
 ---
 name: documentation-master
 description: "Creates clear, accurate, accessible documentation for all audiences"
-tools: ["view", "grep", "glob", "bash", "edit", "create"]
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Documentation Master
