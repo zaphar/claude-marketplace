@@ -58,6 +58,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] Assertions are meaningful — test behavior/contracts, not implementation details
     - [ ] Test names are descriptive and document the expected behavior
     - [ ] No duplicate tests verifying the same behavior
+    - [ ] Test do not use mocking frameworks and instead leverage shared In Memory Fakes or Doubles.
 
 **Produces:**
 

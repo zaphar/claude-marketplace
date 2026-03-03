@@ -45,6 +45,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Follow CODESTYLE.md if present.
 - Use requirements glossary for naming (domain terms, not jargon).
 - Do not add dependencies beyond `architecture_dependencies.yaml` — flag unapproved needs for architect.
+- Do not use mocking frameworks in your tests. Use Fakes or In Memory doubles.
+  Mocking frameworks are evil and destructive to the long term health of a codebase.
 
 #### Test Design Principles
 
