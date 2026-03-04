@@ -7,6 +7,8 @@ All artifacts produced during the rigorous development workflow are stored in a 
 
 ## Core Spine
 
+📄 **Detailed design:** [tables/core.md](tables/core.md)
+
 Four tables form the backbone — everything else hangs off them:
 
 | Table | PK | Purpose |
@@ -21,6 +23,8 @@ Four tables form the backbone — everything else hangs off them:
 Every changelog entity below carries `iteration_id` and optionally `revision_id` to trace exactly when and why it was created.
 
 ## Requirements Domain
+
+📄 **Detailed design:** [tables/requirements.md](tables/requirements.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -41,6 +45,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 **Critic:** requirements_critic
 
 ## Architecture Domain
+
+📄 **Detailed design:** [tables/architecture.md](tables/architecture.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -63,6 +69,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 
 ## Data Model Domain
 
+📄 **Detailed design:** [tables/data-model.md](tables/data-model.md)
+
 | Table | Producer | Purpose |
 |-------|----------|---------|
 | `data_entity` | backend_architect | Database entities/models (like an ERD). |
@@ -70,6 +78,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 | `data_entity_relationship` | backend_architect | Foreign key / relationship mappings between entities. |
 
 ## Cross-Cutting Architecture
+
+📄 **Detailed design:** [tables/cross-cutting.md](tables/cross-cutting.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -80,6 +90,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 | `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 
 ## UX Design Domain
+
+📄 **Detailed design:** [tables/ux-design.md](tables/ux-design.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -106,6 +118,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 
 ## Planning Domain
 
+📄 **Detailed design:** [tables/planning.md](tables/planning.md)
+
 | Table | Producer | Purpose |
 |-------|----------|---------|
 | `plan_phase` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). |
@@ -125,6 +139,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 **Critic:** implementation_plan_critic
 
 ## Implementation Domain
+
+📄 **Detailed design:** [tables/implementation.md](tables/implementation.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -146,6 +162,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 
 ## QA/Test Domain
 
+📄 **Detailed design:** [tables/qa-test.md](tables/qa-test.md)
+
 | Table | Producer | Purpose |
 |-------|----------|---------|
 | `test_report` | qa_engineer | Overall test report — pass/fail counts, coverage percentage. |
@@ -163,6 +181,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 
 ## Documentation Domain
 
+📄 **Detailed design:** [tables/documentation.md](tables/documentation.md)
+
 | Table | Producer | Purpose |
 |-------|----------|---------|
 | `documentation_manifest` | documentation_master | Doc coverage summary. |
@@ -178,6 +198,8 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 **Critic:** documentation_critic
 
 ## Deployment/Release Domain
+
+📄 **Detailed design:** [tables/deployment.md](tables/deployment.md)
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
@@ -239,3 +261,157 @@ To add new entity types:
 2. Add the entity type to `ENTITY_TABLE` map in `mcp-server/write-tools.js` and `mcp-server/read-tools.js`
 3. Add insert/query logic for child tables if the entity has nested data
 4. Update agent checklists to verify the new fields
+
+## Alphabetical Table Index
+
+All 145 tables with links to their detailed design documents.
+
+| Table | Domain |
+|-------|--------|
+| `accessibility_config` | [ux-design](tables/ux-design.md) |
+| `adr` | [architecture](tables/architecture.md) |
+| `adr_alternative` | [architecture](tables/architecture.md) |
+| `adr_alternative_con` | [architecture](tables/architecture.md) |
+| `adr_alternative_pro` | [architecture](tables/architecture.md) |
+| `adr_consequence` | [architecture](tables/architecture.md) |
+| `adr_research_source` | [architecture](tables/architecture.md) |
+| `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
+| `architecture_diagram` | [architecture](tables/architecture.md) |
+| `architecture_overview` | [architecture](tables/architecture.md) |
+| `architecture_principle` | [architecture](tables/architecture.md) |
+| `asset_deliverable` | [implementation](tables/implementation.md) |
+| `component` | [architecture](tables/architecture.md) |
+| `component_dependency` | [architecture](tables/architecture.md) |
+| `component_interface` | [architecture](tables/architecture.md) |
+| `component_requirement` | [architecture](tables/architecture.md) |
+| `data_entity` | [data-model](tables/data-model.md) |
+| `data_entity_attribute` | [data-model](tables/data-model.md) |
+| `data_entity_relationship` | [data-model](tables/data-model.md) |
+| `deployment_alerting` | [deployment](tables/deployment.md) |
+| `deployment_artifact` | [deployment](tables/deployment.md) |
+| `deployment_artifact_platform` | [deployment](tables/deployment.md) |
+| `deployment_config` | [cross-cutting](tables/cross-cutting.md) |
+| `deployment_env_infra` | [deployment](tables/deployment.md) |
+| `deployment_env_var` | [deployment](tables/deployment.md) |
+| `deployment_environment` | [deployment](tables/deployment.md) |
+| `deployment_health_check` | [deployment](tables/deployment.md) |
+| `deployment_infra_requirement` | [requirements](tables/requirements.md) |
+| `deployment_local_channel` | [deployment](tables/deployment.md) |
+| `deployment_local_executable` | [deployment](tables/deployment.md) |
+| `deployment_local_platform` | [deployment](tables/deployment.md) |
+| `deployment_manifest` | [deployment](tables/deployment.md) |
+| `deployment_manifest_blocker` | [deployment](tables/deployment.md) |
+| `deployment_manifest_metadata` | [deployment](tables/deployment.md) |
+| `deployment_pipeline` | [deployment](tables/deployment.md) |
+| `deployment_pipeline_config_file` | [deployment](tables/deployment.md) |
+| `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
+| `deployment_quality_gates` | [deployment](tables/deployment.md) |
+| `deployment_requirement` | [requirements](tables/requirements.md) |
+| `deployment_review_checklist` | [deployment](tables/deployment.md) |
+| `deployment_runbook` | [deployment](tables/deployment.md) |
+| `deployment_runbook_step` | [deployment](tables/deployment.md) |
+| `deployment_secret` | [deployment](tables/deployment.md) |
+| `deployment_signing` | [deployment](tables/deployment.md) |
+| `deployment_stage_quality_gate` | [deployment](tables/deployment.md) |
+| `deployment_stage_step` | [deployment](tables/deployment.md) |
+| `deployment_stage_trigger` | [deployment](tables/deployment.md) |
+| `deployment_target` | [deployment](tables/deployment.md) |
+| `design_system` | [ux-design](tables/ux-design.md) |
+| `documentation_asset` | [documentation](tables/documentation.md) |
+| `documentation_feature` | [documentation](tables/documentation.md) |
+| `documentation_feature_requirement` | [documentation](tables/documentation.md) |
+| `documentation_manifest` | [documentation](tables/documentation.md) |
+| `documentation_manifest_metadata` | [documentation](tables/documentation.md) |
+| `documentation_requirement_coverage` | [documentation](tables/documentation.md) |
+| `documentation_requirement_path` | [documentation](tables/documentation.md) |
+| `documentation_section` | [documentation](tables/documentation.md) |
+| `documentation_verification` | [documentation](tables/documentation.md) |
+| `feedback_pattern` | [ux-design](tables/ux-design.md) |
+| `implementation_api_endpoint` | [implementation](tables/implementation.md) |
+| `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |
+| `implementation_blocker` | [implementation](tables/implementation.md) |
+| `implementation_blocker_requirement` | [implementation](tables/implementation.md) |
+| `implementation_component_status` | [implementation](tables/implementation.md) |
+| `implementation_db_migration` | [implementation](tables/implementation.md) |
+| `implementation_dependency_added` | [implementation](tables/implementation.md) |
+| `implementation_file` | [implementation](tables/implementation.md) |
+| `implementation_file_requirement` | [implementation](tables/implementation.md) |
+| `implementation_manifest` | [implementation](tables/implementation.md) |
+| `implementation_manifest_metadata` | [implementation](tables/implementation.md) |
+| `implementation_requirement_status` | [implementation](tables/implementation.md) |
+| `implementation_review_checklist` | [implementation](tables/implementation.md) |
+| `info_architecture` | [ux-design](tables/ux-design.md) |
+| `integration_test_boundary` | [architecture](tables/architecture.md) |
+| `intermediate_asset` | [implementation](tables/implementation.md) |
+| `iteration` | [core](tables/core.md) |
+| `iteration_input` | [requirements](tables/requirements.md) |
+| `iteration_metadata` | [requirements](tables/requirements.md) |
+| `iteration_output` | [requirements](tables/requirements.md) |
+| `observability_config` | [cross-cutting](tables/cross-cutting.md) |
+| `operational_monitoring` | [requirements](tables/requirements.md) |
+| `operational_requirement` | [requirements](tables/requirements.md) |
+| `persona` | [requirements](tables/requirements.md) |
+| `persona_addressed` | [ux-design](tables/ux-design.md) |
+| `persona_addressed_flow` | [ux-design](tables/ux-design.md) |
+| `persona_goal` | [requirements](tables/requirements.md) |
+| `phase` | [core](tables/core.md) |
+| `plan_checkpoint_focus` | [planning](tables/planning.md) |
+| `plan_critical_path` | [planning](tables/planning.md) |
+| `plan_external_dependency` | [planning](tables/planning.md) |
+| `plan_metadata` | [planning](tables/planning.md) |
+| `plan_overview` | [planning](tables/planning.md) |
+| `plan_overview_assumption` | [planning](tables/planning.md) |
+| `plan_overview_risk` | [planning](tables/planning.md) |
+| `plan_phase` | [planning](tables/planning.md) |
+| `plan_phase_api_endpoint` | [planning](tables/planning.md) |
+| `plan_phase_component` | [planning](tables/planning.md) |
+| `plan_phase_db_change` | [planning](tables/planning.md) |
+| `plan_phase_db_change_table` | [planning](tables/planning.md) |
+| `plan_phase_dependency` | [planning](tables/planning.md) |
+| `plan_phase_entry_criterion` | [planning](tables/planning.md) |
+| `plan_phase_exit_criterion` | [planning](tables/planning.md) |
+| `plan_phase_flow` | [planning](tables/planning.md) |
+| `plan_phase_parallel` | [planning](tables/planning.md) |
+| `plan_phase_requirement` | [planning](tables/planning.md) |
+| `plan_phase_risk` | [planning](tables/planning.md) |
+| `plan_phase_screen` | [planning](tables/planning.md) |
+| `plan_requirement_mapping` | [planning](tables/planning.md) |
+| `requirement` | [requirements](tables/requirements.md) |
+| `requirement_acceptance_criterion` | [requirements](tables/requirements.md) |
+| `requirement_dependency` | [requirements](tables/requirements.md) |
+| `requirement_persona` | [requirements](tables/requirements.md) |
+| `responsive_config` | [ux-design](tables/ux-design.md) |
+| `revision` | [core](tables/core.md) |
+| `screen` | [ux-design](tables/ux-design.md) |
+| `screen_component` | [ux-design](tables/ux-design.md) |
+| `screen_responsive_variant` | [ux-design](tables/ux-design.md) |
+| `screen_state` | [ux-design](tables/ux-design.md) |
+| `security_config` | [cross-cutting](tables/cross-cutting.md) |
+| `technology_choice` | [architecture](tables/architecture.md) |
+| `technology_constraint` | [requirements](tables/requirements.md) |
+| `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |
+| `test_acceptance_criterion_test_id` | [qa-test](tables/qa-test.md) |
+| `test_blocker` | [qa-test](tables/qa-test.md) |
+| `test_blocker_requirement` | [qa-test](tables/qa-test.md) |
+| `test_case` | [qa-test](tables/qa-test.md) |
+| `test_case_requirement` | [qa-test](tables/qa-test.md) |
+| `test_performance_benchmark` | [qa-test](tables/qa-test.md) |
+| `test_recommendation` | [qa-test](tables/qa-test.md) |
+| `test_report` | [qa-test](tables/qa-test.md) |
+| `test_report_metadata` | [qa-test](tables/qa-test.md) |
+| `test_requirement_coverage` | [qa-test](tables/qa-test.md) |
+| `test_security_finding` | [qa-test](tables/qa-test.md) |
+| `test_suite` | [qa-test](tables/qa-test.md) |
+| `traceability_mapping` | [cross-cutting](tables/cross-cutting.md) |
+| `user_flow` | [ux-design](tables/ux-design.md) |
+| `user_flow_data_dependency` | [ux-design](tables/ux-design.md) |
+| `user_flow_error_state` | [ux-design](tables/ux-design.md) |
+| `user_flow_requirement` | [ux-design](tables/ux-design.md) |
+| `user_flow_step` | [ux-design](tables/ux-design.md) |
+| `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
+| `ux_asset` | [ux-design](tables/ux-design.md) |
+| `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
+| `vcs_commit` | [implementation](tables/implementation.md) |
+| `workflow` | [core](tables/core.md) |
+
+**Total: 145 tables across 11 domains**
