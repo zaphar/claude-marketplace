@@ -53,6 +53,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 | `rationale` | TEXT | NOT NULL | — | Why this option was chosen over the alternatives. Should reference alternatives by name and cite research sources. |
 | `superseded_by` | TEXT | FK → `adr(id)` | NULL | If `status = 'superseded'`, points to the newer ADR that replaces this one. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 ### Relationships
 
@@ -251,6 +252,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
 | `type` | TEXT | NOT NULL, CHECK(`type` IN `'api'`, `'service'`, `'worker'`, `'database'`, `'cache'`, `'queue'`, `'external'`, `'library'`) | — | Classification: `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 ### Relationships
 

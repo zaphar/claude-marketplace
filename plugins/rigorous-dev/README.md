@@ -359,7 +359,7 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `project_update` — update project-level metadata
 
 **Read tools** (agents call these to query state):
-- `changelog_query` — query the changelog (supports "Why are we using X?" traceability)
+- `changelog_query` — query the changelog with optional filters. Set `history: true` to view how entities evolved across revisions via `entity_snapshot`
 - `traceability_query` — trace requirements through to implementation and tests
 - `revision_history` — view producer-critic history for a phase
 - `iteration_summary` — summarize the current or a past iteration

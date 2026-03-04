@@ -47,6 +47,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `entry_point` | TEXT | — | NULL | Where the flow starts (screen name, URL, trigger event). |
 | `success_state` | TEXT | — | NULL | Observable outcome that marks successful completion. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
 - Has many `user_flow_step` (ordered steps)
@@ -206,6 +207,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
 | `mockup_path` | TEXT | — | NULL | Relative path to the high-fidelity mockup file. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
 - Has many `screen_component`
