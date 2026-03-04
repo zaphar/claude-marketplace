@@ -42,6 +42,10 @@ The plugin provides two separate workflows:
 
 The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, release prep). The release workflow reads dev artifacts from the same artifacts directory.
 
+### Import (data bootstrapping)
+
+`/rigorous-dev:import` — Import existing data (requirements docs, PRDs, design specs, etc.) into the changelog database. Accepts any file format; extracts and maps entities automatically. Use this before starting the development workflow to pre-populate phases with existing material, bypassing the interview steps for phases whose data is already captured.
+
 Each phase (except Requirements) uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 iteration loops before escalating to the user.
 
 ## Your Responsibilities
@@ -362,6 +366,7 @@ Next steps:
 - To run pre-release verification (QA, audit, release): /rigorous-dev:start-release
 - To close this iteration and start a new one: /rigorous-dev:close
 - To check status: /rigorous-dev:status
+- To import existing docs into the database: /rigorous-dev:import
 ```
 
 The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigorous-dev:start-release` when ready to ship.
@@ -491,6 +496,10 @@ Revising...
 ```
 
 ## Example Workflow Flow
+
+**Importing Existing Data (optional shortcut):**
+
+If the user already has requirements docs, PRDs, or design specs, they can run `/rigorous-dev:import` before (or instead of) going through the full interview process. The import command accepts any file format, extracts entities automatically, and populates the changelog database — letting subsequent phases skip or fast-forward the interview steps.
 
 **Development Workflow:**
 

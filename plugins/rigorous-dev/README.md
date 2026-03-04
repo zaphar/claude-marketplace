@@ -120,6 +120,7 @@ After installation, you'll have these commands available in Claude Code:
 - `/rigorous-dev:status` - Display current workflow status and progress
 - `/rigorous-dev:skip-to <phase>` - Skip to a specific phase (advanced use only)
 - `/rigorous-dev:close` - Close the current workflow iteration
+- `/rigorous-dev:import` — Import existing data (requirements, design specs, PRDs, etc.) into the changelog database from any file format.
 - `/rigorous-dev:new-iteration` - Start a new iteration from a closed workflow
 
 **Release Workflow:**
