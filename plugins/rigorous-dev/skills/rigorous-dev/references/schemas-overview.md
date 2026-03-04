@@ -1,325 +1,241 @@
-# Schema Overview
+# Data Model Overview
 
-All artifacts produced during the rigorous development workflow must conform to YAML schemas defined in the `schemas/` directory.
+All artifacts produced during the rigorous development workflow are stored in a normalized SQLite changelog database. The DDL lives at `mcp-server/schema.sql` and is auto-applied on first run.
 
-## Schema Locations
+**Database location:** `.claude/rigorous-dev.db`
+**Engine:** better-sqlite3 (synchronous), WAL mode, foreign keys enforced
 
-All schemas are located at: `schemas/<artifact-name>.schema.yaml`
+## Core Spine
 
-## Available Schemas
+Four tables form the backbone — everything else hangs off them:
 
-### 1. requirements.schema.yaml
+| Table | PK | Purpose |
+|-------|-----|---------|
+| `workflow` | `id TEXT` | Single row per project. Identity, status (active/closed), critic model, timestamps. |
+| `iteration` | `id INTEGER` | Each change-request cycle. Links to workflow via `workflow_id`. `iteration_number` tracks version (1, 2, 3…). |
+| `phase` | `id INTEGER` | 9 phases per iteration: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit, release. Tracks status, timestamps, approval. |
+| `revision` | `id INTEGER` | Producer-critic loop attempts within a phase. Tracks producer/critic agents, feedback text, verdict (draft → submitted → approved/rejected). |
 
-**Artifact:** `requirements.yaml`
-**Producer:** requirements_analyst
+**Hierarchy:** workflow → iteration → phase → revision
+
+Every changelog entity below carries `iteration_id` and optionally `revision_id` to trace exactly when and why it was created.
+
+## Requirements Domain
+
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Name, description, role. |
+| `persona_goal` | requirements_analyst | Goals for each persona (1:N child). |
+| `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must_have/should_have/could_have/wont_have), category (functional/security/performance/usability/operational), description, rationale. |
+| `requirement_acceptance_criterion` | requirements_analyst | Testable acceptance criteria per requirement (1:N). |
+| `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
+| `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
+| `iteration_metadata` | requirements_analyst | Per-iteration problem statement, success criteria, scope type (MVP/full). |
+| `iteration_input` / `iteration_output` | requirements_analyst | What goes in/out of each iteration. |
+| `deployment_requirement` | requirements_analyst | Deployment-specific requirements. |
+| `deployment_infra_requirement` | requirements_analyst | Infrastructure needs per deployment requirement. |
+| `operational_requirement` | requirements_analyst | SLAs, uptime targets. |
+| `operational_monitoring` | requirements_analyst | Monitoring configuration per operational requirement. |
+| `technology_constraint` | requirements_analyst | User-imposed tech constraints (e.g., "must use PostgreSQL"). |
+
 **Critic:** requirements_critic
 
-**Purpose:** Validates requirements specification structure and completeness
+## Architecture Domain
 
-**Key Sections:**
-- Project metadata (name, version)
-- Problem statement and target users
-- Requirements list with:
-  - Unique IDs (REQ-XXX format)
-  - Title, description, priority, category
-  - Acceptance criteria
-- Security requirements
-- Deployment requirements
-- Constraints and assumptions
-- Out-of-scope items
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context, decision, rationale. |
+| `adr_alternative` | backend_architect | Alternatives considered per ADR. |
+| `adr_alternative_pro` / `adr_alternative_con` | backend_architect | Pros/cons per alternative. |
+| `adr_consequence` | backend_architect | Consequences of each decision. |
+| `adr_research_source` | backend_architect | Research citations backing decisions — enables "why are we using X?" queries. |
+| `component` | backend_architect | System components (id: `COMP-XXX`). Type, responsibility, tech stack. |
+| `component_interface` | backend_architect | APIs/ports each component exposes. |
+| `component_dependency` | backend_architect | Component-to-component dependency graph (must be a DAG). |
+| `component_requirement` | backend_architect | Which requirements each component satisfies (traceability). |
+| `integration_test_boundary` | backend_architect | Where integration tests are needed between components. |
+| `technology_choice` | backend_architect | Language, framework, DB choices with rationale. |
+| `architecture_overview` | backend_architect | High-level summary, style, communication patterns. |
+| `architecture_principle` | backend_architect | Design principles. |
+| `architecture_diagram` | backend_architect | Diagram references. |
 
-**Validation Rules:**
-- All requirement IDs must follow REQ-XXX pattern
-- Priority must be: must_have, should_have, could_have, or wont_have
-- All requirements must have at least one acceptance criterion
-- Categories: functional, security, performance, usability, operational
-
-### 2. ux_specification.schema.yaml
-
-**Artifact:** `ux_specification.yaml`
-**Producer:** ux_designer
-**Critic:** ux_critic
-
-**Purpose:** Validates UX design specification including flows, wireframes, and design system
-
-**Key Sections:**
-- User personas
-- User flows with steps
-- Wireframes with component hierarchy
-- Design system (colors, typography, spacing, components)
-- Accessibility requirements
-- Responsive design breakpoints
-
-**Validation Rules:**
-- Each user flow must have at least one step
-- Wireframes must define views with components
-- Design system must specify primary, secondary, and accent colors
-- Typography must define at least heading and body fonts
-
-### 3. Architecture Schemas (Modular)
-
-The architecture specification is split across multiple schemas, each validating one concern:
-
-**Producer:** backend_architect
 **Critic:** architecture_critic
 
-| Schema | Artifact | Purpose |
-|--------|----------|---------|
-| `architecture_index.schema.yaml` | `architecture_index.yaml` | Metadata, overview, technology choices, linters |
-| `architecture_components.schema.yaml` | `architecture_components.yaml` | Components with interfaces, dependencies, integration test boundaries |
-| `architecture_data_model.schema.yaml` | `architecture_data_model.yaml` | Data entities with attributes and relationships |
-| `architecture_deployment.schema.yaml` | `architecture_deployment.yaml` | Deployment target, environments, containerization, scaling |
-| `architecture_security.schema.yaml` | `architecture_security.yaml` | Authentication, authorization, data protection, secrets |
-| `architecture_observability.schema.yaml` | `architecture_observability.yaml` | Logging, metrics, tracing, health checks |
-| `architecture_traceability.schema.yaml` | `architecture_traceability.yaml` | Requirements-to-component mapping |
-| `architecture_dependencies.schema.yaml` | `architecture_dependencies.yaml` | Dependency manifest with health assessments |
-| `architecture_adr.schema.yaml` | `architecture_adr.yaml` | Architecture Decision Records with alternatives and research sources |
+## Data Model Domain
 
-The architect also produces `api_spec.yaml` (OpenAPI format) as the authoritative API contract.
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `data_entity` | backend_architect | Database entities/models (like an ERD). |
+| `data_entity_attribute` | backend_architect | Columns/fields per entity with types, constraints, nullability. |
+| `data_entity_relationship` | backend_architect | Foreign key / relationship mappings between entities. |
 
-**Note:** The old monolithic `backend_architecture.schema.yaml` is deprecated. Use the modular schemas above.
+## Cross-Cutting Architecture
 
-### 4. implementation_plan.schema.yaml
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `security_config` | backend_architect | Auth approach, authorization model, data protection, secrets management. |
+| `deployment_config` | backend_architect | Target environments, strategy, containerization, scaling. |
+| `observability_config` | backend_architect | Logging, metrics, tracing, health check config. |
+| `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
+| `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 
-**Artifact:** `implementation_plan.yaml`
-**Producer:** implementation_planner
-**Critic:** implementation_plan_critic
+## UX Design Domain
 
-**Purpose:** Validates phased implementation plan
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `user_flow` | ux_designer | User journeys (id: `FLOW-XXX`). Trigger, preconditions, success criteria. |
+| `user_flow_step` | ux_designer | Steps within each flow. |
+| `user_flow_step_branch` | ux_designer | Conditional branches at each step. |
+| `user_flow_error_state` | ux_designer | Error states per flow. |
+| `user_flow_requirement` | ux_designer | Flow-to-requirement mapping. |
+| `user_flow_data_dependency` | ux_designer | Data needs per flow. |
+| `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. |
+| `screen_component` | ux_designer | UI components on each screen. |
+| `screen_state` | ux_designer | State variants (loading, empty, error, populated). |
+| `screen_responsive_variant` | ux_designer | Responsive breakpoint behavior. |
+| `design_system` | ux_designer | Colors, typography, spacing, component library. |
+| `accessibility_config` | ux_designer | WCAG level, focus management, ARIA patterns. |
+| `responsive_config` | ux_designer | Breakpoints and layout strategy. |
+| `feedback_pattern` | ux_designer | Loading indicators, success/error toast patterns. |
+| `info_architecture` | ux_designer | Navigation structure, sitemap. |
+| `persona_addressed` / `persona_addressed_flow` | ux_designer | Which personas each UX design addresses. |
+| `ux_asset` | ux_designer | Mockup/asset references. |
+| `ux_requirement_mapping` | ux_designer | UX-to-requirement coverage. |
 
-**Key Sections:**
-- Phases with objectives and deliverables
-- Dependencies between phases
-- Strategic checkpoints for review
-- Risk assessment
-- Requirements mapping (which requirements in which phases)
-
-**Validation Rules:**
-- At least one phase defined
-- Each phase has objectives and deliverables
-- Checkpoints must specify when and what to review
-- Requirements must be mapped to specific phases
-
-### 5. implementation_manifest.schema.yaml
-
-**Artifact:** `implementation_manifest.yaml`
-**Producer:** senior_developer (in the implementation step, after the test_writer step has been approved)
-**Critic:** senior_developer_critic
-
-**Purpose:** Tracks implementation progress and artifacts
-
-**Key Sections:**
-- Completed phases with timestamps
-- Files created/modified
-- Tests implemented
-- Checkpoint reviews completed
-- Known issues or technical debt
-
-**Validation Rules:**
-- Each completed phase must have completion timestamp
-- Files list must include paths
-- Tests must specify type (unit, integration, e2e) and status
-
-### 6. test_report.schema.yaml
-
-**Artifact:** `test_report.yaml`
-**Producer:** qa_engineer
-**Critic:** qa_critic
-
-**Purpose:** Validates comprehensive test results
-
-**Key Sections:**
-- Test summary (total, passed, failed)
-- Test results by category (unit, integration, e2e)
-- Requirements coverage (which requirements tested)
-- Bugs found with severity and status
-- Performance test results
-
-**Validation Rules:**
-- All requirements from requirements.yaml must be tested
-- Each bug must have severity level and status
-- Test results must specify pass/fail status
-
-### 7. documentation_manifest.schema.yaml
-
-**Artifact:** `documentation_manifest.yaml`
-**Producer:** documentation_master
-**Critic:** documentation_critic
-
-**Purpose:** Validates documentation completeness
-
-**Key Sections:**
-- User documentation files
-- API documentation files
-- Deployment guides
-- Architecture documentation
-- Developer guides
-
-**Validation Rules:**
-- All documentation types must be represented
-- Each document must have a path
-- API documentation must cover all endpoints from api_spec.yaml
-
-### 8. deployment_manifest.schema.yaml
-
-**Artifact:** `deployment_manifest.yaml`
-**Producer:** release_engineer
-**Critic:** release_critic
-
-**Purpose:** Validates deployment configuration and release readiness
-
-**Key Sections:**
-- Deployment configuration (environment, resources, scaling)
-- Release notes with version and changes
-- Deployment steps and verification
-- Rollback procedures
-- Post-deployment monitoring
-
-**Validation Rules:**
-- Deployment configuration must specify environment and resources
-- Release notes must include version and categorized changes
-- Deployment steps must be ordered and actionable
-- Rollback procedures required
-
-### 9. wireframe_comparison.schema.yaml
-
-**Artifact:** `wireframe_comparison.yaml`
-**Producer:** ux_designer (during revisions)
 **Critic:** ux_critic
 
-**Purpose:** Documents changes between wireframe versions
+## Planning Domain
 
-**Key Sections:**
-- Comparison metadata (versions, date)
-- Changes by view with descriptions
-- Rationale for each change
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `plan_phase` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). |
+| `plan_phase_requirement` / `_component` / `_flow` / `_screen` | implementation_planner | What each plan phase covers. |
+| `plan_phase_entry_criterion` / `_exit_criterion` | implementation_planner | Gate conditions for each phase. |
+| `plan_phase_api_endpoint` | implementation_planner | APIs built in each phase. |
+| `plan_phase_db_change` / `_db_change_table` | implementation_planner | Database migrations per phase. |
+| `plan_phase_dependency` / `_parallel` / `_risk` | implementation_planner | Phase ordering, parallelism, risks. |
+| `plan_checkpoint_focus` | implementation_planner | What to verify at each checkpoint. |
+| `plan_overview` | implementation_planner | High-level plan summary. |
+| `plan_overview_risk` / `_assumption` | implementation_planner | Plan-level risks and assumptions. |
+| `plan_requirement_mapping` | implementation_planner | REQ → plan phase mapping (when will each requirement be built?). |
+| `plan_external_dependency` | implementation_planner | External blockers. |
+| `plan_critical_path` | implementation_planner | Critical path phases. |
+| `plan_metadata` | implementation_planner | Plan versioning, upstream artifact versions used. |
 
-**Validation Rules:**
-- Must reference two versions being compared
-- Changes must specify which view was modified
-- Rationale required for each change
+**Critic:** implementation_plan_critic
 
-## Schema Validation
+## Implementation Domain
 
-### Using Schemas in Workflow
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `implementation_manifest` | senior_developer | Per-phase implementation summary — status, files changed, tests. |
+| `implementation_file` | senior_developer | Each file created/modified with purpose. |
+| `implementation_file_requirement` | senior_developer | File-to-requirement traceability. |
+| `implementation_requirement_status` | senior_developer | Per-requirement implementation progress. |
+| `implementation_component_status` | senior_developer | Per-component implementation progress. |
+| `implementation_api_endpoint` | senior_developer | APIs actually implemented (vs. planned). |
+| `implementation_dependency_added` | senior_developer | Dependencies added during implementation. |
+| `implementation_db_migration` | senior_developer | Migrations actually run. |
+| `implementation_blocker` / `_blocker_requirement` | senior_developer | Issues encountered and affected requirements. |
+| `implementation_review_checklist` | senior_developer | Self-review items. |
+| `implementation_manifest_metadata` | senior_developer | Implementation versioning. |
+| `vcs_commit` | (commit_link tool) | Git/jj commits linked to iterations. |
+| `intermediate_asset` / `asset_deliverable` | senior_developer | Build artifacts and deliverables. |
 
-When a producer creates an artifact:
+**Critic:** senior_developer_critic (also test_writer / test_writer_critic for the test-writing step)
 
-1. **Reference the schema** - Know which schema applies to your artifact
-2. **Follow the structure** - Create YAML that matches the schema
-3. **Validate** - Critic validates against schema before approval
+## QA/Test Domain
 
-### Validation Tools
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `test_report` | qa_engineer | Overall test report — pass/fail counts, coverage percentage. |
+| `test_report_metadata` | qa_engineer | Report versioning. |
+| `test_requirement_coverage` | qa_engineer | Which requirements have test coverage. |
+| `test_acceptance_criterion_result` | qa_engineer | Pass/fail per acceptance criterion. |
+| `test_suite` / `test_case` | qa_engineer | Test suites and individual cases with status, duration. |
+| `test_case_requirement` | qa_engineer | Test-to-requirement traceability. |
+| `test_security_finding` | qa_engineer | Security issues found during testing. |
+| `test_performance_benchmark` | qa_engineer | Performance results vs. targets. |
+| `test_blocker` / `_blocker_requirement` | qa_engineer | Blockers and affected requirements. |
+| `test_recommendation` | qa_engineer | QA recommendations. |
 
-**YAML Validation:**
-```bash
-# Check YAML syntax
-python -c "import yaml; yaml.safe_load(open('artifact.yaml'))"
-```
+**Critic:** qa_critic
 
-**Schema Validation:**
-```bash
-# Using Python with jsonschema (for YAML)
-pip install pyyaml jsonschema
-python -c "
-import yaml
-import jsonschema
+## Documentation Domain
 
-with open('artifact.yaml') as f:
-    data = yaml.safe_load(f)
-with open('schema.yaml') as f:
-    schema = yaml.safe_load(f)
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `documentation_manifest` | documentation_master | Doc coverage summary. |
+| `documentation_manifest_metadata` | documentation_master | Manifest versioning. |
+| `documentation_section` | documentation_master | Doc sections (README, API docs, guides). |
+| `documentation_feature` | documentation_master | Feature documentation with examples. |
+| `documentation_feature_requirement` | documentation_master | Feature-to-requirement traceability. |
+| `documentation_requirement_coverage` | documentation_master | Per-requirement doc coverage. |
+| `documentation_requirement_path` | documentation_master | Where each requirement is documented. |
+| `documentation_asset` | documentation_master | Generated doc assets (diagrams, etc.). |
+| `documentation_verification` | documentation_master | Doc accuracy verification results. |
 
-jsonschema.validate(data, schema)
-print('Valid!')
-"
-```
+**Critic:** documentation_critic
 
-## Common Schema Patterns
+## Deployment/Release Domain
 
-### Required vs Optional Fields
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `deployment_manifest` | release_engineer | Release readiness summary. |
+| `deployment_manifest_metadata` | release_engineer | Manifest versioning. |
+| `deployment_target` | release_engineer | Where it deploys. |
+| `deployment_manifest_blocker` | release_engineer | What blocks release. |
+| `deployment_pipeline` / `_config_file` / `_stage` | release_engineer | CI/CD pipeline definition. |
+| `deployment_stage_trigger` / `_step` / `_quality_gate` | release_engineer | Pipeline stage details. |
+| `deployment_quality_gates` | release_engineer | Global quality gate rules. |
+| `deployment_environment` / `_env_infra` / `_env_var` | release_engineer | Environment configs. |
+| `deployment_artifact` / `_artifact_platform` | release_engineer | Build artifacts and platform targets. |
+| `deployment_signing` | release_engineer | Code signing config. |
+| `deployment_local_executable` / `_local_platform` / `_local_channel` | release_engineer | Local distribution (Homebrew, apt, etc.). |
+| `deployment_secret` | release_engineer | Secrets inventory (names/purposes, not values). |
+| `deployment_health_check` | release_engineer | Health check config. |
+| `deployment_alerting` | release_engineer | Alerting config. |
+| `deployment_runbook` / `_runbook_step` | release_engineer | Operational runbooks. |
+| `deployment_review_checklist` | release_engineer | Release review items. |
 
-Schemas use `required: []` arrays to specify mandatory fields:
+**Critic:** release_critic
 
-```yaml
-required:
-  - project
-  - requirements
-  - security_requirements
-```
+## MCP Tools for Data Access
 
-Fields not in the `required` array are optional.
+### Write Tools
 
-### Enumerated Values
+| Tool | Purpose |
+|------|---------|
+| `changelog_insert` | Insert any entity type with full normalization into child tables. Main workhorse — handles ~20 entity types. |
+| `iteration_create` | Create workflow + iteration + all phase rows in one call. |
+| `phase_transition` | Update phase status (pending → in_progress → completed/skipped). |
+| `revision_create` | Start a new producer-critic revision within a phase. |
+| `revision_update` | Record critic verdict (approved/rejected) with feedback. |
+| `commit_link` | Link a VCS commit to the current iteration. |
+| `workflow_update` | Update workflow status (e.g., close it). |
 
-Schemas use `enum: []` for fixed value sets:
+### Read Tools
 
-```yaml
-priority:
-  type: string
-  enum: ["must_have", "should_have", "could_have", "wont_have"]
-```
+| Tool | Purpose |
+|------|---------|
+| `changelog_query` | Query entities by type, iteration, IDs, or field filters. |
+| `traceability_query` | Trace decisions across entity types — "why are we using X?" |
+| `revision_history` | Full revision chain for any entity. |
+| `iteration_summary` | Phase-level summary for an iteration. |
+| `workflow_status` | Current workflow state, phases, and progress. |
 
-### Pattern Validation
+## Key Design Principles
 
-Schemas use `pattern:` for regex validation:
+1. **Full normalization** — Every YAML array became its own table with foreign keys. No JSON blobs.
+2. **Append-only** — Revisions are never deleted or overwritten. New revisions create new rows. Full history preserved.
+3. **Traceability** — Every entity carries `iteration_id` and `revision_id`. You can always answer "who produced this, when, and in response to what feedback."
+4. **Idempotent DDL** — All tables use `CREATE TABLE IF NOT EXISTS` so the schema can be re-applied safely.
 
-```yaml
-id:
-  type: string
-  pattern: "^REQ-[0-9]{3}$"  # Matches REQ-001, REQ-042, etc.
-```
+## Extending the Schema
 
-### Nested Objects
+To add new entity types:
 
-Schemas define nested structures:
-
-```yaml
-requirements:
-  type: array
-  items:
-    type: object
-    properties:
-      id: {type: string}
-      title: {type: string}
-      acceptance_criteria:
-        type: array
-        items: {type: string}
-```
-
-## Extending Schemas
-
-When customizing the workflow, you may need to extend schemas:
-
-1. **Copy existing schema** as a starting point
-2. **Add new fields** to `properties` section
-3. **Update `required` array** if fields are mandatory
-4. **Update agent checklists** to verify new fields
-5. **Test validation** with sample artifacts
-
-## Best Practices
-
-1. **Always validate** - Never skip schema validation
-2. **Provide examples** - Include example artifacts for reference
-3. **Clear error messages** - When validation fails, explain what's wrong
-4. **Version schemas** - Track schema changes over time
-5. **Document extensions** - Note any custom fields added
-6. **Test thoroughly** - Validate with both valid and invalid data
-
-## Schema Format
-
-All schemas follow JSON Schema Draft 2020-12 specification:
-
-```yaml
-$schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://example.com/schemas/artifact.schema.yaml"
-title: "Artifact Name"
-description: "Description of what this artifact represents"
-type: object
-properties:
-  # ... field definitions ...
-required:
-  # ... required fields ...
-```
-
-This ensures compatibility with standard validation tools and provides clear structure for artifacts.
+1. Add `CREATE TABLE IF NOT EXISTS` statements to `mcp-server/schema.sql`
+2. Add the entity type to `ENTITY_TABLE` map in `mcp-server/write-tools.js` and `mcp-server/read-tools.js`
+3. Add insert/query logic for child tables if the entity has nested data
+4. Update agent checklists to verify the new fields
