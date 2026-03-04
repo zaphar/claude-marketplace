@@ -22,7 +22,7 @@ The UX design domain is organised into five sub-areas:
 | **UX Configuration** | `accessibility_config`, `responsive_config`, `feedback_pattern`, `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset`, `ux_requirement_mapping` |
 
-Every table carries `iteration_id` (mandatory) and `revision_id` (optional) to pin rows to the exact producer-critic loop that created them.
+Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT NULL) to pin rows to the exact producer-critic loop that created them.
 
 ---
 
@@ -40,7 +40,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (optional) to p
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical flow identifier, e.g. `FLOW-001`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this flow. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration (NULL = initial draft). |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `name` | TEXT | NOT NULL | — | Short human-readable name, e.g. "User Registration". |
 | `goal` | TEXT | NOT NULL | — | The user's objective for completing this flow. |
 | `persona_id` | TEXT | FK → `persona(id)` | NULL | Primary persona this flow is designed for. |
@@ -200,7 +200,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (optional) to p
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical screen identifier, e.g. `SCREEN-001`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this screen. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `name` | TEXT | NOT NULL | — | Screen name, e.g. "Dashboard". Must match `user_flow_step.screen` references. |
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
@@ -310,7 +310,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (optional) to p
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this token. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `category` | TEXT | NOT NULL | — | Token category, e.g. `colors`, `typography`, `spacing`, `shadows`. |
 | `key` | TEXT | NOT NULL | — | Token name within the category, e.g. `primary`, `heading_1`, `base_4`. |
 | `value` | TEXT | NOT NULL | — | Token value, e.g. `#2563EB`, `16px/24px Inter`, `4px`. |
@@ -344,7 +344,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this config entry. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `category` | TEXT | NOT NULL | — | Grouping, e.g. `wcag`, `focus_management`, `aria`, `keyboard`, `motion`. |
 | `key` | TEXT | NOT NULL | — | Config key within the category, e.g. `target_level`, `focus_ring_style`. |
 | `value` | TEXT | NOT NULL | — | Config value, e.g. `AA`, `2px solid #2563EB`. |
@@ -372,7 +372,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this config entry. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `category` | TEXT | NOT NULL | — | Grouping, e.g. `breakpoints`, `grid`, `typography`, `touch_targets`. |
 | `key` | TEXT | NOT NULL | — | Config key, e.g. `mobile`, `tablet`, `columns_desktop`. |
 | `value` | TEXT | NOT NULL | — | Config value, e.g. `320px`, `768px`, `12`. |
@@ -399,7 +399,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this entry. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `category` | TEXT | NOT NULL | — | Pattern type, e.g. `loading`, `success`, `error`, `empty_state`, `confirmation`. |
 | `key` | TEXT | NOT NULL | — | Pattern variant key, e.g. `global_spinner`, `inline_field_error`, `toast_success`. |
 | `value` | TEXT | NOT NULL | — | Pattern specification, e.g. `Skeleton placeholder, 200 ms delay before display`. |
@@ -426,7 +426,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this node. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `category` | TEXT | NOT NULL | — | Node type, e.g. `navigation`, `route`, `content_group`, `label`. |
 | `key` | TEXT | NOT NULL | — | Node identifier, e.g. `main_nav_dashboard`, `/settings/profile`. |
 | `value` | TEXT | NOT NULL | — | Node description or label, e.g. "Dashboard", "User profile settings page". |
@@ -456,7 +456,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this record. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `persona_id` | TEXT | NOT NULL, FK → `persona(id)` | — | The persona being addressed. |
 | `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the `persona_goal` text). |
 | `how_addressed` | TEXT | NOT NULL | — | How the UX design meets this goal. |
@@ -506,7 +506,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this asset. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `name` | TEXT | NOT NULL | — | Human-readable asset name, e.g. "Dashboard Default Wireframe". |
 | `path` | TEXT | NOT NULL | — | Relative file path from the project root. |
 | `type` | TEXT | NOT NULL, CHECK(`type` IN (`wireframe`, `mockup`, `prototype`, `icon`, `image`, `video`)) | — | Asset category. |
@@ -535,7 +535,7 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this mapping. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)` | — | The requirement being addressed. |
 | `addressed_by` | TEXT | NOT NULL | — | Free-text identifier of the UX artefact: a screen ID, flow ID, design system category, or prose description. |
 | `notes` | TEXT | — | NULL | Additional context about how this requirement is addressed. |

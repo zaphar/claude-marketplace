@@ -10,7 +10,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ## persona
 
-**Purpose:** Represents a user archetype — a named, described role with a defined technical level and usage frequency. Personas ground the requirements in real human context, preventing the system from being designed in the abstract. Each persona is scoped to an iteration and optionally pinned to a specific revision when the requirements_critic has approved or revised the analyst's output.
+**Purpose:** Represents a user archetype — a named, described role with a defined technical level and usage frequency. Personas ground the requirements in real human context, preventing the system from being designed in the abstract. Each persona is scoped to an iteration and pinned to a specific revision when the requirements_critic has approved or revised the analyst's output.
 
 **Context:** Produced by the **requirements_analyst** agent. Validated (and potentially revised) by the **requirements_critic**. Consumed by the **ux_designer** (who associates personas with user flows) and the **requirements_analyst** itself (who links personas to requirements via `requirement_persona`). Referenced downstream by `user_flow.persona_id`.
 
@@ -18,7 +18,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 |--------|------|-------------|-------------|
 | `id` | TEXT | PRIMARY KEY | Stable identifier for the persona, typically a slug (e.g. `"admin-user"`). |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this persona belongs to. |
-| `revision_id` | INTEGER | REFERENCES revision(id) | Optional. The revision in which this persona was last approved or updated by the critic. |
+| `revision_id` | INTEGER | NOT NULL, REFERENCES revision(id) | The revision in which this persona was last approved or updated by the critic. |
 | `name` | TEXT | NOT NULL | Human-readable name of the persona (e.g. `"Operations Engineer"`). |
 | `description` | TEXT | NOT NULL | Narrative description of who this persona is, their role, and their context. |
 | `technical_level` | TEXT | — | Self-reported or inferred technical proficiency (e.g. `"beginner"`, `"intermediate"`, `"expert"`). No CHECK constraint — analyst may use domain-specific values. |
@@ -27,7 +27,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
-- Parent: `revision` (via `revision_id`, optional)
+- Parent: `revision` (via `revision_id`)
 - Children: `persona_goal` (via `persona_id`)
 - Children: `requirement_persona` (via `persona_id`) — links personas to requirements
 - Children: `user_flow` (via `persona_id`) — links personas to UX flows
@@ -68,7 +68,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 |--------|------|-------------|-------------|
 | `id` | TEXT | PRIMARY KEY | Stable identifier, typically a short slug (e.g. `"req-auth-001"`). |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this requirement belongs to. |
-| `revision_id` | INTEGER | REFERENCES revision(id) | Optional. The revision in which this requirement was last approved or changed. |
+| `revision_id` | INTEGER | NOT NULL, REFERENCES revision(id) | The revision in which this requirement was last approved or changed. |
 | `description` | TEXT | NOT NULL | Full statement of the requirement. |
 | `rationale` | TEXT | — | Optional explanation of why this requirement exists or was prioritised as it was. |
 | `priority` | TEXT | NOT NULL, CHECK IN (`'must-have'`, `'should-have'`, `'nice-to-have'`) | MoSCoW-style priority. The implementation planner uses this to sequence work. |
@@ -77,7 +77,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
-- Parent: `revision` (via `revision_id`, optional)
+- Parent: `revision` (via `revision_id`)
 - Children: `requirement_acceptance_criterion` (via `requirement_id`)
 - Children: `requirement_persona` (via `requirement_id`)
 - Children: `requirement_dependency` (via `requirement_id` and `depends_on`)

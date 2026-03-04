@@ -44,7 +44,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `ADR-XXX` (e.g., `ADR-001`). Assigned by the backend_architect. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration during which this ADR was produced. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | The specific producer-critic revision attempt that produced this row. NULL if recorded outside a revision loop. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `title` | TEXT | NOT NULL | — | Short, imperative title describing the decision (e.g., "Use PostgreSQL for primary datastore"). |
 | `status` | TEXT | NOT NULL, CHECK(`status` IN `'proposed'`, `'accepted'`, `'deprecated'`, `'superseded'`) | — | Lifecycle state. `proposed` = under consideration; `accepted` = ratified; `deprecated` = no longer relevant but not replaced; `superseded` = replaced by another ADR (see `superseded_by`). |
 | `date` | TEXT | — | NULL | ISO-8601 date the decision was made (e.g., `2024-01-15`). Optional; set when a formal decision date is recorded. |
@@ -246,7 +246,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `COMP-XXX` (e.g., `COMP-001`). Assigned by the backend_architect. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration during which this component was identified. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | The revision attempt that produced this row. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `name` | TEXT | NOT NULL | — | Short, descriptive name (e.g., "Auth Service", "PostgreSQL Primary", "Payment Gateway"). |
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
 | `type` | TEXT | NOT NULL, CHECK(`type` IN `'api'`, `'service'`, `'worker'`, `'database'`, `'cache'`, `'queue'`, `'external'`, `'library'`) | — | Classification: `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. |
@@ -425,7 +425,7 @@ Records each language, framework, runtime, database engine, cloud service, or to
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration during which this choice was made. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision attempt that produced this row. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `category` | TEXT | NOT NULL | — | Logical grouping for the technology (e.g., `backend-language`, `database`, `cache`, `auth`, `testing`, `ci-cd`). Free-text — no CHECK constraint. |
 | `name` | TEXT | NOT NULL | — | Technology name (e.g., `TypeScript`, `PostgreSQL 16`, `Redis`, `Jest`). |
 | `purpose` | TEXT | — | NULL | One-sentence description of why this technology is in the stack. |
@@ -468,7 +468,7 @@ There is typically one `architecture_overview` row per iteration (created at the
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this overview describes. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Revision attempt that produced this row. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 

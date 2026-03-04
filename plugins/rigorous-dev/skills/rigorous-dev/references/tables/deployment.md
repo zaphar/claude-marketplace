@@ -65,7 +65,7 @@ deployment_manifest
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Links to the workflow iteration this release covers. |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | Links to the specific producer-critic revision attempt. NULL on the first pass. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Links to the specific producer-critic revision attempt. |
 | `status` | TEXT | NOT NULL, CHECK IN (`ready`, `not_ready`, `blocked`) | — | Overall release readiness. `blocked` means hard blockers prevent deployment. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp when the manifest was created. |
 

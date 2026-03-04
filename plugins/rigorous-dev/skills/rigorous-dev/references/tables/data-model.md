@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS data_entity (
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Auto-assigned on insert. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration in which this entity was designed. Scopes the entity to a specific change-request cycle. |
-| `revision_id` | INTEGER | FK → `revision(id)`, nullable | NULL | The producer-critic revision that produced this entity. NULL if inserted outside a revision context. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that produced this entity. |
 | `entity_name` | TEXT | NOT NULL | — | The name of the database entity (e.g., `User`, `Order`, `ProductVariant`). Should match the naming convention of the target system. |
 | `description` | TEXT | NOT NULL | — | Human-readable description of what this entity represents and what it stores. |
 | `created_at` | TEXT | NOT NULL | — | ISO 8601 timestamp of when this row was inserted. |
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS data_entity (
 - **Has many** `data_entity_attribute` rows via `data_entity_attribute.entity_id`
 - **Has many** `data_entity_relationship` rows via `data_entity_relationship.entity_id`
 - **Belongs to** `iteration` via `iteration_id`
-- **Belongs to** `revision` via `revision_id` (optional)
+- **Belongs to** `revision` via `revision_id`
 
 ### Notes
 

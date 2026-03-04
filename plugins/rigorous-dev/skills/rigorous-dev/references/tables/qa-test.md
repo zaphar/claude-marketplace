@@ -46,7 +46,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this report belongs to |
-| `revision_id` | INTEGER | FK → `revision(id)` | NULL | The producer-critic revision that created this report |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this report. |
 | `total_tests` | INTEGER | NOT NULL | `0` | Total number of tests executed |
 | `passed` | INTEGER | NOT NULL | `0` | Count of tests that passed |
 | `failed` | INTEGER | NOT NULL | `0` | Count of tests that failed |

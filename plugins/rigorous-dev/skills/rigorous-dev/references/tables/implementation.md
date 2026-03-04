@@ -45,7 +45,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Which iteration this belongs to. |
-| `revision_id` | INTEGER | YES | NULL | FK → `revision(id)` | Producer-critic revision attempt; NULL on first pass. |
+| `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Producer-critic revision attempt. |
 | `sub_phase_number` | INTEGER | NO | — | — | Plan sub-phase number that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
 | `files_created` | INTEGER | YES | 0 | — | Number of net-new files written. |
@@ -518,7 +518,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Iteration this asset belongs to. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase in which it was created. |
-| `revision_id` | INTEGER | YES | NULL | FK → `revision(id)` | Revision attempt that produced it. |
+| `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Revision attempt that produced it. |
 | `asset_type` | TEXT | NO | — | CHECK IN ('work_item','plan','note','commit_ref','file_ref') | Semantic type of the asset. |
 | `title` | TEXT | NO | — | — | Short descriptive title. |
 | `content` | TEXT | YES | NULL | — | Full content; may be NULL for `commit_ref`/`file_ref` where the identifier is in `title`. |

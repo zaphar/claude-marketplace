@@ -39,7 +39,7 @@ Common category values: `authentication`, `authorization`, `data_protection`, `s
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration that produced this entry. Scopes the config to a specific development cycle. |
-| `revision_id` | INTEGER | NULL | — | FK → `revision(id)` | The producer–critic revision that created this row. NULL if written outside the critic loop. |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | The producer–critic revision that created this row. |
 | `category` | TEXT | NOT NULL | — | — | Logical grouping for the setting (e.g., `authentication`, `authorization`, `data_protection`). |
 | `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `scheme`, `provider`, `algorithm`). |
 | `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JWT`, `OAuth2`, `AES-256-GCM`). |
@@ -48,7 +48,7 @@ Common category values: `authentication`, `authorization`, `data_protection`, `s
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Every security config entry is anchored to an iteration, enabling security posture to evolve across iterations without overwriting history.
-- **`revision_id` → `revision(id)`** — Optionally traces which producer–critic round produced the entry.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
 - No direct foreign keys to `requirement` or `adr`, but security decisions can be correlated via `traceability_mapping` (point `addressed_by` at a component that owns the security concern) or by reading `technology_constraint` rows that share the same `iteration_id`.
 
 ### MCP Tool Access
@@ -97,7 +97,7 @@ Common `category` values: `containerization`, `orchestration`, `scaling`, `netwo
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this entry. |
-| `revision_id` | INTEGER | NULL | — | FK → `revision(id)` | Revision that produced this entry (optional). |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this entry. |
 | `target` | TEXT | NOT NULL | — | — | Deployment environment this setting applies to (e.g., `production`, `staging`, `all`). |
 | `category` | TEXT | NOT NULL | — | — | Concern area within the target (e.g., `containerization`, `scaling`, `networking`). |
 | `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `runtime`, `min_replicas`, `ingress_controller`). |
@@ -107,7 +107,7 @@ Common `category` values: `containerization`, `orchestration`, `scaling`, `netwo
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Scopes all deployment decisions to an iteration.
-- **`revision_id` → `revision(id)`** — Optional link to a specific critic round.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
 - Conceptually downstream of `deployment_requirement` and `deployment_infra_requirement` (same `iteration_id`), though there is no enforced FK between them.
 - Technology choices that drive deployment decisions (e.g., "use Kubernetes") should have a corresponding `adr` row for auditability.
 
@@ -157,7 +157,7 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this entry. |
-| `revision_id` | INTEGER | NULL | — | FK → `revision(id)` | Revision that produced this entry (optional). |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this entry. |
 | `category` | TEXT | NOT NULL | — | — | Observability concern area (e.g., `logging`, `metrics`, `tracing`, `alerting`). |
 | `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `format`, `aggregator`, `retention_days`, `sampling_rate`). |
 | `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JSON`, `Prometheus`, `30`, `0.1`). |
@@ -166,7 +166,7 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Scopes observability decisions to an iteration.
-- **`revision_id` → `revision(id)`** — Optional link to the critic round.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
 - Semantically downstream of `operational_requirement` and `operational_monitoring`; those tables specify *what* must be observed, this table specifies *how*.
 - Technology choices for observability tooling (e.g., "use OpenTelemetry") should have corresponding `adr` rows.
 
@@ -217,7 +217,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that approved this dependency. |
-| `revision_id` | INTEGER | NULL | — | FK → `revision(id)` | Revision that produced this row (optional). |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
 | `package` | TEXT | NOT NULL | — | — | Package name as it appears in the ecosystem registry (e.g., `express`, `com.fasterxml.jackson.core:jackson-databind`). |
 | `version_constraint` | TEXT | NULL | — | — | SemVer or ecosystem-specific version constraint (e.g., `^4.18.0`, `>=2.14.0 <3.0.0`). NULL means unconstrained (discouraged). |
 | `purpose` | TEXT | NOT NULL | — | — | One-line description of what this dependency is used for (e.g., `HTTP server framework`, `JSON serialization`). |
@@ -233,7 +233,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Approvals are scoped to an iteration; a dependency can be re-evaluated or updated in a later iteration.
-- **`revision_id` → `revision(id)`** — Optional critic-round link.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
 - **`adr_id` → `adr(id)`** — Links to the ADR that decided to adopt this dependency. This is the primary audit trail for "why are we using this package?". The `read-tools.js` `traceability_query` tool fetches approved dependencies when tracing an ADR.
 - Implementation code that uses a package should be able to look up its entry here to confirm approval and retrieve license/health data.
 
@@ -309,7 +309,7 @@ The `addressed_by` field is a free-text identifier that should match an existing
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this mapping. |
-| `revision_id` | INTEGER | NULL | — | FK → `revision(id)` | Revision that produced this row (optional). |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
 | `requirement_id` | TEXT | NOT NULL | — | FK → `requirement(id)` | The requirement being addressed (e.g., `REQ-007`). |
 | `addressed_by` | TEXT | NOT NULL | — | — | Identifier of the architectural element satisfying the requirement (e.g., `COMP-002`, `POST /api/payments`, `flow-checkout`, `screen-confirmation`). |
 | `addressed_by_type` | TEXT | NOT NULL | — | CHECK(`addressed_by_type` IN (`'component'`, `'endpoint'`, `'flow'`, `'screen'`, `'other'`)) | Category of the addressing element. Constrains values to five known types. |
@@ -324,7 +324,7 @@ CHECK(addressed_by_type IN ('component', 'endpoint', 'flow', 'screen', 'other'))
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Mappings are iteration-scoped; they can be extended or revised in subsequent iterations without losing prior history.
-- **`revision_id` → `revision(id)`** — Optional critic-round link.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
 - **`requirement_id` → `requirement(id)`** — Hard FK to the requirements table. A mapping row cannot exist without a valid requirement.
 - **`addressed_by` (soft reference)** — The `addressed_by` value conventionally matches a `component.id` (`COMP-XXX`), `user_flow.id`, or `screen.id`, but there is no database-level FK enforcing this. This is intentional: endpoints and other addressable elements do not have their own top-level tables. The `addressed_by_type` field disambiguates which table (if any) to look up.
 - The `traceability_query` tool in `read-tools.js` joins this table with `requirement`, `component`, `adr`, `user_flow`, and `screen` to build the full "why" chain for any query target.

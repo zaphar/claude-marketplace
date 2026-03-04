@@ -61,7 +61,7 @@ Central record for one implementation work chunk. A phase groups related develop
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables as `plan_phase_id`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this phase belongs to. |
-| `revision_id` | INTEGER | FK → `revision(id)`, nullable | — | The planning revision that produced this phase. NULL when no critic revision cycle has run. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The planning revision that produced this phase. |
 | `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Used as the human-readable phase identifier in dependency and critical-path tables. Must be unique within an iteration (enforced by application logic). |
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
 | `type` | TEXT | NOT NULL, CHECK(`feature` \| `infrastructure`) | — | Whether this phase delivers user-facing features or internal infrastructure. |
@@ -559,7 +559,7 @@ One row per planning revision: the high-level summary of the entire implementati
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by child tables as `plan_overview_id`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this plan overview belongs to. |
-| `revision_id` | INTEGER | FK → `revision(id)`, nullable | — | The revision that produced this plan. NULL before critic review. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan. |
 | `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
 | `total_phases` | INTEGER | NOT NULL | — | Total number of phases in this plan. Should match the count of `plan_phase` rows for the same `iteration_id`. |
 | `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into this number of phases this way. |

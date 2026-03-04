@@ -41,7 +41,7 @@ Every other documentation table references this row. The manifest ties documenta
 |---|---|---|---|---|---|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate key |
 | `iteration_id` | INTEGER | NOT NULL | — | REFERENCES `iteration(id)` | Which iteration this documentation belongs to |
-| `revision_id` | INTEGER | NULL | — | REFERENCES `revision(id)` | Which producer-critic revision attempt produced this (nullable for initial drafts) |
+| `revision_id` | INTEGER | NOT NULL | — | REFERENCES `revision(id)` | Which producer-critic revision attempt produced this. |
 | `status` | TEXT | NOT NULL | — | CHECK(`status` IN (`'complete'`, `'partial'`, `'blocked'`)) | Overall documentation completeness |
 | `documents_created` | INTEGER | NULL | `0` | — | Count of documentation files/pages created |
 | `total_pages` | INTEGER | NULL | — | — | Total page count across all documents (NULL if unknown) |
