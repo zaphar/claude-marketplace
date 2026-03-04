@@ -80,7 +80,7 @@ For each phase, follow this pattern:
    - Call `phase_transition` to mark requirements completed
    - Transition to UX Design phase
 8. **If rejected:**
-   - Loop back to step 3 — the next `revision_create` call auto-increments revision_number
+   - Loop back to step 3 — the next `revision_create` call
    - Iterate (max 3 times); if count >= 3, escalate to user
 
 #### All Phases (Universal Producer-Critic Loop)
@@ -97,8 +97,8 @@ For each phase, follow this pattern:
    - Call `phase_transition` to mark phase completed
    - Transition to next phase
 8. **If rejected:**
-   - If revision_number < 3: loop back to step 1 with feedback (next `revision_create` auto-increments)
-   - If revision_number >= 3: escalate to user for guidance
+   - If revision_count < 3: loop back to step 1 with feedback (next `revision_create` call)
+   - If revision_count >= 3: escalate to user for guidance
 
 ### 3. Agent Loading
 
@@ -181,8 +181,8 @@ qa → audit → release
 Track producer-critic revisions per phase:
 
 **On each revision:**
-1. Call `revision_create` to start the new revision (revision_number auto-increments in the DB)
-2. If revision_number >= 3: escalate to user
+1. Call `revision_create` to start the new revision (returns revision_count for escalation checks)
+2. If revision_count >= 3: escalate to user
 
 **Escalation to User:**
 ```
@@ -254,8 +254,8 @@ For each sub-phase (query `plan_phase` for the first row with `status != 'comple
 10. **If rejected:**
     - Call `revision_update` with rejected status and feedback
     - Check `revision_history` for revision count
-    - If revision_number < 3: loop back to step 5 with critic feedback
-    - If revision_number >= 3: escalate to user for guidance
+    - If revision_count < 3: loop back to step 5 with critic feedback
+    - If revision_count >= 3: escalate to user for guidance
 
 **Step 2 — Implementation:**
 
@@ -278,8 +278,8 @@ For each sub-phase (query `plan_phase` for the first row with `status != 'comple
 17. **If rejected:**
     - Call `revision_update` with rejected status and feedback
     - Check `revision_history` for revision count
-    - If revision_number < 3: loop back to step 11 with critic feedback
-    - If revision_number >= 3: escalate to user for guidance
+    - If revision_count < 3: loop back to step 11 with critic feedback
+    - If revision_count >= 3: escalate to user for guidance
 
 **Review Checkpoints:**
 
@@ -304,7 +304,7 @@ The implementation phase as a whole is only marked `"completed"` after:
 - All sub-phases have been approved by the critic
 - Phase transitions to Documentation
 
-**Note:** Implementation uses sub-phases (`phase-{N}`) instead of revision iterations because sub-phases are sequential chunks of planned work. The `revision_number` within each sub-phase tracks producer-critic revision loops.
+**Note:** Implementation uses sub-phases (`phase-{N}`) instead of revision iterations because sub-phases are sequential chunks of planned work. The revision count within each sub-phase tracks producer-critic revision loops.
 
 ### 9. Audit Phase Special Handling (Release Workflow)
 
@@ -608,7 +608,7 @@ You have access to:
 - **plan_phase_transition** (MCP tool) - Update a plan_phase row's status (pending → test_writing → implementing → completed). Takes `plan_phase_id` and `status`
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
-- **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id; auto-increments revision_number
+- **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and optionally a revision. Inputs: `entry_type`, `phase_id`, `iteration_id`, `revision_id` (optional), `content`
 - **changelog_query** (MCP tool) - Retrieve entries by type, phase, iteration, revision, or filters

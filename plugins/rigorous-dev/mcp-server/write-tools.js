@@ -124,19 +124,18 @@ function revisionCreate(args) {
   const { phase_id, producer_agent } = args;
   const now = new Date().toISOString();
 
-  const maxRow = db
-    .prepare("SELECT MAX(revision_number) AS max_rev FROM revision WHERE phase_id = ?")
-    .get(phase_id);
-  const revision_number = (maxRow.max_rev ?? 0) + 1;
-
   const result = db
     .prepare(
-      `INSERT INTO revision (phase_id, revision_number, producer_agent, created_at, status)
-       VALUES (?, ?, ?, ?, 'draft')`
+      `INSERT INTO revision (phase_id, producer_agent, created_at, status)
+       VALUES (?, ?, ?, 'draft')`
     )
-    .run(phase_id, revision_number, producer_agent, now);
+    .run(phase_id, producer_agent, now);
 
-  return { revision_id: result.lastInsertRowid, revision_number, phase_id };
+  const revision_count = db
+    .prepare("SELECT COUNT(*) AS n FROM revision WHERE phase_id = ?")
+    .get(phase_id).n;
+
+  return { revision_id: result.lastInsertRowid, revision_count, phase_id };
 }
 
 function revisionUpdate(args) {
@@ -909,7 +908,7 @@ export const WRITE_TOOLS = [
   {
     name: "revision_create",
     description:
-      "Starts a new producer-critic revision within a phase. Auto-increments revision_number.",
+      "Starts a new producer-critic revision within a phase. Returns revision_id and the total revision_count for escalation checks.",
     inputSchema: {
       type: "object",
       properties: {

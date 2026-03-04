@@ -44,14 +44,12 @@ CREATE TABLE IF NOT EXISTS phase (
 CREATE TABLE IF NOT EXISTS revision (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   phase_id INTEGER NOT NULL REFERENCES phase(id),
-  revision_number INTEGER NOT NULL,
   producer_agent TEXT NOT NULL,
   created_at TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
   critic_agent TEXT,
   critic_feedback TEXT,
-  reviewed_at TEXT,
-  UNIQUE(phase_id, revision_number)
+  reviewed_at TEXT
 );
 
 -- ============================================================

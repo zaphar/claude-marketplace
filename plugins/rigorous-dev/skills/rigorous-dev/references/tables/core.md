@@ -96,15 +96,12 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `phase_id` | INTEGER | NOT NULL, REFERENCES `phase(id)` | Parent phase. |
-| `revision_number` | INTEGER | NOT NULL, UNIQUE with `phase_id` | 1-based attempt number within the phase. First attempt is 1, increments on each rejection. |
 | `producer_agent` | TEXT | NOT NULL | Identifier of the agent that produced this revision's output. |
 | `created_at` | TEXT | NOT NULL | ISO-8601 timestamp when the revision was created (producer submitted work). |
 | `status` | TEXT | NOT NULL, CHECK(`draft`, `submitted`, `approved`, `rejected`) | Lifecycle state. `draft` → `submitted` when producer finishes; `approved` or `rejected` after critic review. |
 | `critic_agent` | TEXT | — | Identifier of the critic agent that reviewed this revision. NULL until reviewed. |
 | `critic_feedback` | TEXT | — | Feedback text from the critic. NULL if not yet reviewed; populated for both `approved` and `rejected` outcomes. |
 | `reviewed_at` | TEXT | — | ISO-8601 timestamp when the critic rendered a verdict. NULL until reviewed. |
-
-**Unique constraint:** `(phase_id, revision_number)` — revision numbers are unique per phase.
 
 **Relationships:**
 - Parent: `phase` (via `phase_id`)

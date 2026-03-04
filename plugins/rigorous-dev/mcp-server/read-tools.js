@@ -601,9 +601,9 @@ function revisionHistory(args) {
 
   const revisions = db
     .prepare(
-      `SELECT revision_number, producer_agent, status, critic_agent,
+      `SELECT id, producer_agent, status, critic_agent,
               critic_feedback, created_at, reviewed_at
-       FROM revision WHERE phase_id = ? ORDER BY revision_number`
+       FROM revision WHERE phase_id = ? ORDER BY id`
     )
     .all(resolvedPhaseId);
 
