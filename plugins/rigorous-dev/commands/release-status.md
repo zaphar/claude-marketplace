@@ -19,22 +19,25 @@ Display the current status and progress of the release workflow.
 
 ### 1. Check for Release Workflow State
 
-Check if `.claude/rigorous-dev-release-state.yaml` exists:
+Call `workflow_status` to check whether release phases exist:
 
-```bash
-if [ ! -f .claude/rigorous-dev-release-state.yaml ]; then
-  echo "No release workflow found."
-  echo ""
-  echo "Use /rigorous-dev:start-release to initialize a release workflow."
-  exit 0
-fi
 ```
+workflow_status()
+```
+
+If no workflow exists or release phases haven't been started, display:
+
+```
+No release workflow found.
+
+Use /rigorous-dev:start-release to initialize a release workflow.
+```
+
+Exit without error.
 
 ### 2. Load and Parse State
 
-Read `.claude/rigorous-dev-release-state.yaml` and extract all fields.
-
-Also read `.claude/rigorous-dev-state.yaml` to show dev artifact inputs.
+Use the `workflow_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit, release).
 
 ### 3. Display Formatted Status
 
@@ -80,13 +83,7 @@ Dev Artifact Inputs:
 
 ### 4. List Release Artifacts
 
-Scan the artifacts directory for release-specific artifacts:
-
-```bash
-ls -1 "<artifacts_directory>/<workflow_id>/qa" 2>/dev/null
-ls -1 "<artifacts_directory>/<workflow_id>/audit" 2>/dev/null
-ls -1 "<artifacts_directory>/<workflow_id>/release" 2>/dev/null
-```
+Call `changelog_query` to retrieve release-phase artifact entries from the DB.
 
 ## Output Format Example
 

@@ -68,7 +68,7 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 
 **Produces:**
 
-- Implementation manifest validated against `schemas/implementation_manifest.schema.yaml`
+- Implementation manifest stored in the changelog DB via `changelog_insert`
 - Working codebase: zero warnings, builds, implements requirements, passes all tests
 - Manifest shows: status for every REQ-XXX, COMP-XXX, FLOW-XXX; files created/modified; dependencies added; blockers; test coverage; launch instructions
 
@@ -85,7 +85,7 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to get the structural index, then `query_artifact` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` on requirements/architecture YAML to get the structural index, then use `changelog_query` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
 - After completing WI, write to disk and commit.
 - After completing phase, verify Feature-Layer Matrix and commit.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.

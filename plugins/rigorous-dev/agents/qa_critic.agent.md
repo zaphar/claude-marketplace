@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Test report from QA Engineer
-- Schema: `schemas/test_report.schema.yaml`
+- Data model: Test report entries (validated on insert via `changelog_insert`)
 - Test suite code (E2E and developer-written unit/integration tests)
 - Requirements specification (for acceptance criteria verification)
 - Implementation plan (phase indexes with E2E and integration test scenarios)
@@ -36,7 +36,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Report validates against `schemas/test_report.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All REQ-XXX have test status entries
 - E2E test coverage:

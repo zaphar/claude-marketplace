@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Requirements specification from Requirements Analyst
-- Schema: `schemas/requirements.schema.yaml`
+- Data model: Requirements entries (validated on insert via `changelog_insert`)
 
 **What You Do:**
 
@@ -29,7 +29,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Document validates against `schemas/requirements.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All IDs follow REQ-XXX pattern
 - Completeness:

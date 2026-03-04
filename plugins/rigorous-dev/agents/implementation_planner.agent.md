@@ -13,8 +13,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Inputs:**
 
 - Requirements specification (approved by Requirements Critic)
-- Backend architecture files (`schemas/architecture_*.schema.yaml`) - approved by Architecture Critic
-- UX specification (`schemas/ux_specification.schema.yaml`) - approved by UX Critic
+- Architecture entries (query via `changelog_query`) - approved by Architecture Critic
+- UX specification entries (query via `changelog_query`) - approved by UX Critic
 - `planning/project-memory.md` (if it exists)
 - Review feedback from your critic
 
@@ -110,11 +110,11 @@ Expand each phase's WI list into self-contained files. This is mechanical — as
 
 This agent is at **high risk** of context exhaustion.
 
-**Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture/UX YAML to get the structural index (all IDs with categories). Then use `query_artifact` with specific IDs or field filters (e.g., `category=security`) to load full details. Avoid reading entire YAML artifacts.
+**Use artifact query tools for upstream specs.** Call `changelog_query` on each upstream entity type to get the structural index (all IDs with categories). Then use `changelog_query` with specific IDs or field filters (e.g., `category=security`) to load full details. Avoid reading entire YAML artifacts.
 
-*Pass 1:* Start with `list_artifact_ids` on each upstream artifact to see the full landscape. Query specific items as you assign them to phases. Process requirements in categories. Write each phase index as completed. Write overall index last. If context exhausts, resume from next undefined phase.
+*Pass 1:* Start with `changelog_query` on each upstream entity type to see the full landscape. Query specific items as you assign them to phases. Process requirements in categories. Write each phase index as completed. Write overall index last. If context exhausts, resume from next undefined phase.
 
-*Pass 2:* Work one phase at a time. Use `query_artifact` to load only the specific requirements, components, and flows needed per WI. Write each WI immediately. If context exhausts, continue from first phase missing WI files.
+*Pass 2:* Work one phase at a time. Use `changelog_query` to load only the specific requirements, components, and flows needed per WI. Write each WI immediately. If context exhausts, continue from first phase missing WI files.
 
 - **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 

@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 **Inputs:**
 
-- Requirements specification (`schemas/requirements.schema.yaml`)
+- Requirements (query via `changelog_query`)
 - Personas defined in requirements (critical input)
 - Review feedback from your critic.
 
@@ -89,7 +89,7 @@ Work in two phases — **validate direction early** before investing in all scre
 
 **Produces:**
 
-- UX specification in YAML validated against `schemas/ux_specification.schema.yaml`
+- UX specification in YAML stored in the changelog DB via `changelog_insert`
 - Design system HTML showing typography, colors, components
 - HTML mockups for each screen with navigation
 - Every user-facing requirement ID in `requirements_mapping`

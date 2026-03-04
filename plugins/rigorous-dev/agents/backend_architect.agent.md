@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Requirements specification (approved by Requirements Critic)
 - UX specification (approved by UX Critic)
-- Schemas: `schemas/architecture_*.schema.yaml`
+- Architecture data model (stored in DB via `changelog_insert`)
 - Review feedback from your critic
 
 **Before You Start:**
@@ -56,7 +56,7 @@ Research before recommending. Present findings with source links. Get approval o
 - Design observability (logging, metrics, tracing, health checks)
 - Design security architecture (auth, authorization, data protection, secrets management)
 - Create requirements-to-architecture mapping
-- Document decisions as ADRs (`schemas/architecture_adr.schema.yaml`)
+- Document decisions as ADRs (stored in DB via `changelog_insert`)
 
 **Suggested Defaults** (present with trade-offs; accept user's choice if different):
 
@@ -85,7 +85,7 @@ Each file is self-contained — downstream agents load only what they need. Does
 
 Moderate risk of context exhaustion with extensive requirements/UX specs.
 
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/UX YAML to see all IDs and categories. Then `query_artifact` for specific requirements by category or ID, and specific UX flows. Avoid reading entire YAML artifacts.
+- **Use DB query tools for upstream specs.** Call `changelog_query` with entity_type to list requirements or UX entities. Query specific items by ID for details. Avoid loading all entities at once.
 - Read UX selectively (flows and traceability, not design system or mockups).
 - Write each architecture file as you complete its topic.
 - Research one technology at a time; write ADR before researching next.

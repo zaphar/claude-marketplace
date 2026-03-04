@@ -24,14 +24,17 @@ Skip directly to a specific phase in the workflow. **Use with caution** - skippi
 
 ### 1. Check for Workflow State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `workflow_status` to check whether a workflow exists in the DB:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: No workflow found in this project."
-  echo "Use /rigorous-dev:start to initialize a new workflow."
-  exit 1
-fi
+```
+workflow_status()
+```
+
+If it returns no workflow record, stop with an error:
+
+```
+ERROR: No workflow found in this project.
+Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Validate Arguments
@@ -40,7 +43,7 @@ Check that a phase argument was provided and is valid:
 
 **Valid phases (development workflow only):**
 - `requirements`
-- `ux-design` (maps to `ux_design` in state)
+- `ux-design` (maps to `ux_design` in DB)
 - `architecture`
 - `planning`
 - `implementation`
@@ -66,15 +69,12 @@ Use /rigorous-dev:start-release to begin the release workflow.
 
 ### 3. Load Current State and Check Workflow Status
 
-Read `.claude/rigorous-dev-state.yaml` to get:
+Use the `workflow_status` response to get:
 - Current phase
 - Phase status
 - Workflow status
 
-Check if the workflow is closed:
-
-- If `status` field is missing, treat as `"active"` (backward compatibility)
-- If `status == "closed"`, display error:
+If `status == "closed"`, display error:
 
 ```
 ERROR: This workflow is closed (iteration <iteration_number>).
@@ -134,28 +134,16 @@ Options:
 
 ### 7. Update State if Confirmed
 
-If user confirms, update the state file:
+If user confirms, call `phase_transition` for each phase that needs to change:
 
-1. Mark skipped phases with status "skipped"
-2. Set target phase as "in_progress"
-3. Update `current_phase` to target phase
-4. Set `started_at` for target phase
-5. Update `updated_at` timestamp
-
-Example state update:
-```yaml
-current_phase: "architecture"
-updated_at: "<current_timestamp>"
-phase_status:
-  requirements:
-    status: "skipped"
-  ux_design:
-    status: "skipped"
-  architecture:
-    status: "in_progress"
-    started_at: "<current_timestamp>"
-    iteration_count: 0
-```
+1. For each phase to be skipped (between current and target), call:
+   ```
+   phase_transition({ phase: "<phase_name>", status: "skipped" })
+   ```
+2. For the target phase, call:
+   ```
+   phase_transition({ phase: "<target_phase>", status: "in_progress" })
+   ```
 
 ### 8. Load Target Phase Agent
 

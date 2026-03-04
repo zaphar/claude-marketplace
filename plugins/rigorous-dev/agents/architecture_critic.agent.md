@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Backend architecture YAML files from Backend Architect
-- Schemas: `schemas/architecture_*.schema.yaml`
+- Data model: Architecture entries (validated on insert via `changelog_insert`)
 - Requirements specification (for traceability verification)
 - UX specification (for API and data model verification)
 
@@ -29,7 +29,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Each architecture YAML file validates against its corresponding `schemas/architecture_*.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:

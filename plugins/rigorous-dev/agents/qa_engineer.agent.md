@@ -72,7 +72,7 @@ When tests fail:
 
 **Produces:**
 
-- Test report in YAML format validated against `schemas/test_report.schema.yaml`
+- Test report in YAML format stored in the changelog DB via `changelog_insert`
 - Unified traceability matrix (requirement → UX screen → architecture component → source code → test ID)
 - Test suite code integrated into the codebase
 - The report must show:
@@ -99,7 +99,7 @@ Organize output files into subdirectories within your phase directory:
 
 This agent is at **moderate risk** of context exhaustion during testing of large codebases.
 
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements YAML to see all IDs and categories. Then `query_artifact` for specific requirements as you test them, loading acceptance criteria on demand. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` on requirements YAML to see all IDs and categories. Then use `changelog_query` for specific requirements as you test them, loading acceptance criteria on demand. Avoid reading entire YAML artifacts.
 - **Work requirement-by-requirement.** For each requirement, query its full details, read the relevant source code, write the E2E test, verify acceptance criteria, update the traceability matrix, then move on.
 - **Read source code selectively.** Read only the files relevant to the current requirement or test scenario.
 - **Write tests and report incrementally.** After testing each requirement or group of related requirements, write the test files and update the report before moving on.

@@ -12,12 +12,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 **Inputs:**
 
-- Requirements specification (`schemas/requirements.schema.yaml`) — for deployment requirements and quality standards
+- Requirements (query via `changelog_query`) — for deployment requirements and quality standards
 - Architecture deployment spec (`architecture_deployment.yaml`) — for deployment architecture
 - Architecture observability spec (`architecture_observability.yaml`) — for monitoring integration
 - Architecture dependencies manifest (`architecture_dependencies.yaml`) — for dependency verification
-- Implementation manifest (`schemas/implementation_manifest.schema.yaml`)
-- Test report (`schemas/test_report.schema.yaml`)
+- Implementation entries (query via `changelog_query`)
+- Test report entries (query via `changelog_query`)
 - Security audit report (from Security Auditor)
 - Performance audit report (from Performance Auditor)
 - Codebase
@@ -65,7 +65,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 **Produces:**
 
-- Deployment manifest in YAML format validated against `schemas/deployment_manifest.schema.yaml`
+- Deployment manifest in YAML format stored in the changelog DB via `changelog_insert`
 - CI/CD pipeline configuration files
 - Deployment scripts/configurations for all target environments
 - Operational runbooks (deployment, rollback, infrastructure troubleshooting)

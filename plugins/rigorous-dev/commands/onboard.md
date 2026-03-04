@@ -27,15 +27,18 @@ Bootstrap the rigorous development workflow for an existing codebase by having a
 
 ### 1. Check for Existing Workflow
 
-First, check if `.claude/rigorous-dev-state.yaml` already exists:
+Call `workflow_status` to check whether a workflow already exists in the DB:
 
-```bash
-if [ -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: A workflow already exists in this project."
-  echo "Use /rigorous-dev:resume to continue the existing workflow."
-  echo "Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh."
-  exit 1
-fi
+```
+workflow_status()
+```
+
+If it returns a workflow record, stop with an error:
+
+```
+ERROR: A workflow already exists in this project.
+Use /rigorous-dev:resume to continue the existing workflow.
+Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
 ```
 
 ### 2. Gather Configuration
@@ -60,95 +63,48 @@ Create the configured artifacts directory:
 mkdir -p "<artifacts_directory>"
 ```
 
-### 4. Initialize State File
+### 4. Initialize Workflow in DB
 
-Create `.claude/rigorous-dev-state.yaml`.
+Call `iteration_create` to create the workflow, iteration 1, and all phases in the DB:
 
-**If the project has a visual UI**, set up for UX design first:
+**If the project has a visual UI**, start at `ux_design` with `requirements` skipped:
 
-```yaml
-workflow_id: "rigorous-dev-workflow"
-project_name: "<user_provided_or_inferred>"
-created_at: "<current_timestamp_ISO8601>"
-updated_at: "<current_timestamp_ISO8601>"
-current_phase: "ux_design"
-artifacts_directory: "<user_configured_path>"
-critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
-iteration_number: 1
-status: "active"
-closed_at: null
-notes: "Onboarding from existing codebase"
-phase_status:
-  requirements:
-    status: "skipped"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: "Skipped during onboarding — requirements will be gathered in first iteration after onboarding completes"
-  ux_design:
-    status: "in_progress"
-    started_at: "<current_timestamp_ISO8601>"
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: "Onboarding: documenting existing UX from codebase"
-  architecture:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  planning:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  implementation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    current_phase_number: null
-    notes: ""
-  documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
+```
+iteration_create({
+  project_name: "<user_provided_or_inferred>",
+  artifacts_directory: "<user_configured_path>",
+  critic_model: "<user_selected_model>",
+  iteration_number: 1,
+  starting_phase: "ux_design",
+  notes: "Onboarding from existing codebase",
+  skip_phases: ["requirements"],
+  phase_notes: {
+    requirements: "Skipped during onboarding — requirements will be gathered in first iteration after onboarding completes",
+    ux_design: "Onboarding: documenting existing UX from codebase"
+  }
+})
 ```
 
-**If the project is non-visual**, set `current_phase: "architecture"` and mark UX design as skipped:
+**If the project is non-visual**, start at `architecture` with both `requirements` and `ux_design` skipped:
 
-```yaml
-# Same structure as above, but with these differences:
-current_phase: "architecture"
-critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
-phase_status:
-  requirements:
-    status: "skipped"
-    notes: "Skipped during onboarding — requirements will be gathered in first iteration after onboarding completes"
-  ux_design:
-    status: "skipped"
-    notes: "Non-visual project — no UX design needed"
-  architecture:
-    status: "in_progress"
-    started_at: "<current_timestamp_ISO8601>"
-    notes: "Onboarding: documenting existing architecture from codebase"
-  # ... all other phases (planning, implementation, documentation) "pending" as above
 ```
+iteration_create({
+  project_name: "<user_provided_or_inferred>",
+  artifacts_directory: "<user_configured_path>",
+  critic_model: "<user_selected_model>",
+  iteration_number: 1,
+  starting_phase: "architecture",
+  notes: "Onboarding from existing codebase",
+  skip_phases: ["requirements", "ux_design"],
+  phase_notes: {
+    requirements: "Skipped during onboarding — requirements will be gathered in first iteration after onboarding completes",
+    ux_design: "Non-visual project — no UX design needed",
+    architecture: "Onboarding: documenting existing architecture from codebase"
+  }
+})
+```
+
+No YAML state file is written.
 
 ### 5. Load Rigorous Dev Skill
 
@@ -186,7 +142,7 @@ Load `rigorous-dev:ux_designer`, then apply these **Documentation Mode Overrides
 **GOAL:** Document what EXISTS in the codebase, not design what SHOULD exist.
 
 **Output artifacts** (same structure as normal UX designer output):
-- `ux_specification.yaml` — validated against `schemas/ux_specification.schema.yaml`
+- `ux_specification.yaml` — stored via `changelog_insert` tool
 - `design-system/` subdirectory — HTML document showing the extracted design system (colors, typography, spacing, components found in the code)
 - Screen documentation referencing source files rather than creating new mockups
 
@@ -206,7 +162,7 @@ Load `rigorous-dev:ux_critic`, then apply these **Onboarding Critic Overrides**:
 - Verification against a requirements specification document (none exists yet)
 
 **FOCUS on these checks instead:**
-- Schema compliance: document validates against `schemas/ux_specification.schema.yaml`
+- Data completeness: all required fields are populated in the changelog entries
 - Completeness of codebase documentation: are the major UI areas captured?
 - Internal consistency: do IDs cross-reference correctly, are flows coherent?
 - Design system accuracy: do extracted colors/typography/spacing match what's in the code?
@@ -264,14 +220,14 @@ Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Ove
 - Record architectural decisions that are evident from the code (e.g., "chose SQLite for embedded storage" evident from dependencies)
 
 **Output artifacts** (modular architecture files):
-- `architecture_index.yaml` — validated against `schemas/architecture_index.schema.yaml`
-- `architecture_components.yaml` — validated against `schemas/architecture_components.schema.yaml`
-- `architecture_data_model.yaml` — validated against `schemas/architecture_data_model.schema.yaml`
-- `architecture_deployment.yaml` — validated against `schemas/architecture_deployment.schema.yaml`
-- `architecture_security.yaml` — validated against `schemas/architecture_security.schema.yaml`
-- `architecture_observability.yaml` — validated against `schemas/architecture_observability.schema.yaml`
-- `architecture_traceability.yaml` — validated against `schemas/architecture_traceability.schema.yaml`
-- `architecture_dependencies.yaml` — validated against `schemas/architecture_dependencies.schema.yaml`
+- `architecture_index.yaml` — stored via `changelog_insert` tool
+- `architecture_components.yaml` — stored via `changelog_insert` tool
+- `architecture_data_model.yaml` — stored via `changelog_insert` tool
+- `architecture_deployment.yaml` — stored via `changelog_insert` tool
+- `architecture_security.yaml` — stored via `changelog_insert` tool
+- `architecture_observability.yaml` — stored via `changelog_insert` tool
+- `architecture_traceability.yaml` — stored via `changelog_insert` tool
+- `architecture_dependencies.yaml` — stored via `changelog_insert` tool
 - `api_spec.yaml` — OpenAPI format (if API endpoints exist)
 
 **Schema compliance for onboarding:**
@@ -291,7 +247,7 @@ Load `rigorous-dev:architecture_critic`, then apply these **Onboarding Critic Ov
 - Verification against requirements or UX specification documents
 
 **FOCUS on these checks instead:**
-- Schema compliance: each architecture file validates against its corresponding `schemas/architecture_*.schema.yaml`
+- Data completeness: all required fields are populated in the changelog entries
 - Completeness: are the major architectural components captured?
 - Accuracy: do technology choices match what's actually in the code?
 - Internal consistency: do component dependencies form a valid DAG, do IDs cross-reference correctly across files?
@@ -310,26 +266,13 @@ Run the standard producer-critic loop (up to 3 iterations):
 
 ### 8. Finalize State
 
-After both documentation phases complete (or just architecture for non-visual projects), update the state file:
+After both documentation phases complete (or just architecture for non-visual projects), call `phase_transition` to start the requirements phase:
 
-```yaml
-current_phase: "requirements"
-updated_at: "<current_timestamp_ISO8601>"
-phase_status:
-  requirements:
-    status: "pending"
-    notes: "Ready for first requirements gathering iteration"
-  ux_design:
-    status: "completed"  # or "skipped" for non-visual
-    completed_at: "<timestamp>"
-    approved_by: "ux_critic"
-    artifact_path: "<path_to_ux_design_directory>"
-  architecture:
-    status: "completed"
-    completed_at: "<timestamp>"
-    approved_by: "architecture_critic"
-    artifact_path: "<path_to_architecture_directory>"
 ```
+phase_transition({ phase: "requirements", status: "in_progress" })
+```
+
+The previous phases (ux_design, architecture) are already tracked in the DB by the producer-critic loops above. No separate state file is needed.
 
 ### 9. Success Message
 

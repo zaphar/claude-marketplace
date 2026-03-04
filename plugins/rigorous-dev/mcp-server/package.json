@@ -1,14 +1,12 @@
 {
-  "name": "rigorous-dev-schema-validator",
-  "version": "0.9.1",
+  "name": "rigorous-dev-mcp",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MCP server for YAML schema validation of rigorous-dev artifacts",
+  "description": "MCP server for rigorous-dev changelog database",
   "main": "server.js",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "js-yaml": "^4.1.0"
+    "better-sqlite3": "^11.7.0"
   }
 }

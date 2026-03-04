@@ -12,15 +12,15 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 **Inputs:**
 
-- Requirements specification (`schemas/requirements.schema.yaml`)
+- Requirements (query via `changelog_query`)
 - Architecture index (`architecture_index.yaml`) — for technology choices and overview
 - Architecture components (`architecture_components.yaml`) — for component documentation
 - Architecture API spec (`api_spec.yaml`) — for API reference generation
 - Architecture data model (`architecture_data_model.yaml`) — for data documentation
 - Architecture deployment (`architecture_deployment.yaml`) — for operator docs
 - Architecture observability (`architecture_observability.yaml`) — for monitoring docs
-- Implementation manifest (`schemas/implementation_manifest.schema.yaml`)
-- Deployment manifest (`schemas/deployment_manifest.schema.yaml`) — optional, only available after release workflow runs
+- Implementation entries (query via `changelog_query`)
+- Deployment entries (query via `changelog_query`) — optional, only available after release workflow runs
 - Codebase
 - Glossary from requirements specification
 - `planning/project-memory.md` (if it exists)
@@ -93,7 +93,7 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 **Produces:**
 
-- Documentation manifest in YAML format validated against `schemas/documentation_manifest.schema.yaml`
+- Documentation manifest in YAML format stored in the changelog DB via `changelog_insert`
 - Documentation files in markdown format
 - The manifest must show:
     - Documentation scope determination (which categories apply, which were skipped with reasoning)
@@ -122,7 +122,7 @@ Organize documentation files into subdirectories by audience within your phase d
 
 This agent is at **moderate risk** of context exhaustion when documenting large projects.
 
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to see what's available. Then `query_artifact` for specific requirements or components relevant to the current doc category. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` on requirements/architecture YAML to see what's available. Then use `changelog_query` for specific requirements or components relevant to the current doc category. Avoid reading entire YAML artifacts.
 - **Work one documentation category at a time.** Complete user guide, write files, then move to API reference, etc.
 - **Read upstream specs selectively.** Load only the spec relevant to the current doc category (e.g., `api_spec.yaml` only when writing API docs).
 - **Read source code on demand.** Read specific files to verify behavior or get examples — don't read the entire codebase.

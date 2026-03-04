@@ -15,26 +15,29 @@ Start the release workflow to run pre-release verification: QA testing, security
 
 1. Validates a dev workflow exists and implementation is completed
 2. Checks no active release workflow already exists
-3. Creates `.claude/rigorous-dev-release-state.yaml`
+3. Activates the QA phase in the database
 4. Loads the rigorous-dev skill and begins the QA phase
 
 ## Implementation Steps
 
 ### 1. Check for Dev Workflow State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `workflow_status` to check whether a dev workflow exists:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: No development workflow found in this project."
-  echo "Use /rigorous-dev:start to initialize a development workflow first."
-  exit 1
-fi
+```
+workflow_status()
+```
+
+If no workflow record exists, stop with error:
+
+```
+ERROR: No development workflow found in this project.
+Use /rigorous-dev:start to initialize a development workflow first.
 ```
 
 ### 2. Validate Dev Workflow
 
-Read `.claude/rigorous-dev-state.yaml` and check:
+Check the `workflow_status` response to verify the implementation phase has status "completed".
 
 - Implementation phase must have status "completed"
 - If implementation is not completed:
@@ -50,55 +53,22 @@ Use /rigorous-dev:resume to continue the development workflow.
 
 ### 3. Check for Existing Release Workflow
 
-Check if `.claude/rigorous-dev-release-state.yaml` already exists:
+Check the `workflow_status` response for release phases (qa, audit, release). If any release phase has status "in_progress", a release workflow is already active:
 
-```bash
-if [ -f .claude/rigorous-dev-release-state.yaml ]; then
-  echo "ERROR: A release workflow already exists."
-  echo "Use /rigorous-dev:resume-release to continue the existing release workflow."
-  exit 1
-fi
+```
+ERROR: A release workflow already exists.
+Use /rigorous-dev:resume-release to continue the existing release workflow.
 ```
 
-### 4. Create Release State File
+### 4. Create Release State
 
-Read the dev workflow state to get `workflow_id`, `project_name`, and `artifacts_directory`.
+Call `phase_transition` to start the QA phase:
 
-Create `.claude/rigorous-dev-release-state.yaml`:
-
-```yaml
-workflow_id: "<from_dev_state>"
-project_name: "<from_dev_state>"
-created_at: "<current_timestamp_ISO8601>"
-updated_at: "<current_timestamp_ISO8601>"
-status: "active"
-artifacts_directory: "<from_dev_state>"
-phase_status:
-  qa:
-    status: "in_progress"
-    started_at: "<current_timestamp_ISO8601>"
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  audit:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  release:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
 ```
+phase_transition({ phase: "qa", status: "in_progress" })
+```
+
+The release phases (qa, audit, release) already exist in the DB — they were created by `iteration_create`. No separate state file is needed.
 
 ### 5. Load Rigorous Dev Skill
 

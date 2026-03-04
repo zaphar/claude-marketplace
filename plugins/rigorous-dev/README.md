@@ -22,7 +22,7 @@ The development workflow runs fast iteration loops. When ready to ship, the rele
 
 - **Structured Workflow**: Step-by-step guidance through the complete SDLC
 - **Producer-Critic Pattern**: Every artifact is reviewed and validated before proceeding
-- **Schema Validation**: All outputs conform to well-defined YAML schemas
+- **SQLite Changelog**: All state and decisions are stored in an append-only SQLite database (WAL mode) for full traceability
 - **Iterative Refinement**: Feedback loops for continuous improvement
 - **Review Checkpoints**: Strategic pauses during implementation for user feedback
 - **State Management**: Resume workflows across sessions
@@ -222,7 +222,7 @@ The Requirements Interviewer conducts a conversational interview covering:
 - Deployment and operational requirements
 - Constraints and assumptions
 
-Output: `requirements.yaml` validated against `schemas/requirements.schema.yaml`
+Output: Requirements stored in `.claude/rigorous-dev.db` (personas, goals, constraints, done criteria)
 
 #### 2. Architecture/Design Phase
 
@@ -236,7 +236,7 @@ Output: `requirements.yaml` validated against `schemas/requirements.schema.yaml`
 - Defines design system (colors, typography, spacing)
 - Specifies component hierarchy
 
-Outputs: Modular architecture YAML files (`architecture_index.yaml`, `architecture_components.yaml`, etc.), `api_spec.yaml`, and `ux_specification.yaml`
+Outputs: Architecture decisions, components, and ADRs written to `.claude/rigorous-dev.db` via `changelog_insert` and `revision_create` tools
 
 #### 3. Planning Phase
 
@@ -247,7 +247,7 @@ The Implementation Planner creates a phased plan:
 - Maps requirements to phases
 - Identifies dependencies and risks
 
-Output: `implementation_plan.yaml`
+Output: Implementation plan stored in `.claude/rigorous-dev.db`
 
 #### 4. Implementation Phase
 
@@ -258,7 +258,7 @@ The Senior Developer implements each phase:
 - Pauses at checkpoints for review
 - Produces implementation manifest tracking progress
 
-Output: `implementation_manifest.yaml` + working codebase
+Output: Implementation progress tracked in `.claude/rigorous-dev.db` (phases, revisions, commit links) + working codebase
 
 #### 5. Documentation Phase
 
@@ -268,7 +268,7 @@ The Documentation Master creates:
 - Deployment guides (if release workflow has run)
 - Architecture documentation
 
-Output: `documentation_manifest.yaml`
+Output: Documentation manifest stored in `.claude/rigorous-dev.db`
 
 ### Release Workflow
 
@@ -280,7 +280,7 @@ The QA Engineer validates the implementation:
 - Builds unified traceability matrix
 - Documents bugs and issues
 
-Output: `test_report.yaml`
+Output: Test results and traceability matrix stored in `.claude/rigorous-dev.db`
 
 #### 2. Audit Phase
 
@@ -288,7 +288,7 @@ Security and Performance Auditors run in parallel:
 - **Security Auditor**: OWASP Top 10 review, data flow tracing, dependency audit
 - **Performance Auditor**: Database query analysis, memory patterns, algorithm review
 
-Output: `security_audit.md`, `performance_audit.md`
+Output: `security_audit.md`, `performance_audit.md` (findings also recorded in `.claude/rigorous-dev.db`)
 
 #### 3. Release Phase
 
@@ -297,7 +297,7 @@ The Release Engineer prepares:
 - Release notes
 - Deployment verification checklist
 
-Output: `deployment_manifest.yaml`
+Output: Deployment manifest stored in `.claude/rigorous-dev.db`
 
 ## Directory Structure
 
@@ -326,102 +326,73 @@ rigorous-dev/
 │   ├── documentation_critic.md
 │   ├── release_engineer.md
 │   └── release_critic.md
-└── schemas/                       # YAML schemas for validation
-    ├── requirements.schema.yaml
-    ├── architecture_index.schema.yaml
-    ├── architecture_components.schema.yaml
-    ├── architecture_data_model.schema.yaml
-    ├── architecture_deployment.schema.yaml
-    ├── architecture_security.schema.yaml
-    ├── architecture_observability.schema.yaml
-    ├── architecture_traceability.schema.yaml
-    ├── architecture_dependencies.schema.yaml
-    ├── architecture_adr.schema.yaml
-    ├── ux_specification.schema.yaml
-    ├── implementation_plan.schema.yaml
-    ├── implementation_manifest.schema.yaml
-    ├── test_report.schema.yaml
-    ├── documentation_manifest.schema.yaml
-    ├── deployment_manifest.schema.yaml
-    └── wireframe_comparison.schema.yaml
+└── mcp-server/                    # MCP server with SQLite changelog backend
+    ├── server.js                  # MCP server entry point
+    ├── schema.sql                 # SQLite database schema (WAL mode, append-only changelog)
+    ├── db.js                      # Database initialization and connection
+    ├── write-tools.js             # Write tools (iteration_create, phase_transition, etc.)
+    └── read-tools.js              # Read tools (changelog_query, traceability_query, etc.)
 ```
 
 ## Workflow State
 
-The plugin maintains state in `.claude/rigorous-dev-state.yaml`:
+The plugin maintains all state in a SQLite database at `.claude/rigorous-dev.db` using WAL mode for reliability. The schema is defined in `mcp-server/schema.sql`.
 
-```yaml
-workflow_id: "WORKFLOW-001"
-project_name: "My Project"
-current_phase: "implementation"
-phase_status:
-  requirements:
-    status: "completed"
-    artifact_path: ".claude/rigorous-dev-artifacts/WORKFLOW-001/requirements.yaml"
-  architecture:
-    status: "completed"
-  planning:
-    status: "completed"
-  implementation:
-    status: "in_progress"
-    current_phase_number: 2
-artifacts:
-  - type: "requirements"
-    path: ".claude/rigorous-dev-artifacts/WORKFLOW-001/requirements.yaml"
-    approved_by: "requirements_critic"
-```
+The database is structured as an append-only changelog with normalized tables:
+
+- **`workflow`** — top-level workflow identity and status
+- **`iteration`** — each request to change the system (closed → new-iteration creates a new one)
+- **`phase`** — phase status within an iteration (requirements, architecture, etc.)
+- **`revision`** — producer-critic loop records within each phase
+
+All decisions, artifacts, and transitions are stored as structured rows. No YAML state files are written to disk.
+
+### MCP Tools
+
+**Write tools** (agents call these to record decisions):
+- `iteration_create` — create a new iteration
+- `phase_transition` — advance a phase status (pending → in_progress → completed)
+- `revision_create` / `revision_update` — record producer-critic loops
+- `changelog_insert` — append a structured decision to the changelog
+- `commit_link` — associate a VCS commit with a phase/revision
+- `workflow_update` — update workflow-level metadata
+
+**Read tools** (agents call these to query state):
+- `changelog_query` — query the changelog (supports "Why are we using X?" traceability)
+- `traceability_query` — trace requirements through to implementation and tests
+- `revision_history` — view producer-critic history for a phase
+- `iteration_summary` — summarize the current or a past iteration
+- `workflow_status` — get current workflow status and phase overview
+
+## Changelog & Traceability
+
+Because all decisions are written to the append-only SQLite changelog, the workflow can answer questions like:
+
+- **"Why are we using technology X?"** — `changelog_query` searches decision rationale across all phases
+- **"Which requirements drove this architecture decision?"** — `traceability_query` links requirements → architecture → implementation → tests
+- **"What changed in iteration 3?"** — `iteration_summary` returns a structured diff of decisions made
+- **"How many producer-critic cycles did requirements take?"** — `revision_history` shows the full review trail
+
+This traceability is built-in and requires no extra documentation effort from agents — every `phase_transition`, `revision_create`, and `changelog_insert` call automatically contributes to the audit trail.
 
 ## Artifacts
 
-Artifacts are organized by phase with iteration history in `.claude/rigorous-dev-artifacts/<workflow-id>/`:
+File artifacts (audit reports, generated documentation) are written to `.claude/rigorous-dev-artifacts/<workflow-id>/`. All structured data (requirements, architecture decisions, plans, manifests, test results) is stored in `.claude/rigorous-dev.db` instead of YAML files.
 
 ```
 .claude/rigorous-dev-artifacts/<workflow-id>/
-├── requirements/
-│   ├── iteration-1/requirements.yaml
-│   ├── iteration-2/requirements.yaml
-│   └── requirements.yaml              # Final approved version
-├── ux_design/                             # persistent — updated in-place
-│   ├── ux_specification.yaml
-│   ├── design-system/
-│   └── mockups/
-├── architecture/                          # persistent — updated in-place
-│   ├── architecture_index.yaml
-│   ├── architecture_components.yaml
-│   ├── architecture_data_model.yaml
-│   ├── architecture_deployment.yaml
-│   ├── architecture_security.yaml
-│   ├── architecture_observability.yaml
-│   ├── architecture_traceability.yaml
-│   ├── architecture_dependencies.yaml
-│   ├── architecture_adr.yaml
-│   └── api_spec.yaml
-├── planning/                              # persistent — updated in-place
-│   └── implementation_plan.yaml
-├── implementation/
-│   ├── phase-1/implementation_manifest.yaml
-│   ├── phase-2/implementation_manifest.yaml
-│   └── phase-N/implementation_manifest.yaml
-├── qa/
-│   └── test_report.yaml
 ├── audit/
 │   ├── security_audit.md
 │   └── performance_audit.md
-├── documentation/                         # persistent — updated in-place
-│   ├── documentation_manifest.yaml
-│   ├── user-guide/
-│   └── api/
-└── release/
-    └── deployment_manifest.yaml
+└── documentation/                         # persistent — updated in-place
+    ├── user-guide/
+    └── api/
 ```
 
 **Key Points:**
-- Each phase has its own directory
-- **Persistent artifacts** (ux_design, architecture, planning, documentation) are updated in-place — no iteration directories
-- **Dev versioned artifacts** (requirements, implementation) use iteration directories during producer-critic loops
-- **Release workflow artifacts** (qa, audit, release) are owned by the release workflow and use iteration directories
-- Final approved versioned artifacts are copied to the phase root level
-- Implementation phase uses `phase-N` directories for sequential implementation phases
+- Structured phase data (requirements, architecture, planning, implementation, QA, release) lives in the SQLite DB — query it with `changelog_query`, `traceability_query`, or `iteration_summary`
+- File artifacts are only written where a document format is more appropriate (audit reports, doc pages)
+- Release workflow phase tracking is stored in the DB alongside development phases — no separate release state file
 
 ## Customization
 
@@ -433,20 +404,21 @@ Edit agent files in `agents/` to customize personalities and behaviors:
 vim agents/senior_developer.md
 ```
 
-### Extending Schemas
+### Extending the Schema
 
-Modify schema files in `schemas/` to add custom fields:
+Modify `mcp-server/schema.sql` to add custom tables or columns, then update the corresponding tool handlers in `write-tools.js` and `read-tools.js`:
 
 ```bash
-vim schemas/requirements.schema.yaml
+vim mcp-server/schema.sql
 ```
 
 ### Adding New Phases
 
 1. Create new agent files for producer and critic
-2. Add schema for the phase output
-3. Update `rigorous-dev.md` to include the new phase
-4. Update state management logic
+2. Add any new tables/columns to `mcp-server/schema.sql`
+3. Add write/read tool handlers in `write-tools.js` and `read-tools.js`
+4. Update `rigorous-dev.md` to include the new phase
+5. Update workflow orchestration logic
 
 ## Best Practices
 
@@ -461,10 +433,12 @@ vim schemas/requirements.schema.yaml
 
 ### "Workflow state not found"
 - Start a new workflow with `/rigorous-dev:start`
+- If `.claude/rigorous-dev.db` exists but is corrupt, back it up and re-run `/rigorous-dev:start`
 
-### "Schema validation failed"
-- Check the artifact against the schema in `schemas/`
-- The critic should provide specific errors
+### "Database error" or MCP tool failure
+- Check that the MCP server is running: the `schema-validator` server in `.mcp.json` starts automatically
+- Ensure `mcp-server/node_modules` is installed (`cd mcp-server && npm install`)
+- Inspect the DB directly: `sqlite3 .claude/rigorous-dev.db ".tables"`
 
 ### "Too many iterations"
 - After 3 producer-critic cycles, you'll be prompted for guidance

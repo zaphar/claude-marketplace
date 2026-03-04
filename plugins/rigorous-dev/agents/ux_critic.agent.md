@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - UX specification from UX Designer
-- Schema: `schemas/ux_specification.schema.yaml`
+- Data model: UX specification entries (validated on insert via `changelog_insert`)
 - Requirements specification (for traceability verification)
 
 **What You Do:**
@@ -47,7 +47,7 @@ When reviewing the complete set of mockups after design direction is approved:
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Document validates against `schemas/ux_specification.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All IDs follow correct patterns (FLOW-XXX, SCREEN-XXX, PERSONA-XXX)
 - Completeness (Phase 2 only):

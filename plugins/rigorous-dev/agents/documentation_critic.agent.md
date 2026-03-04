@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Documentation manifest from Documentation Master
-- Schema: `schemas/documentation_manifest.schema.yaml`
+- Data model: Documentation entries (validated on insert via `changelog_insert`)
 - Documentation files
 - Requirements specification (for coverage verification)
 - Glossary from requirements specification
@@ -37,7 +37,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Manifest validates against `schemas/documentation_manifest.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All document paths are valid
 - Scope determination:

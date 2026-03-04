@@ -111,7 +111,7 @@ tools: Read, Grep, Glob, Bash
 
 - Review test files one at a time for large WIs
 - Write findings incrementally after reviewing each file
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` to get the structural index, then `query_artifact` with specific IDs for coverage checks. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve the structural index for coverage checks. Avoid reading entire YAML artifacts.
 - On re-review cycles, read only previous review issues and changed files
 
 **Escalation:**

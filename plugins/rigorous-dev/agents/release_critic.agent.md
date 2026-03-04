@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Deployment manifest from Release Engineer
-- Schema: `schemas/deployment_manifest.schema.yaml`
+- Data model: Deployment entries (validated on insert via `changelog_insert`)
 - CI/CD pipeline configuration
 - Deployment scripts and runbooks
 - `CHANGELOG.md`
@@ -35,7 +35,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Schema validation:
-    - [ ] Manifest validates against `schemas/deployment_manifest.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
 - Completeness:
     - [ ] Pipeline configuration created

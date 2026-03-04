@@ -13,7 +13,7 @@ Resume an existing rigorous development workflow from saved state.
 ## What This Command Does
 
 1. Checks if a workflow exists (error if it doesn't)
-2. Loads workflow state from `.claude/rigorous-dev-state.yaml`
+2. Loads workflow state from the database
 3. Displays current status
 4. Loads the rigorous-dev skill with context
 5. Continues from the current phase
@@ -22,21 +22,23 @@ Resume an existing rigorous development workflow from saved state.
 
 ### 1. Check for Workflow State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `workflow_status` to check whether a workflow exists in the DB:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: No workflow found in this project."
-  echo "Use /rigorous-dev:start to initialize a new workflow."
-  exit 1
-fi
+```
+workflow_status()
+```
+
+If it returns no workflow record, stop with an error:
+
+```
+ERROR: No workflow found in this project.
+Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Check Workflow Status
 
-After loading the state, check if the workflow is closed:
+Inspect the `status` field in the `workflow_status` response:
 
-- If `status` field is missing, treat as `"active"` (backward compatibility)
 - If `status == "closed"`, display error:
 
 ```
@@ -47,7 +49,7 @@ Use /rigorous-dev:new-iteration to start a new iteration.
 
 ### 3. Load Workflow State
 
-Read and parse `.claude/rigorous-dev-state.yaml` to extract:
+Use the data returned by `workflow_status` to extract:
 - Project name
 - Current phase
 - Phase status
@@ -99,7 +101,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 ### 7. Context Handoff
 
-When loading the agent, provide context about:
+When loading the agent, provide context from the `workflow_status` response about:
 - What artifacts already exist
 - Current iteration count
 - Any notes from previous work

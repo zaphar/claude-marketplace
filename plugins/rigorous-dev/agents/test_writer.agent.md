@@ -80,7 +80,7 @@ Before submitting for critic: verify every acceptance criterion has at least one
 High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to get the structural index, then `query_artifact` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` on requirements/architecture YAML to get the structural index, then use `changelog_query` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
 - After completing WI, write to disk and commit. Do not compact context — context compaction within a sub-agent session breaks tool calling.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
 - **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
