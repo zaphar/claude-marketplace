@@ -1,63 +1,60 @@
 # Core Spine Tables
 
-These four tables form the backbone of the entire data model. Every other table in the system exists to record artifacts produced during the development lifecycle, and each of those tables traces back to this spine. The hierarchy flows strictly downward: a **workflow** is the root identity for a project, **iterations** represent discrete change-request cycles within that project, **phases** represent the nine SDLC stages executed within each iteration, and **revisions** represent individual producer-critic loop attempts within a phase.
+These four tables form the backbone of the entire data model. Every other table in the system exists to record artifacts produced during the development lifecycle, and each of those tables traces back to this spine. The hierarchy flows strictly downward: a **project** is the root identity for a project, **iterations** represent discrete change-request cycles within that project, **phases** represent the nine SDLC stages executed within each iteration, and **revisions** represent individual producer-critic loop attempts within a phase.
 
-The core spine is write-once and append-forward. Workflows are created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
+The core spine is write-once and append-forward. The project row is created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
 
 Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries an `iteration_id` (NOT NULL) and optionally a `revision_id` to record exactly when and why it was produced. This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
 
 ---
 
-## workflow
+## project
 
-**Purpose:** Project root. One row per project. Holds the project identity, current status, and global configuration such as which critic model to use.
+**Purpose:** Project-level config and lifecycle state. Singleton — exactly one row per database, enforced by CHECK(id = 1).
 
-**Context:** Created by `iteration_create` on first run (alongside the first iteration and its phases). Status transitions to `closed` via `workflow_update`. The canonical "is this project active?" check is `status = 'active'`.
+**Context:** Created by `iteration_create` on first run (alongside the first iteration and its phases). Status transitions to `closed` via `project_update`. The canonical "is this project active?" check is `status = 'active'`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `id` | TEXT | PRIMARY KEY | Workflow identifier. Typically a short human-readable slug (e.g. `my-project`). |
+| `id` | INTEGER | PRIMARY KEY CHECK(id = 1) | Singleton enforcer. Always 1. |
 | `project_name` | TEXT | NOT NULL | Human-readable project name. |
-| `created_at` | TEXT | NOT NULL | ISO-8601 timestamp when the workflow was created. |
+| `created_at` | TEXT | NOT NULL | ISO-8601 timestamp when the project was created. |
 | `updated_at` | TEXT | NOT NULL | ISO-8601 timestamp of the last update to this row. |
 | `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. `active` while work is ongoing; `closed` when the project is complete or archived. |
-| `closed_at` | TEXT | — | ISO-8601 timestamp when the workflow was closed. NULL while active. |
-| `critic_model` | TEXT | DEFAULT `'sonnet'` | The LLM model identifier used for critic agents in this workflow. |
-| `notes` | TEXT | DEFAULT `''` | Free-text notes about the workflow. |
+| `closed_at` | TEXT | — | ISO-8601 timestamp when the project was closed. NULL while active. |
+| `critic_model` | TEXT | DEFAULT `'sonnet'` | The LLM model identifier used for critic agents in this project. |
+| `notes` | TEXT | DEFAULT `''` | Free-text notes about the project. |
 
 **Relationships:**
-- Children: `iteration` (via `workflow_id`)
+- Children: `iteration` (implicitly the single project; no FK needed)
 
-**Produced by:** `iteration_create` (creates workflow + first iteration + phases in one call)
-**Queried by:** `workflow_status`
-**Updated by:** `workflow_update`
+**Produced by:** `iteration_create` (creates project + first iteration + phases in one call)
+**Queried by:** `project_status`
+**Updated by:** `project_update`
 
 ---
 
 ## iteration
 
-**Purpose:** A single change-request cycle within a project. Each time new work is requested — a new feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered sequentially within a workflow.
+**Purpose:** A single change-request cycle within a project. Each time new work is requested — a new feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered sequentially.
 
 **Context:** Created by `iteration_create`. An iteration encompasses all nine phases and their revision attempts. All changelog entities carry `iteration_id` so that every artifact can be attributed to the change cycle that produced it. Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `workflow_id` | TEXT | NOT NULL, REFERENCES `workflow(id)` | Parent workflow. |
-| `iteration_number` | INTEGER | NOT NULL, UNIQUE with `workflow_id` | 1-based sequence number within the workflow. Enforced unique per workflow. |
-| `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. Only one iteration should be `active` at a time per workflow. |
+| `iteration_number` | INTEGER | NOT NULL, UNIQUE | 1-based sequence number. Enforced globally unique. |
+| `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. Only one iteration should be `active` at a time. |
 | `started_at` | TEXT | NOT NULL | ISO-8601 timestamp when this iteration was opened. |
 | `closed_at` | TEXT | — | ISO-8601 timestamp when this iteration was closed. NULL while active. |
 | `notes` | TEXT | DEFAULT `''` | Free-text notes about this iteration's scope or outcomes. |
 
-**Unique constraint:** `(workflow_id, iteration_number)` — iteration numbers are unique per workflow.
-
 **Relationships:**
-- Parent: `workflow` (via `workflow_id`)
+- Parent: `project` (implicitly the single project; no FK needed)
 - Children: `phase` (via `iteration_id`), all changelog entity tables (via `iteration_id`)
 
 **Produced by:** `iteration_create`
-**Queried by:** `workflow_status`, `iteration_summary`
+**Queried by:** `project_status`, `iteration_summary`
 
 ---
 
@@ -88,7 +85,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Produced by:** `iteration_create` (all nine phase rows created at once)
 **Updated by:** `phase_transition`
-**Queried by:** `workflow_status`, `iteration_summary`
+**Queried by:** `project_status`, `iteration_summary`
 
 ---
 

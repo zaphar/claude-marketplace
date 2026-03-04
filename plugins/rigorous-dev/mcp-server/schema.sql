@@ -3,9 +3,9 @@
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 
--- Core workflow identity
-CREATE TABLE IF NOT EXISTS workflow (
-  id TEXT PRIMARY KEY,
+-- Project-level config and lifecycle (singleton — one row per repo DB)
+CREATE TABLE IF NOT EXISTS project (
+  id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -18,13 +18,11 @@ CREATE TABLE IF NOT EXISTS workflow (
 -- Iterations: each request to change the system
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  workflow_id TEXT NOT NULL REFERENCES workflow(id),
-  iteration_number INTEGER NOT NULL,
+  iteration_number INTEGER NOT NULL UNIQUE,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
   started_at TEXT NOT NULL,
   closed_at TEXT,
-  notes TEXT DEFAULT '',
-  UNIQUE(workflow_id, iteration_number)
+  notes TEXT DEFAULT ''
 );
 
 -- Phases within an iteration

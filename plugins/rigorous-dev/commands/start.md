@@ -13,7 +13,7 @@ Initialize a new rigorous development workflow for this project.
 
 ## What This Command Does
 
-1. Checks if a workflow already exists (error if it does)
+1. Checks if a project already exists (error if it does)
 2. Prompts user for project configuration
 3. Creates artifacts directory
 4. Initializes workflow state file
@@ -21,18 +21,18 @@ Initialize a new rigorous development workflow for this project.
 
 ## Implementation Steps
 
-### 1. Check for Existing Workflow
+### 1. Check for Existing Project
 
-Call `workflow_status` to check whether a workflow already exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns a workflow record, stop with an error:
+Call `project_status` to check whether a project already exists in the DB:
 
 ```
-ERROR: A workflow already exists in this project.
+project_status()
+```
+
+If it returns a project record, stop with an error:
+
+```
+ERROR: A project already exists in this directory.
 Use /rigorous-dev:resume to continue the existing workflow.
 Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
 ```
@@ -58,9 +58,9 @@ Create the configured artifacts directory:
 mkdir -p "<artifacts_directory>"
 ```
 
-### 4. Initialize Workflow in DB
+### 4. Initialize Project in DB
 
-Call `iteration_create` to create the workflow, iteration 1, and all phases in the DB:
+Call `iteration_create` to create the project, iteration 1, and all phases in the DB:
 
 ```
 iteration_create({
@@ -72,7 +72,7 @@ iteration_create({
 })
 ```
 
-This creates the workflow record, the first iteration, and all phase rows (requirements, ux_design, architecture, planning, implementation, documentation) with requirements set to `in_progress` and the rest `pending`. No YAML state file is written.
+This creates the project record, the first iteration, and all phase rows (requirements, ux_design, architecture, planning, implementation, documentation) with requirements set to `in_progress` and the rest `pending`. No YAML state file is written.
 
 ### 5. Load Rigorous Dev Skill
 

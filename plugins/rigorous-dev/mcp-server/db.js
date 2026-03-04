@@ -27,7 +27,7 @@ export function getDb() {
   db.pragma("foreign_keys=ON");
 
   const tableExists = db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='workflow'")
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project'")
     .get();
 
   if (!tableExists) {

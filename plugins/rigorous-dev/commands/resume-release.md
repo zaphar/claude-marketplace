@@ -22,10 +22,10 @@ Resume an existing release workflow from saved state.
 
 ### 1. Check for Release Workflow State
 
-Call `workflow_status` to check whether release phases exist and have any activity:
+Call `project_status` to check whether release phases exist and have any activity:
 
 ```
-workflow_status()
+project_status()
 ```
 
 Check if release phases (qa, audit, release) exist. If none have been started (all pending), show error suggesting /rigorous-dev:start-release:
@@ -37,7 +37,7 @@ Use /rigorous-dev:start-release to initialize a release workflow.
 
 ### 2. Check Release Workflow Status
 
-Check the `workflow_status` response for release phase statuses.
+Check the `project_status` response for release phase statuses.
 
 - If all release phases have status "completed", display:
 
@@ -48,7 +48,7 @@ To start a new release workflow, run /rigorous-dev:start-release.
 
 ### 3. Load Release Workflow State
 
-Use the `workflow_status` response data to extract:
+Use the `project_status` response data to extract:
 - Project name
 - Current phase (first in_progress or first pending release phase)
 - Phase statuses
@@ -96,7 +96,7 @@ Based on the current phase and its status, load the appropriate agent:
 ### 7. Context Handoff
 
 When loading the agent, provide context about:
-- What dev workflow artifacts exist (from `workflow_status` and `changelog_query` responses)
+- What dev workflow artifacts exist (from `project_status` and `changelog_query` responses)
 - What release artifacts already exist
 - Current iteration count
 - Any notes from previous work

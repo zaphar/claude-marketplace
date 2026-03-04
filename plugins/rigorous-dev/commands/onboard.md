@@ -15,7 +15,7 @@ Bootstrap the rigorous development workflow for an existing codebase by having a
 
 ## What This Command Does
 
-1. Checks if a workflow already exists (error if it does)
+1. Checks if a project already exists (error if it does)
 2. Prompts user for project configuration
 3. Creates artifacts directory
 4. Initializes workflow state file
@@ -25,18 +25,18 @@ Bootstrap the rigorous development workflow for an existing codebase by having a
 
 ## Implementation Steps
 
-### 1. Check for Existing Workflow
+### 1. Check for Existing Project
 
-Call `workflow_status` to check whether a workflow already exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns a workflow record, stop with an error:
+Call `project_status` to check whether a project already exists in the DB:
 
 ```
-ERROR: A workflow already exists in this project.
+project_status()
+```
+
+If it returns a project record, stop with an error:
+
+```
+ERROR: A project already exists in this directory.
 Use /rigorous-dev:resume to continue the existing workflow.
 Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
 ```

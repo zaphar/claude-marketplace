@@ -616,24 +616,24 @@ function revisionHistory(args) {
 
 function iterationSummary(args) {
   const db = getDb();
-  const { iteration_id, workflow_id, iteration_number } = args;
+  const { iteration_id, iteration_number } = args;
 
   let resolvedId = iteration_id;
 
-  if (!resolvedId && workflow_id && iteration_number !== undefined) {
+  if (!resolvedId && iteration_number !== undefined) {
     const it = db
-      .prepare("SELECT id FROM iteration WHERE workflow_id = ? AND iteration_number = ?")
-      .get(workflow_id, iteration_number);
+      .prepare("SELECT id FROM iteration WHERE iteration_number = ?")
+      .get(iteration_number);
     if (!it) {
       throw new Error(
-        `Iteration ${iteration_number} not found for workflow ${workflow_id}`
+        `Iteration ${iteration_number} not found`
       );
     }
     resolvedId = it.id;
   }
 
   if (!resolvedId) {
-    throw new Error("Provide iteration_id, or both workflow_id and iteration_number");
+    throw new Error("Provide iteration_id or iteration_number");
   }
 
   const iteration = db.prepare("SELECT * FROM iteration WHERE id = ?").get(resolvedId);
@@ -684,27 +684,26 @@ function iterationSummary(args) {
 }
 
 // ---------------------------------------------------------------------------
-// Tool 5: workflow_status
+// Tool 5: project_status
 // ---------------------------------------------------------------------------
 
-function workflowStatus(args) {
+function projectStatus(args) {
   const db = getDb();
-  const { workflow_id } = args;
 
-  const workflow = db.prepare("SELECT * FROM workflow WHERE id = ?").get(workflow_id);
-  if (!workflow) throw new Error(`Workflow "${workflow_id}" not found`);
+  const project = db.prepare("SELECT * FROM project WHERE id = 1").get();
+  if (!project) throw new Error("Project not found — run iteration_create first");
 
   const currentIteration = db
     .prepare(
-      "SELECT * FROM iteration WHERE workflow_id = ? AND status = 'active' ORDER BY iteration_number DESC LIMIT 1"
+      "SELECT * FROM iteration WHERE status = 'active' ORDER BY iteration_number DESC LIMIT 1"
     )
-    .get(workflow_id);
+    .get();
 
   const targetIterationId = currentIteration
     ? currentIteration.id
     : db
-        .prepare("SELECT id FROM iteration WHERE workflow_id = ? ORDER BY iteration_number DESC LIMIT 1")
-        .get(workflow_id)?.id;
+        .prepare("SELECT id FROM iteration ORDER BY iteration_number DESC LIMIT 1")
+        .get()?.id;
 
   const phases = targetIterationId
     ? db
@@ -720,7 +719,7 @@ function workflowStatus(args) {
         .all(targetIterationId)
     : [];
 
-  return { workflow, current_iteration: currentIteration ?? null, phases };
+  return { project, current_iteration: currentIteration ?? null, phases };
 }
 
 // ---------------------------------------------------------------------------
@@ -828,30 +827,20 @@ export const READ_TOOLS = [
           type: "number",
           description: "Direct iteration ID",
         },
-        workflow_id: {
-          type: "string",
-          description: "Workflow ID (use with iteration_number to look up the iteration)",
-        },
         iteration_number: {
           type: "number",
-          description: "Iteration number within the workflow",
+          description: "Iteration number (alternative to iteration_id)",
         },
       },
     },
   },
   {
-    name: "workflow_status",
+    name: "project_status",
     description:
-      "Get the full workflow status. Returns workflow metadata, the current active iteration, and all phases with status, timestamps, and revision counts. Replaces reading the YAML state file.",
+      "Get the full project status. Returns project metadata, the current active iteration, and all phases with status, timestamps, and revision counts. No parameters needed.",
     inputSchema: {
       type: "object",
-      properties: {
-        workflow_id: {
-          type: "string",
-          description: "Workflow identifier",
-        },
-      },
-      required: ["workflow_id"],
+      properties: {},
     },
   },
 ];
@@ -870,8 +859,8 @@ export function handleReadTool(name, args) {
       return revisionHistory(args);
     case "iteration_summary":
       return iterationSummary(args);
-    case "workflow_status":
-      return workflowStatus(args);
+    case "project_status":
+      return projectStatus(args);
     default:
       throw new Error(`Unknown read tool: "${name}"`);
   }

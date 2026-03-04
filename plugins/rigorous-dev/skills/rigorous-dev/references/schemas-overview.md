@@ -13,12 +13,12 @@ Four tables form the backbone — everything else hangs off them:
 
 | Table | PK | Purpose |
 |-------|-----|---------|
-| `workflow` | `id TEXT` | Single row per project. Identity, status (active/closed), critic model, timestamps. |
-| `iteration` | `id INTEGER` | Each change-request cycle. Links to workflow via `workflow_id`. `iteration_number` tracks version (1, 2, 3…). |
+| `project` | `id INTEGER` | Single row per database (singleton). Identity, status (active/closed), critic model, timestamps. |
+| `iteration` | `id INTEGER` | Each change-request cycle. `iteration_number` tracks version (1, 2, 3…). |
 | `phase` | `id INTEGER` | 9 phases per iteration: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit, release. Tracks status, timestamps, approval. |
 | `revision` | `id INTEGER` | Producer-critic loop attempts within a phase. Tracks producer/critic agents, feedback text, verdict (draft → submitted → approved/rejected). |
 
-**Hierarchy:** workflow → iteration → phase → revision
+**Hierarchy:** project → iteration → phase → revision
 
 Every changelog entity below carries `iteration_id` and optionally `revision_id` to trace exactly when and why it was created.
 
@@ -229,12 +229,12 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 | Tool | Purpose |
 |------|---------|
 | `changelog_insert` | Insert any entity type with full normalization into child tables. Main workhorse — handles ~20 entity types. |
-| `iteration_create` | Create workflow + iteration + all phase rows in one call. |
+| `iteration_create` | Create project + iteration + all phase rows in one call. |
 | `phase_transition` | Update phase status (pending → in_progress → completed/skipped). |
 | `revision_create` | Start a new producer-critic revision within a phase. |
 | `revision_update` | Record critic verdict (approved/rejected) with feedback. |
 | `commit_link` | Link a VCS commit to the current iteration. |
-| `workflow_update` | Update workflow status (e.g., close it). |
+| `project_update` | Update project status (e.g., close it). |
 
 ### Read Tools
 
@@ -244,7 +244,7 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |
 | `iteration_summary` | Phase-level summary for an iteration. |
-| `workflow_status` | Current workflow state, phases, and progress. |
+| `project_status` | Current project state, phases, and progress. |
 
 ## Key Design Principles
 
@@ -412,6 +412,6 @@ All 145 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
-| `workflow` | [core](tables/core.md) |
+| `project` | [core](tables/core.md) |
 
 **Total: 145 tables across 11 domains**

@@ -18,29 +18,29 @@ const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb();
-  const { workflow_id, iteration_number, project_name, critic_model } = args;
+  const { iteration_number, project_name, critic_model } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
-    // Ensure workflow exists
+    // Ensure project singleton exists
     const existing = db
-      .prepare("SELECT id FROM workflow WHERE id = ?")
-      .get(workflow_id);
+      .prepare("SELECT id FROM project WHERE id = 1")
+      .get();
 
     if (!existing) {
       db.prepare(
-        `INSERT INTO workflow (id, project_name, created_at, updated_at, status, critic_model, notes)
-         VALUES (?, ?, ?, ?, 'active', ?, '')`
-      ).run(workflow_id, project_name || workflow_id, now, now, critic_model || "sonnet");
+        `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes)
+         VALUES (1, ?, ?, ?, 'active', ?, '')`
+      ).run(project_name || "default", now, now, critic_model || "sonnet");
     }
 
     // Create iteration
     const iterResult = db
       .prepare(
-        `INSERT INTO iteration (workflow_id, iteration_number, status, started_at, notes)
-         VALUES (?, ?, 'active', ?, '')`
+        `INSERT INTO iteration (iteration_number, status, started_at, notes)
+         VALUES (?, 'active', ?, '')`
       )
-      .run(workflow_id, iteration_number, now);
+      .run(iteration_number, now);
 
     const iteration_id = iterResult.lastInsertRowid;
 
@@ -58,7 +58,7 @@ function iterationCreate(args) {
 
     setInProgress.run(now, iteration_id);
 
-    return { iteration_id, workflow_id, iteration_number };
+    return { iteration_id, iteration_number };
   });
 
   return run();
@@ -834,13 +834,13 @@ function commitLink(args) {
   return { id: result.lastInsertRowid, commit_sha };
 }
 
-function workflowUpdate(args) {
+function projectUpdate(args) {
   const db = getDb();
-  const { workflow_id, status, closed_at, notes, critic_model } = args;
+  const { status, closed_at, notes, critic_model } = args;
   const now = new Date().toISOString();
 
   const sets = ["updated_at = @now"];
-  const params = { workflow_id, now };
+  const params = { now };
 
   if (status !== undefined) { sets.push("status = @status"); params.status = status; }
   if (closed_at !== undefined) { sets.push("closed_at = @closed_at"); params.closed_at = closed_at; }
@@ -848,11 +848,12 @@ function workflowUpdate(args) {
   if (critic_model !== undefined) { sets.push("critic_model = @critic_model"); params.critic_model = critic_model; }
 
   db.prepare(
-    `UPDATE workflow SET ${sets.join(", ")} WHERE id = @workflow_id`
+    `UPDATE project SET ${sets.join(", ")} WHERE id = 1`
   ).run(params);
 
-  const row = db.prepare("SELECT id, status FROM workflow WHERE id = ?").get(workflow_id);
-  return { workflow_id: row.id, status: row.status };
+  const row = db.prepare("SELECT * FROM project WHERE id = 1").get();
+  if (!row) throw new Error("Project not found — run iteration_create first");
+  return { status: row.status, project_name: row.project_name };
 }
 
 // ---------------------------------------------------------------------------
@@ -863,16 +864,15 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_create",
     description:
-      "Creates a new iteration within a workflow. If the workflow doesn't exist, creates it. Creates all 9 phase records and sets requirements to in_progress.",
+      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 9 phase records and sets requirements to in_progress.",
     inputSchema: {
       type: "object",
       properties: {
-        workflow_id: { type: "string", description: "Workflow identifier (TEXT primary key)" },
-        iteration_number: { type: "integer", description: "Iteration number within the workflow" },
-        project_name: { type: "string", description: "Project name (used if workflow must be created)" },
+        iteration_number: { type: "integer", description: "Iteration number (1-based)" },
+        project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
       },
-      required: ["workflow_id", "iteration_number"],
+      required: ["iteration_number"],
     },
   },
   {
@@ -983,18 +983,16 @@ export const WRITE_TOOLS = [
     },
   },
   {
-    name: "workflow_update",
-    description: "Updates workflow-level fields (status, notes, critic_model, closed_at).",
+    name: "project_update",
+    description: "Updates project-level fields (status, notes, critic_model, closed_at).",
     inputSchema: {
       type: "object",
       properties: {
-        workflow_id: { type: "string" },
         status: { type: "string", enum: ["active", "closed"] },
         closed_at: { type: "string" },
         notes: { type: "string" },
         critic_model: { type: "string" },
       },
-      required: ["workflow_id"],
     },
   },
 ];
@@ -1017,8 +1015,8 @@ export function handleWriteTool(name, args) {
       return changelogInsert(args);
     case "commit_link":
       return commitLink(args);
-    case "workflow_update":
-      return workflowUpdate(args);
+    case "project_update":
+      return projectUpdate(args);
     default:
       throw new Error(`Unknown write tool: ${name}`);
   }

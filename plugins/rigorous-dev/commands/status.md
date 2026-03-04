@@ -18,18 +18,18 @@ Display the current status and progress of the rigorous development workflow.
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Call `workflow_status` to check whether a workflow exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns no workflow record, display:
+Call `project_status` to check whether a project exists in the DB:
 
 ```
-No active workflow found.
+project_status()
+```
+
+If it returns no project record, display:
+
+```
+No active project found.
 
 Use /rigorous-dev:start to initialize a new workflow.
 ```
@@ -38,7 +38,7 @@ Exit without error.
 
 ### 2. Load and Parse State
 
-Call `iteration_summary` to get full phase-level details for the current iteration alongside the `workflow_status` result.
+Call `iteration_summary` to get full phase-level details for the current iteration alongside the `project_status` result.
 
 ### 3. Display Formatted Status
 
@@ -48,7 +48,6 @@ Present the status in a clear, visual format:
 📋 Rigorous Dev Workflow Status
 
 Project: <project_name>
-Workflow ID: <workflow_id>
 Iteration: <iteration_number>
 Status: <active|closed>
 <if closed>Closed at: <closed_at></if>
@@ -82,7 +81,7 @@ Progress:
 <status_indicator> Documentation
    [same format as above]
 
-<if release phases exist in workflow_status>
+<if release phases exist in project_status>
 Release Workflow:
 <status_indicator> QA
    [same format as above]
@@ -120,7 +119,7 @@ Call `changelog_query` to retrieve artifact entries recorded in the DB and list 
 
 ### 5. Display Last Updated
 
-The `updated_at` timestamp comes from the `workflow_status` response; no separate write is needed.
+The `updated_at` timestamp comes from the `project_status` response; no separate write is needed.
 
 ## Output Format Example
 
@@ -128,7 +127,6 @@ The `updated_at` timestamp comes from the `workflow_status` response; no separat
 📋 Rigorous Dev Workflow Status
 
 Project: My Project
-Workflow ID: rigorous-dev-workflow
 Iteration: 1
 Status: active
 Artifacts: .claude/rigorous-dev-artifacts

@@ -22,22 +22,22 @@ Start the release workflow to run pre-release verification: QA testing, security
 
 ### 1. Check for Dev Workflow State
 
-Call `workflow_status` to check whether a dev workflow exists:
+Call `project_status` to check whether a dev workflow exists:
 
 ```
-workflow_status()
+project_status()
 ```
 
-If no workflow record exists, stop with error:
+If no project record exists, stop with error:
 
 ```
-ERROR: No development workflow found in this project.
+ERROR: No project found.
 Use /rigorous-dev:start to initialize a development workflow first.
 ```
 
 ### 2. Validate Dev Workflow
 
-Check the `workflow_status` response to verify the implementation phase has status "completed".
+Check the `project_status` response to verify the implementation phase has status "completed".
 
 - Implementation phase must have status "completed"
 - If implementation is not completed:
@@ -53,7 +53,7 @@ Use /rigorous-dev:resume to continue the development workflow.
 
 ### 3. Check for Existing Release Workflow
 
-Check the `workflow_status` response for release phases (qa, audit, release). If any release phase has status "in_progress", a release workflow is already active:
+Check the `project_status` response for release phases (qa, audit, release). If any release phase has status "in_progress", a release workflow is already active:
 
 ```
 ERROR: A release workflow already exists.

@@ -355,14 +355,14 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `revision_create` / `revision_update` — record producer-critic loops
 - `changelog_insert` — append a structured decision to the changelog
 - `commit_link` — associate a VCS commit with a phase/revision
-- `workflow_update` — update workflow-level metadata
+- `project_update` — update project-level metadata
 
 **Read tools** (agents call these to query state):
 - `changelog_query` — query the changelog (supports "Why are we using X?" traceability)
 - `traceability_query` — trace requirements through to implementation and tests
 - `revision_history` — view producer-critic history for a phase
 - `iteration_summary` — summarize the current or a past iteration
-- `workflow_status` — get current workflow status and phase overview
+- `project_status` — get current project status and phase overview
 
 ## Changelog & Traceability
 

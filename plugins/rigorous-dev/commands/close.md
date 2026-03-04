@@ -13,37 +13,37 @@ Close the current workflow iteration, marking it as completed (or partially comp
 
 ## What This Command Does
 
-1. Validates workflow exists and is active (not already closed)
+1. Validates project exists and is active (not already closed)
 2. Shows status summary
 3. Asks user for confirmation + optional closing notes
-4. Updates workflow in DB: marks as closed
+4. Updates project in DB: marks as closed
 5. Displays confirmation with next-step hint
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Call `workflow_status` to check whether a workflow exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns no workflow record, stop with an error:
+Call `project_status` to check whether a project exists in the DB:
 
 ```
-ERROR: No workflow found in this project.
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
 Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
 
-Inspect the `workflow_status` response:
+Inspect the `project_status` response:
 
 - If `status == "closed"`, display error:
 
 ```
-ERROR: This workflow is already closed.
+ERROR: This project is already closed.
 Use /rigorous-dev:new-iteration to start a new iteration.
 ```
 
@@ -91,10 +91,10 @@ Use /rigorous-dev:resume to continue working.
 
 ### 5. Update Workflow in DB
 
-Call `workflow_update` to mark the workflow as closed:
+Call `project_update` to mark the project as closed:
 
 ```
-workflow_update({
+project_update({
   status: "closed",
   closed_at: "<current_timestamp_ISO8601>",
   notes: "<closing_notes_if_provided>"

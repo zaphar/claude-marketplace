@@ -20,24 +20,24 @@ Resume an existing rigorous development workflow from saved state.
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Call `workflow_status` to check whether a workflow exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns no workflow record, stop with an error:
+Call `project_status` to check whether a project exists in the DB:
 
 ```
-ERROR: No workflow found in this project.
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
 Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Check Workflow Status
 
-Inspect the `status` field in the `workflow_status` response:
+Inspect the `status` field in the `project_status` response:
 
 - If `status == "closed"`, display error:
 
@@ -49,7 +49,7 @@ Use /rigorous-dev:new-iteration to start a new iteration.
 
 ### 3. Load Workflow State
 
-Use the data returned by `workflow_status` to extract:
+Use the data returned by `project_status` to extract:
 - Project name
 - Current phase
 - Phase status
@@ -101,7 +101,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 ### 7. Context Handoff
 
-When loading the agent, provide context from the `workflow_status` response about:
+When loading the agent, provide context from the `project_status` response about:
 - What artifacts already exist
 - Current iteration count
 - Any notes from previous work

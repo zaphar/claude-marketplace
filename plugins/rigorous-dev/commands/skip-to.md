@@ -22,18 +22,18 @@ Skip directly to a specific phase in the workflow. **Use with caution** - skippi
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Call `workflow_status` to check whether a workflow exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns no workflow record, stop with an error:
+Call `project_status` to check whether a project exists in the DB:
 
 ```
-ERROR: No workflow found in this project.
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
 Use /rigorous-dev:start to initialize a new workflow.
 ```
 
@@ -69,7 +69,7 @@ Use /rigorous-dev:start-release to begin the release workflow.
 
 ### 3. Load Current State and Check Workflow Status
 
-Use the `workflow_status` response to get:
+Use the `project_status` response to get:
 - Current phase
 - Phase status
 - Workflow status

@@ -22,29 +22,29 @@ Start a new workflow iteration after closing the previous one. Commits current a
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Call `workflow_status` to check whether a workflow exists in the DB:
-
-```
-workflow_status()
-```
-
-If it returns no workflow record, stop with an error:
+Call `project_status` to check whether a project exists in the DB:
 
 ```
-ERROR: No workflow found in this project.
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
 Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
 
-Inspect the `workflow_status` response:
+Inspect the `project_status` response:
 
 - If `status != "closed"`, display error:
 
 ```
-ERROR: The current workflow is still active.
+ERROR: The current project is still active.
 Use /rigorous-dev:close to close the current iteration before starting a new one.
 ```
 

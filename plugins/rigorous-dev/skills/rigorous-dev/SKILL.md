@@ -40,16 +40,16 @@ Each phase (except Requirements) uses a **producer-critic pattern**: a producer 
 Both the development workflow and release workflow state are tracked in the same database.
 
 Use these MCP tools for state management:
-- `workflow_status` — Get current workflow state, iteration, and all phase statuses
+- `project_status` — Get current project state, iteration, and all phase statuses
 - `phase_transition` — Update phase status (pending → in_progress → completed)
 - `iteration_create` — Create a new iteration with all phases initialized
-- `workflow_update` — Update workflow-level fields (status, notes, critic_model)
+- `project_update` — Update project-level fields (status, notes, critic_model)
 - `revision_create` — Start a new producer-critic revision for a phase
 - `revision_update` — Record critic decision (approved/rejected) and feedback
 
 **Reading current state:**
 
-Call `workflow_status` at the start of any command to get the full current state: workflow metadata, current phase, all phase statuses, and current iteration number. This replaces reading from YAML files.
+Call `project_status` at the start of any command to get the full current state: project metadata, current phase, all phase statuses, and current iteration number. This replaces reading from YAML files.
 
 ### 2. Phase Orchestration
 
@@ -118,7 +118,7 @@ For each phase, follow this pattern:
 - **User questions must reach the human:** When an agent says "ask the user", "interview the user", "consult the user", or "ask for preference", these questions MUST be surfaced to the actual human user. Never answer on behalf of the user using information from prior artifacts or your own judgment. Use AskUserQuestion for structured choices; use direct conversation for open-ended interview questions. The orchestrator's role is to facilitate the conversation between the agent personality and the human, not to stand in for the human.
 - **Prepend to every agent prompt:** "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text (`<function_calls>`, `<invoke>`, etc.) — use the structured tool interface directly."
 
-**Critic Model Selection:** When loading any critic agent, call `workflow_status` to get `critic_model` and pass it as the `model` parameter to the Task tool. If `critic_model` is not set (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
+**Critic Model Selection:** When loading any critic agent, call `project_status` to get `critic_model` and pass it as the `model` parameter to the Task tool. If `critic_model` is not set (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
 
 **Prior Phase Data:** Agents use `changelog_query` to retrieve data from prior phases by querying by `phase_id`, `entry_type`, or `iteration_id`. The orchestrator does not need to manage this — agents use the tools directly.
 
@@ -142,7 +142,7 @@ Use `commit_link` to associate VCS commits with iterations and `asset_deliverabl
 
 When transitioning between phases:
 
-1. Verify current phase is "completed" (via `workflow_status`)
+1. Verify current phase is "completed" (via `project_status`)
 2. Call `phase_transition` with the next phase and status `"in_progress"`
 3. Call `revision_create` for the new phase's first producer
 4. **Compact context** before loading the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
@@ -196,7 +196,7 @@ When loading an agent, provide context:
 **For Producer Agents:**
 - Current phase name
 - Prior phase data available via `changelog_query`
-- Any user notes from `workflow_status`
+- Any user notes from `project_status`
 - If revision > 0: feedback from previous critic review (via `revision_history`)
 
 **For Critic Agents:**
@@ -220,7 +220,7 @@ Each sub-phase has two steps: **test writing** then **implementation**. This enf
 
 For each sub-phase (starting at `current_phase_number: 1`):
 
-1. Set `current_phase_number` to the sub-phase number (via `workflow_update`)
+1. Set `current_phase_number` to the sub-phase number (via `project_update`)
 2. Call `revision_create` with `phase_id: "implementation"`, sub-phase number, and `"test_writer"` agent name
 3. Call `phase_transition` to set implementation step to `"test_writing"`
 
@@ -250,7 +250,7 @@ For each sub-phase (starting at `current_phase_number: 1`):
 11. Load `rigorous-dev:senior_developer`
 12. Developer reads existing failing tests and implements minimum code to make them pass
 13. Developer records implementation manifest using `changelog_insert` with `entry_type: "implementation_manifest"` linked to the current sub-phase revision
-14. Load `rigorous-dev:senior_developer_critic` (using `critic_model` from `workflow_status`)
+14. Load `rigorous-dev:senior_developer_critic` (using `critic_model` from `project_status`)
 15. Critic validates:
     - All pre-written tests pass, no pre-existing tests broken, full test suite passes
     - No test files modified or deleted
@@ -365,7 +365,7 @@ The release workflow is triggered by `/rigorous-dev:start-release` and tracked i
 
 **Release Workflow Completion:**
 
-When the Release Critic approves the deployment manifest, call `phase_transition` to mark the release phase completed, call `workflow_update` to set workflow status to "completed", and inform the user that the release workflow is complete.
+When the Release Critic approves the deployment manifest, call `phase_transition` to mark the release phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
 
 ### 12. Workflow Iterations
 
@@ -378,8 +378,8 @@ active → close → closed → new-iteration → active (iteration N+1)
 ```
 
 **State Fields (DB equivalents):**
-- `iteration_number`: Tracked in the DB — use `workflow_status` to get the current iteration; `iteration_create` increments it
-- `status`: `"active"` or `"closed"` — stored in the DB, updated via `workflow_update`
+- `iteration_number`: Tracked in the DB — use `project_status` to get the current iteration; `iteration_create` increments it
+- `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update`
 - `closed_at`: Tracked in the DB iteration record
 
 **Backward Compatibility:**
@@ -431,7 +431,7 @@ When working in a new iteration, agents should be aware of:
 - Let user decide how to proceed
 
 **If required prior phase data missing:**
-- Check if previous phase was "skipped" via `workflow_status`
+- Check if previous phase was "skipped" via `project_status`
 - If so: warn user and prompt for manual data entry or skip acknowledgment
 - If not: error and require fixing workflow state via `phase_transition`
 
@@ -524,7 +524,7 @@ Revising...
 
 **Get current phase:**
 ```
-Call: workflow_status
+Call: project_status
 Read: result.current_phase
 ```
 
@@ -541,7 +541,7 @@ Call: changelog_query(phase_id="requirements", iteration_id=<current>)
 
 **Check if requirements complete:**
 ```
-Call: workflow_status
+Call: project_status
 Read: result.phase_status.requirements.status == "completed"
 ```
 
@@ -574,9 +574,9 @@ traceability_query({ entity_type: "traceability_mapping", search_text: "authenti
 ```
 
 **"What's the current status?"**
-Use `workflow_status` for the current phase, iteration number, and all phase statuses.
+Use `project_status` for the current phase, iteration number, and all phase statuses.
 ```
-workflow_status()
+project_status()
 ```
 
 **"List all [entity type]"**
@@ -592,10 +592,10 @@ You have access to:
 - **Write** - Create/update VCS-tracked files (source code, documentation, diagrams)
 - **Bash** - Run tests, builds, VCS operations
 - **AskUserQuestion** - Escalate decisions to user
-- **workflow_status** (MCP tool) - Get current workflow state, iteration number, and all phase statuses
+- **project_status** (MCP tool) - Get current project state, iteration number, and all phase statuses
 - **phase_transition** (MCP tool) - Update a phase's status (pending → in_progress → completed → skipped)
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
-- **workflow_update** (MCP tool) - Update workflow-level fields (status, notes, critic_model, current_phase_number, current_step)
+- **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model, current_phase_number, current_step)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id; auto-increments revision_number
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and optionally a revision. Inputs: `entry_type`, `phase_id`, `iteration_id`, `revision_id` (optional), `content`

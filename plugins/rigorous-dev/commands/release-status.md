@@ -19,10 +19,10 @@ Display the current status and progress of the release workflow.
 
 ### 1. Check for Release Workflow State
 
-Call `workflow_status` to check whether release phases exist:
+Call `project_status` to check whether release phases exist:
 
 ```
-workflow_status()
+project_status()
 ```
 
 If no workflow exists or release phases haven't been started, display:
@@ -37,7 +37,7 @@ Exit without error.
 
 ### 2. Load and Parse State
 
-Use the `workflow_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit, release).
+Use the `project_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit, release).
 
 ### 3. Display Formatted Status
 
@@ -47,7 +47,6 @@ Present the status in a clear, visual format:
 Release Workflow Status
 
 Project: <project_name>
-Workflow ID: <workflow_id>
 Status: <active|completed>
 Artifacts: <artifacts_directory>
 Created: <created_at>
@@ -91,7 +90,6 @@ Call `changelog_query` to retrieve release-phase artifact entries from the DB.
 Release Workflow Status
 
 Project: My Project
-Workflow ID: rigorous-dev-workflow
 Status: active
 Artifacts: .claude/rigorous-dev-artifacts
 Created: 2026-02-15T10:00:00Z
