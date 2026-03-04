@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS revision (
 CREATE TABLE IF NOT EXISTS persona (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   technical_level TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS persona_goal (
 CREATE TABLE IF NOT EXISTS requirement (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   description TEXT NOT NULL,
   rationale TEXT,
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS technology_constraint (
 CREATE TABLE IF NOT EXISTS adr (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   title TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
   date TEXT,
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS adr_research_source (
 CREATE TABLE IF NOT EXISTS component (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('api', 'service', 'worker', 'database', 'cache', 'queue', 'external', 'library')),
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
 CREATE TABLE IF NOT EXISTS technology_choice (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   name TEXT NOT NULL,
   purpose TEXT,
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS technology_choice (
 CREATE TABLE IF NOT EXISTS architecture_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   description TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS architecture_diagram (
 CREATE TABLE IF NOT EXISTS data_entity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   entity_name TEXT NOT NULL,
   description TEXT NOT NULL,
   created_at TEXT NOT NULL
@@ -328,7 +328,7 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
 CREATE TABLE IF NOT EXISTS security_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS security_config (
 CREATE TABLE IF NOT EXISTS deployment_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   target TEXT NOT NULL,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS deployment_config (
 CREATE TABLE IF NOT EXISTS observability_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS observability_config (
 CREATE TABLE IF NOT EXISTS approved_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   package TEXT NOT NULL,
   version_constraint TEXT,
   purpose TEXT NOT NULL,
@@ -380,7 +380,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
 CREATE TABLE IF NOT EXISTS traceability_mapping (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
   addressed_by TEXT NOT NULL,
   addressed_by_type TEXT NOT NULL CHECK(addressed_by_type IN ('component', 'endpoint', 'flow', 'screen', 'other')),
@@ -392,7 +392,7 @@ CREATE TABLE IF NOT EXISTS traceability_mapping (
 CREATE TABLE IF NOT EXISTS user_flow (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   goal TEXT NOT NULL,
   persona_id TEXT REFERENCES persona(id),
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS user_flow_data_dependency (
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
@@ -477,7 +477,7 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
 CREATE TABLE IF NOT EXISTS design_system (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -488,7 +488,7 @@ CREATE TABLE IF NOT EXISTS design_system (
 CREATE TABLE IF NOT EXISTS accessibility_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -499,7 +499,7 @@ CREATE TABLE IF NOT EXISTS accessibility_config (
 CREATE TABLE IF NOT EXISTS responsive_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -510,7 +510,7 @@ CREATE TABLE IF NOT EXISTS responsive_config (
 CREATE TABLE IF NOT EXISTS feedback_pattern (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -521,7 +521,7 @@ CREATE TABLE IF NOT EXISTS feedback_pattern (
 CREATE TABLE IF NOT EXISTS info_architecture (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -533,7 +533,7 @@ CREATE TABLE IF NOT EXISTS info_architecture (
 CREATE TABLE IF NOT EXISTS persona_addressed (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   persona_id TEXT NOT NULL REFERENCES persona(id),
   goal TEXT NOT NULL,
   how_addressed TEXT NOT NULL
@@ -549,7 +549,7 @@ CREATE TABLE IF NOT EXISTS persona_addressed_flow (
 CREATE TABLE IF NOT EXISTS ux_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('wireframe', 'mockup', 'prototype', 'icon', 'image', 'video')),
@@ -562,7 +562,7 @@ CREATE TABLE IF NOT EXISTS ux_asset (
 CREATE TABLE IF NOT EXISTS ux_requirement_mapping (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
   addressed_by TEXT NOT NULL,
   notes TEXT
@@ -572,7 +572,7 @@ CREATE TABLE IF NOT EXISTS ux_requirement_mapping (
 CREATE TABLE IF NOT EXISTS plan_phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   phase_number INTEGER NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('feature', 'infrastructure')),
@@ -670,7 +670,7 @@ CREATE TABLE IF NOT EXISTS plan_checkpoint_focus (
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   strategy TEXT NOT NULL,
   total_phases INTEGER NOT NULL,
   rationale TEXT NOT NULL,
@@ -725,7 +725,7 @@ CREATE TABLE IF NOT EXISTS plan_critical_path (
 CREATE TABLE IF NOT EXISTS plan_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   title TEXT NOT NULL,
   version TEXT NOT NULL,
   created TEXT NOT NULL,
@@ -741,7 +741,7 @@ CREATE TABLE IF NOT EXISTS plan_metadata (
 CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   sub_phase_number INTEGER NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   files_created INTEGER DEFAULT 0,
@@ -863,7 +863,7 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   phase_id INTEGER REFERENCES phase(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   asset_type TEXT NOT NULL CHECK(asset_type IN ('work_item', 'plan', 'note', 'commit_ref', 'file_ref')),
   title TEXT NOT NULL,
   content TEXT,
@@ -893,7 +893,7 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
 CREATE TABLE IF NOT EXISTS test_report (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   total_tests INTEGER NOT NULL DEFAULT 0,
   passed INTEGER NOT NULL DEFAULT 0,
   failed INTEGER NOT NULL DEFAULT 0,
@@ -1013,7 +1013,7 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
 CREATE TABLE IF NOT EXISTS documentation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   documents_created INTEGER DEFAULT 0,
   total_pages INTEGER,
@@ -1091,7 +1091,7 @@ CREATE TABLE IF NOT EXISTS documentation_verification (
 CREATE TABLE IF NOT EXISTS deployment_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
   status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
   created_at TEXT NOT NULL
 );

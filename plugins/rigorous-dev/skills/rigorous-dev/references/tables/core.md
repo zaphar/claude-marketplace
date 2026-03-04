@@ -4,7 +4,7 @@ These four tables form the backbone of the entire data model. Every other table 
 
 The core spine is write-once and append-forward. The project row is created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
 
-Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries an `iteration_id` (NOT NULL) and optionally a `revision_id` to record exactly when and why it was produced. This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
+Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries an `iteration_id` (NOT NULL) and a required `revision_id` (NOT NULL) to record exactly when and why it was produced. This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
 
 ---
 
