@@ -378,12 +378,12 @@ active → close → closed → new-iteration → active (iteration N+1)
 ```
 
 **State Fields (DB equivalents):**
-- `iteration_number`: Tracked in the DB — use `project_status` to get the current iteration; `iteration_create` increments it
+- `sequence`: Tracked in the DB — use `project_status` to get the current iteration; `iteration_create` increments it
 - `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update`
 - `closed_at`: Tracked in the DB iteration record
 
 **Backward Compatibility:**
-- Missing `iteration_number` → treat as `1`
+- Missing `sequence` → treat as `1`
 - Missing `status` → treat as `"active"`
 
 **VCS-Based Iteration Cleanup:**

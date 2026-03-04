@@ -18,7 +18,7 @@ const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb();
-  const { iteration_number, project_name, critic_model } = args;
+  const { sequence, project_name, critic_model } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
@@ -37,10 +37,10 @@ function iterationCreate(args) {
     // Create iteration
     const iterResult = db
       .prepare(
-        `INSERT INTO iteration (iteration_number, status, started_at, notes)
+        `INSERT INTO iteration (sequence, status, started_at, notes)
          VALUES (?, 'active', ?, '')`
       )
-      .run(iteration_number, now);
+      .run(sequence, now);
 
     const iteration_id = iterResult.lastInsertRowid;
 
@@ -58,7 +58,7 @@ function iterationCreate(args) {
 
     setInProgress.run(now, iteration_id);
 
-    return { iteration_id, iteration_number };
+    return { iteration_id, sequence };
   });
 
   return run();
@@ -868,11 +868,11 @@ export const WRITE_TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        iteration_number: { type: "integer", description: "Iteration number (1-based)" },
+        sequence: { type: "integer", description: "Iteration sequence number (1-based)" },
         project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
       },
-      required: ["iteration_number"],
+      required: ["sequence"],
     },
   },
   {

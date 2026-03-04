@@ -42,7 +42,7 @@ Inspect the `status` field in the `project_status` response:
 - If `status == "closed"`, display error:
 
 ```
-ERROR: This workflow is closed (iteration <iteration_number>).
+ERROR: This workflow is closed (iteration <sequence>).
 A closed workflow cannot be resumed.
 Use /rigorous-dev:new-iteration to start a new iteration.
 ```

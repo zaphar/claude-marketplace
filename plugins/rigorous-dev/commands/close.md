@@ -55,7 +55,7 @@ Show a concise summary of the current workflow state before closing:
 Workflow Close Summary
 
 Project: <project_name>
-Iteration: <iteration_number>
+Iteration: <sequence>
 Current Phase: <current_phase> (<phase_status>)
 
 Completed Phases:
@@ -106,7 +106,7 @@ No YAML state file snapshot is needed — the DB is the record of state.
 ### 6. Display Confirmation
 
 ```
-Workflow iteration <iteration_number> closed.
+Workflow iteration <sequence> closed.
 
 Project: <project_name>
 Closed at: <closed_at>

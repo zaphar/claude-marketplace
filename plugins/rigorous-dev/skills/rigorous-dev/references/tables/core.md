@@ -43,7 +43,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_number` | INTEGER | NOT NULL, UNIQUE | 1-based sequence number. Enforced globally unique. |
+| `sequence` | INTEGER | NOT NULL, UNIQUE | 1-based sequence number. Enforced globally unique. |
 | `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. Only one iteration should be `active` at a time. |
 | `started_at` | TEXT | NOT NULL | ISO-8601 timestamp when this iteration was opened. |
 | `closed_at` | TEXT | — | ISO-8601 timestamp when this iteration was closed. NULL while active. |

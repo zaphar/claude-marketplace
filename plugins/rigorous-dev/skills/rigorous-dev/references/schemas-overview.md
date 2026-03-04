@@ -14,7 +14,7 @@ Four tables form the backbone — everything else hangs off them:
 | Table | PK | Purpose |
 |-------|-----|---------|
 | `project` | `id INTEGER` | Single row per database (singleton). Identity, status (active/closed), critic model, timestamps. |
-| `iteration` | `id INTEGER` | Each change-request cycle. `iteration_number` tracks version (1, 2, 3…). |
+| `iteration` | `id INTEGER` | Each change-request cycle. `sequence` is a sequential counter (1, 2, 3…). |
 | `phase` | `id INTEGER` | 9 phases per iteration: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit, release. Tracks status, timestamps, approval. |
 | `revision` | `id INTEGER` | Producer-critic loop attempts within a phase. Tracks producer/critic agents, feedback text, verdict (draft → submitted → approved/rejected). |
 

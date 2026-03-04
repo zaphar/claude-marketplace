@@ -56,7 +56,7 @@ Show a summary of the iteration being closed out:
 Previous Iteration Summary
 
 Project: <project_name>
-Iteration: <iteration_number>
+Iteration: <sequence>
 Closed at: <closed_at>
 
 Phase Results:
@@ -91,11 +91,11 @@ Before creating the new iteration, commit all current artifacts to VCS so the fu
 # Detect VCS and commit
 if [ -d .jj ]; then
   # Jujutsu — just describe the current change with a message
-  jj commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+  jj commit -m "rigorous-dev: archive iteration <sequence> artifacts for <project_name>"
 elif [ -d .git ]; then
   # Git — stage the artifacts directory and commit
   git add "<artifacts_dir>/"
-  git commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+  git commit -m "rigorous-dev: archive iteration <sequence> artifacts for <project_name>"
 fi
 ```
 
@@ -104,7 +104,7 @@ Record the commit in the DB using `commit_link`:
 ```
 commit_link({
   commit_sha: "<commit_sha>",
-  message: "Archive iteration <iteration_number> artifacts for <project_name>"
+  message: "Archive iteration <sequence> artifacts for <project_name>"
 })
 ```
 
@@ -114,7 +114,7 @@ Call `iteration_create` with the incremented iteration number to create all new 
 
 ```
 iteration_create({
-  iteration_number: <previous_iteration_number + 1>,
+  sequence: <previous_sequence + 1>,
   starting_phase: "requirements",
   notes: "New iteration started. Prior iteration artifacts preserved in VCS history."
 })
@@ -127,7 +127,7 @@ The DB retains all records from previous iterations — nothing is deleted.
 Load the rigorous-dev skill and start the Requirements phase, informing the agent about the prior iteration:
 
 ```
-Workflow iteration <new_iteration_number> started!
+Workflow iteration <new_sequence> started!
 
 Project: <project_name>
 Prior iteration artifacts preserved in VCS history.

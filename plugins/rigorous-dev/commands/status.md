@@ -48,7 +48,7 @@ Present the status in a clear, visual format:
 📋 Rigorous Dev Workflow Status
 
 Project: <project_name>
-Iteration: <iteration_number>
+Iteration: <sequence>
 Status: <active|closed>
 <if closed>Closed at: <closed_at></if>
 Artifacts: <artifacts_directory>

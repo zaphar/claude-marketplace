@@ -616,24 +616,24 @@ function revisionHistory(args) {
 
 function iterationSummary(args) {
   const db = getDb();
-  const { iteration_id, iteration_number } = args;
+  const { iteration_id, sequence } = args;
 
   let resolvedId = iteration_id;
 
-  if (!resolvedId && iteration_number !== undefined) {
+  if (!resolvedId && sequence !== undefined) {
     const it = db
-      .prepare("SELECT id FROM iteration WHERE iteration_number = ?")
-      .get(iteration_number);
+      .prepare("SELECT id FROM iteration WHERE sequence = ?")
+      .get(sequence);
     if (!it) {
       throw new Error(
-        `Iteration ${iteration_number} not found`
+        `Iteration with sequence ${sequence} not found`
       );
     }
     resolvedId = it.id;
   }
 
   if (!resolvedId) {
-    throw new Error("Provide iteration_id or iteration_number");
+    throw new Error("Provide iteration_id or sequence");
   }
 
   const iteration = db.prepare("SELECT * FROM iteration WHERE id = ?").get(resolvedId);
@@ -695,14 +695,14 @@ function projectStatus(args) {
 
   const currentIteration = db
     .prepare(
-      "SELECT * FROM iteration WHERE status = 'active' ORDER BY iteration_number DESC LIMIT 1"
+      "SELECT * FROM iteration WHERE status = 'active' ORDER BY sequence DESC LIMIT 1"
     )
     .get();
 
   const targetIterationId = currentIteration
     ? currentIteration.id
     : db
-        .prepare("SELECT id FROM iteration ORDER BY iteration_number DESC LIMIT 1")
+        .prepare("SELECT id FROM iteration ORDER BY sequence DESC LIMIT 1")
         .get()?.id;
 
   const phases = targetIterationId
@@ -827,9 +827,9 @@ export const READ_TOOLS = [
           type: "number",
           description: "Direct iteration ID",
         },
-        iteration_number: {
+        sequence: {
           type: "number",
-          description: "Iteration number (alternative to iteration_id)",
+          description: "Iteration sequence number (alternative to iteration_id)",
         },
       },
     },

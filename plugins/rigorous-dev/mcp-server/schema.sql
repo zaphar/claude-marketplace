@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS project (
 -- Iterations: each request to change the system
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_number INTEGER NOT NULL UNIQUE,
+  sequence INTEGER NOT NULL UNIQUE,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
   started_at TEXT NOT NULL,
   closed_at TEXT,
