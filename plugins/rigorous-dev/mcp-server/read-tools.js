@@ -80,12 +80,31 @@ function changelogQuery(args) {
     ids,
     filters,
     include_related = false,
+    history = false,
   } = args;
 
   if (!ENTITY_TABLE[entity_type]) {
     throw new Error(
       `Unknown entity_type: "${entity_type}". Valid types: ${Object.keys(ENTITY_TABLE).join(", ")}`
     );
+  }
+
+  // History mode: query entity_snapshot table for change history
+  if (history) {
+    let sql = `SELECT * FROM entity_snapshot WHERE entity_type = ?`;
+    const params = [entity_type];
+    if (ids && ids.length > 0) {
+      sql += ` AND entity_id IN (${ids.map(() => "?").join(", ")})`;
+      params.push(...ids);
+    }
+    sql += ` ORDER BY id ASC`;
+    const snapshots = db.prepare(sql).all(...params);
+    // Parse snapshot JSON for convenience
+    const results = snapshots.map((s) => ({
+      ...s,
+      snapshot: JSON.parse(s.snapshot),
+    }));
+    return { entity_type, history: true, results, count: results.length };
   }
 
   const table = ENTITY_TABLE[entity_type];
@@ -746,6 +765,12 @@ export const READ_TOOLS = [
           type: "boolean",
           description:
             "If true, attach child/related table data (acceptance criteria, interfaces, etc.). More tokens but complete data.",
+          default: false,
+        },
+        history: {
+          type: "boolean",
+          description:
+            "If true, return change history from entity_snapshot instead of current state. Shows how entities evolved across revisions. Use with ids to see history for specific entities.",
           default: false,
         },
       },

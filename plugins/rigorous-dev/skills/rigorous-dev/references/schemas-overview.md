@@ -326,6 +326,7 @@ All 145 tables with links to their detailed design documents.
 | `documentation_requirement_path` | [documentation](tables/documentation.md) |
 | `documentation_section` | [documentation](tables/documentation.md) |
 | `documentation_verification` | [documentation](tables/documentation.md) |
+| `entity_snapshot` | Core | JSON history of entity changes across revisions |
 | `feedback_pattern` | [ux-design](tables/ux-design.md) |
 | `implementation_api_endpoint` | [implementation](tables/implementation.md) |
 | `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |

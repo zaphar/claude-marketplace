@@ -170,11 +170,33 @@ function revisionUpdate(args) {
 // changelog_insert handlers per entity type
 // ---------------------------------------------------------------------------
 
+// Snapshot helper: captures old row as JSON before an upsert overwrites it
+function snapshotIfExists(db, table, entityType, entityId, newRevisionId) {
+  const existing = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(entityId);
+  if (existing) {
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO entity_snapshot (entity_type, entity_id, revision_id, snapshot, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(entityType, entityId, newRevisionId, JSON.stringify(existing), now);
+  }
+  return existing;
+}
+
 function insertPersona(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "persona", "persona", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO persona (id, iteration_id, revision_id, name, description, technical_level, frequency_of_use, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       name = excluded.name,
+       description = excluded.description,
+       technical_level = excluded.technical_level,
+       frequency_of_use = excluded.frequency_of_use,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -183,9 +205,13 @@ function insertPersona(db, iteration_id, revision_id, data) {
     data.description,
     data.technical_level ?? null,
     data.frequency_of_use ?? null,
+    now,
     now
   );
 
+  if (existed) {
+    db.prepare("DELETE FROM persona_goal WHERE persona_id = ?").run(data.id);
+  }
   const insertGoal = db.prepare(
     "INSERT INTO persona_goal (persona_id, goal) VALUES (?, ?)"
   );
@@ -193,14 +219,23 @@ function insertPersona(db, iteration_id, revision_id, data) {
     insertGoal.run(data.id, goal);
   }
 
-  return { entity_type: "persona", id: data.id };
+  return { entity_type: "persona", id: data.id, updated: !!existed };
 }
 
 function insertRequirement(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "requirement", "requirement", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO requirement (id, iteration_id, revision_id, description, rationale, priority, category, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       description = excluded.description,
+       rationale = excluded.rationale,
+       priority = excluded.priority,
+       category = excluded.category,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -209,8 +244,15 @@ function insertRequirement(db, iteration_id, revision_id, data) {
     data.rationale ?? null,
     data.priority,
     data.category,
+    now,
     now
   );
+
+  if (existed) {
+    db.prepare("DELETE FROM requirement_acceptance_criterion WHERE requirement_id = ?").run(data.id);
+    db.prepare("DELETE FROM requirement_persona WHERE requirement_id = ?").run(data.id);
+    db.prepare("DELETE FROM requirement_dependency WHERE requirement_id = ?").run(data.id);
+  }
 
   const insertCriterion = db.prepare(
     "INSERT INTO requirement_acceptance_criterion (requirement_id, criterion) VALUES (?, ?)"
@@ -233,14 +275,26 @@ function insertRequirement(db, iteration_id, revision_id, data) {
     insertDep.run(data.id, dep);
   }
 
-  return { entity_type: "requirement", id: data.id };
+  return { entity_type: "requirement", id: data.id, updated: !!existed };
 }
 
 function insertAdr(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "adr", "adr", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO adr (id, iteration_id, revision_id, title, status, date, context, decision, rationale, superseded_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       title = excluded.title,
+       status = excluded.status,
+       date = excluded.date,
+       context = excluded.context,
+       decision = excluded.decision,
+       rationale = excluded.rationale,
+       superseded_by = excluded.superseded_by,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -252,8 +306,21 @@ function insertAdr(db, iteration_id, revision_id, data) {
     data.decision,
     data.rationale,
     data.superseded_by ?? null,
+    now,
     now
   );
+
+  if (existed) {
+    // Delete child rows via alternatives (cascading to pros/cons)
+    const altIds = db.prepare("SELECT id FROM adr_alternative WHERE adr_id = ?").all(data.id);
+    for (const alt of altIds) {
+      db.prepare("DELETE FROM adr_alternative_pro WHERE alternative_id = ?").run(alt.id);
+      db.prepare("DELETE FROM adr_alternative_con WHERE alternative_id = ?").run(alt.id);
+    }
+    db.prepare("DELETE FROM adr_alternative WHERE adr_id = ?").run(data.id);
+    db.prepare("DELETE FROM adr_consequence WHERE adr_id = ?").run(data.id);
+    db.prepare("DELETE FROM adr_research_source WHERE adr_id = ?").run(data.id);
+  }
 
   const insertAlt = db.prepare(
     "INSERT INTO adr_alternative (adr_id, option_text) VALUES (?, ?)"
@@ -288,14 +355,22 @@ function insertAdr(db, iteration_id, revision_id, data) {
     insertSource.run(data.id, source);
   }
 
-  return { entity_type: "adr", id: data.id };
+  return { entity_type: "adr", id: data.id, updated: !!existed };
 }
 
 function insertComponent(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "component", "component", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO component (id, iteration_id, revision_id, name, purpose, type, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       name = excluded.name,
+       purpose = excluded.purpose,
+       type = excluded.type,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -303,8 +378,16 @@ function insertComponent(db, iteration_id, revision_id, data) {
     data.name,
     data.purpose,
     data.type,
+    now,
     now
   );
+
+  if (existed) {
+    db.prepare("DELETE FROM component_interface WHERE component_id = ?").run(data.id);
+    db.prepare("DELETE FROM component_dependency WHERE component_id = ?").run(data.id);
+    db.prepare("DELETE FROM component_requirement WHERE component_id = ?").run(data.id);
+    db.prepare("DELETE FROM integration_test_boundary WHERE component_id = ?").run(data.id);
+  }
 
   const insertIface = db.prepare(
     "INSERT INTO component_interface (component_id, name, type, description) VALUES (?, ?, ?, ?)"
@@ -335,7 +418,7 @@ function insertComponent(db, iteration_id, revision_id, data) {
     insertBoundary.run(data.id, b.target_component, b.boundary_type, b.correct_behavior);
   }
 
-  return { entity_type: "component", id: data.id };
+  return { entity_type: "component", id: data.id, updated: !!existed };
 }
 
 function insertTechnologyChoice(db, iteration_id, revision_id, data) {
@@ -380,9 +463,19 @@ function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
 
 function insertUserFlow(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "user_flow", "user_flow", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO user_flow (id, iteration_id, revision_id, name, goal, persona_id, entry_point, success_state, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       name = excluded.name,
+       goal = excluded.goal,
+       persona_id = excluded.persona_id,
+       entry_point = excluded.entry_point,
+       success_state = excluded.success_state,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -392,8 +485,21 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     data.persona_id ?? null,
     data.entry_point ?? null,
     data.success_state ?? null,
+    now,
     now
   );
+
+  if (existed) {
+    // Delete steps and their branches
+    const stepIds = db.prepare("SELECT id FROM user_flow_step WHERE flow_id = ?").all(data.id);
+    for (const step of stepIds) {
+      db.prepare("DELETE FROM user_flow_step_branch WHERE step_id = ?").run(step.id);
+    }
+    db.prepare("DELETE FROM user_flow_step WHERE flow_id = ?").run(data.id);
+    db.prepare("DELETE FROM user_flow_error_state WHERE flow_id = ?").run(data.id);
+    db.prepare("DELETE FROM user_flow_requirement WHERE flow_id = ?").run(data.id);
+    db.prepare("DELETE FROM user_flow_data_dependency WHERE flow_id = ?").run(data.id);
+  }
 
   const insertStep = db.prepare(
     `INSERT INTO user_flow_step (flow_id, step_number, action, screen, is_decision_point)
@@ -436,14 +542,23 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     insertDataDep.run(data.id, dep);
   }
 
-  return { entity_type: "user_flow", id: data.id };
+  return { entity_type: "user_flow", id: data.id, updated: !!existed };
 }
 
 function insertScreen(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const existed = snapshotIfExists(db, "screen", "screen", data.id, revision_id);
+
   db.prepare(
     `INSERT INTO screen (id, iteration_id, revision_id, name, purpose, wireframe_path, mockup_path, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       revision_id = excluded.revision_id,
+       name = excluded.name,
+       purpose = excluded.purpose,
+       wireframe_path = excluded.wireframe_path,
+       mockup_path = excluded.mockup_path,
+       updated_at = ?`
   ).run(
     data.id,
     iteration_id,
@@ -452,8 +567,15 @@ function insertScreen(db, iteration_id, revision_id, data) {
     data.purpose,
     data.wireframe_path ?? null,
     data.mockup_path ?? null,
+    now,
     now
   );
+
+  if (existed) {
+    db.prepare("DELETE FROM screen_component WHERE screen_id = ?").run(data.id);
+    db.prepare("DELETE FROM screen_state WHERE screen_id = ?").run(data.id);
+    db.prepare("DELETE FROM screen_responsive_variant WHERE screen_id = ?").run(data.id);
+  }
 
   const insertComp = db.prepare(
     "INSERT INTO screen_component (screen_id, component_name) VALUES (?, ?)"
@@ -481,7 +603,7 @@ function insertScreen(db, iteration_id, revision_id, data) {
     );
   }
 
-  return { entity_type: "screen", id: data.id };
+  return { entity_type: "screen", id: data.id, updated: !!existed };
 }
 
 function insertPlanPhase(db, iteration_id, revision_id, data) {

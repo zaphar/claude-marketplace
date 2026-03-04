@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS persona (
   description TEXT NOT NULL,
   technical_level TEXT,
   frequency_of_use TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS persona_goal (
@@ -85,7 +86,8 @@ CREATE TABLE IF NOT EXISTS requirement (
   category TEXT NOT NULL CHECK(category IN (
     'functional', 'security', 'usability', 'performance', 'operational', 'deployment'
   )),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS requirement_acceptance_criterion (
@@ -183,7 +185,8 @@ CREATE TABLE IF NOT EXISTS adr (
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
   superseded_by TEXT REFERENCES adr(id),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS adr_alternative (
@@ -224,7 +227,8 @@ CREATE TABLE IF NOT EXISTS component (
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('api', 'service', 'worker', 'database', 'cache', 'queue', 'external', 'library')),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS component_interface (
@@ -393,7 +397,8 @@ CREATE TABLE IF NOT EXISTS user_flow (
   persona_id TEXT REFERENCES persona(id),
   entry_point TEXT,
   success_state TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS user_flow_step (
@@ -440,7 +445,8 @@ CREATE TABLE IF NOT EXISTS screen (
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
   mockup_path TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS screen_component (
@@ -1271,3 +1277,19 @@ CREATE TABLE IF NOT EXISTS deployment_review_checklist (
   check_name TEXT NOT NULL,
   passed INTEGER DEFAULT 0
 );
+
+-- ============================================================
+-- ENTITY SNAPSHOT: JSON history of entity changes across revisions
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS entity_snapshot (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  snapshot JSON NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
+  ON entity_snapshot(entity_type, entity_id);

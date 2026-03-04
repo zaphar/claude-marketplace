@@ -105,8 +105,48 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Relationships:**
 - Parent: `phase` (via `phase_id`)
-- Referenced by: changelog entity tables (via optional `revision_id`)
+- Referenced by: changelog entity tables (via `revision_id`, NOT NULL)
 
 **Produced by:** `revision_create`
 **Updated by:** `revision_update` (records critic verdict, feedback, and `reviewed_at`)
 **Queried by:** `revision_history`
+
+## Entity Versioning Model
+
+The six primary entity tables with TEXT primary keys — `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` — use an **UPSERT** (insert-or-update) model for versioning across revisions within a phase.
+
+### How it works
+
+1. When a producer agent creates entities during a revision, they are inserted normally.
+2. If the critic rejects the revision and a new revision is created, the producer re-inserts only the entities that need changes. The UPSERT updates the existing row in place, setting `revision_id` to the new revision and `updated_at` to the current timestamp.
+3. Entities that don't need changes keep their original `revision_id` — they are carried forward implicitly.
+4. When the critic approves a revision, the phase transitions to `completed`. All entities in that iteration for the completed phase are considered **current and valid**.
+
+### Snapshot history
+
+Before an UPSERT overwrites an entity, the old state is captured as a JSON snapshot in the `entity_snapshot` table. This preserves the full change history without complicating the main entity tables.
+
+To query current entities:
+```sql
+SELECT * FROM requirement WHERE iteration_id = ?;
+```
+
+To query change history for a specific entity:
+```sql
+SELECT * FROM entity_snapshot
+WHERE entity_type = 'requirement' AND entity_id = 'req-auth-001'
+ORDER BY id ASC;
+```
+
+Or use `changelog_query` with `history: true`:
+```json
+{ "entity_type": "requirement", "ids": ["req-auth-001"], "history": true }
+```
+
+### What `revision_id` means on an entity
+
+The `revision_id` on an entity records **provenance** — which revision last created or modified this entity. It does NOT determine validity. Validity is determined at the phase level: if the phase has an approved revision (or status `completed`), all entities for that phase's iteration are valid.
+
+### The `updated_at` column
+
+The six TEXT-PK entity tables carry an `updated_at` column (nullable). It is `NULL` on initial insert and set to the current timestamp whenever an UPSERT updates the row. This distinguishes entities that have been revised (`updated_at IS NOT NULL`) from those created once and never changed.
