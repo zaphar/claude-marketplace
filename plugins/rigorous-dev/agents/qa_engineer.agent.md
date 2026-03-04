@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Requirements specification (approved)
 - UX specification (approved, if UI exists)
-- Architecture components (`architecture_components.yaml`) - for integration test boundary verification
+- Architecture components (query via `changelog_query` with entity_type: "component") - for integration test boundary verification
 - Implementation plan (phase indexes with E2E and integration test scenarios)
 - Implementation manifest from Senior Developer
 - Codebase from the Senior Developer
@@ -86,7 +86,7 @@ When tests fail:
 
 Organize output files into subdirectories within your phase directory:
 - `screenshots/` — captured screenshots from mockup comparison testing
-- Primary YAML artifact (`test_report.yaml`) stays at the phase directory root
+- Test report entries are stored via `changelog_insert` with entity_type: "test_report"
 
 **Handoff:**
 

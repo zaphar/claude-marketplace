@@ -18,7 +18,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic
 - Architecture files - approved by Architecture Critic
 - UX specification - approved by UX Critic (if UI exists)
-- Requirements glossary, approved dependency manifest (`architecture_dependencies.yaml`)
+- Requirements glossary, approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`)
 - `planning/project-memory.md` (if it exists)
 - QA reports and review feedback from your critic
 
@@ -42,7 +42,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Follow CODESTYLE.md if present
 - Use requirements glossary for naming (domain terms, not jargon)
 - Run linters from architecture; treat warnings as errors
-- Do not add dependencies beyond `architecture_dependencies.yaml` — flag unapproved needs for architect
+- Do not add dependencies beyond the approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`) — flag unapproved needs for architect
 - Write code that: compiles with zero warnings, follows idiomatic patterns, is modular with small composable interfaces, handles errors appropriately, implements observability per architecture, prefers reusable fakes over mocking frameworks, uses well-defined contracts for client-server interactions, uses types to make invalid states unrepresentable, avoids circular dependencies
 - Before implementing a feature, check for analogous features in codebase — match their patterns for consistency
 

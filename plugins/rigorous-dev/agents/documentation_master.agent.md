@@ -13,12 +13,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Inputs:**
 
 - Requirements (query via `changelog_query`)
-- Architecture index (`architecture_index.yaml`) — for technology choices and overview
-- Architecture components (`architecture_components.yaml`) — for component documentation
+- Architecture index (query via `changelog_query`, entity_type: "architecture_overview") — for technology choices and overview
+- Architecture components (query via `changelog_query`, entity_type: "component") — for component documentation
 - Architecture API spec (`api_spec.yaml`) — for API reference generation
-- Architecture data model (`architecture_data_model.yaml`) — for data documentation
-- Architecture deployment (`architecture_deployment.yaml`) — for operator docs
-- Architecture observability (`architecture_observability.yaml`) — for monitoring docs
+- Architecture data model (query via `changelog_query`, entity_type: "data_entity") — for data documentation
+- Architecture deployment (query via `changelog_query`, entity_type: "deployment_config") — for operator docs
+- Architecture observability (query via `changelog_query`, entity_type: "observability_config") — for monitoring docs
 - Implementation entries (query via `changelog_query`)
 - Deployment entries (query via `changelog_query`) — optional, only available after release workflow runs
 - Codebase
@@ -111,7 +111,7 @@ Organize documentation files into subdirectories by audience within your phase d
 - `sdk/` — library/SDK reference (if applicable)
 - `operator/` — deployment guide, runbooks, monitoring
 - `developer/` — architecture overview, contributing guide, ADR index
-- Primary YAML artifact (`documentation_manifest.yaml`) stays at the phase directory root
+- Primary manifest artifact (stored in changelog DB; query via `changelog_query` with entity_type: "documentation_manifest") — not a file at the phase directory root
 
 **Handoff:**
 

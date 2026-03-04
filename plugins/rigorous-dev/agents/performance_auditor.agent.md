@@ -13,10 +13,10 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Project source code
-- Architecture observability spec (`architecture_observability.yaml`)
-- Architecture data model (`architecture_data_model.yaml`)
+- Architecture observability spec (query via `changelog_query` with entity_type: "observability_config")
+- Architecture data model (query via `changelog_query` with entity_type: "data_entity")
 - Architecture API spec (`api_spec.yaml`)
-- Architecture dependencies manifest (`architecture_dependencies.yaml`)
+- Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
 - Requirements specification (performance-category requirements and quality standards)
 - QA test report (to understand what QA already benchmarked)
 - `planning/project-memory.md` (if it exists)

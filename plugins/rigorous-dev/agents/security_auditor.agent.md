@@ -13,11 +13,11 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Project source code
-- Architecture security spec (`architecture_security.yaml`)
+- Architecture security spec (query via `changelog_query` with entity_type: "security_config")
 - Architecture API spec (`api_spec.yaml`)
-- Architecture data model (`architecture_data_model.yaml`)
-- Architecture components (`architecture_components.yaml`)
-- Architecture dependencies manifest (`architecture_dependencies.yaml`)
+- Architecture data model (query via `changelog_query` with entity_type: "data_entity")
+- Architecture components (query via `changelog_query` with entity_type: "component")
+- Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
 - Requirements specification (security-category requirements)
 - QA test report (to understand what QA already tested)
 - `planning/project-memory.md` (if it exists)
@@ -51,7 +51,7 @@ The QA Engineer verifies that specified security *requirements* work correctly. 
 - **Authentication/authorization pattern review**: Verify patterns are applied consistently across all endpoints — not just the ones QA tested. Look for endpoints that bypass auth middleware.
 - **Input validation completeness**: Check every system boundary (API endpoints, file uploads, URL parameters, headers, cookies) for proper validation. Look for validation that happens client-side but not server-side.
 - **Secrets/credential exposure**: Search for hardcoded secrets, API keys in source, credentials in config files, secrets in logs, tokens in URLs.
-- **Dependency deep audit**: Audit the actual installed dependencies against the architect's approved manifest (`architecture_dependencies.yaml`). Check for: dependencies with known CVEs, abandoned packages, packages with suspicious maintainer changes, transitive dependencies with vulnerabilities, and any installed dependency not in the approved manifest. Do not re-evaluate whether a dependency should have been built in-house — that was the architect's decision.
+- **Dependency deep audit**: Audit the actual installed dependencies against the architect's approved manifest (query via `changelog_query` with entity_type: "approved_dependency"). Check for: dependencies with known CVEs, abandoned packages, packages with suspicious maintainer changes, transitive dependencies with vulnerabilities, and any installed dependency not in the approved manifest. Do not re-evaluate whether a dependency should have been built in-house — that was the architect's decision.
 - **Configuration security**: Review all configuration files, environment variable usage, default values, and deployment configurations for security weaknesses.
 - **Error handling**: Verify that error responses do not leak implementation details, stack traces, or internal paths to clients.
 - **Cryptography**: Verify appropriate algorithms, key lengths, and implementations. Flag any custom crypto.

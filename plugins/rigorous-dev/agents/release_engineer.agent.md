@@ -13,9 +13,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Inputs:**
 
 - Requirements (query via `changelog_query`) — for deployment requirements and quality standards
-- Architecture deployment spec (`architecture_deployment.yaml`) — for deployment architecture
-- Architecture observability spec (`architecture_observability.yaml`) — for monitoring integration
-- Architecture dependencies manifest (`architecture_dependencies.yaml`) — for dependency verification
+- Architecture deployment spec (query via `changelog_query` with entity_type: "deployment_config") — for deployment architecture
+- Architecture observability spec (query via `changelog_query` with entity_type: "observability_config") — for monitoring integration
+- Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency") — for dependency verification
 - Implementation entries (query via `changelog_query`)
 - Test report entries (query via `changelog_query`)
 - Security audit report (from Security Auditor)

@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash
 - Test suite code (E2E and developer-written unit/integration tests)
 - Requirements specification (for acceptance criteria verification)
 - Implementation plan (phase indexes with E2E and integration test scenarios)
-- Architecture components (`architecture_components.yaml`) — for integration test boundary verification
+- Architecture components (query via `changelog_query` with entity_type: "component") — for integration test boundary verification
 - Unified traceability matrix from QA Engineer
 - Review feedback from previous iterations (if any)
 - `planning/project-memory.md` (if it exists)
@@ -46,7 +46,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] No flaky E2E tests (or flagged with explanation if unavoidable)
     - [ ] E2E tests use test fixture automation and clean up after themselves
 - Integration test coverage:
-    - [ ] Developer-written integration tests cover component interaction boundaries from `architecture_components.yaml`
+    - [ ] Developer-written integration tests cover component interaction boundaries from architecture components (query via `changelog_query` with entity_type: "component")
     - [ ] Planner-defined integration test scenarios have corresponding tests
     - [ ] Integration tests set up and tear down their own data
 - Acceptance criteria coverage:

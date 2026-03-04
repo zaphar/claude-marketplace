@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Security audit report from Security Auditor
-- Architecture security spec (`architecture_security.yaml`)
+- Architecture security spec (query via `changelog_query` with entity_type: "security_config")
 - Requirements specification (security-category requirements)
 - QA test report (to verify auditor didn't duplicate QA work)
 - Project source code (spot-check the auditor's work)

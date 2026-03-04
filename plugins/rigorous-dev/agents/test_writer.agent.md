@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic
 - Architecture files - approved by Architecture Critic
 - UX specification - approved by UX Critic (if UI exists)
-- Requirements glossary, approved dependency manifest (`architecture_dependencies.yaml`)
+- Requirements glossary, approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`)
 - `planning/project-memory.md` (if it exists)
 - Feedback from Test Writer Critic (on revision cycles)
 
@@ -44,7 +44,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Test fixtures, fakes, and test helpers are allowed — these are test infrastructure, not implementation.
 - Follow CODESTYLE.md if present.
 - Use requirements glossary for naming (domain terms, not jargon).
-- Do not add dependencies beyond `architecture_dependencies.yaml` — flag unapproved needs for architect.
+- Do not add dependencies beyond the approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`) — flag unapproved needs for architect.
 - Do not use mocking frameworks in your tests. Use Fakes or In Memory doubles.
   Mocking frameworks are evil and destructive to the long term health of a codebase.
 

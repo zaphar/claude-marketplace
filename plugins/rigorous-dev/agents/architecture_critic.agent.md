@@ -34,13 +34,13 @@ tools: Read, Grep, Glob, Bash
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
     - [ ] All expected architecture files present (architecture_index, architecture_components, architecture_data_model, api_spec, architecture_deployment, architecture_security, architecture_observability, architecture_traceability, architecture_dependencies, adrs/)
-    - [ ] All technical requirements mapped to architectural elements (check `architecture_traceability.yaml`)
+    - [ ] All technical requirements mapped to architectural elements (check via `traceability_query`)
     - [ ] Technology choices documented with rationale and current research citations
     - [ ] Technology recommendations include source links (official docs, release notes, benchmarks) — not just training-data knowledge
     - [ ] Uncertainty flagged where current information could not be found
-    - [ ] All components defined with clear interfaces (in `architecture_components.yaml`)
+    - [ ] All components defined with clear interfaces (query via `changelog_query` entity_type: `component`)
     - [ ] Integration test boundaries defined for inter-component interactions — boundary type, interacting components, and expected behavior specified
-    - [ ] Data model complete (in `architecture_data_model.yaml`)
+    - [ ] Data model complete (query via `changelog_query` entity_type: `data_entity`)
     - [ ] API specification complete with machine-readable OpenAPI spec (`api_spec.yaml`) that is valid OpenAPI 3.x
     - [ ] Deployment architecture addresses all target scenarios
     - [ ] Observability strategy defined
@@ -72,7 +72,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] Error handling is well-defined
     - [ ] Versioning strategy defined
 - Dependencies:
-    - [ ] `architecture_dependencies.yaml` exists with approved dependency manifest
+    - [ ] Approved dependency manifest exists (query via `changelog_query` entity_type: `approved_dependency`)
     - [ ] Every third-party dependency has a documented justification and ADR reference
     - [ ] Dependency health assessed for each (maintenance activity, community adoption, transitive dependency count, license, single-maintainer risk)
     - [ ] No dependency chosen when a reasonable in-house implementation would suffice
@@ -108,7 +108,7 @@ When reviewing architecture for a bug fix iteration:
 
 **Context Management:**
 
-- **Read architecture files one at a time** — they are your primary review targets. Start with `architecture_index.yaml` for the overview, then work through each file against the checklist.
+- **Read architecture entries one at a time** — they are your primary review targets. Start with the architecture overview (query via `changelog_query` entity_type: `architecture_overview`), then work through each entity type against the checklist.
 - **Read requirements selectively.** For traceability, read the requirements for requirement IDs and categories. For deployment, read the constraints. Don't load glossary, stakeholders, decisions, or risks.
 - **Read UX files selectively.** For UX support verification, read user flows and UX traceability. Don't load mockups, design system, accessibility, or responsive files.
 - **On re-review cycles**, read only your previous review's issues and the specific architecture files that were revised.

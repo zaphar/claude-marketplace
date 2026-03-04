@@ -18,7 +18,7 @@ tools: Read, Grep, Glob, Bash
 - Data model: Implementation entries (validated on insert via `changelog_insert`)
 - Codebase produced by Senior Developer
 - Implementation plan (phase indexes with Feature-Layer Matrices)
-- Architecture dependencies manifest (`architecture_dependencies.yaml`)
+- Architecture dependencies manifest (query via `changelog_query`, entity_type: `approved_dependency`)
 - Requirements specification (for traceability verification)
 - UX specification (for UI compliance verification, if applicable)
 
@@ -83,7 +83,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] Consistent structural/behavioral patterns across peer features — navigation patterns, button placement, save/cancel flows, error display, loading states
     - [ ] If analogous features exist, the new feature matches their patterns (not just code formatting — actual UX behavior)
 - Dependencies:
-    - [ ] Dependencies match the architect's approved manifest (`architecture_dependencies.yaml`) — no unapproved additions
+    - [ ] Dependencies match the architect's approved manifest (query via `changelog_query`, entity_type: `approved_dependency`) — no unapproved additions
     - [ ] If new dependencies were needed, they are flagged for architect evaluation
 - Security:
     - [ ] No hardcoded secrets or credentials

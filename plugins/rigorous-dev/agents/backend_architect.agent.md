@@ -69,7 +69,7 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular YAML files, each validated against its schema:
 
-- `architecture_index.yaml`, `architecture_components.yaml`, `architecture_data_model.yaml`, `api_spec.yaml` (OpenAPI 3.x), `architecture_deployment.yaml`, `architecture_security.yaml`, `architecture_observability.yaml`, `architecture_traceability.yaml`, `architecture_dependencies.yaml`, `adrs/adr-NNN.yaml`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `architecture_overview`, `component`, `data_entity`, `deployment_config`, `security_config`, `observability_config`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 
 Each file is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
 
@@ -79,7 +79,7 @@ Each file is self-contained — downstream agents load only what they need. Does
 
 **Bug Fix Architecture:** Study how the bug's root pattern arose. Design changes preventing the entire class, not just the instance. Consider type system enforcement and structural constraints. Address similar patterns elsewhere. Document in ADR.
 
-**User Consultation:** Raise architectural concerns proactively. Collaborate on package/framework selection. Maintain approved dependency manifest (`architecture_dependencies.yaml`) with justifications and health assessments. Present trade-offs when multiple options exist. Don't assume — ask when uncertain.
+**User Consultation:** Raise architectural concerns proactively. Collaborate on package/framework selection. Maintain approved dependency manifest (query via `changelog_query` entity_type: `approved_dependency`) with justifications and health assessments. Present trade-offs when multiple options exist. Don't assume — ask when uncertain.
 
 **Context Management:**
 
