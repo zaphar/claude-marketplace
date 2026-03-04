@@ -18,7 +18,7 @@ const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb();
-  const { sequence, project_name, critic_model } = args;
+  const { project_name, critic_model } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
@@ -37,10 +37,10 @@ function iterationCreate(args) {
     // Create iteration
     const iterResult = db
       .prepare(
-        `INSERT INTO iteration (sequence, status, started_at, notes)
-         VALUES (?, 'active', ?, '')`
+        `INSERT INTO iteration (status, started_at, notes)
+         VALUES ('active', ?, '')`
       )
-      .run(sequence, now);
+      .run(now);
 
     const iteration_id = iterResult.lastInsertRowid;
 
@@ -58,7 +58,7 @@ function iterationCreate(args) {
 
     setInProgress.run(now, iteration_id);
 
-    return { iteration_id, sequence };
+    return { iteration_id };
   });
 
   return run();
@@ -72,8 +72,6 @@ function phaseTransition(args) {
     status,
     approved_by,
     notes,
-    current_sub_phase,
-    current_step,
   } = args;
   const now = new Date().toISOString();
 
@@ -96,14 +94,6 @@ function phaseTransition(args) {
     sets.push("notes = @notes");
     params.notes = notes;
   }
-  if (current_sub_phase !== undefined) {
-    sets.push("current_sub_phase = @current_sub_phase");
-    params.current_sub_phase = current_sub_phase;
-  }
-  if (current_step !== undefined) {
-    sets.push("current_step = @current_step");
-    params.current_step = current_step;
-  }
 
   db.prepare(
     `UPDATE phase SET ${sets.join(", ")} WHERE iteration_id = @iteration_id AND name = @phase_name`
@@ -114,6 +104,19 @@ function phaseTransition(args) {
     .get(iteration_id, phase_name);
 
   return { phase_id: row.id, name: row.name, status: row.status };
+}
+
+function planPhaseTransition(args) {
+  const db = getDb();
+  const { plan_phase_id, status } = args;
+
+  db.prepare(
+    "UPDATE plan_phase SET status = ? WHERE id = ?"
+  ).run(status, plan_phase_id);
+
+  const row = db.prepare("SELECT id, phase_number, name, status FROM plan_phase WHERE id = ?").get(plan_phase_id);
+  if (!row) throw new Error(`Plan phase ${plan_phase_id} not found`);
+  return { plan_phase_id: row.id, phase_number: row.phase_number, name: row.name, status: row.status };
 }
 
 function revisionCreate(args) {
@@ -864,15 +867,13 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_create",
     description:
-      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 9 phase records and sets requirements to in_progress.",
+      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 9 phase records and sets requirements to in_progress. Returns the new iteration_id (auto-incremented).",
     inputSchema: {
       type: "object",
       properties: {
-        sequence: { type: "integer", description: "Iteration sequence number (1-based)" },
         project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
       },
-      required: ["sequence"],
     },
   },
   {
@@ -889,10 +890,20 @@ export const WRITE_TOOLS = [
         status: { type: "string", enum: ["pending", "in_progress", "completed", "skipped"] },
         approved_by: { type: "string" },
         notes: { type: "string" },
-        current_sub_phase: { type: "integer" },
-        current_step: { type: "string", enum: ["test_writing", "implementation"] },
       },
       required: ["iteration_id", "phase_name", "status"],
+    },
+  },
+  {
+    name: "plan_phase_transition",
+    description: "Transitions an implementation plan sub-phase's status (pending → test_writing → implementing → completed). Used during the implementation phase to track progress through each sub-phase.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        plan_phase_id: { type: "integer", description: "The plan_phase row ID" },
+        status: { type: "string", enum: ["pending", "test_writing", "implementing", "completed"] },
+      },
+      required: ["plan_phase_id", "status"],
     },
   },
   {
@@ -1007,6 +1018,8 @@ export function handleWriteTool(name, args) {
       return iterationCreate(args);
     case "phase_transition":
       return phaseTransition(args);
+    case "plan_phase_transition":
+      return planPhaseTransition(args);
     case "revision_create":
       return revisionCreate(args);
     case "revision_update":

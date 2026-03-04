@@ -616,28 +616,14 @@ function revisionHistory(args) {
 
 function iterationSummary(args) {
   const db = getDb();
-  const { iteration_id, sequence } = args;
+  const { iteration_id } = args;
 
-  let resolvedId = iteration_id;
-
-  if (!resolvedId && sequence !== undefined) {
-    const it = db
-      .prepare("SELECT id FROM iteration WHERE sequence = ?")
-      .get(sequence);
-    if (!it) {
-      throw new Error(
-        `Iteration with sequence ${sequence} not found`
-      );
-    }
-    resolvedId = it.id;
+  if (!iteration_id) {
+    throw new Error("Provide iteration_id");
   }
 
-  if (!resolvedId) {
-    throw new Error("Provide iteration_id or sequence");
-  }
-
-  const iteration = db.prepare("SELECT * FROM iteration WHERE id = ?").get(resolvedId);
-  if (!iteration) throw new Error(`Iteration ${resolvedId} not found`);
+  const iteration = db.prepare("SELECT * FROM iteration WHERE id = ?").get(iteration_id);
+  if (!iteration) throw new Error(`Iteration ${iteration_id} not found`);
 
   // Phases with revision counts
   const phases = db
@@ -650,13 +636,13 @@ function iterationSummary(args) {
        GROUP BY p.id
        ORDER BY p.id`
     )
-    .all(resolvedId);
+    .all(iteration_id);
 
   // Decision counts
   const countFor = (table) =>
     db
       .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE iteration_id = ?`)
-      .get(resolvedId).n;
+      .get(iteration_id).n;
 
   const decisions = {
     requirements: countFor("requirement"),
@@ -672,13 +658,13 @@ function iterationSummary(args) {
 
   const commits = db
     .prepare("SELECT commit_sha, message, created_at FROM vcs_commit WHERE iteration_id = ? ORDER BY created_at")
-    .all(resolvedId);
+    .all(iteration_id);
 
   const deliverables = db
     .prepare(
       "SELECT asset_type, file_path, description, commit_sha, created_at FROM asset_deliverable WHERE iteration_id = ? ORDER BY created_at"
     )
-    .all(resolvedId);
+    .all(iteration_id);
 
   return { iteration, phases, decisions, commits, deliverables };
 }
@@ -695,14 +681,14 @@ function projectStatus(args) {
 
   const currentIteration = db
     .prepare(
-      "SELECT * FROM iteration WHERE status = 'active' ORDER BY sequence DESC LIMIT 1"
+      "SELECT * FROM iteration WHERE status = 'active' ORDER BY id DESC LIMIT 1"
     )
     .get();
 
   const targetIterationId = currentIteration
     ? currentIteration.id
     : db
-        .prepare("SELECT id FROM iteration ORDER BY sequence DESC LIMIT 1")
+        .prepare("SELECT id FROM iteration ORDER BY id DESC LIMIT 1")
         .get()?.id;
 
   const phases = targetIterationId
@@ -825,13 +811,10 @@ export const READ_TOOLS = [
       properties: {
         iteration_id: {
           type: "number",
-          description: "Direct iteration ID",
-        },
-        sequence: {
-          type: "number",
-          description: "Iteration sequence number (alternative to iteration_id)",
+          description: "Iteration ID (auto-incremented primary key)",
         },
       },
+      required: ["iteration_id"],
     },
   },
   {

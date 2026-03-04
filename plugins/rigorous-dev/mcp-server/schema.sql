@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS project (
 -- Iterations: each request to change the system
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  sequence INTEGER NOT NULL UNIQUE,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
   started_at TEXT NOT NULL,
   closed_at TEXT,
@@ -38,8 +37,6 @@ CREATE TABLE IF NOT EXISTS phase (
   completed_at TEXT,
   approved_by TEXT,
   notes TEXT DEFAULT '',
-  current_sub_phase INTEGER,
-  current_step TEXT CHECK(current_step IS NULL OR current_step IN ('test_writing', 'implementation')),
   UNIQUE(iteration_id, name)
 );
 
@@ -577,6 +574,7 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('feature', 'infrastructure')),
   goal TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'test_writing', 'implementing', 'completed')),
   complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')),
   review_checkpoint INTEGER DEFAULT 0,
   notes TEXT,

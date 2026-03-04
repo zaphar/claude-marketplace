@@ -66,6 +66,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
 | `type` | TEXT | NOT NULL, CHECK(`feature` \| `infrastructure`) | — | Whether this phase delivers user-facing features or internal infrastructure. |
 | `goal` | TEXT | NOT NULL | — | One-paragraph statement of what this phase achieves and why. |
+| `status` | TEXT | NOT NULL, DEFAULT `'pending'`, CHECK(`pending` \| `test_writing` \| `implementing` \| `completed`) | `'pending'` | Tracks sub-phase progress during implementation. `test_writing` while tests are being written; `implementing` while implementation is in progress; `completed` when the sub-phase is fully approved. |
 | `complexity` | TEXT | CHECK(`XS` \| `S` \| `M` \| `L` \| `XL`), nullable | — | T-shirt size effort estimate. NULL means unestimated. |
 | `review_checkpoint` | INTEGER | — | `0` | Boolean flag (0/1). When `1`, a review checkpoint is required before subsequent phases begin. |
 | `notes` | TEXT | nullable | — | Free-form notes from the planner (caveats, open questions, reminders). |

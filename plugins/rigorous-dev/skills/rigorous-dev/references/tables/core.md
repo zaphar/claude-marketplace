@@ -43,7 +43,6 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `sequence` | INTEGER | NOT NULL, UNIQUE | 1-based sequence number. Enforced globally unique. |
 | `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. Only one iteration should be `active` at a time. |
 | `started_at` | TEXT | NOT NULL | ISO-8601 timestamp when this iteration was opened. |
 | `closed_at` | TEXT | — | ISO-8601 timestamp when this iteration was closed. NULL while active. |
@@ -62,7 +61,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Purpose:** One of the nine SDLC stages within an iteration. Phases are created in bulk (all nine, all `pending`) when an iteration is created, then activated and completed one at a time as the workflow advances.
 
-**Context:** Created by `iteration_create` alongside the iteration row. Status is advanced by `phase_transition`. The `current_step` column is used within the `implementation` phase to distinguish the test-writing sub-step from the main implementation step. `approved_by` records which agent approved the phase output (set by the critic). Revisions hang off phases, so the full producer-critic history for any phase is traceable via `revision`.
+**Context:** Created by `iteration_create` alongside the iteration row. Status is advanced by `phase_transition`. `approved_by` records which agent approved the phase output (set by the critic). Revisions hang off phases, so the full producer-critic history for any phase is traceable via `revision`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -74,8 +73,6 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 | `completed_at` | TEXT | — | ISO-8601 timestamp when the phase reached `completed` or `skipped`. NULL while in progress. |
 | `approved_by` | TEXT | — | Agent identifier that approved this phase's output (set by critic on final approval). NULL until approved. |
 | `notes` | TEXT | DEFAULT `''` | Free-text notes about this phase. |
-| `current_sub_phase` | INTEGER | — | Numeric sub-phase tracker, used by multi-step phases to record progress position. |
-| `current_step` | TEXT | CHECK(`NULL`, `test_writing`, `implementation`) | Step within the `implementation` phase. `test_writing` precedes `implementation`. NULL for all other phases. |
 
 **Unique constraint:** `(iteration_id, name)` — each phase name appears exactly once per iteration.
 

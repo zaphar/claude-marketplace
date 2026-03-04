@@ -8,6 +8,19 @@ version: 0.10.0
 
 You are orchestrating a rigorous Software Development Life Cycle (SDLC) workflow with high-quality standards and tight feedback loops through producer-critic validation.
 
+## Glossary
+
+- **Producer** — An agent that generates a decision (e.g. ADR) or deliverables (e.g. software), sometimes via an interview with the user.
+- **Critic** — An agent that evaluates the output of a producer and determines whether the output is of acceptable quality. May reject producer output, which forces the producer to try again.
+- **Producer-critic loop** — One exchange between a producer and a critic: the producer submits work, the critic reviews it.
+- **Phase** — A collection of producer-critic loops. You exit the phase when the critic is satisfied.
+- **Iteration** — A set of phases that together record decisions and produce associated deliverables.
+- **Persona** — The user of the system and what their goal is. Closely related to requirements.
+- **ADR (Architectural Decision Record)** — A structured record of an architectural decision: context, decision, and consequences.
+- **Analyze** — Examine the requirements for gaps.
+- **Design** — Propose solutions to things.
+- **Review** — Look for bugs in code or divergences from the plan or requirements. Applies to documentation as well.
+
 ## Workflow Overview
 
 The plugin provides two separate workflows:
@@ -161,7 +174,7 @@ qa → audit → release
 
 **Special Cases:**
 - If phase is "skipped", proceed to next non-skipped phase
-- Implementation phase may have multiple sub-phases (tracked in `current_phase_number`) and a two-step loop per sub-phase (tracked in `current_step`: `"test_writing"` or `"implementation"`). Missing `current_step` defaults to `"implementation"` for backward compatibility.
+- Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `plan_phase` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query `plan_phase` for the first row with `status != 'completed'` ordered by `phase_number`.
 
 ### 6. Iteration Management
 
@@ -218,11 +231,10 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 Each sub-phase has two steps: **test writing** then **implementation**. This enforces TDD structurally — tests are written and validated before any implementation begins.
 
-For each sub-phase (starting at `current_phase_number: 1`):
+For each sub-phase (query `plan_phase` for the first row with `status != 'completed'` ordered by `phase_number`):
 
-1. Set `current_phase_number` to the sub-phase number (via `project_update`)
+1. Call `plan_phase_transition({ plan_phase_id: <id>, status: "test_writing" })` to start test writing
 2. Call `revision_create` with `phase_id: "implementation"`, sub-phase number, and `"test_writer"` agent name
-3. Call `phase_transition` to set implementation step to `"test_writing"`
 
 **Step 1 — Test Writing:**
 
@@ -236,7 +248,7 @@ For each sub-phase (starting at `current_phase_number: 1`):
    - No implementation logic in stubs
 9. **If approved:**
    - Call `revision_update` with approved status
-   - Call `phase_transition` to set implementation step to `"implementation"`
+   - Call `plan_phase_transition({ plan_phase_id: <id>, status: "implementing" })` to advance to implementation step
    - Compact agent context
    - Proceed to Step 2
 10. **If rejected:**
@@ -258,6 +270,7 @@ For each sub-phase (starting at `current_phase_number: 1`):
     - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX (via `traceability_query`)
 16. **If approved:**
     - Call `revision_update` with approved status and `approved_by: "senior_developer_critic"`
+    - Call `plan_phase_transition({ plan_phase_id: <id>, status: "completed" })` to mark sub-phase completed
     - Compact agent context (see below)
     - Check if this sub-phase is a review checkpoint (see below)
     - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
@@ -378,12 +391,10 @@ active → close → closed → new-iteration → active (iteration N+1)
 ```
 
 **State Fields (DB equivalents):**
-- `sequence`: Tracked in the DB — use `project_status` to get the current iteration; `iteration_create` increments it
 - `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update`
 - `closed_at`: Tracked in the DB iteration record
 
 **Backward Compatibility:**
-- Missing `sequence` → treat as `1`
 - Missing `status` → treat as `"active"`
 
 **VCS-Based Iteration Cleanup:**
@@ -594,8 +605,9 @@ You have access to:
 - **AskUserQuestion** - Escalate decisions to user
 - **project_status** (MCP tool) - Get current project state, iteration number, and all phase statuses
 - **phase_transition** (MCP tool) - Update a phase's status (pending → in_progress → completed → skipped)
+- **plan_phase_transition** (MCP tool) - Update a plan_phase row's status (pending → test_writing → implementing → completed). Takes `plan_phase_id` and `status`
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
-- **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model, current_phase_number, current_step)
+- **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id; auto-increments revision_number
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and optionally a revision. Inputs: `entry_type`, `phase_id`, `iteration_id`, `revision_id` (optional), `content`
@@ -606,6 +618,23 @@ You have access to:
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with an iteration
 
 Use these tools to manage the workflow effectively.
+
+## Data Model Reference
+
+When you need to understand table structures — what columns exist, what constraints apply, or how tables relate to each other — consult these reference docs:
+
+- **[schemas-overview.md](references/schemas-overview.md)** — High-level overview of all tables organized by domain, plus an alphabetical index of every table in the database
+- **[tables/core.md](references/tables/core.md)** — Project, iteration, phase, revision (the spine)
+- **[tables/requirements.md](references/tables/requirements.md)** — Requirements, personas, acceptance criteria, dependencies
+- **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, technology choices, interfaces
+- **[tables/data-model.md](references/tables/data-model.md)** — Data entities, fields, relationships
+- **[tables/cross-cutting.md](references/tables/cross-cutting.md)** — Security, deployment, observability configs, dependencies, traceability
+- **[tables/ux-design.md](references/tables/ux-design.md)** — User flows, screens, design system, accessibility
+- **[tables/planning.md](references/tables/planning.md)** — Plan phases, tasks, requirement mappings, risks
+- **[tables/implementation.md](references/tables/implementation.md)** — Implementation manifests, component status, file mappings
+- **[tables/qa-test.md](references/tables/qa-test.md)** — Test reports, suites, cases, coverage
+- **[tables/documentation.md](references/tables/documentation.md)** — Documentation manifests, sections, API endpoints
+- **[tables/deployment.md](references/tables/deployment.md)** — Deployment manifests, environments, runbooks, release notes
 
 ---
 

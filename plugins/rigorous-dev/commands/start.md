@@ -67,7 +67,6 @@ iteration_create({
   project_name: "<user_provided_or_inferred>",
   artifacts_directory: "<user_configured_path>",
   critic_model: "<user_selected_model>",
-  sequence: 1,
   starting_phase: "requirements"
 })
 ```

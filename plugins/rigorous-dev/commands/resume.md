@@ -42,7 +42,7 @@ Inspect the `status` field in the `project_status` response:
 - If `status == "closed"`, display error:
 
 ```
-ERROR: This workflow is closed (iteration <sequence>).
+ERROR: This workflow is closed (iteration <iteration_id>).
 A closed workflow cannot be resumed.
 Use /rigorous-dev:new-iteration to start a new iteration.
 ```
@@ -90,9 +90,9 @@ Based on the current phase and its status, load the appropriate agent:
 - `ux_design` → `rigorous-dev:ux_designer`
 - `architecture` → `rigorous-dev:backend_architect`
 - `planning` → `rigorous-dev:implementation_planner`
-- `implementation` → Check `current_step` in state:
-  - If `"test_writing"` → `rigorous-dev:test_writer`
-  - If `"implementation"` or missing → `rigorous-dev:senior_developer`
+- `implementation` → Query `plan_phase` for first row with `status != 'completed'` ordered by `phase_number`:
+  - If that row's `status` is `"test_writing"` → `rigorous-dev:test_writer`
+  - If that row's `status` is `"implementing"` or `"pending"` → `rigorous-dev:senior_developer`
 - `documentation` → `rigorous-dev:documentation_master`
 
 **If phase status is "completed":**
