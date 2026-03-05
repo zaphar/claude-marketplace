@@ -951,6 +951,48 @@ function insertProjectLesson(db, iteration_id, _revision_id, data) {
   return { entity_type: "project_lesson", id: result.lastInsertRowid };
 }
 
+function insertSecurityAuditFinding(db, iteration_id, revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO security_audit_finding
+       (iteration_id, revision_id, category, severity, title, description, location, recommendation, cve, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    iteration_id,
+    revision_id,
+    data.category,
+    data.severity,
+    data.title,
+    data.description,
+    data.location ?? null,
+    data.recommendation,
+    data.cve ?? null,
+    data.status ?? "open"
+  );
+  return { entity_type: "security_audit_finding", id: result.lastInsertRowid };
+}
+
+function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO performance_audit_finding
+       (iteration_id, revision_id, category, severity, title, description, location, metric_name, baseline_value, actual_value, recommendation, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    iteration_id,
+    revision_id,
+    data.category,
+    data.severity,
+    data.title,
+    data.description,
+    data.location ?? null,
+    data.metric_name ?? null,
+    data.baseline_value ?? null,
+    data.actual_value ?? null,
+    data.recommendation,
+    data.status ?? "open"
+  );
+  return { entity_type: "performance_audit_finding", id: result.lastInsertRowid };
+}
+
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -976,6 +1018,8 @@ function changelogInsert(args) {
     asset_deliverable: insertAssetDeliverable,
     blocker: insertWorkflowBlocker,
     project_lesson: insertProjectLesson,
+    security_audit_finding: insertSecurityAuditFinding,
+    performance_audit_finding: insertPerformanceAuditFinding,
   };
 
   const handler = handlers[entity_type];
@@ -1153,6 +1197,8 @@ export const WRITE_TOOLS = [
             "iteration_metadata",
             "blocker",
             "project_lesson",
+            "security_audit_finding",
+            "performance_audit_finding",
           ],
         },
         iteration_id: { type: "integer" },

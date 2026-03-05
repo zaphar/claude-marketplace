@@ -486,7 +486,7 @@ Next: QA
 
 *[OWASP Top 10 review, data flow tracing, dependency audit, configuration review]*
 
-**Security Audit Critic:** Reviewing security audit report...
+**Security Audit Critic:** Reviewing security audit findings...
 
 ✓ All OWASP categories examined
 ✓ Findings backed by evidence with file:line locations
@@ -498,7 +498,7 @@ Next: QA
 
 *[Database query analysis, memory patterns, API response analysis]*
 
-**Performance Audit Critic:** Reviewing performance audit report...
+**Performance Audit Critic:** Reviewing performance audit findings...
 
 ✓ All performance areas covered
 ✓ Findings include impact estimates
@@ -545,8 +545,8 @@ Generated Artifacts:
 - implementation_plan.yaml
 - implementation_manifest.yaml
 - test_report.yaml
-- security_audit.md
-- performance_audit.md
+- security_audit_findings (in DB)
+- performance_audit_findings (in DB)
 - documentation_manifest.yaml
 - deployment_manifest.yaml
 

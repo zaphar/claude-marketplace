@@ -291,7 +291,7 @@ Security and Performance Auditors run in parallel:
 - **Security Auditor**: OWASP Top 10 review, data flow tracing, dependency audit
 - **Performance Auditor**: Database query analysis, memory patterns, algorithm review
 
-Output: `security_audit.md`, `performance_audit.md` (findings also recorded in `.claude/rigorous-dev.db`)
+Output: Security and performance audit findings stored in `.claude/rigorous-dev.db` (entity types: `security_audit_finding`, `performance_audit_finding`)
 
 #### 3. Release Phase
 
@@ -414,21 +414,18 @@ This traceability is built-in and requires no extra documentation effort from ag
 
 ## Artifacts
 
-File artifacts (audit reports, generated documentation) are written to `.claude/rigorous-dev-artifacts/<workflow-id>/`. All structured data (requirements, architecture decisions, plans, manifests, test results) is stored in `.claude/rigorous-dev.db` instead of YAML files.
+File artifacts (generated documentation) are written to `.claude/rigorous-dev-artifacts/<workflow-id>/`. All structured data (requirements, architecture decisions, plans, manifests, test results, audit findings) is stored in `.claude/rigorous-dev.db` instead of YAML files.
 
 ```
 .claude/rigorous-dev-artifacts/<workflow-id>/
-├── audit/
-│   ├── security_audit.md
-│   └── performance_audit.md
 └── documentation/                         # persistent — updated in-place
     ├── user-guide/
     └── api/
 ```
 
 **Key Points:**
-- Structured phase data (requirements, architecture, planning, implementation, QA, release) lives in the SQLite DB — query it with `changelog_query`, `traceability_query`, or `iteration_summary`
-- File artifacts are only written where a document format is more appropriate (audit reports, doc pages)
+- Structured phase data (requirements, architecture, planning, implementation, QA, audit, release) lives in the SQLite DB — query it with `changelog_query`, `traceability_query`, or `iteration_summary`
+- File artifacts are only written where a document format is more appropriate (doc pages)
 - Release workflow phase tracking is stored in the DB alongside development phases — no separate release state file
 
 ## Customization

@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash
 
 **Inputs:**
 
-- Performance audit report from Performance Auditor
+- Performance audit findings from Performance Auditor (query via `changelog_query(entity_type: "performance_audit_finding", iteration_id: <current>)`)
 - Requirements specification (performance-category requirements and quality standards)
 - QA test report (to verify auditor didn't duplicate QA work)
 - Project source code (spot-check the auditor's work)
@@ -22,6 +22,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
+- Query all performance audit findings via `changelog_query(entity_type: "performance_audit_finding", iteration_id: <current>)` to get the complete set of findings
 - Verify the audit was comprehensive and no major areas were skipped
 - Verify findings are backed by evidence, not just speculation
 - Spot-check the auditor's findings against the actual code to verify accuracy
@@ -40,13 +41,14 @@ tools: Read, Grep, Glob, Bash
     - [ ] Logging and serialization patterns were reviewed
     - [ ] Algorithm/data structure choices were evaluated in hot paths
     - [ ] "Areas Not Audited" section is present and justified (if any areas were skipped)
-- Finding quality:
-    - [ ] Each finding has a specific file:line location
-    - [ ] Each finding includes estimated impact (not just "this is slow" — quantify or explain the scaling behavior)
-    - [ ] Each finding includes evidence (code snippet, query pattern, complexity analysis, or benchmark data)
-    - [ ] Each finding includes a specific remediation with code example
-    - [ ] Severity ratings are appropriate and consistent with impact assessment
+- Finding quality (review each DB finding):
+    - [ ] Each finding has a specific file:line `location`
+    - [ ] Each finding's `description` includes estimated impact (not just "this is slow" — quantify or explain the scaling behavior)
+    - [ ] Each finding's `description` includes evidence (code snippet, query pattern, complexity analysis, or benchmark data)
+    - [ ] Each finding's `recommendation` includes a specific remediation with code example
+    - [ ] `severity` ratings are appropriate and consistent with impact assessment
     - [ ] Findings are not duplicates of what QA already tested and verified
+    - [ ] `metric_name`, `baseline_value`, and `actual_value` are populated when quantifiable metrics are available
 - Accuracy (spot-check):
     - [ ] Randomly verify 2-3 findings against the actual source code — does the issue exist as described?
     - [ ] Verify that remediation suggestions are technically correct and don't introduce new issues
@@ -62,16 +64,16 @@ tools: Read, Grep, Glob, Bash
 
 **Handoff:**
 
-- On approval, the performance audit report proceeds to the Release phase
+- On approval, the performance audit findings proceed to the Release phase
 - On rejection, returns to Performance Auditor with specific feedback
 
 **Context Management:**
 
-- **Read the audit report in full** — it's your primary review target.
+- **Query all findings from DB** via `changelog_query(entity_type: "performance_audit_finding")` — this is your primary review target.
 - **Read requirements selectively** — filter for performance-category requirements only.
 - **Read quality standards once** for performance targets.
 - **Spot-check source code selectively.** Pick 2-3 findings to verify against the actual code. Don't read the entire codebase.
-- **On re-review cycles**, read only the previous review's issues and the updated sections of the audit report.
+- **On re-review cycles**, query the updated findings from DB and focus on the issues raised in the previous review.
 
 **Escalation:**
 

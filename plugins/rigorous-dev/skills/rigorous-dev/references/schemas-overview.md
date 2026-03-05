@@ -181,6 +181,17 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 **Critic:** qa_critic
 
+## Audit Domain
+
+📄 **Detailed design:** [tables/audit.md](tables/audit.md)
+
+| Table | Producer | Purpose |
+|-------|----------|---------|
+| `security_audit_finding` | security_auditor | Individual security vulnerability findings from deep code-level audit. |
+| `performance_audit_finding` | performance_auditor | Individual performance bottleneck findings from deep code-level audit. |
+
+**Critics:** security_audit_critic, performance_audit_critic
+
 ## Documentation Domain
 
 📄 **Detailed design:** [tables/documentation.md](tables/documentation.md)
@@ -360,6 +371,7 @@ All 148 tables with links to their detailed design documents.
 | `observability_config` | [cross-cutting](tables/cross-cutting.md) |
 | `operational_monitoring` | [requirements](tables/requirements.md) |
 | `operational_requirement` | [requirements](tables/requirements.md) |
+| `performance_audit_finding` | [audit](tables/audit.md) |
 | `persona` | [requirements](tables/requirements.md) |
 | `persona_addressed` | [ux-design](tables/ux-design.md) |
 | `persona_addressed_flow` | [ux-design](tables/ux-design.md) |
@@ -398,6 +410,7 @@ All 148 tables with links to their detailed design documents.
 | `screen_component` | [ux-design](tables/ux-design.md) |
 | `screen_responsive_variant` | [ux-design](tables/ux-design.md) |
 | `screen_state` | [ux-design](tables/ux-design.md) |
+| `security_audit_finding` | [audit](tables/audit.md) |
 | `security_config` | [cross-cutting](tables/cross-cutting.md) |
 | `technology_choice` | [architecture](tables/architecture.md) |
 | `technology_constraint` | [requirements](tables/requirements.md) |
@@ -425,4 +438,4 @@ All 148 tables with links to their detailed design documents.
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 148 tables across 11 domains**
+**Total: 150 tables across 12 domains**

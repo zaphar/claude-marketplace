@@ -29,6 +29,8 @@ const ENTITY_TABLE = {
   deployment_manifest: "deployment_manifest",
   blocker: "blocker",
   project_lesson: "project_lesson",
+  security_audit_finding: "security_audit_finding",
+  performance_audit_finding: "performance_audit_finding",
 };
 
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
@@ -711,6 +713,8 @@ function iterationSummary(args) {
     plan_phases: countFor("plan_phase"),
     approved_dependencies: countFor("approved_dependency"),
     traceability_mappings: countFor("traceability_mapping"),
+    security_audit_findings: countFor("security_audit_finding"),
+    performance_audit_findings: countFor("performance_audit_finding"),
   };
 
   const commits = db

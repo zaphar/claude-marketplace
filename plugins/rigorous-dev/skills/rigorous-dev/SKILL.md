@@ -382,13 +382,13 @@ The audit phase is part of the **release workflow** and runs two independent pro
 **Parallel Tracks:**
 
 1. **Security Track:**
-   - Load `rigorous-dev:security_auditor` → produces security audit report
-   - Load `rigorous-dev:security_audit_critic` → validates the report
+   - Load `rigorous-dev:security_auditor` → records security audit findings via `changelog_insert(entity_type: "security_audit_finding")`
+   - Load `rigorous-dev:security_audit_critic` → validates findings via `changelog_query(entity_type: "security_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 2. **Performance Track:**
-   - Load `rigorous-dev:performance_auditor` → produces performance audit report
-   - Load `rigorous-dev:performance_audit_critic` → validates the report
+   - Load `rigorous-dev:performance_auditor` → records performance audit findings via `changelog_insert(entity_type: "performance_audit_finding")`
+   - Load `rigorous-dev:performance_audit_critic` → validates findings via `changelog_query(entity_type: "performance_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.
@@ -408,11 +408,11 @@ Findings from both audits are combined for the remediation threshold:
 
 **Artifact Storage:**
 
-Auditors write their findings to file-based audit reports (`security_audit.md`, `performance_audit.md`) in the artifacts directory. These reports are the primary output of the audit phase — structured DB entity types for audit findings do not exist.
+Auditors record their findings directly to the changelog database via `changelog_insert` — each finding is a separate `security_audit_finding` or `performance_audit_finding` row with full provenance (`iteration_id`, `revision_id`). There are no file-based audit reports. The Release Engineer queries audit findings via `changelog_query` to assess release readiness.
 
 **Phase Completion:**
 
-The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit reports. Both reports must show no unresolved high/critical findings.
+The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit findings. Both tracks must show no unresolved high/critical findings.
 
 ### 10. Development Workflow Completion
 
@@ -709,6 +709,7 @@ When you need to understand table structures — what columns exist, what constr
 - **[tables/planning.md](references/tables/planning.md)** — Plan phases, tasks, requirement mappings, risks
 - **[tables/implementation.md](references/tables/implementation.md)** — Implementation manifests, component status, file mappings
 - **[tables/qa-test.md](references/tables/qa-test.md)** — Test reports, suites, cases, coverage
+- **[tables/audit.md](references/tables/audit.md)** — Security and performance audit findings
 - **[tables/documentation.md](references/tables/documentation.md)** — Documentation manifests, sections, API endpoints
 - **[tables/deployment.md](references/tables/deployment.md)** — Deployment manifests, environments, runbooks, release notes
 

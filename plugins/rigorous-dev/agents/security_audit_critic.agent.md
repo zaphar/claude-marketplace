@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash
 
 **Inputs:**
 
-- Security audit report from Security Auditor
+- Security audit findings from Security Auditor (query via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)`)
 - Architecture security spec (query via `changelog_query` with entity_type: "security_config")
 - Requirements specification (security-category requirements)
 - QA test report (to verify auditor didn't duplicate QA work)
@@ -23,6 +23,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
+- Query all security audit findings via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)` to get the complete set of findings
 - Verify the audit was comprehensive and no major areas were skipped
 - Spot-check the auditor's findings against the actual code to verify accuracy
 - Provide specific, actionable feedback on any deficiencies in the audit itself
@@ -31,7 +32,7 @@ tools: Read, Grep, Glob, Bash
 **Review Checklist:**
 
 - Coverage:
-    - [ ] All OWASP Top 10 categories examined (or explicitly marked N/A with reasoning)
+    - [ ] All OWASP Top 10 categories examined (or explicitly marked N/A with reasoning in the auditor's summary)
     - [ ] All security-category requirements have corresponding audit coverage
     - [ ] All API endpoints were included in the audit scope
     - [ ] All authentication/authorization code paths were reviewed
@@ -39,12 +40,12 @@ tools: Read, Grep, Glob, Bash
     - [ ] Dependency audit was performed (not just automated scanning)
     - [ ] Configuration files and environment variable usage were reviewed
     - [ ] "Areas Not Audited" section is present and justified (if any areas were skipped)
-- Finding quality:
-    - [ ] Each finding has a specific file:line location
-    - [ ] Each finding includes an attack scenario (how it could be exploited)
-    - [ ] Each finding includes evidence (code snippet or trace)
-    - [ ] Each finding includes a specific remediation with code example
-    - [ ] Severity ratings are appropriate (not inflated or understated)
+- Finding quality (review each DB finding):
+    - [ ] Each finding has a specific file:line `location`
+    - [ ] Each finding's `description` includes an attack scenario (how it could be exploited)
+    - [ ] Each finding's `description` includes evidence (code snippet or trace)
+    - [ ] Each finding's `recommendation` includes a specific remediation with code example
+    - [ ] `severity` ratings are appropriate (not inflated or understated)
     - [ ] Findings are not duplicates of what QA already tested and verified
 - Accuracy (spot-check):
     - [ ] Randomly verify 2-3 findings against the actual source code — does the vulnerability exist as described?
@@ -61,16 +62,16 @@ tools: Read, Grep, Glob, Bash
 
 **Handoff:**
 
-- On approval, the security audit report proceeds to the Release phase
+- On approval, the security audit findings proceed to the Release phase
 - On rejection, returns to Security Auditor with specific feedback
 
 **Context Management:**
 
-- **Read the audit report in full** — it's your primary review target.
+- **Query all findings from DB** via `changelog_query(entity_type: "security_audit_finding")` — this is your primary review target.
 - **Read security architecture once** for coverage verification.
 - **Read requirements selectively** — filter for security-category requirements only.
 - **Spot-check source code selectively.** Pick 2-3 findings to verify against the actual code, plus 1-2 areas the auditor marked as clean. Don't read the entire codebase.
-- **On re-review cycles**, read only the previous review's issues and the updated sections of the audit report.
+- **On re-review cycles**, query the updated findings from DB and focus on the issues raised in the previous review.
 
 **Escalation:**
 

@@ -1011,6 +1011,44 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
   priority TEXT NOT NULL CHECK(priority IN ('high', 'medium', 'low'))
 );
 
+-- ============================================================
+-- AUDIT PHASE TABLES
+-- ============================================================
+
+-- Security audit findings (produced by security_auditor during audit phase)
+CREATE TABLE IF NOT EXISTS security_audit_finding (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  category TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  location TEXT,
+  recommendation TEXT NOT NULL,
+  cve TEXT,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'false-positive')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Performance audit findings (produced by performance_auditor during audit phase)
+CREATE TABLE IF NOT EXISTS performance_audit_finding (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  category TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  location TEXT,
+  metric_name TEXT,
+  baseline_value TEXT,
+  actual_value TEXT,
+  recommendation TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'deferred')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Documentation manifest
 CREATE TABLE IF NOT EXISTS documentation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -20,8 +20,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency") — for dependency verification
 - Implementation entries (query via `changelog_query`)
 - Test report entries (query via `changelog_query`)
-- Security audit report (from Security Auditor)
-- Performance audit report (from Performance Auditor)
+- Security audit findings (query via `changelog_query` with entity_type: "security_audit_finding")
+- Performance audit findings (query via `changelog_query` with entity_type: "performance_audit_finding")
 - Codebase
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic
@@ -30,7 +30,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Validate that all input specifications are complete and approved
 - Validate that test report shows passing status
-- Validate that security and performance audit reports show no unresolved high/critical findings
+- Validate that security and performance audit findings show no unresolved high/critical findings (query via `changelog_query` with entity_type `"security_audit_finding"` and `"performance_audit_finding"`, filter by `status: "open"`)
 - Create CI/CD pipeline that enforces quality gates:
     - Schema validation of all upstream artifacts
     - Build with zero warnings
@@ -89,7 +89,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - **Read deployment spec and observability spec** at the start — they define your target.
 - **Read test report summary** — verify pass status without loading all test details.
-- **Read audit report summaries** — verify no unresolved high/critical findings.
+- **Read audit findings from DB** — query `changelog_query(entity_type: "security_audit_finding", filters: { status: "open" })` and `changelog_query(entity_type: "performance_audit_finding", filters: { status: "open" })` to verify no unresolved high/critical findings.
 - **Read source code selectively** — only build configs, CI/CD files, and deployment scripts.
 - **Read requirements selectively** — deployment requirements and quality standards only.
 - **Write incrementally.** Create pipeline config, then deployment scripts, then runbooks, then changelog — updating the manifest after each.
@@ -98,6 +98,6 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Escalation:**
 
 - If test report shows failures, reject and return to QA Engineer. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If audit reports show unresolved high/critical findings, reject and return to the relevant auditor. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If audit findings show unresolved high/critical findings, reject and return to the relevant auditor. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If architecture doesn't support required deployment targets, pause and describe the gap. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If infrastructure requirements exceed constraints, pause and tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
