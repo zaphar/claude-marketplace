@@ -40,7 +40,7 @@ The plugin provides two separate workflows:
 2. **Audit** - Security Audit + Performance Audit (parallel) → Validate
 3. **Release** - Prepare → Review → Validate
 
-The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, release prep). The release workflow reads dev artifacts from the same artifacts directory.
+The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, release prep). The release workflow reads dev artifacts from the same changelog database.
 
 ### Import (data bootstrapping)
 
@@ -66,7 +66,7 @@ Use these MCP tools for state management:
 
 **Reading current state:**
 
-Call `project_status` at the start of any command to get the full current state: project metadata, current phase, all phase statuses, and current iteration number. This replaces reading from YAML files.
+Call `project_status` at the start of any command to get the full current state: project metadata, current phase, all phase statuses, and current iteration number. This is the single source of truth for workflow state.
 
 ### 2. Phase Orchestration
 
@@ -571,16 +571,16 @@ If the user already has requirements docs, PRDs, or design specs, they can run `
 1. User runs `/rigorous-dev:start`
 2. Command initializes state, loads this skill
 3. Skill loads `rigorous-dev:requirements_analyst`
-4. Analyst conducts interview and produces `requirements.yaml`
+4. Analyst conducts interview and records requirements in the changelog DB
 5. Skill loads `rigorous-dev:requirements_critic`
 6. Critic approves
 7. Skill transitions to UX Design phase
 8. Skill loads `rigorous-dev:ux_designer`
-9. Designer interviews and produces `ux_specification.yaml`
+9. Designer interviews and records UX specification in the changelog DB
 10. Skill loads `rigorous-dev:ux_critic`
 11. Critic rejects (iteration 1)
 12. Skill loops back to designer with feedback
-13. Designer revises `ux_specification.yaml`
+13. Designer revises UX specification entries
 14. Skill loads critic again
 15. Critic approves
 16. Skill transitions to Architecture phase

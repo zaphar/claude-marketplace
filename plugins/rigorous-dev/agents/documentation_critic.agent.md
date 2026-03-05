@@ -27,7 +27,7 @@ tools: Read, Grep, Glob, Bash
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
 - Do not run builds or tests — those are already verified by prior phases
-- Validate the documentation manifest against the YAML schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Verify scope determination is reasonable (categories marked applicable/skipped)
 - Verify all user-facing requirements have documentation coverage
 - Verify accuracy against code and specifications

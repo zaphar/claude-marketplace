@@ -60,7 +60,7 @@ You are a UX designer. Your job is to conduct an interview with the user about t
 - Discuss design preferences and constraints
 
 **What You Produce:**
-- ux_specification.yaml conforming to schemas/ux_specification.schema.yaml
+- UX specification entries stored in changelog DB via `changelog_insert` (entity types defined in write-tools.js)
 ```
 
 ### Critic Agents
@@ -71,7 +71,7 @@ Critic agents validate artifacts produced by producer agents.
 - Agent name (header)
 - **Personality** - Character traits (rigorous, impartial, constructive)
 - **Primary Focus** - Validation responsibility
-- **Inputs** - What artifact to review + schema reference
+- **Inputs** - What artifact to review + data model reference
 - **What should it do** - Validation steps and criteria
 - **Review Checklist** - Detailed checklist of items to verify
 - **Produces** - Verdict format and feedback structure
@@ -88,17 +88,17 @@ Critic agents validate artifacts produced by producer agents.
 
 **Inputs:**
 - Requirements specification from Requirements Analyst
-- Schema: `schemas/requirements.schema.yaml`
+- Data model: Requirements entries (validated on insert via `changelog_insert`)
 
 **What should it do:**
-- Validate the specification against the JSON schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Check for internal consistency (no conflicting requirements)
 - Verify completeness using the checklist below
 - Verify each requirement is achievable, actionable, and testable
 
 **Review Checklist:**
 - Schema validation:
-    - [ ] Document validates against schema
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All IDs follow REQ-XXX pattern
 - Completeness:
@@ -148,9 +148,9 @@ Most phases use a producer-critic pair:
 4. **Concrete Checklists** - Provide specific validation criteria
 5. **Constructive Feedback** - Critics should be helpful, not just rejecting
 6. **Escalation Procedures** - Clear rules for when to involve user
-7. **Schema References** - Always reference the relevant schema file
+7. **Schema References** - Always reference the DB entity types and `changelog_insert`/`changelog_query` tools
 8. **Handoff Procedures** - Explicit rules for transitions between agents
-9. **Artifact Organization** - Producers that generate multiple files should organize them into descriptive subdirectories (e.g., `mockups/`, `screenshots/`), keeping the primary YAML artifact at the phase directory root
+9. **Artifact Organization** - Producers that generate multiple file outputs (mockups, documentation pages) should organize them into descriptive subdirectories (e.g., `mockups/`, `screenshots/`); primary data goes into the changelog DB via `changelog_insert`
 
 ## Creating New Agents
 
@@ -158,9 +158,9 @@ When adding a new phase to the workflow:
 
 1. **Create producer agent** with personality, focus, role, and guidelines
 2. **Create critic agent** with validation checklist and feedback structure
-3. **Add schema** in `schemas/` directory for artifact validation
+3. **Add entity types** in `write-tools.js` for the new phase's data, with DB constraints for validation
 4. **Update SKILL.md** to include the new phase in orchestration
-5. **Update phase_status** in state file structure
+5. **Update `ENTITY_TABLE`** in `read-tools.js` so entities are queryable via `changelog_query`
 
 ## Example: Adding a "Design Review" Phase
 
@@ -188,8 +188,8 @@ You review the UX specification and backend architecture to ensure they align an
 
 **Inputs:**
 - Design review report from Design Reviewer
-- Schema: `schemas/design_review.schema.yaml`
-- Prior artifacts: ux_specification.yaml, architecture/*.yaml
+- Data model: Design review entries (validated on insert via `changelog_insert`)
+- Prior artifacts: UX specification entries and architecture entries (query via `changelog_query`)
 
 [... additional sections ...]
 ```

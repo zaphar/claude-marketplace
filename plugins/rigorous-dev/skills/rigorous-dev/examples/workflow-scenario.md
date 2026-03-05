@@ -21,7 +21,7 @@ User: /rigorous-dev:start
 ✓ Workflow initialized successfully!
 
 Project: Task Management API
-Artifacts: .claude/rigorous-dev-artifacts
+Database: .claude/rigorous-dev.db
 
 Starting Requirements Phase...
 Loading Requirements Interviewer agent.
@@ -45,7 +45,7 @@ Loading Requirements Interviewer agent.
 
 ### Requirements Analysis
 
-After interview completes, the Requirements Analyst produces `requirements.yaml`:
+After interview completes, the Requirements Analyst records requirements in the changelog DB via `changelog_insert`:
 
 ```yaml
 project:
@@ -72,9 +72,9 @@ requirements:
 
 ### Requirements Validation
 
-**Requirements Critic:** Reviewing requirements.yaml...
+**Requirements Critic:** Reviewing requirements entries...
 
-✓ Schema validation passed
+✓ Data completeness verified
 ✓ All requirement IDs follow REQ-XXX pattern
 ✓ Completeness check passed
 ✓ Consistency check passed
@@ -86,7 +86,7 @@ requirements:
 ```
 ✅ Requirements Complete
 
-Artifact: .claude/rigorous-dev-artifacts/requirements.yaml
+Entities recorded in changelog DB (requirements, personas, acceptance criteria, etc.)
 Approved by: requirements_critic
 Duration: 45 minutes
 
@@ -111,7 +111,7 @@ Next: UX Design
 
 ### UX Specification
 
-The UX Designer produces `ux_specification.yaml`:
+The UX Designer records UX specification entries in the changelog DB via `changelog_insert`:
 
 ```yaml
 project:
@@ -142,7 +142,7 @@ api_design:
 
 ### UX Validation (Iteration 1)
 
-**UX Critic:** Reviewing ux_specification.yaml...
+**UX Critic:** Reviewing UX specification entries...
 
 ✗ Issues found:
 - **Blocking:** Missing error response formats
@@ -159,7 +159,7 @@ api_design:
 
 ### UX Validation (Iteration 2)
 
-**UX Critic:** Reviewing revised ux_specification.yaml...
+**UX Critic:** Reviewing revised UX specification entries...
 
 ✓ All previous issues addressed
 ✓ Error response formats defined
@@ -172,7 +172,7 @@ api_design:
 ```
 ✅ UX Design Complete
 
-Artifact: .claude/rigorous-dev-artifacts/ux_specification.yaml
+Entities recorded in changelog DB (user flows, screens, design system, etc.)
 Approved by: ux_critic
 Iterations: 2
 Duration: 30 minutes
@@ -198,19 +198,19 @@ Next: Architecture
 
 ### Architecture Specification
 
-The Backend Architect produces modular architecture files:
+The Backend Architect records modular architecture entries in the changelog DB:
 
-- `architecture_index.yaml` — metadata, technology choices, linters
-- `architecture_components.yaml` — system components with integration test boundaries
-- `architecture_data_model.yaml` — data entities and relationships
-- `architecture_deployment.yaml` — deployment targets and environments
-- `architecture_security.yaml` — authentication, authorization, secrets management
-- `architecture_observability.yaml` — logging, metrics, tracing
-- `architecture_traceability.yaml` — requirements-to-component mapping
-- `architecture_dependencies.yaml` — dependency manifest with health assessments
-- `api_spec.yaml` — OpenAPI specification
+- `architecture_overview` — metadata, technology choices, linters
+- `component` entries — system components with integration test boundaries
+- `data_entity` entries — data entities and relationships
+- `deployment_config` — deployment targets and environments
+- `security_config` — authentication, authorization, secrets management
+- `observability_config` — logging, metrics, tracing
+- `traceability_mapping` entries — requirements-to-component mapping
+- `approved_dependency` entries — dependency manifest with health assessments
+- `api_spec.yaml` — OpenAPI specification (file artifact)
 
-Example `architecture_index.yaml`:
+Example `architecture_overview` entry:
 ```yaml
 metadata:
   project_name: "Task Management API"
@@ -233,7 +233,7 @@ linters:
     ruleset: "@typescript-eslint/recommended-type-checked"
 ```
 
-Example `architecture_components.yaml`:
+Example `component` entry:
 ```yaml
 components:
   - id: "COMP-001"
@@ -254,7 +254,7 @@ components:
 
 ### Architecture Validation
 
-**Architecture Critic:** Reviewing architecture files...
+**Architecture Critic:** Reviewing architecture entries...
 
 ✓ Technology stack appropriate for requirements
 ✓ All API endpoints from UX spec covered in api_spec.yaml
@@ -270,7 +270,7 @@ components:
 ```
 ✅ Architecture Complete
 
-Artifact: .claude/rigorous-dev-artifacts/architecture/
+Entities recorded in changelog DB (architecture_overview, components, data_entities, etc.)
 Approved by: architecture_critic
 Duration: 40 minutes
 
@@ -295,7 +295,7 @@ Next: Planning
 
 ### Implementation Plan
 
-The Implementation Planner produces `implementation_plan.yaml`:
+The Implementation Planner records the plan in the changelog DB via `changelog_insert`:
 
 ```yaml
 project:
@@ -350,7 +350,7 @@ checkpoints:
 
 ### Planning Validation
 
-**Implementation Plan Critic:** Reviewing implementation_plan.yaml...
+**Implementation Plan Critic:** Reviewing implementation plan entries...
 
 ✓ Phases have clear objectives and deliverables
 ✓ All requirements mapped to phases
@@ -364,7 +364,7 @@ checkpoints:
 ```
 ✅ Planning Complete
 
-Artifact: .claude/rigorous-dev-artifacts/implementation_plan.yaml
+Entities recorded in changelog DB (implementation phases, work items, checkpoints)
 Approved by: implementation_plan_critic
 Duration: 25 minutes
 
@@ -442,7 +442,7 @@ Review Questions:
 ```
 ✅ Implementation Complete
 
-Artifact: .claude/rigorous-dev-artifacts/implementation_manifest.yaml
+Implementation manifest recorded in changelog DB
 Approved by: senior_developer_critic
 Phases: 2/2 completed
 Duration: 10 days total
@@ -462,14 +462,14 @@ Next: QA
 
 ### Test Report
 
-`test_report.yaml` generated with:
+Test report entries recorded in changelog DB with:
 - 127 unit tests passed
 - 43 integration tests passed
 - All 7 requirements validated
 - Performance tests: p95 < 150ms ✓
 - No critical bugs found
 
-**QA Critic:** Reviewing test_report.yaml...
+**QA Critic:** Reviewing test report entries...
 
 ✓ All requirements tested and passing
 ✓ Test coverage exceeds targets
@@ -525,7 +525,7 @@ User: /rigorous-dev:status
 📋 Rigorous Dev Workflow Status
 
 Project: Task Management API
-Artifacts: .claude/rigorous-dev-artifacts/
+Database: .claude/rigorous-dev.db
 
 Progress:
 ✅ Requirements (completed 2026-02-12 10:45)
@@ -538,17 +538,18 @@ Progress:
 ✅ Documentation (completed 2026-02-12 20:00)
 ✅ Release (completed 2026-02-12 20:30)
 
-Generated Artifacts:
-- requirements.yaml
-- ux_specification.yaml
-- architecture/ (index, components, data model, deployment, security, observability, traceability, dependencies, ADR, api_spec)
-- implementation_plan.yaml
-- implementation_manifest.yaml
-- test_report.yaml
-- security_audit_findings (in DB)
-- performance_audit_findings (in DB)
-- documentation_manifest.yaml
-- deployment_manifest.yaml
+Recorded Entities (in changelog DB):
+- requirements (personas, acceptance criteria, glossary, constraints)
+- ux_specification (user flows, screens, design system)
+- architecture (overview, components, data entities, ADRs, deployment, security, observability, dependencies)
+- api_spec.yaml (file artifact)
+- implementation_plan (phases, work items, checkpoints)
+- implementation_manifest
+- test_report
+- security_audit_findings
+- performance_audit_findings
+- documentation_manifest
+- deployment_manifest
 
 🎉 Workflow Complete!
 ```
@@ -559,9 +560,9 @@ Generated Artifacts:
 
 1. **Producer-Critic Pattern Works** - 2 iterations on UX, everything else approved first time
 2. **Checkpoints Are Valuable** - Phase 1 review prevented scope creep
-3. **Schema Validation Caught Issues Early** - Prevented downstream problems
+3. **DB Constraint Validation Caught Issues Early** - Prevented downstream problems
 4. **State Management** - Could pause/resume at any phase
-5. **Artifact Quality** - All artifacts validated and approved
+5. **Data Quality** - All entities validated and approved
 6. **Total Duration** - ~10 days from requirements to deployment-ready
 
 This rigorous process ensured high-quality, well-documented, thoroughly tested software with no surprises at the end.

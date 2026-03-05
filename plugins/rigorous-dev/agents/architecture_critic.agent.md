@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash
 
 **Inputs:**
 
-- Backend architecture YAML files from Backend Architect
+- Backend architecture entries from Backend Architect (query via changelog_query)
 - Data model: Architecture entries (validated on insert via `changelog_insert`)
 - Requirements specification (for traceability verification)
 - UX specification (for API and data model verification)
@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number to maintain review history.
-- Validate each architecture file against its corresponding schema
+- Validate architecture entries for completeness and correctness (data integrity enforced by DB constraints on insert)
 - Verify all technical requirements are mapped to architectural elements
 - Assess architecture quality against established criteria
 - Provide specific, actionable feedback on any deficiencies
@@ -35,7 +35,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
-    - [ ] All expected architecture files present (architecture_index, architecture_components, architecture_data_model, api_spec, architecture_deployment, architecture_security, architecture_observability, architecture_traceability, architecture_dependencies, adrs/)
+    - [ ] All expected architecture entities present in DB: architecture_overview, component, data_entity, adr, deployment_config, security_config, observability_config, traceability_mapping, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
     - [ ] All technical requirements mapped to architectural elements (check via `traceability_query`)
     - [ ] Technology choices documented with rationale and current research citations
     - [ ] Technology recommendations include source links (official docs, release notes, benchmarks) — not just training-data knowledge
@@ -47,7 +47,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] Deployment architecture addresses all target scenarios
     - [ ] Observability strategy defined
     - [ ] Security architecture defined with authentication and authorization approach documented with trade-off reasoning
-    - [ ] All architectural decisions recorded (one per file in `adrs/`)
+    - [ ] All architectural decisions recorded as individual adr entity entries (query via changelog_query with entity_type: "adr")
     - [ ] Linters and static analyzers specified with tool names, configuration, and build pipeline integration
     - [ ] Linter rulesets start strict/pedantic — relaxations documented with justification in an ADR
     - [ ] Pagination strategy documented with reasoning
@@ -112,9 +112,9 @@ When reviewing architecture for a bug fix iteration:
 
 - **Read architecture entries one at a time** — they are your primary review targets. Start with the architecture overview (query via `changelog_query` entity_type: `architecture_overview`), then work through each entity type against the checklist.
 - **Read requirements selectively.** For traceability, read the requirements for requirement IDs and categories. For deployment, read the constraints. Don't load glossary, stakeholders, decisions, or risks.
-- **Read UX files selectively.** For UX support verification, read user flows and UX traceability. Don't load mockups, design system, accessibility, or responsive files.
-- **On re-review cycles**, read only your previous review's issues and the specific architecture files that were revised.
-- **Write review findings as you work through each file** rather than accumulating everything before writing.
+- **Read UX entries selectively.** For UX support verification, read user flows and UX traceability. Don't load mockups, design system, accessibility, or responsive files.
+- **On re-review cycles**, read only your previous review's issues and the specific architecture entries that were revised.
+- **Write review findings as you work through each entity type** rather than accumulating everything before writing.
 
 **Escalation:**
 

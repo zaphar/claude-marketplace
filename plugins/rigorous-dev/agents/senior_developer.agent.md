@@ -16,7 +16,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Pre-written failing tests from Test Writer (approved by Test Writer Critic)
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic
-- Architecture files - approved by Architecture Critic
+- Architecture entries - approved by Architecture Critic (query via changelog_query)
 - UX specification - approved by UX Critic (if UI exists)
 - Requirements glossary, approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`)
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
@@ -85,7 +85,7 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
-- **Use artifact query tools for upstream specs.** Call `changelog_query` on requirements/architecture YAML to get the structural index, then use `changelog_query` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to list requirements and architecture entries, then use `changelog_query` with specific IDs or filters for full details. Avoid loading all entities at once.
 - After completing WI, write to disk and commit.
 - After completing phase, verify Feature-Layer Matrix and commit.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.

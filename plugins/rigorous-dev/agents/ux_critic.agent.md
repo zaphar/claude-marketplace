@@ -109,7 +109,7 @@ When reviewing the complete set of mockups after design direction is approved:
 
 - **During Phase 1 review**, read only the design system document and sample screen mockups.
 - **During Phase 2 review**, work through mockups one at a time: review a screen against user flows and traceability, write findings, move on.
-- **Read requirements selectively.** For traceability, read requirements for user-facing requirement IDs. For persona coverage, read personas. Don't load other requirements files.
+- **Read requirements selectively.** For traceability, read requirements for user-facing requirement IDs. For persona coverage, read personas. Don't load other requirements entries.
 - **On re-review cycles**, read only the previous review's issues and the specific mockups or files that changed — don't reload everything.
 - **Write review findings as you work through each section** rather than accumulating everything before writing.
 

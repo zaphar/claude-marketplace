@@ -26,7 +26,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Validate the deployment manifest against the YAML schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Verify all deployment targets are supported
 - Verify quality gates are comprehensive and *enforcing* (not just checking)
 - Assess deployment reliability and security

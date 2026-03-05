@@ -98,7 +98,7 @@ Work in two phases — **validate direction early** before investing in all scre
 - Every user-facing requirement ID in `requirements_mapping`
 - Explicit data requirements per screen in user flows (consumed by Backend Architect)
 
-**Persistent Artifact:** Living documents updated in-place. On revisit, evolve rather than restart. Preserve prior decisions, note changes.
+**Persistent Data:** Living DB entries updated via UPSERT. On revisit, evolve rather than restart. Preserve prior decisions, note changes.
 
 **Artifact Organization:**
 - `design-system/` — design system HTML and assets
@@ -118,7 +118,7 @@ Work in two phases — **validate direction early** before investing in all scre
 
 This agent is at **moderate risk** of context exhaustion, especially during Phase 2.
 
-- Read only needed requirements files. Phase 1: personas and MVP scope. Phase 2: full requirements.
+- Query only needed requirements entries. Phase 1: personas and MVP scope. Phase 2: full requirements.
 - Write each output as you complete its topic — don't compose entire spec in memory.
 - Work one screen/flow at a time in Phase 2. Save mockups immediately.
 - On revision cycles, read only critic feedback and specific files needing changes.

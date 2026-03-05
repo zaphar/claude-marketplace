@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash
 - Test files and stubs from Test Writer
 - WI file with DO list and acceptance criteria
 - Implementation plan (for phase scope)
-- Architecture files (for integration boundaries)
+- Architecture entries (for integration boundaries)
 - Requirements specification (for traceability)
 
 **What You Do:**
@@ -112,7 +112,7 @@ tools: Read, Grep, Glob, Bash
 
 - Review test files one at a time for large WIs
 - Write findings incrementally after reviewing each file
-- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve the structural index for coverage checks. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve the structural index for coverage checks. Avoid loading all entities at once.
 - On re-review cycles, read only previous review issues and changed files
 
 **Escalation:**

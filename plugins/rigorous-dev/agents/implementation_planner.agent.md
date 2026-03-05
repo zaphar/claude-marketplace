@@ -112,7 +112,7 @@ Expand each phase's WI list into self-contained files. This is mechanical — as
 
 This agent is at **high risk** of context exhaustion.
 
-**Use artifact query tools for upstream specs.** Call `changelog_query` on each upstream entity type to get the structural index (all IDs with categories). Then use `changelog_query` with specific IDs or field filters (e.g., `category=security`) to load full details. Avoid reading entire YAML artifacts.
+**Use artifact query tools for upstream specs.** Call `changelog_query` on each upstream entity type to get the structural index (all IDs with categories). Then use `changelog_query` with specific IDs or field filters (e.g., `category=security`) to load full details. Avoid loading all entities at once.
 
 *Pass 1:* Start with `changelog_query` on each upstream entity type to see the full landscape. Query specific items as you assign them to phases. Process requirements in categories. Write each phase index as completed. Write overall index last. If context exhausts, resume from next undefined phase.
 

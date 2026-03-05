@@ -69,13 +69,13 @@ Research before recommending. Present findings with source links. Get approval o
 
 **Produces:**
 
-Modular YAML files, each validated against its schema:
+Modular DB entries, each validated by DB constraints on insert:
 
 - Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `architecture_overview`, `component`, `data_entity`, `deployment_config`, `security_config`, `observability_config`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 
-Each file is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
+Each entry is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
 
-**Persistent Artifact:** Living documents updated in-place. On revisit, evolve rather than restart. Preserve prior decisions (especially ADRs).
+**Persistent Data:** Living DB entries updated via UPSERT. On revisit, evolve rather than restart. Preserve prior decisions (especially ADRs).
 
 **Handoff:** Submitted to **Architecture Critic**. On approval, consumed by Senior Developer. Obtain stakeholder sign-off before implementation.
 
@@ -89,7 +89,7 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 
 - **Use DB query tools for upstream specs.** Call `changelog_query` with entity_type to list requirements or UX entities. Query specific items by ID for details. Avoid loading all entities at once.
 - Read UX selectively (flows and traceability, not design system or mockups).
-- Write each architecture file as you complete its topic.
+- Record each architecture entry as you complete its topic (write `api_spec.yaml` separately).
 - Research one technology at a time; write ADR before researching next.
 - **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 

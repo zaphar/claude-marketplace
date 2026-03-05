@@ -27,7 +27,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Validate the test report against the YAML schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Verify all acceptance criteria have test coverage
 - Verify coverage thresholds are met
 - Assess test quality against established criteria

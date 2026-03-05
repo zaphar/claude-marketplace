@@ -119,7 +119,7 @@ When reviewing the complete plan (both passes done):
 
 **Context Management:**
 
-- **During Pass 1 review**, read the overall index and each phase index. Read requirements for the full requirement ID list (for traceability). Don't read architecture or UX files unless checking a specific concern.
+- **During Pass 1 review**, read the overall index and each phase index. Read requirements for the full requirement ID list (for traceability). Don't query architecture or UX entries unless checking a specific concern.
 - **During full review**, spot-check WI files — pick 2-3 per phase to verify self-containedness and inlined context. Don't read every WI file.
 - **Read requirements selectively** — you need the requirement IDs for traceability, not the full descriptions.
 - **On re-review cycles**, read only your previous review's issues and the specific phase indexes or WI files that changed.

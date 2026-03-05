@@ -25,7 +25,7 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Validate the implementation manifest against the JSON schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - **Perform comprehensive code review** of all new/modified files
 - Verify the codebase builds with zero warnings
 - Verify all tests pass including E2E tests
@@ -169,8 +169,8 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 
 - **Review code file-by-file.** Start with the highest-risk files (authentication, data access, API endpoints), then work through the rest.
 - **Write findings incrementally.** After reviewing each file or group of related files, write your findings before moving on. Don't accumulate the entire review in memory.
-- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve requirements/architecture entries for traceability checks. Avoid reading entire YAML artifacts.
-- **Read architecture files selectively.** You need the components definition and dependency manifest for compliance checks. You don't need the full deployment, observability, or ADR files unless a specific concern arises.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve requirements/architecture entries for traceability checks. Avoid loading all entities at once.
+- **Read architecture entries selectively.** Query components and approved_dependency entries for compliance checks. You don't need the full deployment, observability, or ADR entries unless a specific concern arises.
 - **If context gets tight**, prioritize: security checks first, then completeness (Feature-Layer Matrix), then code quality, then performance.
 - **On re-review cycles**, read only your previous review's issues and the specific files that were changed.
 
