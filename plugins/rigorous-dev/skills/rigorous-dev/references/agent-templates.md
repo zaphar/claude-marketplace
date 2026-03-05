@@ -128,17 +128,17 @@ Most phases use a producer-critic pair:
 
 | Phase | Producer | Critic |
 |-------|----------|--------|
-| Requirements | `requirements_analyst.md` | `requirements_critic.md` |
-| UX Design | `ux_designer.md` | `ux_critic.md` |
-| Architecture | `backend_architect.md` | `architecture_critic.md` |
-| Planning | `implementation_planner.md` | `implementation_plan_critic.md` |
-| Implementation (tests) | `test_writer.md` | `test_writer_critic.md` |
-| Implementation (code) | `senior_developer.md` | `senior_developer_critic.md` |
-| QA | `qa_engineer.md` | `qa_critic.md` |
-| Audit (Security) | `security_auditor.md` | `security_audit_critic.md` |
-| Audit (Performance) | `performance_auditor.md` | `performance_audit_critic.md` |
-| Documentation | `documentation_master.md` | `documentation_critic.md` |
-| Release | `release_engineer.md` | `release_critic.md` |
+| Requirements | `requirements_analyst.agent.md` | `requirements_critic.agent.md` |
+| UX Design | `ux_designer.agent.md` | `ux_critic.agent.md` |
+| Architecture | `backend_architect.agent.md` | `architecture_critic.agent.md` |
+| Planning | `implementation_planner.agent.md` | `implementation_plan_critic.agent.md` |
+| Implementation (tests) | `test_writer.agent.md` | `test_writer_critic.agent.md` |
+| Implementation (code) | `senior_developer.agent.md` | `senior_developer_critic.agent.md` |
+| QA | `qa_engineer.agent.md` | `qa_critic.agent.md` |
+| Audit (Security) | `security_auditor.agent.md` | `security_audit_critic.agent.md` |
+| Audit (Performance) | `performance_auditor.agent.md` | `performance_audit_critic.agent.md` |
+| Documentation | `documentation_master.agent.md` | `documentation_critic.agent.md` |
+| Release | `release_engineer.agent.md` | `release_critic.agent.md` |
 
 ## Best Practices
 
@@ -164,7 +164,7 @@ When adding a new phase to the workflow:
 
 ## Example: Adding a "Design Review" Phase
 
-**Producer: `agents/design_reviewer.md`**
+**Producer: `agents/design_reviewer.agent.md`**
 ```markdown
 ### Design Reviewer
 
@@ -178,7 +178,7 @@ You review the UX specification and backend architecture to ensure they align an
 [... additional sections ...]
 ```
 
-**Critic: `agents/design_review_critic.md`**
+**Critic: `agents/design_review_critic.agent.md`**
 ```markdown
 ### Design Review Critic
 

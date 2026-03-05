@@ -20,7 +20,7 @@ Four tables form the backbone — everything else hangs off them:
 
 **Hierarchy:** project → iteration → phase → revision
 
-Every changelog entity below carries `iteration_id` and optionally `revision_id` to trace exactly when and why it was created.
+Every changelog entity below carries `iteration_id` and `revision_id` (both NOT NULL) to trace exactly when and why it was created. The one exception is `iteration_metadata`, which is a simple key-value store with no revision tracking.
 
 ## Requirements Domain
 
@@ -30,7 +30,7 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 |-------|----------|---------|
 | `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Name, description, role. |
 | `persona_goal` | requirements_analyst | Goals for each persona (1:N child). |
-| `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must_have/should_have/could_have/wont_have), category (functional/security/performance/usability/operational), description, rationale. |
+| `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must-have/should-have/nice-to-have), category (functional/security/performance/usability/operational/deployment), description, rationale. |
 | `requirement_acceptance_criterion` | requirements_analyst | Testable acceptance criteria per requirement (1:N). |
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
@@ -235,12 +235,17 @@ Every changelog entity below carries `iteration_id` and optionally `revision_id`
 | `revision_update` | Record critic verdict (approved/rejected) with feedback. |
 | `commit_link` | Link a VCS commit to the current iteration. |
 | `project_update` | Update project status (e.g., close it). |
+| `plan_phase_transition` | Update a plan_phase row's status (pending → test_writing → implementing → completed). |
 
 ### Read Tools
 
 | Tool | Purpose |
 |------|---------|
 | `changelog_query` | Query entities by type, iteration, IDs, or field filters. |
+
+> **Note:** 5 entity types are write-only — they can be inserted via `changelog_insert` but are not queryable via `changelog_query`: `plan_overview`, `plan_requirement_mapping`, `vcs_commit`, `intermediate_asset`, `asset_deliverable`. These are stored in dedicated tables and can be queried directly via SQL or through `traceability_query` where applicable.
+>
+> **Known issue:** `accessibility_config` appears in the `changelog_insert` input schema enum but has no handler in the handler map — calling `changelog_insert` with it will throw "Unsupported entity_type" at runtime. This is a pre-existing MCP server bug.
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |
 | `iteration_summary` | Phase-level summary for an iteration. |
@@ -264,7 +269,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 145 tables with links to their detailed design documents.
+All 146 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -415,4 +420,4 @@ All 145 tables with links to their detailed design documents.
 | `vcs_commit` | [implementation](tables/implementation.md) |
 | `project` | [core](tables/core.md) |
 
-**Total: 145 tables across 11 domains**
+**Total: 146 tables across 11 domains**

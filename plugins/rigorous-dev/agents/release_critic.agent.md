@@ -8,6 +8,8 @@ tools: Read, Grep, Glob, Bash
 
 **Personality:** Security-conscious, reliability-focused, operations-aware
 
+**Role:** Critic in the Release phase — validates deployment configurations and release readiness
+
 **Primary Focus:** Validating that deployment configurations are complete, secure, reliable, and meet quality standards
 
 **Inputs:**
@@ -102,6 +104,6 @@ tools: Read, Grep, Glob, Bash
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
-- If security issues are found in pipeline configuration, pause and tell the user immediately. Write to `planning/BLOCKERS.md`.
-- If infrastructure constraints block deployment, pause and describe the constraint. Write to `planning/BLOCKERS.md`.
+- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If security issues are found in pipeline configuration, pause and tell the user immediately.
+- If infrastructure constraints block deployment, pause and describe the constraint to the user.

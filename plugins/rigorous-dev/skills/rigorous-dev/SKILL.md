@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.10.0
+version: 0.10.1
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -46,7 +46,7 @@ The development workflow runs fast iteration loops. When you're ready to ship, t
 
 `/rigorous-dev:import` — Import existing data (requirements docs, PRDs, design specs, etc.) into the changelog database. Accepts any file format; extracts and maps entities automatically. Use this before starting the development workflow to pre-populate phases with existing material, bypassing the interview steps for phases whose data is already captured.
 
-Each phase (except Requirements) uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 iteration loops before escalating to the user.
+Each phase uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 revision loops before escalating to the user. The Requirements phase additionally begins with a conversational interview step before entering the standard producer-critic loop.
 
 ## Your Responsibilities
 
@@ -137,7 +137,7 @@ For each phase, follow this pattern:
 
 **Critic Model Selection:** When loading any critic agent, call `project_status` to get `critic_model` and pass it as the `model` parameter to the Task tool. If `critic_model` is not set (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
 
-**Prior Phase Data:** Agents use `changelog_query` to retrieve data from prior phases by querying by `phase_id`, `entry_type`, or `iteration_id`. The orchestrator does not need to manage this — agents use the tools directly.
+**Prior Phase Data:** Agents use `changelog_query` to retrieve data from prior phases by querying by `entity_type`, `iteration_id`, `ids`, or `filters`. The orchestrator does not need to manage this — agents use the tools directly.
 
 ### 4. Artifact Management
 
@@ -226,7 +226,7 @@ When loading an agent, provide context:
 The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
 
 **Determining Sub-phases:**
-- Query the approved implementation plan via `changelog_query(phase_id="planning", entry_type="implementation_plan")`
+- Query the approved implementation plan via `changelog_query(entity_type="plan_phase", iteration_id=<current_iteration_id>)`
 - The `phases` array defines the sub-phases, each with a `phase_number`
 - The `overview.total_phases` field gives the total count
 - Process sub-phases sequentially (or in parallel if `can_run_in_parallel_with` allows)
@@ -265,7 +265,7 @@ For each sub-phase (query `plan_phase` for the first row with `status != 'comple
 
 11. Load `rigorous-dev:senior_developer`
 12. Developer reads existing failing tests and implements minimum code to make them pass
-13. Developer records implementation manifest using `changelog_insert` with `entry_type: "implementation_manifest"` linked to the current sub-phase revision
+13. Developer records implementation manifest using `changelog_insert` with `entity_type: "implementation_manifest"` linked to the current sub-phase revision
 14. Load `rigorous-dev:senior_developer_critic` (using `critic_model` from `project_status`)
 15. Critic validates:
     - All pre-written tests pass, no pre-existing tests broken, full test suite passes
@@ -319,12 +319,12 @@ The audit phase is part of the **release workflow** and runs two independent pro
 1. **Security Track:**
    - Load `rigorous-dev:security_auditor` → produces security audit report
    - Load `rigorous-dev:security_audit_critic` → validates the report
-   - Standard producer-critic loop (max 3 iterations)
+   - Standard producer-critic loop (max 3 revisions)
 
 2. **Performance Track:**
    - Load `rigorous-dev:performance_auditor` → produces performance audit report
    - Load `rigorous-dev:performance_audit_critic` → validates the report
-   - Standard producer-critic loop (max 3 iterations)
+   - Standard producer-critic loop (max 3 revisions)
 
 Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.
 
@@ -343,7 +343,7 @@ Findings from both audits are combined for the remediation threshold:
 
 **Artifact Storage:**
 
-Audit reports are recorded using `changelog_insert` with `entry_type: "security_audit"` and `entry_type: "performance_audit"` linked to the release workflow iteration.
+Auditors write their findings to file-based audit reports (`security_audit.md`, `performance_audit.md`) in the artifacts directory. These reports are the primary output of the audit phase — structured DB entity types for audit findings do not exist.
 
 **Phase Completion:**
 
@@ -565,7 +565,7 @@ Call: project_status
 Read: result.phase_status.requirements.status == "completed"
 ```
 
-## 13. Changelog Query Capabilities
+### 13. Changelog Query Capabilities
 
 Users and agents can query the changelog DB to answer common questions about the project's decisions, history, and current state.
 
@@ -619,7 +619,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and optionally a revision. Inputs: `entry_type`, `phase_id`, `iteration_id`, `revision_id` (optional), `content`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (required — database enforces NOT NULL on all entity tables except `iteration_metadata`), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by type, phase, iteration, revision, or filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
   - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)

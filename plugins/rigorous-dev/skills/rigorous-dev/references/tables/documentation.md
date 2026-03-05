@@ -33,7 +33,7 @@ The root aggregate for a documentation pass. One row is created per `changelog_i
 
 ### Context
 
-Every other documentation table references this row. The manifest ties documentation artifacts back to a specific `iteration_id` and (optionally) a `revision_id`, so the full history of documentation revisions is preserved. The `documentation_critic` reads this row (and its children) to validate coverage and quality; it then calls `revision_update` with a verdict of `approved` or `rejected`.
+Every other documentation table references this row. The manifest ties documentation artifacts back to a specific `iteration_id` and a `revision_id` (NOT NULL), so the full history of documentation revisions is preserved. The `documentation_critic` reads this row (and its children) to validate coverage and quality; it then calls `revision_update` with a verdict of `approved` or `rejected`.
 
 ### Columns
 

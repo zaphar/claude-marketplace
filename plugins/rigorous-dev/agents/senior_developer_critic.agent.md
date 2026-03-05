@@ -176,8 +176,8 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
-- If security vulnerabilities are found, flag immediately. Write to `planning/BLOCKERS.md`.
-- If architecture itself is the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
-- If UX specification is the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
-- If requirements are the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
+- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If security vulnerabilities are found, flag immediately to the user.
+- If architecture itself is the root cause, pause and explain to the user.
+- If UX specification is the root cause, pause and explain to the user.
+- If requirements are the root cause, pause and explain to the user.

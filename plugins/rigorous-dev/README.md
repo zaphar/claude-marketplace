@@ -47,6 +47,8 @@ The development workflow runs fast iteration loops. When ready to ship, the rele
 - **Implementation Plan Critic**: Validates phasing strategy and dependencies
 
 #### Implementation Phase
+- **Test Writer**: Writes failing tests before implementation following TDD principles
+- **Test Writer Critic**: Validates test completeness and that tests are in failing (red) state
 - **Senior Developer**: Implements code following the plan
 - **Senior Developer Critic**: Reviews code quality and adherence to architecture
 
@@ -304,35 +306,68 @@ Output: Deployment manifest stored in `.claude/rigorous-dev.db`
 
 ```
 rigorous-dev/
-├── README.md                      # This file
-├── rigorous-dev.md               # Main skill definition
-├── agents/                        # Agent personality files
-│   ├── requirements_analyst.md
-│   ├── requirements_critic.md
-│   ├── backend_architect.md
-│   ├── architecture_critic.md
-│   ├── ux_designer.md
-│   ├── ux_critic.md
-│   ├── implementation_planner.md
-│   ├── implementation_plan_critic.md
-│   ├── senior_developer.md
-│   ├── senior_developer_critic.md
-│   ├── qa_engineer.md
-│   ├── qa_critic.md
-│   ├── security_auditor.md
-│   ├── security_audit_critic.md
-│   ├── performance_auditor.md
-│   ├── performance_audit_critic.md
-│   ├── documentation_master.md
-│   ├── documentation_critic.md
-│   ├── release_engineer.md
-│   └── release_critic.md
-└── mcp-server/                    # MCP server with SQLite changelog backend
-    ├── server.js                  # MCP server entry point
-    ├── schema.sql                 # SQLite database schema (WAL mode, append-only changelog)
-    ├── db.js                      # Database initialization and connection
-    ├── write-tools.js             # Write tools (iteration_create, phase_transition, etc.)
-    └── read-tools.js              # Read tools (changelog_query, traceability_query, etc.)
+├── README.md                        # This file
+├── .claude-plugin/
+│   └── plugin.json                  # Plugin metadata
+├── agents/                          # Agent personality files
+│   ├── requirements_analyst.agent.md
+│   ├── requirements_critic.agent.md
+│   ├── backend_architect.agent.md
+│   ├── architecture_critic.agent.md
+│   ├── ux_designer.agent.md
+│   ├── ux_critic.agent.md
+│   ├── implementation_planner.agent.md
+│   ├── implementation_plan_critic.agent.md
+│   ├── senior_developer.agent.md
+│   ├── senior_developer_critic.agent.md
+│   ├── test_writer.agent.md
+│   ├── test_writer_critic.agent.md
+│   ├── qa_engineer.agent.md
+│   ├── qa_critic.agent.md
+│   ├── security_auditor.agent.md
+│   ├── security_audit_critic.agent.md
+│   ├── performance_auditor.agent.md
+│   ├── performance_audit_critic.agent.md
+│   ├── documentation_master.agent.md
+│   ├── documentation_critic.agent.md
+│   ├── release_engineer.agent.md
+│   └── release_critic.agent.md
+├── commands/                        # Slash command definitions
+│   ├── start.md
+│   ├── onboard.md
+│   ├── resume.md
+│   ├── status.md
+│   ├── skip-to.md
+│   ├── close.md
+│   ├── import.md
+│   ├── new-iteration.md
+│   ├── start-release.md
+│   ├── resume-release.md
+│   └── release-status.md
+├── skills/rigorous-dev/             # Orchestration skill
+│   ├── SKILL.md                     # Main skill definition
+│   ├── references/                  # Reference documentation for agents
+│   │   ├── agent-templates.md
+│   │   ├── schemas-overview.md
+│   │   └── tables/                  # Per-domain DB table documentation
+│   │       ├── core.md
+│   │       ├── requirements.md
+│   │       ├── architecture.md
+│   │       ├── data-model.md
+│   │       ├── cross-cutting.md
+│   │       ├── ux-design.md
+│   │       ├── planning.md
+│   │       ├── implementation.md
+│   │       ├── qa-test.md
+│   │       ├── documentation.md
+│   │       └── deployment.md
+│   └── examples/                    # Example files for agents
+└── mcp-server/                      # MCP server with SQLite changelog backend
+    ├── server.js                    # MCP server entry point
+    ├── schema.sql                   # SQLite database schema (WAL mode)
+    ├── db.js                        # Database initialization and connection
+    ├── write-tools.js               # Write tools (iteration_create, phase_transition, etc.)
+    └── read-tools.js                # Read tools (changelog_query, traceability_query, etc.)
 ```
 
 ## Workflow State
@@ -428,7 +463,7 @@ This repository includes a dedicated skill and agent pair for making rigorous, v
 Edit agent files in `agents/` to customize personalities and behaviors:
 
 ```bash
-vim agents/senior_developer.md
+vim agents/senior_developer.agent.md
 ```
 
 ### Extending the Schema
@@ -444,7 +479,7 @@ vim mcp-server/schema.sql
 1. Create new agent files for producer and critic
 2. Add any new tables/columns to `mcp-server/schema.sql`
 3. Add write/read tool handlers in `write-tools.js` and `read-tools.js`
-4. Update `rigorous-dev.md` to include the new phase
+4. Update `skills/rigorous-dev/SKILL.md` to include the new phase
 5. Update workflow orchestration logic
 
 ## Best Practices

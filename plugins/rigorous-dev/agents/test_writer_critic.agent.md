@@ -116,5 +116,5 @@ tools: Read, Grep, Glob, Bash
 
 **Escalation:**
 
-- If same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write to `planning/BLOCKERS.md`.
-- If acceptance criteria are untestable, flag immediately. Write to `planning/BLOCKERS.md`.
+- If same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If acceptance criteria are untestable, flag immediately to the user.
