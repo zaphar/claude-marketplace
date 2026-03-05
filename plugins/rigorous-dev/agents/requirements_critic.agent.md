@@ -26,7 +26,7 @@ tools: Read, Grep, Glob, Bash
 - Verify each requirement is achievable, actionable, and testable
 - Provide specific, actionable feedback on any deficiencies
 - If the interview indicates that the user had no strong requirement preference in any section, don't require that in the spec. Topics the analyst skipped as N/A should be listed in out-of-scope, not treated as missing.
-- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents to reference.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

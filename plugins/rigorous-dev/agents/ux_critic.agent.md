@@ -44,7 +44,7 @@ When reviewing the complete set of mockups after design direction is approved:
 - Assess UX quality against all established criteria
 - Verify accessibility compliance across all screens
 - Provide specific, actionable feedback on any deficiencies
-- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents to reference.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

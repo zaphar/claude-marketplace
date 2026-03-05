@@ -240,6 +240,37 @@ Would you like to:
 
 When a blocker is addressed, call `blocker_resolve(blocker_id: <id>, resolution_notes: "<how it was resolved>")` to mark it resolved.
 
+**Recording Project Lessons:**
+
+When a critic agent requests that a lesson be recorded (via the instruction "instruct the orchestrator to insert a `project_lesson`"), the orchestrator calls:
+```
+changelog_insert(entity_type: "project_lesson", iteration_id: <current>, data: {
+  phase_name: "<current_phase>",
+  category: "pattern" | "anti-pattern" | "convention" | "risk" | "decision" | "process",
+  lesson: "<description of the lesson>",
+  recurring: 0 | 1
+})
+```
+
+Like `blocker`, `project_lesson` does not require a `revision_id` — lessons are observations, not producer-critic artifacts.
+
+**Querying Lessons at Phase Start:**
+
+At the start of each phase, before loading the producer agent, query prior lessons so the producer can benefit from cross-phase knowledge:
+```
+changelog_query(entity_type: "project_lesson", iteration_id: <current>)
+```
+
+If lessons exist, include a summary when loading the producer agent:
+```
+📝 Project Lessons
+
+The following lessons have been recorded during this iteration:
+<list of lessons with phase_name, category, and lesson text — highlight recurring ones>
+```
+
+Producers also query lessons directly via `changelog_query(entity_type: "project_lesson")` to check for relevant patterns, anti-patterns, and conventions.
+
 ### 7. Context Passing Between Agents
 
 When loading an agent, provide context:
@@ -653,7 +684,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `iteration_metadata` and `blocker`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `iteration_metadata`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
   - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)

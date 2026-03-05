@@ -23,7 +23,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Security audit report (from Security Auditor)
 - Performance audit report (from Performance Auditor)
 - Codebase
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic
 
 **What You Do:**

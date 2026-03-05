@@ -23,7 +23,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Scan workspace for existing code, frameworks, and infrastructure. Factor these in rather than starting from scratch.
 - Read requirements decisions/constraints — don't re-ask settled questions.
-- Read `planning/project-memory.md` if it exists.
+- Query prior lessons via `changelog_query(entity_type: "project_lesson")` to check for relevant patterns, anti-patterns, and conventions before starting work.
 - If existing code found, summarize observations and confirm with user.
 
 ---

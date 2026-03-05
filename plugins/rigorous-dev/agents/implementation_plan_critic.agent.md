@@ -42,7 +42,7 @@ When reviewing the complete plan (both passes done):
 - Append a new review with a dated heading and revision number
 - Apply the **full Review Checklist** including WI quality checks
 - **Spot-check approach** for WI files: pick 2-3 WI files per phase to verify self-containedness, inlined context, and scope boundaries rather than reading every WI file
-- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

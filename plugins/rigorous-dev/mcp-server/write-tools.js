@@ -937,6 +937,20 @@ function insertWorkflowBlocker(db, iteration_id, _revision_id, data) {
   return { entity_type: "blocker", id: result.lastInsertRowid };
 }
 
+function insertProjectLesson(db, iteration_id, _revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO project_lesson (iteration_id, phase_name, category, lesson, recurring)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    iteration_id,
+    data.phase_name,
+    data.category,
+    data.lesson,
+    data.recurring ? 1 : 0
+  );
+  return { entity_type: "project_lesson", id: result.lastInsertRowid };
+}
+
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -961,6 +975,7 @@ function changelogInsert(args) {
     intermediate_asset: insertIntermediateAsset,
     asset_deliverable: insertAssetDeliverable,
     blocker: insertWorkflowBlocker,
+    project_lesson: insertProjectLesson,
   };
 
   const handler = handlers[entity_type];
@@ -1137,6 +1152,7 @@ export const WRITE_TOOLS = [
             "asset_deliverable",
             "iteration_metadata",
             "blocker",
+            "project_lesson",
           ],
         },
         iteration_id: { type: "integer" },

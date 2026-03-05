@@ -29,6 +29,7 @@ tools: Read, Grep, Glob, Bash
 - Verify no implementation logic exists in stubs
 - Verify test quality standards
 - Provide specific, actionable feedback on any deficiencies
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

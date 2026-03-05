@@ -1295,6 +1295,20 @@ CREATE TABLE IF NOT EXISTS blocker (
 );
 
 -- ============================================================
+-- PROJECT LESSON: cross-phase lessons learned, recorded by critics
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS project_lesson (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  phase_name TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('pattern', 'anti-pattern', 'convention', 'risk', 'decision', 'process')),
+  lesson TEXT NOT NULL,
+  recurring INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ============================================================
 -- ENTITY SNAPSHOT: JSON history of entity changes across revisions
 -- ============================================================
 

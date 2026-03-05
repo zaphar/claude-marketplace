@@ -20,7 +20,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Implementation plan (phase indexes with E2E and integration test scenarios)
 - Implementation manifest from Senior Developer
 - Codebase from the Senior Developer
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic
 
 **Test Ownership Boundaries:**

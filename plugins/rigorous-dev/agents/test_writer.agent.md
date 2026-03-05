@@ -18,7 +18,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture files - approved by Architecture Critic
 - UX specification - approved by UX Critic (if UI exists)
 - Requirements glossary, approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`)
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Feedback from Test Writer Critic (on revision cycles)
 
 ---

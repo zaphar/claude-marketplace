@@ -89,6 +89,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
 | `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 | `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
+| `project_lesson` | (any critic via orchestrator) | Cross-phase lessons learned — patterns, anti-patterns, conventions, risks, decisions, and process observations recorded by critics for downstream agents. |
 
 ## UX Design Domain
 
@@ -271,7 +272,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 147 tables with links to their detailed design documents.
+All 148 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -385,6 +386,8 @@ All 147 tables with links to their detailed design documents.
 | `plan_phase_risk` | [planning](tables/planning.md) |
 | `plan_phase_screen` | [planning](tables/planning.md) |
 | `plan_requirement_mapping` | [planning](tables/planning.md) |
+| `project` | [core](tables/core.md) |
+| `project_lesson` | [cross-cutting](tables/cross-cutting.md) |
 | `requirement` | [requirements](tables/requirements.md) |
 | `requirement_acceptance_criterion` | [requirements](tables/requirements.md) |
 | `requirement_dependency` | [requirements](tables/requirements.md) |
@@ -421,6 +424,5 @@ All 147 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
-| `project` | [core](tables/core.md) |
 
-**Total: 147 tables across 11 domains**
+**Total: 148 tables across 11 domains**

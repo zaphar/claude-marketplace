@@ -41,7 +41,7 @@ tools: Read, Grep, Glob, Bash
 - Verify that the software can run if it's a service or application and not a library
     - This is not the same as running tests or building and running linters
 - Verify that all objects which get sent over the wire or stored have round-trip unit tests
-- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Code Review Checklist:**
 

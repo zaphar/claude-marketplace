@@ -26,7 +26,7 @@ tools: Read, Grep, Glob, Bash
 - Verify findings are backed by evidence, not just speculation
 - Spot-check the auditor's findings against the actual code to verify accuracy
 - Provide specific, actionable feedback on any deficiencies in the audit itself
-- Record significant lessons or recurring patterns to `planning/project-memory.md`.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

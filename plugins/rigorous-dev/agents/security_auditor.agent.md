@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
 - Requirements specification (security-category requirements)
 - QA test report (to understand what QA already tested)
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 
 **Distinction from QA:**
 

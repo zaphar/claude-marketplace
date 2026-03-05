@@ -16,6 +16,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Requirements (query via `changelog_query`)
 - Personas defined in requirements (critical input)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic.
 
 ---

@@ -28,6 +28,7 @@ const ENTITY_TABLE = {
   documentation_manifest: "documentation_manifest",
   deployment_manifest: "deployment_manifest",
   blocker: "blocker",
+  project_lesson: "project_lesson",
 };
 
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)

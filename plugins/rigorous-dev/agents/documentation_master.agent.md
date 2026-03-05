@@ -25,7 +25,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Deployment entries (query via `changelog_query`) — optional, only available after release workflow runs
 - Codebase
 - Glossary from requirements specification
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic
 
 **What You Do:**

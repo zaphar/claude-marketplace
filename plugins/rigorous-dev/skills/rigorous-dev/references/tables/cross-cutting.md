@@ -1,6 +1,6 @@
 # Cross-Cutting Architecture Tables
 
-**Domain:** Cross-cutting concerns that span the entire system — security, deployment, observability, third-party dependencies, the traceability backbone, and workflow blockers.
+**Domain:** Cross-cutting concerns that span the entire system — security, deployment, observability, third-party dependencies, the traceability backbone, workflow blockers, and project lessons.
 
 **Primary producer:** `backend_architect` (architecture phase)
 **Critic:** `architecture_critic`
@@ -17,6 +17,7 @@ These tables are written during the architecture phase after components and ADRs
 4. [approved_dependency](#approved_dependency)
 5. [traceability_mapping](#traceability_mapping)
 6. [blocker](#blocker)
+7. [project_lesson](#project_lesson)
 
 ---
 
@@ -472,11 +473,84 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 
 ---
 
+## project_lesson
+
+### Purpose
+
+Records cross-phase lessons learned — patterns, anti-patterns, conventions, risks, decisions, and process observations — so that downstream agents benefit from accumulated project knowledge. Unlike file-based project memory, lessons are stored in the database with structured categories, enabling targeted queries (e.g., "show me all anti-patterns from architecture").
+
+### Context
+
+Written by the orchestrator when a critic agent requests a lesson be recorded (via the instruction pattern "instruct the orchestrator to insert a `project_lesson`"). Any critic across any phase can record lessons. Producer agents query lessons at the start of their work to check for relevant patterns, anti-patterns, and conventions.
+
+Like `blocker`, `project_lesson` does not carry a `revision_id` column — lessons are observations, not producer-critic artifacts.
+
+### Column Reference
+
+| Column | Type | Nullable | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
+| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this lesson was recorded. |
+| `phase_name` | TEXT | NOT NULL | — | — | The phase during which the lesson was recorded (e.g., `requirements`, `architecture`, `implementation`). |
+| `category` | TEXT | NOT NULL | — | CHECK(`category` IN (`'pattern'`, `'anti-pattern'`, `'convention'`, `'risk'`, `'decision'`, `'process'`)) | Classification of the lesson for targeted querying. |
+| `lesson` | TEXT | NOT NULL | — | — | Human-readable description of the lesson learned. |
+| `recurring` | INTEGER | NOT NULL | `0` | — | Set to `1` if this pattern has been observed before. Helps surface systemic issues. |
+| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of row insertion. |
+
+### Relationships
+
+- **`iteration_id` → `iteration(id)`** — Lessons are scoped to an iteration. Lessons from prior iterations remain queryable for cross-iteration knowledge.
+- No `revision_id` — lessons are observations that exist outside the producer-critic revision loop.
+
+### MCP Tool Access
+
+**Write** (`changelog_insert`):
+```json
+{
+  "entity_type": "project_lesson",
+  "iteration_id": 1,
+  "data": {
+    "phase_name": "architecture",
+    "category": "anti-pattern",
+    "lesson": "Avoid choosing ORMs without verifying they support the required query patterns — the initial choice required replacement after discovering missing recursive CTE support",
+    "recurring": 0
+  }
+}
+```
+
+**Read** (`changelog_query`):
+```json
+{
+  "entity_type": "project_lesson",
+  "iteration_id": 1
+}
+```
+
+**Filtered by category:**
+```json
+{
+  "entity_type": "project_lesson",
+  "iteration_id": 1,
+  "filters": { "category": "anti-pattern" }
+}
+```
+
+**Recurring lessons only:**
+```json
+{
+  "entity_type": "project_lesson",
+  "iteration_id": 1,
+  "filters": { "recurring": 1 }
+}
+```
+
+---
+
 ## Common Patterns
 
 ### Querying all cross-cutting config for an iteration
 
-All six tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
+All seven tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
 
 ```json
 { "entity_type": "security_config",      "iteration_id": 1 }
@@ -485,6 +559,7 @@ All six tables share the `iteration_id` anchor. To get the full cross-cutting pi
 { "entity_type": "approved_dependency",  "iteration_id": 1 }
 { "entity_type": "traceability_mapping", "iteration_id": 1 }
 { "entity_type": "blocker",             "iteration_id": 1 }
+{ "entity_type": "project_lesson",      "iteration_id": 1 }
 ```
 
 ### Detecting unaddressed requirements

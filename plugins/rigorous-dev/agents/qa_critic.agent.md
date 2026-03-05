@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash
 - Architecture components (query via `changelog_query` with entity_type: "component") — for integration test boundary verification
 - Unified traceability matrix from QA Engineer
 - Review feedback from previous iterations (if any)
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns and anti-patterns
 
 **What You Do:**
 
@@ -33,7 +33,7 @@ tools: Read, Grep, Glob, Bash
 - Assess test quality against established criteria
 - Verify the unified traceability matrix is complete and consistent
 - Provide specific, actionable feedback on any deficiencies
-- Record significant lessons or recurring patterns to `planning/project-memory.md`.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 

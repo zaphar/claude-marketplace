@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Requirements specification (approved by Requirements Critic)
 - Architecture entries (query via `changelog_query`) - approved by Architecture Critic
 - UX specification entries (query via `changelog_query`) - approved by UX Critic
-- `planning/project-memory.md` (if it exists)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - Review feedback from your critic
 
 ---
