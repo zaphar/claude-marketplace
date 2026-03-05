@@ -134,6 +134,6 @@ This agent is at **moderate risk** of context exhaustion when documenting large 
 
 **Escalation:**
 
-- If code behavior doesn't match requirements, pause and describe the discrepancy. Write to `planning/BLOCKERS.md`.
-- If architecture documentation is unclear, pause and describe what's missing. Write to `planning/BLOCKERS.md`.
-- If deployment procedures are unclear, pause and describe the gap. Write to `planning/BLOCKERS.md`.
+- If code behavior doesn't match requirements, pause and describe the discrepancy. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If architecture documentation is unclear, pause and describe what's missing. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If deployment procedures are unclear, pause and describe the gap. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

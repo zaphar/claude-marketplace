@@ -118,6 +118,6 @@ When reviewing architecture for a bug fix iteration:
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If architecture appears fundamentally flawed, pause and explain the core structural problems to the user.
 - If requirements are the root cause, pause and tell the user the requirements need revision first.

@@ -206,6 +206,40 @@ How would you like to proceed?
 
 Use AskUserQuestion to get user decision.
 
+**Recording Blockers:**
+
+When a critic or producer agent requests that a blocker be recorded (via the escalation instruction "Instruct the orchestrator to record a blocker"), the orchestrator calls:
+```
+changelog_insert(entity_type: "blocker", iteration_id: <current>, data: {
+  phase_name: "<current_phase>",
+  description: "<description of the blocking issue>",
+  severity: "critical" | "high" | "medium",
+  raised_by: "<agent_name>"
+})
+```
+
+**Querying Active Blockers at Phase Start:**
+
+At the start of each phase, before loading the producer agent, query for active (unresolved) blockers:
+```
+changelog_query(entity_type: "blocker", iteration_id: <current>, filters: { resolved_at: null })
+```
+If active blockers exist, surface them to the user before proceeding:
+```
+⚠️  Active Blockers
+
+The following unresolved blockers were recorded during this iteration:
+<list of blocker descriptions with severity and raising agent>
+
+Would you like to:
+1. Resolve these blockers before proceeding (use blocker_resolve)
+2. Proceed anyway — the blockers will remain active
+```
+
+**Resolving Blockers:**
+
+When a blocker is addressed, call `blocker_resolve(blocker_id: <id>, resolution_notes: "<how it was resolved>")` to mark it resolved.
+
 ### 7. Context Passing Between Agents
 
 When loading an agent, provide context:
@@ -619,13 +653,14 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `iteration_metadata`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `iteration_metadata` and `blocker`; all other entity tables enforce NOT NULL at the DB level), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
   - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with an iteration
+- **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
 
 Use these tools to manage the workflow effectively.
 

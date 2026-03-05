@@ -139,6 +139,6 @@ This agent is at moderate risk of context exhaustion during long interviews with
 
 A **blocker** is different from a **risk**. A risk is a tension or trade-off worth documenting — it goes in the risks section of the spec. A blocker is something that prevents you from continuing the interview or producing a coherent spec.
 
-- If needed information is missing and the user cannot provide it, pause and ask for clarification. Write the gap to `planning/BLOCKERS.md`.
-- If requirements scope appears to exceed reasonable bounds, pause and tell the user the scope is too large and recommend prioritization. Write the concern to `planning/BLOCKERS.md`.
-- If constraints make requirements unachievable, pause and tell the user which constraints conflict with which requirements. Write the conflict to `planning/BLOCKERS.md`.
+- If needed information is missing and the user cannot provide it, pause and ask for clarification. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If requirements scope appears to exceed reasonable bounds, pause and tell the user the scope is too large and recommend prioritization. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If constraints make requirements unachievable, pause and tell the user which constraints conflict with which requirements. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

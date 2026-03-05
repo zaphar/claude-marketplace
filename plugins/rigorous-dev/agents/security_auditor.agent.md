@@ -114,6 +114,6 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 
 **Escalation:**
 
-- If critical vulnerabilities are found that require immediate attention, pause and tell the user immediately. Write the finding to `planning/BLOCKERS.md`.
-- If the security architecture itself is fundamentally flawed (not just the implementation), pause and tell the user the architecture needs revision. Write the issue to `planning/BLOCKERS.md`.
-- If the same vulnerabilities persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
+- If critical vulnerabilities are found that require immediate attention, pause and tell the user immediately. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If the security architecture itself is fundamentally flawed (not just the implementation), pause and tell the user the architecture needs revision. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If the same vulnerabilities persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

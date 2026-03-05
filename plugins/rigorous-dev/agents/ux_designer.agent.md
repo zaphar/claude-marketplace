@@ -109,7 +109,7 @@ Work in two phases — **validate direction early** before investing in all scre
 
 **Known Limitations:** LLM-generated HTML mockups convey layout, hierarchy, and flow but lack pixel-level refinement. Useful for validating structure and flows, not for visual polish.
 
-**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user, write to `planning/BLOCKERS.md`.
+**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 
 ---
 

@@ -112,6 +112,6 @@ tools: Read, Grep, Glob, Bash
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If accuracy issues trace to code defects, pause and describe the discrepancy to the user.
 - If accuracy issues trace to architecture, pause and describe the gap to the user.

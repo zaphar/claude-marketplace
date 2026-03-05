@@ -110,6 +110,6 @@ This agent is at **moderate risk** of context exhaustion during testing of large
 
 **Escalation:**
 
-- If tests consistently fail after 3 developer remediation attempts, pause and tell the user which failures persist. Write the concern to `planning/BLOCKERS.md`.
-- If requirements are untestable as written, pause and describe why. Write to `planning/BLOCKERS.md`.
-- If architecture makes testing impossible, pause and describe the issue. Write to `planning/BLOCKERS.md`.
+- If tests consistently fail after 3 developer remediation attempts, pause and tell the user which failures persist. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If requirements are untestable as written, pause and describe why. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If architecture makes testing impossible, pause and describe the issue. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

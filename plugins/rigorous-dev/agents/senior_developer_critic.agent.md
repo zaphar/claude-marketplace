@@ -176,7 +176,7 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If security vulnerabilities are found, flag immediately to the user.
 - If architecture itself is the root cause, pause and explain to the user.
 - If UX specification is the root cause, pause and explain to the user.

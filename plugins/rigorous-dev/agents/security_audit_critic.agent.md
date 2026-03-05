@@ -74,5 +74,5 @@ tools: Read, Grep, Glob, Bash
 
 **Escalation:**
 
-- If the same audit gaps persist after 3 revision cycles, pause and tell the user which gaps keep recurring.
+- If the same audit gaps persist after 3 revision cycles, pause and report the recurring gaps to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If the auditor's findings appear fundamentally inaccurate (multiple spot-checks fail), pause and tell the user the audit quality is insufficient.

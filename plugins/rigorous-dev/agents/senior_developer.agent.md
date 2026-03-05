@@ -91,4 +91,4 @@ High risk of context exhaustion during multi-phase implementation.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
 - **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
-**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user, write to `planning/BLOCKERS.md`. Escalate after 3 revision cycles.
+**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.

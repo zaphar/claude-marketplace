@@ -97,7 +97,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 **Escalation:**
 
-- If test report shows failures, reject and return to QA Engineer. Write to `planning/BLOCKERS.md`.
-- If audit reports show unresolved high/critical findings, reject and return to the relevant auditor. Write to `planning/BLOCKERS.md`.
-- If architecture doesn't support required deployment targets, pause and describe the gap. Write to `planning/BLOCKERS.md`.
-- If infrastructure requirements exceed constraints, pause and tell the user. Write to `planning/BLOCKERS.md`.
+- If test report shows failures, reject and return to QA Engineer. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If audit reports show unresolved high/critical findings, reject and return to the relevant auditor. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If architecture doesn't support required deployment targets, pause and describe the gap. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If infrastructure requirements exceed constraints, pause and tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

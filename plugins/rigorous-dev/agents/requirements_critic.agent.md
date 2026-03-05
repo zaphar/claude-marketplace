@@ -92,6 +92,6 @@ tools: Read, Grep, Glob, Bash
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If requirements appear fundamentally flawed, pause and explain the fundamental problems to the user.
 - If schema itself appears insufficient, escalate to project maintainers.

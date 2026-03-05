@@ -115,6 +115,6 @@ When reviewing the complete set of mockups after design direction is approved:
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If UX appears fundamentally flawed, pause and explain the core usability/accessibility problems to the user.
 - If requirements are the root cause, pause and tell the user the requirements need revision first.

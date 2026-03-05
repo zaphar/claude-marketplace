@@ -1,6 +1,6 @@
 # Cross-Cutting Architecture Tables
 
-**Domain:** Cross-cutting concerns that span the entire system — security, deployment, observability, third-party dependencies, and the traceability backbone.
+**Domain:** Cross-cutting concerns that span the entire system — security, deployment, observability, third-party dependencies, the traceability backbone, and workflow blockers.
 
 **Primary producer:** `backend_architect` (architecture phase)
 **Critic:** `architecture_critic`
@@ -16,6 +16,7 @@ These tables are written during the architecture phase after components and ADRs
 3. [observability_config](#observability_config)
 4. [approved_dependency](#approved_dependency)
 5. [traceability_mapping](#traceability_mapping)
+6. [blocker](#blocker)
 
 ---
 
@@ -403,11 +404,79 @@ Write a second mapping for the same requirement to a screen:
 
 ---
 
+## blocker
+
+### Purpose
+
+Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`, `deployment_manifest_blocker`) which are child tables of their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
+
+Blockers use soft-delete semantics: active blockers have `resolved_at IS NULL`. When a blocker is addressed, `blocker_resolve` sets `resolved_at` and optionally records resolution notes.
+
+### Context
+
+Written by the orchestrator when a producer or critic agent requests a blocker be recorded (via the escalation instruction pattern). Any agent across any phase can raise a blocker. The orchestrator queries active blockers at the start of each phase to surface them to the user.
+
+Unlike most entity tables, `blocker` does not carry a `revision_id` column — blockers are lifecycle events, not producer-critic artifacts.
+
+### Column Reference
+
+| Column | Type | Nullable | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
+| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this blocker was raised. |
+| `phase_name` | TEXT | NOT NULL | — | — | The phase during which the blocker was raised (e.g., `requirements`, `architecture`, `implementation`). |
+| `description` | TEXT | NOT NULL | — | — | Human-readable description of the blocking issue. |
+| `severity` | TEXT | NOT NULL | — | CHECK(`severity` IN (`'critical'`, `'high'`, `'medium'`)) | Severity of the blocker. |
+| `raised_by` | TEXT | NOT NULL | — | — | The agent that raised the blocker (e.g., `requirements_critic`, `backend_architect`). |
+| `resolved_at` | TEXT | NULL | — | — | ISO 8601 timestamp when the blocker was resolved. NULL means still active. |
+| `resolution_notes` | TEXT | NULL | — | — | Optional notes describing how the blocker was resolved. |
+| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of row insertion. |
+
+### Relationships
+
+- **`iteration_id` → `iteration(id)`** — Blockers are scoped to an iteration. Active blockers from prior iterations are not automatically carried forward.
+- No `revision_id` — blockers are lifecycle events that exist outside the producer-critic revision loop.
+
+### MCP Tool Access
+
+**Write** (`changelog_insert`):
+```json
+{
+  "entity_type": "blocker",
+  "iteration_id": 1,
+  "data": {
+    "phase_name": "architecture",
+    "description": "Requirements REQ-003 and REQ-007 conflict — REQ-003 requires offline-first but REQ-007 requires real-time sync",
+    "severity": "critical",
+    "raised_by": "backend_architect"
+  }
+}
+```
+
+**Read** (`changelog_query`):
+```json
+{
+  "entity_type": "blocker",
+  "iteration_id": 1,
+  "filters": { "resolved_at": null }
+}
+```
+
+**Resolve** (`blocker_resolve`):
+```json
+{
+  "blocker_id": 3,
+  "resolution_notes": "REQ-003 was updated to allow eventual consistency, resolving the conflict with REQ-007"
+}
+```
+
+---
+
 ## Common Patterns
 
 ### Querying all cross-cutting config for an iteration
 
-All five tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
+All six tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
 
 ```json
 { "entity_type": "security_config",      "iteration_id": 1 }
@@ -415,6 +484,7 @@ All five tables share the `iteration_id` anchor. To get the full cross-cutting p
 { "entity_type": "observability_config", "iteration_id": 1 }
 { "entity_type": "approved_dependency",  "iteration_id": 1 }
 { "entity_type": "traceability_mapping", "iteration_id": 1 }
+{ "entity_type": "blocker",             "iteration_id": 1 }
 ```
 
 ### Detecting unaddressed requirements

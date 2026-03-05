@@ -88,6 +88,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `observability_config` | backend_architect | Logging, metrics, tracing, health check config. |
 | `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
 | `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
+| `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
 
 ## UX Design Domain
 
@@ -236,6 +237,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `commit_link` | Link a VCS commit to the current iteration. |
 | `project_update` | Update project status (e.g., close it). |
 | `plan_phase_transition` | Update a plan_phase row's status (pending → test_writing → implementing → completed). |
+| `blocker_resolve` | Mark a blocker as resolved with optional resolution notes. |
 
 ### Read Tools
 
@@ -269,7 +271,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 146 tables with links to their detailed design documents.
+All 147 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -285,6 +287,7 @@ All 146 tables with links to their detailed design documents.
 | `architecture_overview` | [architecture](tables/architecture.md) |
 | `architecture_principle` | [architecture](tables/architecture.md) |
 | `asset_deliverable` | [implementation](tables/implementation.md) |
+| `blocker` | [cross-cutting](tables/cross-cutting.md) |
 | `component` | [architecture](tables/architecture.md) |
 | `component_dependency` | [architecture](tables/architecture.md) |
 | `component_interface` | [architecture](tables/architecture.md) |
@@ -420,4 +423,4 @@ All 146 tables with links to their detailed design documents.
 | `vcs_commit` | [implementation](tables/implementation.md) |
 | `project` | [core](tables/core.md) |
 
-**Total: 146 tables across 11 domains**
+**Total: 147 tables across 11 domains**

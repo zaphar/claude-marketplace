@@ -391,6 +391,7 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `revision_create` / `revision_update` — record producer-critic loops
 - `changelog_insert` — append a structured decision to the changelog
 - `commit_link` — associate a VCS commit with a phase/revision
+- `blocker_resolve` — mark a blocker as resolved with optional resolution notes
 - `project_update` — update project-level metadata
 
 **Read tools** (agents call these to query state):

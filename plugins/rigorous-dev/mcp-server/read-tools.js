@@ -27,6 +27,7 @@ const ENTITY_TABLE = {
   test_report: "test_report",
   documentation_manifest: "documentation_manifest",
   deployment_manifest: "deployment_manifest",
+  blocker: "blocker",
 };
 
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
@@ -60,9 +61,13 @@ function buildWhere(entityType, iterationId, ids, filters) {
 
   if (filters && typeof filters === "object") {
     for (const [field, value] of Object.entries(filters)) {
-      const key = `f_${field}`;
-      clauses.push(`${field} = @${key}`);
-      params[key] = value;
+      if (value === null) {
+        clauses.push(`${field} IS NULL`);
+      } else {
+        const key = `f_${field}`;
+        clauses.push(`${field} = @${key}`);
+        params[key] = value;
+      }
     }
   }
 

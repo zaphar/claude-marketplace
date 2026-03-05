@@ -1279,6 +1279,22 @@ CREATE TABLE IF NOT EXISTS deployment_review_checklist (
 );
 
 -- ============================================================
+-- BLOCKER: cross-phase workflow blockers raised by agents
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS blocker (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  phase_name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK(severity IN ('critical', 'high', 'medium')),
+  raised_by TEXT NOT NULL,
+  resolved_at TEXT,
+  resolution_notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ============================================================
 -- ENTITY SNAPSHOT: JSON history of entity changes across revisions
 -- ============================================================
 

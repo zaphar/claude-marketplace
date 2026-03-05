@@ -923,6 +923,20 @@ function insertAssetDeliverable(db, iteration_id, revision_id, data) {
   return { entity_type: "asset_deliverable", id: result.lastInsertRowid };
 }
 
+function insertWorkflowBlocker(db, iteration_id, _revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO blocker (iteration_id, phase_name, description, severity, raised_by)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    iteration_id,
+    data.phase_name,
+    data.description,
+    data.severity,
+    data.raised_by
+  );
+  return { entity_type: "blocker", id: result.lastInsertRowid };
+}
+
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -946,6 +960,7 @@ function changelogInsert(args) {
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,
     asset_deliverable: insertAssetDeliverable,
+    blocker: insertWorkflowBlocker,
   };
 
   const handler = handlers[entity_type];
@@ -992,6 +1007,22 @@ function projectUpdate(args) {
   const row = db.prepare("SELECT * FROM project WHERE id = 1").get();
   if (!row) throw new Error("Project not found — run iteration_create first");
   return { status: row.status, project_name: row.project_name };
+}
+
+function blockerResolve(args) {
+  const db = getDb();
+  const { blocker_id, resolution_notes } = args;
+  const now = new Date().toISOString();
+
+  const info = db.prepare(
+    `UPDATE blocker SET resolved_at = @now, resolution_notes = @resolution_notes WHERE id = @blocker_id`
+  ).run({ now, resolution_notes: resolution_notes ?? null, blocker_id });
+
+  if (info.changes === 0) {
+    throw new Error(`Blocker with id=${blocker_id} not found`);
+  }
+
+  return { blocker_id, resolved_at: now };
 }
 
 // ---------------------------------------------------------------------------
@@ -1105,6 +1136,7 @@ export const WRITE_TOOLS = [
             "intermediate_asset",
             "asset_deliverable",
             "iteration_metadata",
+            "blocker",
           ],
         },
         iteration_id: { type: "integer" },
@@ -1141,6 +1173,18 @@ export const WRITE_TOOLS = [
       },
     },
   },
+  {
+    name: "blocker_resolve",
+    description: "Marks an active blocker as resolved. Sets resolved_at to now and optionally records resolution notes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        blocker_id: { type: "integer", description: "The blocker row ID to resolve" },
+        resolution_notes: { type: "string", description: "Optional notes describing how the blocker was resolved" },
+      },
+      required: ["blocker_id"],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1165,6 +1209,8 @@ export function handleWriteTool(name, args) {
       return commitLink(args);
     case "project_update":
       return projectUpdate(args);
+    case "blocker_resolve":
+      return blockerResolve(args);
     default:
       throw new Error(`Unknown write tool: ${name}`);
   }
