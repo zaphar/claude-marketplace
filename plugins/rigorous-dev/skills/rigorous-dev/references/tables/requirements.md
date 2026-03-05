@@ -231,7 +231,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ## deployment_requirement
 
-**Purpose:** Captures the top-level deployment target for the system — whether it must run on a private cloud, as a local executable, both, or some other mode. This single record per iteration anchors all the detailed infrastructure requirements stored in `deployment_infra_requirement`. The `notes` field accommodates any nuance not captured by the constrained `target` enumeration.
+**Purpose:** Each row is a single deployment infrastructure requirement — e.g., a specific container runtime, network isolation rule, storage class, or hardware specification. The `target` column captures the deployment target context (private-cloud, local-executable, both, or other) inline, so if multiple requirements share the same target, the target value is simply repeated. This flattened design avoids unnecessary parent-child indirection while preserving all the information agents need.
 
 **Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when selecting infrastructure patterns and by the **implementation_planner** when assessing delivery environment constraints.
 
@@ -240,41 +240,20 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this deployment requirement belongs to. |
 | `target` | TEXT | CHECK IN (`'private-cloud'`, `'local-executable'`, `'both'`, `'other'`) | The deployment target classification. NULL is permitted when the target is not yet determined. |
+| `requirement` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
 | `notes` | TEXT | — | Optional free-text notes elaborating on the deployment target choice or constraints. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
-- Children: `deployment_infra_requirement` (via `deployment_id`)
-
-**Produced by:** `changelog_insert` with entity_type `"deployment_requirement"`
-**Queried by:** `changelog_query` with entity_type `"deployment_requirement"`
-
----
-
-## deployment_infra_requirement
-
-**Purpose:** Stores individual infrastructure-level requirements for a deployment, each as a single row. Examples include requirements for specific container runtimes, network isolation rules, storage classes, or hardware specifications. By decomposing these into rows rather than a list in a text field, agents can reason over and reference individual infrastructure requirements.
-
-**Context:** Produced by the **requirements_analyst** as part of deployment elaboration. Consumed by the **backend_architect** when selecting infrastructure components and by the **implementation_planner** when identifying infrastructure provisioning tasks.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `deployment_id` | INTEGER | NOT NULL, REFERENCES deployment_requirement(id) | The parent deployment requirement record. |
-| `requirement` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
-
-**Relationships:**
-- Parent: `deployment_requirement` (via `deployment_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"deployment_infra_requirement"`
-**Queried by:** `changelog_query` with entity_type `"deployment_infra_requirement"`
+**Note:** These tables have no dedicated MCP tool handlers. They are managed via direct SQL in the MCP server's schema but are not currently exposed through `changelog_insert` or `changelog_query` (no `ENTITY_TABLE` entry exists for them).
 
 ---
 
 ## operational_requirement
 
-**Purpose:** Records the operational expectations for the running system — most critically, the uptime requirement. This is the parent record for all operational monitoring items. Keeping uptime and monitoring together under a single operational requirement record allows the full operational profile of the iteration to be retrieved in one join.
+**Purpose:** Each row captures a single operational requirement — an uptime/SLA target, a monitoring item, a logging policy, or an observability item. The `category` column classifies the row into one of four buckets (`uptime`, `monitoring`, `logging`, `observability`), allowing the architecture phase to address each concern with appropriate tooling. Uptime targets (previously stored as a dedicated `uptime_requirement` column) are now just rows with `category = 'uptime'` and the SLA value in `item`.
 
 **Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing for reliability (SLOs, redundancy, failover), and by the **observability_config** design in the architecture domain. The **implementation_planner** uses this to flag operational readiness tasks.
 
@@ -282,36 +261,15 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this operational requirement belongs to. |
-| `uptime_requirement` | TEXT | — | Optional. The required uptime expressed as a percentage or SLA level (e.g. `"99.9%"`, `"business hours only"`). |
+| `item` | TEXT | NOT NULL | Description of the operational item (e.g. `"99.9% uptime"`, `"Track p99 API response latency"`, `"Retain application logs for 90 days"`). |
+| `category` | TEXT | NOT NULL, CHECK IN (`'uptime'`, `'monitoring'`, `'logging'`, `'observability'`) | Classifies the item to route it to the appropriate design decisions during architecture. |
+| `notes` | TEXT | — | Optional free-text notes providing additional context for the requirement. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
-- Children: `operational_monitoring` (via `operational_id`)
-
-**Produced by:** `changelog_insert` with entity_type `"operational_requirement"`
-**Queried by:** `changelog_query` with entity_type `"operational_requirement"`
-
----
-
-## operational_monitoring
-
-**Purpose:** Each row is a single monitoring, logging, or observability item required by the operational profile. Items are categorised into three buckets — `monitoring`, `logging`, `observability` — allowing the architecture phase to address each category with appropriate tooling. Examples include specific metrics to track, log retention policies, or distributed tracing requirements.
-
-**Context:** Produced by the **requirements_analyst** as part of operational elaboration. Consumed by the **backend_architect** when designing the observability stack, and mapped to `observability_config` entries in the architecture domain. The **implementation_planner** uses these to create observability implementation tasks.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `operational_id` | INTEGER | NOT NULL, REFERENCES operational_requirement(id) | The parent operational requirement record. |
-| `item` | TEXT | NOT NULL | Description of the monitoring, logging, or observability item (e.g. `"Track p99 API response latency"`, `"Retain application logs for 90 days"`). |
-| `category` | TEXT | NOT NULL, CHECK IN (`'monitoring'`, `'logging'`, `'observability'`) | Classifies the item to route it to the appropriate tooling decisions during architecture. |
-
-**Relationships:**
-- Parent: `operational_requirement` (via `operational_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"operational_monitoring"`
-**Queried by:** `changelog_query` with entity_type `"operational_monitoring"`
+**Note:** These tables have no dedicated MCP tool handlers. They are managed via direct SQL in the MCP server's schema but are not currently exposed through `changelog_insert` or `changelog_query` (no `ENTITY_TABLE` entry exists for them).
 
 ---
 

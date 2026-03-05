@@ -36,10 +36,8 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
 | `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
 | `system_input` / `system_output` | requirements_analyst | What goes in/out of the system being built. |
-| `deployment_requirement` | requirements_analyst | Deployment-specific requirements. |
-| `deployment_infra_requirement` | requirements_analyst | Infrastructure needs per deployment requirement. |
-| `operational_requirement` | requirements_analyst | SLAs, uptime targets. |
-| `operational_monitoring` | requirements_analyst | Monitoring configuration per operational requirement. |
+| `deployment_requirement` | requirements_analyst | Deployment infrastructure requirements with target context (private-cloud, local-executable, both, other). |
+| `operational_requirement` | requirements_analyst | Operational requirements: uptime/SLA targets, monitoring, logging, observability items (categorised per row). |
 | `technology_constraint` | requirements_analyst | User-imposed tech constraints (e.g., "must use PostgreSQL"). |
 
 **Critic:** requirements_critic
@@ -283,7 +281,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 150 tables with links to their detailed design documents.
+All 148 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -315,7 +313,6 @@ All 150 tables with links to their detailed design documents.
 | `deployment_env_var` | [deployment](tables/deployment.md) |
 | `deployment_environment` | [deployment](tables/deployment.md) |
 | `deployment_health_check` | [deployment](tables/deployment.md) |
-| `deployment_infra_requirement` | [requirements](tables/requirements.md) |
 | `deployment_local_channel` | [deployment](tables/deployment.md) |
 | `deployment_local_executable` | [deployment](tables/deployment.md) |
 | `deployment_local_platform` | [deployment](tables/deployment.md) |
@@ -366,7 +363,6 @@ All 150 tables with links to their detailed design documents.
 | `intermediate_asset` | [implementation](tables/implementation.md) |
 | `iteration` | [core](tables/core.md) |
 | `observability_config` | [cross-cutting](tables/cross-cutting.md) |
-| `operational_monitoring` | [requirements](tables/requirements.md) |
 | `operational_requirement` | [requirements](tables/requirements.md) |
 | `performance_audit_finding` | [audit](tables/audit.md) |
 | `persona` | [requirements](tables/requirements.md) |
@@ -438,4 +434,4 @@ All 150 tables with links to their detailed design documents.
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 150 tables across 12 domains**
+**Total: 148 tables across 12 domains**

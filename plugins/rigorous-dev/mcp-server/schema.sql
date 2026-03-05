@@ -138,31 +138,24 @@ CREATE TABLE IF NOT EXISTS system_output (
 );
 
 -- Deployment requirements (per iteration)
+-- Each row is a single infrastructure/deployment requirement with its target context inline.
 CREATE TABLE IF NOT EXISTS deployment_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   target TEXT CHECK(target IN ('private-cloud', 'local-executable', 'both', 'other')),
+  requirement TEXT NOT NULL,
   notes TEXT
 );
 
-CREATE TABLE IF NOT EXISTS deployment_infra_requirement (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  deployment_id INTEGER NOT NULL REFERENCES deployment_requirement(id),
-  requirement TEXT NOT NULL
-);
-
 -- Operational requirements (per iteration)
+-- Uptime is stored as category='uptime' with the SLA value in `item`.
+-- Monitoring/logging/observability items use their respective categories.
 CREATE TABLE IF NOT EXISTS operational_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  uptime_requirement TEXT
-);
-
-CREATE TABLE IF NOT EXISTS operational_monitoring (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  operational_id INTEGER NOT NULL REFERENCES operational_requirement(id),
   item TEXT NOT NULL,
-  category TEXT NOT NULL CHECK(category IN ('monitoring', 'logging', 'observability'))
+  category TEXT NOT NULL CHECK(category IN ('uptime', 'monitoring', 'logging', 'observability')),
+  notes TEXT
 );
 
 -- Technology constraints

@@ -88,7 +88,7 @@ Records the deployment architecture for every target environment the system must
 
 ### Context
 
-Written by `backend_architect` after `deployment_requirement` and `deployment_infra_requirement` rows have been established by the requirements analyst. The architect translates high-level deployment requirements into concrete configuration decisions (container runtime, orchestration platform, scaling policy, network topology, etc.).
+Written by `backend_architect` after `deployment_requirement` rows have been established by the requirements analyst. The architect translates high-level deployment requirements into concrete configuration decisions (container runtime, orchestration platform, scaling policy, network topology, etc.).
 
 Common `target` values: `all`, `development`, `staging`, `production`.
 Common `category` values: `containerization`, `orchestration`, `scaling`, `networking`, `storage`, `ci_cd`, `secrets`.
@@ -110,7 +110,7 @@ Common `category` values: `containerization`, `orchestration`, `scaling`, `netwo
 
 - **`iteration_id` → `iteration(id)`** — Scopes all deployment decisions to an iteration.
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- Conceptually downstream of `deployment_requirement` and `deployment_infra_requirement` (same `iteration_id`), though there is no enforced FK between them.
+- Conceptually downstream of `deployment_requirement` (same `iteration_id`), though there is no enforced FK between them.
 - Technology choices that drive deployment decisions (e.g., "use Kubernetes") should have a corresponding `adr` row for auditability.
 
 ### MCP Tool Access
@@ -149,7 +149,7 @@ Captures the observability strategy for the system: logging configuration, metri
 
 ### Context
 
-Written by `backend_architect` alongside (or immediately after) security and deployment config. Driven by `operational_requirement` and `operational_monitoring` rows that specify what uptime/SLA targets must be met and what must be monitored. The architect translates those requirements into concrete tooling and configuration decisions.
+Written by `backend_architect` alongside (or immediately after) security and deployment config. Driven by `operational_requirement` rows that specify what uptime/SLA targets must be met and what must be monitored (via category). The architect translates those requirements into concrete tooling and configuration decisions.
 
 Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_checks`, `dashboards`.
 
@@ -169,7 +169,7 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 
 - **`iteration_id` → `iteration(id)`** — Scopes observability decisions to an iteration.
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- Semantically downstream of `operational_requirement` and `operational_monitoring`; those tables specify *what* must be observed, this table specifies *how*.
+- Semantically downstream of `operational_requirement`; that table specifies *what* must be observed (via categorised rows), this table specifies *how*.
 - Technology choices for observability tooling (e.g., "use OpenTelemetry") should have corresponding `adr` rows.
 
 ### MCP Tool Access
