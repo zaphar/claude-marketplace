@@ -28,14 +28,19 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - On session start, find next unblocked WI with status `not_started`. Read only that WI file.
 - For each WI:
   1. Read the WI's DO list and acceptance criteria thoroughly
-  2. Write failing tests covering every acceptance criterion, verification step, edge case, and error condition
-  3. Write minimal type stubs and interfaces needed for compilation — signatures only, no logic. Stub bodies must panic, throw, or return zero values.
-  4. Run the test suite. Confirm:
-     - All new tests fail (Red state)
+  2. **Audit existing tests** — before writing anything, search for existing tests that cover the same behaviors, modules, or acceptance criteria this WI touches. For each relevant existing test, decide:
+     - **Keep as-is**: behavior unchanged, test still valid
+     - **Modify**: behavior changes — update assertions, setup, or descriptions to match the new contract. The test must still be in a failing state after modification.
+     - **Delete**: test covers behavior being intentionally removed; deleting is preferable to leaving a test that passes for the wrong reason
+     - Document each decision with a brief comment if the reason isn't obvious
+  3. Write failing tests covering every acceptance criterion, verification step, edge case, and error condition not already addressed by kept/modified tests
+  4. Write minimal type stubs and interfaces needed for compilation — signatures only, no logic. Stub bodies must panic, throw, or return zero values.
+  5. Run the test suite. Confirm:
+     - All new and modified tests fail (Red state)
      - They fail for the right reason (not implemented, not compile/syntax error)
-     - No pre-existing tests are broken
-  5. Update WI status to `tests_written`
-  6. Commit before moving to next WI
+     - No pre-existing tests outside the WI scope are broken
+  6. Update WI status to `tests_written`
+  7. Commit before moving to next WI
 - Do not implement DO NOT items.
 
 #### Constraints
@@ -61,7 +66,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 #### Self-Review
 
-Before submitting for critic: verify every acceptance criterion has at least one test, verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Commit mentioning your personality.
+Before submitting for critic: verify every acceptance criterion has at least one test, verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Confirm each existing test in scope was explicitly triaged (kept, modified, or deleted) and the decision documented. Commit mentioning your personality.
 
 **Produces:**
 

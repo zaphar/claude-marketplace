@@ -24,7 +24,8 @@ tools: Read, Grep, Glob, Bash
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
 - Verify the project compiles with new test files and stubs
-- Verify all new tests fail (red state)
+- Verify all new and modified tests fail (red state)
+- Verify existing tests in scope were audited and each decision (keep/modify/delete) is documented
 - Verify test coverage against WI acceptance criteria
 - Verify no implementation logic exists in stubs
 - Verify test quality standards
@@ -40,6 +41,12 @@ tools: Read, Grep, Glob, Bash
     - [ ] All new tests fail when run
     - [ ] Tests fail for the right reason (not implemented, not compile/syntax error)
     - [ ] Failure messages clearly indicate missing implementation
+- Existing test audit:
+    - [ ] All existing tests touching the WI scope were reviewed
+    - [ ] Each existing test has a documented disposition: kept, modified, or deleted
+    - [ ] Modified tests still fail for the right reason (contract change, not compiler error)
+    - [ ] Deleted tests covered behavior that was intentionally removed
+    - [ ] No orphaned tests remain that assert old behavior contradicting the new WI contract
 - Coverage:
     - [ ] Every acceptance criterion in the WI DO list has at least one test
     - [ ] Every verification step has a test
