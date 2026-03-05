@@ -155,18 +155,18 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ---
 
-## iteration_metadata
+## project_context
 
-**Purpose:** A flexible key-value store for iteration-level contextual information that does not fit a more structured table. Common uses include recording the problem statement, key assumptions, explicit scope constraints, and business context. The optional `category` column allows grouping of metadata entries (e.g. `"assumption"`, `"constraint"`, `"context"`).
+**Purpose:** A flexible key-value store for project-level contextual information that does not fit a more structured table. Common uses include recording the problem statement, key assumptions, explicit scope constraints, and business context. The optional `category` column allows grouping of context entries (e.g. `"assumption"`, `"constraint"`, `"context"`).
 
 **Context:** Produced by the **requirements_analyst** during the requirements phase. Validated by the **requirements_critic**, who may challenge assumptions or flag missing context. Consumed by all downstream agents as background context when generating their artefacts, and surfaced in the final output documents.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this metadata belongs to. |
-| `key` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The metadata key (e.g. `"assumption"`, `"problem_statement"`). |
-| `value` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The metadata value. |
+| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this context entry belongs to. |
+| `key` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The context key (e.g. `"assumption"`, `"problem_statement"`). |
+| `value` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The context value. |
 | `category` | TEXT | — | Optional grouping label (e.g. `"assumption"`, `"constraint"`, `"context"`). |
 
 **Constraints:**
@@ -176,14 +176,14 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"iteration_metadata"`
-**Queried by:** `changelog_query` with entity_type `"iteration_metadata"`
+**Produced by:** `changelog_insert` with entity_type `"project_context"`
+**Queried by:** `changelog_query` with entity_type `"project_context"`
 
 ---
 
-## iteration_input
+## system_input
 
-**Purpose:** Describes the inputs the system (or the iteration) expects to receive: named data sources, files, API feeds, or user-provided content. Each row names a single input, describes it, and optionally records where it comes from and what format it takes. This information is essential for the **backend_architect** when designing ingestion pipelines and data contracts.
+**Purpose:** Describes the inputs the system expects to receive: named data sources, files, API feeds, or user-provided content. Each row names a single input, describes it, and optionally records where it comes from and what format it takes. This information is essential for the **backend_architect** when designing ingestion pipelines and data contracts.
 
 **Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when modelling data entities and integration boundaries, and by the **implementation_planner** when identifying external dependencies that affect delivery sequencing.
 
@@ -200,14 +200,14 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"iteration_input"`
-**Queried by:** `changelog_query` with entity_type `"iteration_input"`
+**Produced by:** `changelog_insert` with entity_type `"system_input"`
+**Queried by:** `changelog_query` with entity_type `"system_input"`
 
 ---
 
-## iteration_output
+## system_output
 
-**Purpose:** Describes the outputs the system produces: reports, API responses, files, events, or any other artefact the system emits. Symmetric to `iteration_input`, this table documents what the system will deliver and to whom, informing downstream design of data contracts, delivery mechanisms, and observability requirements.
+**Purpose:** Describes the outputs the system produces: reports, API responses, files, events, or any other artefact the system emits. Symmetric to `system_input`, this table documents what the system will deliver and to whom, informing downstream design of data contracts, delivery mechanisms, and observability requirements.
 
 **Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing output interfaces and data models, and by the **ux_designer** when understanding what information must be surfaced in screens and flows.
 
@@ -224,8 +224,8 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"iteration_output"`
-**Queried by:** `changelog_query` with entity_type `"iteration_output"`
+**Produced by:** `changelog_insert` with entity_type `"system_output"`
+**Queried by:** `changelog_query` with entity_type `"system_output"`
 
 ---
 

@@ -108,8 +108,8 @@ CREATE TABLE IF NOT EXISTS requirement_dependency (
   PRIMARY KEY (requirement_id, depends_on)
 );
 
--- Iteration-level metadata (problem statement, constraints, assumptions, etc.)
-CREATE TABLE IF NOT EXISTS iteration_metadata (
+-- Project-level context (problem statement, constraints, assumptions, etc.)
+CREATE TABLE IF NOT EXISTS project_context (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   key TEXT NOT NULL,
@@ -118,8 +118,8 @@ CREATE TABLE IF NOT EXISTS iteration_metadata (
   UNIQUE(iteration_id, key, value)
 );
 
--- Inputs and outputs (per iteration)
-CREATE TABLE IF NOT EXISTS iteration_input (
+-- System inputs and outputs (per iteration)
+CREATE TABLE IF NOT EXISTS system_input (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   name TEXT NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS iteration_input (
   format TEXT
 );
 
-CREATE TABLE IF NOT EXISTS iteration_output (
+CREATE TABLE IF NOT EXISTS system_output (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   name TEXT NOT NULL,

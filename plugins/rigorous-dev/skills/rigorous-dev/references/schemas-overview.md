@@ -20,7 +20,7 @@ Four tables form the backbone — everything else hangs off them:
 
 **Hierarchy:** project → iteration → phase → revision
 
-Every changelog entity below carries `iteration_id` and `revision_id` (both NOT NULL) to trace exactly when and why it was created. The one exception is `iteration_metadata`, which is a simple key-value store with no revision tracking.
+Every changelog entity below carries `iteration_id` and `revision_id` (both NOT NULL) to trace exactly when and why it was created. The exceptions are `project_context`, `system_input`, `system_output`, `blocker`, and `project_lesson`, which carry only `iteration_id` with no revision tracking.
 
 ## Requirements Domain
 
@@ -34,8 +34,8 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `requirement_acceptance_criterion` | requirements_analyst | Testable acceptance criteria per requirement (1:N). |
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
-| `iteration_metadata` | requirements_analyst | Per-iteration problem statement, success criteria, scope type (MVP/full). |
-| `iteration_input` / `iteration_output` | requirements_analyst | What goes in/out of each iteration. |
+| `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
+| `system_input` / `system_output` | requirements_analyst | What goes in/out of the system being built. |
 | `deployment_requirement` | requirements_analyst | Deployment-specific requirements. |
 | `deployment_infra_requirement` | requirements_analyst | Infrastructure needs per deployment requirement. |
 | `operational_requirement` | requirements_analyst | SLAs, uptime targets. |
@@ -283,7 +283,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 148 tables with links to their detailed design documents.
+All 150 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -365,9 +365,6 @@ All 148 tables with links to their detailed design documents.
 | `integration_test_boundary` | [architecture](tables/architecture.md) |
 | `intermediate_asset` | [implementation](tables/implementation.md) |
 | `iteration` | [core](tables/core.md) |
-| `iteration_input` | [requirements](tables/requirements.md) |
-| `iteration_metadata` | [requirements](tables/requirements.md) |
-| `iteration_output` | [requirements](tables/requirements.md) |
 | `observability_config` | [cross-cutting](tables/cross-cutting.md) |
 | `operational_monitoring` | [requirements](tables/requirements.md) |
 | `operational_requirement` | [requirements](tables/requirements.md) |
@@ -399,6 +396,7 @@ All 148 tables with links to their detailed design documents.
 | `plan_phase_screen` | [planning](tables/planning.md) |
 | `plan_requirement_mapping` | [planning](tables/planning.md) |
 | `project` | [core](tables/core.md) |
+| `project_context` | [requirements](tables/requirements.md) |
 | `project_lesson` | [cross-cutting](tables/cross-cutting.md) |
 | `requirement` | [requirements](tables/requirements.md) |
 | `requirement_acceptance_criterion` | [requirements](tables/requirements.md) |
@@ -412,6 +410,8 @@ All 148 tables with links to their detailed design documents.
 | `screen_state` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
 | `security_config` | [cross-cutting](tables/cross-cutting.md) |
+| `system_input` | [requirements](tables/requirements.md) |
+| `system_output` | [requirements](tables/requirements.md) |
 | `technology_choice` | [architecture](tables/architecture.md) |
 | `technology_constraint` | [requirements](tables/requirements.md) |
 | `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |

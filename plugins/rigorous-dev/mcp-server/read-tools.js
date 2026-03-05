@@ -16,7 +16,9 @@ const ENTITY_TABLE = {
   plan_overview: "plan_overview",
   implementation_manifest: "implementation_manifest",
   traceability_mapping: "traceability_mapping",
-  iteration_metadata: "iteration_metadata",
+  project_context: "project_context",
+  system_input: "system_input",
+  system_output: "system_output",
   design_system: "design_system",
   architecture_overview: "architecture_overview",
   data_entity: "data_entity",
@@ -418,10 +420,10 @@ function traceabilityQuery(args) {
 
       const iterMeta = comp.iteration_id
         ? db
-            .prepare("SELECT key, value, category FROM iteration_metadata WHERE iteration_id = ?")
+            .prepare("SELECT key, value, category FROM project_context WHERE iteration_id = ?")
             .all(comp.iteration_id)
         : [];
-      if (iterMeta.length > 0) chain.push({ type: "iteration_context", data: iterMeta });
+      if (iterMeta.length > 0) chain.push({ type: "project_context", data: iterMeta });
       break;
     }
 

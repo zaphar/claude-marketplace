@@ -849,12 +849,12 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   return { entity_type: "implementation_manifest", id: manifest_id };
 }
 
-function insertIterationMetadata(db, iteration_id, _revision_id, data) {
+function insertProjectContext(db, iteration_id, _revision_id, data) {
   // data may be a single entry or an array of entries
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT OR REPLACE INTO iteration_metadata (iteration_id, key, value, category) VALUES (?, ?, ?, ?)`
+    `INSERT OR REPLACE INTO project_context (iteration_id, key, value, category) VALUES (?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
@@ -865,7 +865,45 @@ function insertIterationMetadata(db, iteration_id, _revision_id, data) {
     );
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "iteration_metadata", id: lastId };
+  return { entity_type: "project_context", id: lastId };
+}
+
+function insertSystemInput(db, iteration_id, _revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO system_input (iteration_id, name, description, source, format) VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      entry.name,
+      entry.description,
+      entry.source ?? null,
+      entry.format ?? null
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "system_input", id: lastId };
+}
+
+function insertSystemOutput(db, iteration_id, _revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO system_output (iteration_id, name, description, destination, format) VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      entry.name,
+      entry.description,
+      entry.destination ?? null,
+      entry.format ?? null
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "system_output", id: lastId };
 }
 
 function insertVcsCommit(db, iteration_id, revision_id, data) {
@@ -1012,7 +1050,9 @@ function changelogInsert(args) {
     plan_overview: insertPlanOverview,
     plan_requirement_mapping: insertPlanRequirementMapping,
     implementation_manifest: insertImplementationManifest,
-    iteration_metadata: insertIterationMetadata,
+    project_context: insertProjectContext,
+    system_input: insertSystemInput,
+    system_output: insertSystemOutput,
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,
     asset_deliverable: insertAssetDeliverable,
@@ -1194,7 +1234,9 @@ export const WRITE_TOOLS = [
             "vcs_commit",
             "intermediate_asset",
             "asset_deliverable",
-            "iteration_metadata",
+            "project_context",
+            "system_input",
+            "system_output",
             "blocker",
             "project_lesson",
             "security_audit_finding",
