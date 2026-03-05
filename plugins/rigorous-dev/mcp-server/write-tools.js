@@ -691,6 +691,20 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     insertRisk.run(plan_phase_id, risk.risk, risk.mitigation ?? "");
   }
 
+  const insertCheckpointFocus = db.prepare(
+    "INSERT INTO plan_checkpoint_focus (plan_phase_id, focus) VALUES (?, ?)"
+  );
+  for (const focus of data.checkpoint_focus ?? []) {
+    insertCheckpointFocus.run(plan_phase_id, focus);
+  }
+
+  const insertParallel = db.prepare(
+    "INSERT OR IGNORE INTO plan_phase_parallel (plan_phase_id, can_parallel_with) VALUES (?, ?)"
+  );
+  for (const phase_num of data.parallel_with ?? []) {
+    insertParallel.run(plan_phase_id, phase_num);
+  }
+
   return { entity_type: "plan_phase", id: plan_phase_id };
 }
 

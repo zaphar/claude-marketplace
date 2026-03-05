@@ -227,9 +227,9 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 **Determining Sub-phases:**
 - Query the approved implementation plan via `changelog_query(entity_type="plan_phase", iteration_id=<current_iteration_id>)`
-- The `phases` array defines the sub-phases, each with a `phase_number`
-- The `overview.total_phases` field gives the total count
-- Process sub-phases sequentially (or in parallel if `can_run_in_parallel_with` allows)
+- Each returned row is a flat `plan_phase` record with fields such as `phase_number`, `name`, `type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve child data (linked `requirements`, `components`, `flows`, `screens`, `entry_criteria`, `exit_criteria`, `api_endpoints`, `db_changes`, `risks`, `dependencies`, `parallel_with`, `checkpoint_focus`)
+- The response's `count` field gives the total number of sub-phases
+- Process sub-phases sequentially in ascending `phase_number` order
 
 **Sub-phase Two-Step Loop:**
 
@@ -550,13 +550,13 @@ Read: result.current_phase
 
 **Get revision count for architecture:**
 ```
-Call: revision_history(phase_id="architecture")
+Call: revision_history(iteration_id=<current>, phase_name="architecture")
 Read: length of returned revisions
 ```
 
 **Get prior phase data:**
 ```
-Call: changelog_query(phase_id="requirements", iteration_id=<current>)
+Call: changelog_query(entity_type="requirement", iteration_id=<current>)
 ```
 
 **Check if requirements complete:**
@@ -570,9 +570,9 @@ Read: result.phase_status.requirements.status == "completed"
 Users and agents can query the changelog DB to answer common questions about the project's decisions, history, and current state.
 
 **"Why are we using [technology]?"**
-Use `traceability_query` with `entity_type` "adr" or "technology_choice" to trace ADRs and requirement decisions.
+Use `traceability_query` with `target_type: "technology"` to trace ADRs and requirement decisions linked to a technology name.
 ```
-traceability_query({ entity_type: "adr", search_text: "SQLite" })
+traceability_query({ target: "SQLite", target_type: "technology" })
 ```
 
 **"What changed in iteration N?"**
@@ -581,16 +581,16 @@ Use `iteration_summary` to get a full summary of decisions and deliverables for 
 iteration_summary({ iteration_id: N })
 ```
 
-**"Show me the decision history for [component]"**
-Use `revision_history` to see the full revision chain for any entity, including critic feedback.
+**"Show me the revision history for a phase"**
+Use `revision_history` to see the full producer-critic revision chain for a phase, including critic feedback and approval status.
 ```
-revision_history({ entity_type: "component", entity_id: "COMP-001" })
+revision_history({ iteration_id: 1, phase_name: "architecture" })
 ```
 
 **"Which requirements drove [feature]?"**
-Use `traceability_query` to trace from components or features back to the requirements that drove them.
+Use `traceability_query` with `target_type: "component"` to trace from a component back to the requirements that drove it.
 ```
-traceability_query({ entity_type: "traceability_mapping", search_text: "authentication" })
+traceability_query({ target: "authentication", target_type: "component" })
 ```
 
 **"What's the current status?"**
@@ -619,8 +619,8 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (required — database enforces NOT NULL on all entity tables except `iteration_metadata`), `data`
-- **changelog_query** (MCP tool) - Retrieve entries by type, phase, iteration, revision, or filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `iteration_metadata`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
   - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status

@@ -13,6 +13,7 @@ const ENTITY_TABLE = {
   user_flow: "user_flow",
   screen: "screen",
   plan_phase: "plan_phase",
+  plan_overview: "plan_overview",
   implementation_manifest: "implementation_manifest",
   traceability_mapping: "traceability_mapping",
   iteration_metadata: "iteration_metadata",
@@ -303,6 +304,37 @@ function attachRelated(db, entityType, results) {
         risks: db
           .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
           .all(p.id),
+        flows: db
+          .prepare("SELECT flow_id FROM plan_phase_flow WHERE plan_phase_id = ?")
+          .all(p.id)
+          .map((x) => x.flow_id),
+        screens: db
+          .prepare("SELECT screen_id FROM plan_phase_screen WHERE plan_phase_id = ?")
+          .all(p.id)
+          .map((x) => x.screen_id),
+        dependencies: db
+          .prepare("SELECT depends_on_phase, reason FROM plan_phase_dependency WHERE plan_phase_id = ?")
+          .all(p.id),
+        parallel_with: db
+          .prepare("SELECT can_parallel_with FROM plan_phase_parallel WHERE plan_phase_id = ?")
+          .all(p.id)
+          .map((x) => x.can_parallel_with),
+        checkpoint_focus: db
+          .prepare("SELECT focus FROM plan_checkpoint_focus WHERE plan_phase_id = ?")
+          .all(p.id)
+          .map((x) => x.focus),
+      }));
+
+    case "plan_overview":
+      return results.map((o) => ({
+        ...o,
+        risks: db
+          .prepare("SELECT risk, mitigation, phase FROM plan_overview_risk WHERE plan_overview_id = ?")
+          .all(o.id),
+        assumptions: db
+          .prepare("SELECT assumption FROM plan_overview_assumption WHERE plan_overview_id = ?")
+          .all(o.id)
+          .map((x) => x.assumption),
       }));
 
     case "persona":
