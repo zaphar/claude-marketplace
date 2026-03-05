@@ -397,6 +397,32 @@ File artifacts (audit reports, generated documentation) are written to `.claude/
 
 ## Customization
 
+### Plugin Self-Update Tooling
+
+This repository includes a dedicated skill and agent pair for making rigorous, validated changes to the plugin itself. These live at the repo root (not inside the plugin) so they auto-load when Copilot runs in this repository.
+
+**Agents** (in `.github/agents/`):
+- **Rigor Plugin Developer** (`rigor_plugin_developer`) — Producer agent with deep knowledge of the plugin's file structure, cross-reference map, and conventions. Makes surgical changes while maintaining consistency.
+- **Rigor Plugin Reviewer** (`rigor_plugin_reviewer`) — Critic agent that validates plugin changes across correctness (cross-references, frontmatter, MCP tools), internal consistency (vocabulary, agent pairs, DB schema), and developer ergonomics (structure, clarity, escalation paths). Always runs on Opus.
+
+**Skill** (in `.github/skills/rigor-plugin-update/`):
+- **rigor-plugin-update** — Orchestration skill with three modes:
+  - **Update Mode**: Make a specific change via a producer-critic loop with adaptive model selection (sonnet for simple/moderate, opus for complex changes).
+  - **Deep Audit Mode**: Run the reviewer against the full plugin for a comprehensive health check. No producer involved unless you choose to fix the findings.
+  - **Q&A Audit Mode**: Ask questions about the plugin's internals. If the investigation reveals issues, the skill proposes changes and can enter the producer-critic loop with your approval.
+
+**Example usage:**
+```
+# Update mode
+"Add a new code-review phase between implementation and documentation"
+
+# Deep audit
+"Audit the rigorous-dev plugin for consistency issues"
+
+# Q&A
+"What agents reference the changelog_insert tool?"
+```
+
 ### Modifying Agents
 
 Edit agent files in `agents/` to customize personalities and behaviors:
