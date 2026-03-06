@@ -544,6 +544,48 @@ function attachRelated(db, entityType, results) {
         };
       });
 
+    case "documentation_manifest":
+      return results.map((m) => {
+        // documentation_feature → documentation_feature_requirement
+        const features = db
+          .prepare("SELECT * FROM documentation_feature WHERE manifest_id = ?")
+          .all(m.id)
+          .map((f) => ({
+            ...f,
+            requirements: db
+              .prepare("SELECT requirement_id FROM documentation_feature_requirement WHERE feature_id = ?")
+              .all(f.id)
+              .map((x) => x.requirement_id),
+          }));
+        // documentation_requirement_coverage → documentation_requirement_path
+        const coverage = db
+          .prepare("SELECT * FROM documentation_requirement_coverage WHERE manifest_id = ?")
+          .all(m.id)
+          .map((cov) => ({
+            ...cov,
+            paths: db
+              .prepare("SELECT * FROM documentation_requirement_path WHERE coverage_id = ?")
+              .all(cov.id),
+          }));
+        return {
+          ...m,
+          metadata: db
+            .prepare("SELECT * FROM documentation_manifest_metadata WHERE manifest_id = ?")
+            .all(m.id),
+          sections: db
+            .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
+            .all(m.id),
+          features,
+          coverage,
+          assets: db
+            .prepare("SELECT * FROM documentation_asset WHERE manifest_id = ?")
+            .all(m.id),
+          verification: db
+            .prepare("SELECT * FROM documentation_verification WHERE manifest_id = ?")
+            .all(m.id),
+        };
+      });
+
     default:
       return results;
   }

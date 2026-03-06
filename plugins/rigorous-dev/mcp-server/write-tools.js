@@ -1529,6 +1529,135 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   return { entity_type: "test_report", id: report_id };
 }
 
+function insertDocumentationManifest(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO documentation_manifest
+         (iteration_id, revision_id, status, documents_created, total_pages,
+          accessibility_compliant, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.status,
+      data.documents_created ?? 0,
+      data.total_pages ?? null,
+      data.accessibility_compliant ?? 0,
+      now
+    );
+  const manifest_id = result.lastInsertRowid;
+
+  // -- documentation_manifest_metadata (1:1) --
+  const insertMeta = db.prepare(
+    `INSERT INTO documentation_manifest_metadata
+       (manifest_id, version, created, requirements_version,
+        architecture_version, implementation_version, format)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const meta of data.metadata ?? []) {
+    insertMeta.run(
+      manifest_id,
+      meta.version,
+      meta.created,
+      meta.requirements_version,
+      meta.architecture_version ?? null,
+      meta.implementation_version ?? null,
+      meta.format ?? null
+    );
+  }
+
+  // -- documentation_section (1:N) --
+  const insertSection = db.prepare(
+    `INSERT INTO documentation_section
+       (manifest_id, category, key, value, path)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const sec of data.sections ?? []) {
+    insertSection.run(
+      manifest_id,
+      sec.category,
+      sec.key,
+      sec.value,
+      sec.path ?? null
+    );
+  }
+
+  // -- documentation_feature (1:N) --
+  //    → documentation_feature_requirement (M:N per feature)
+  const insertFeature = db.prepare(
+    `INSERT INTO documentation_feature
+       (manifest_id, name, path, includes_examples, includes_screenshots)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  const insertFeatureReq = db.prepare(
+    "INSERT OR IGNORE INTO documentation_feature_requirement (feature_id, requirement_id) VALUES (?, ?)"
+  );
+  for (const feat of data.features ?? []) {
+    const featResult = insertFeature.run(
+      manifest_id,
+      feat.name,
+      feat.path,
+      feat.includes_examples ? 1 : 0,
+      feat.includes_screenshots ? 1 : 0
+    );
+    for (const req_id of feat.requirements ?? []) {
+      insertFeatureReq.run(featResult.lastInsertRowid, req_id);
+    }
+  }
+
+  // -- documentation_requirement_coverage (1:N) --
+  //    → documentation_requirement_path (1:N per coverage)
+  const insertCoverage = db.prepare(
+    `INSERT INTO documentation_requirement_coverage
+       (manifest_id, requirement_id, documented, user_facing, notes)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  const insertCoveragePath = db.prepare(
+    "INSERT INTO documentation_requirement_path (coverage_id, path) VALUES (?, ?)"
+  );
+  for (const cov of data.coverage ?? []) {
+    const covResult = insertCoverage.run(
+      manifest_id,
+      cov.requirement_id,
+      cov.documented ? 1 : 0,
+      cov.user_facing ? 1 : 0,
+      cov.notes ?? null
+    );
+    const coverage_id = covResult.lastInsertRowid;
+    for (const p of cov.paths ?? []) {
+      insertCoveragePath.run(coverage_id, p);
+    }
+  }
+
+  // -- documentation_asset (1:N) --
+  const insertAsset = db.prepare(
+    `INSERT INTO documentation_asset
+       (manifest_id, path, type, description, alt_text)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const asset of data.assets ?? []) {
+    insertAsset.run(
+      manifest_id,
+      asset.path,
+      asset.type,
+      asset.description ?? null,
+      asset.alt_text ?? null
+    );
+  }
+
+  // -- documentation_verification (1:N) --
+  const insertVerification = db.prepare(
+    "INSERT INTO documentation_verification (manifest_id, check_name, passed) VALUES (?, ?, ?)"
+  );
+  for (const v of data.verification ?? []) {
+    insertVerification.run(manifest_id, v.check_name, v.passed ? 1 : 0);
+  }
+
+  return { entity_type: "documentation_manifest", id: manifest_id };
+}
+
 function insertDesignSystem(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
@@ -1757,6 +1886,7 @@ function changelogInsert(args) {
     security_audit_finding: insertSecurityAuditFinding,
     performance_audit_finding: insertPerformanceAuditFinding,
     test_report: insertTestReport,
+    documentation_manifest: insertDocumentationManifest,
   };
 
   const handler = handlers[entity_type];

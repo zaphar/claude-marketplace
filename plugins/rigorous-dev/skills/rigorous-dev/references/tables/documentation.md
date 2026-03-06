@@ -55,7 +55,8 @@ Every other documentation table references this row. The manifest ties documenta
 
 ### MCP Tool Access
 
-**Write:**
+**Write:** All child tables are inserted in a single `changelog_insert` call. The `data` object carries optional arrays for each child table.
+
 ```json
 {
   "tool": "changelog_insert",
@@ -67,13 +68,37 @@ Every other documentation table references this row. The manifest ties documenta
       "status": "complete",
       "documents_created": 5,
       "total_pages": 42,
-      "accessibility_compliant": 1
+      "accessibility_compliant": 1,
+      "metadata": [{
+        "version": "1.0.0",
+        "created": "2025-01-15T10:00:00Z",
+        "requirements_version": "1.0.0",
+        "architecture_version": "1.0.0",
+        "implementation_version": "1.0.0",
+        "format": "markdown"
+      }],
+      "sections": [
+        { "category": "readme", "key": "installation", "value": "...", "path": "docs/README.md" }
+      ],
+      "features": [
+        { "name": "User Auth", "path": "docs/features/auth.md", "includes_examples": 1, "includes_screenshots": 0, "requirements": ["REQ-001", "REQ-002"] }
+      ],
+      "coverage": [
+        { "requirement_id": "REQ-001", "documented": 1, "user_facing": 1, "notes": null, "paths": ["docs/README.md", "docs/features/auth.md"] }
+      ],
+      "assets": [
+        { "path": "docs/img/arch.png", "type": "diagram", "description": "Architecture overview", "alt_text": "System architecture diagram" }
+      ],
+      "verification": [
+        { "check_name": "all_requirements_documented", "passed": 1 }
+      ]
     }
   }
 }
 ```
 
-**Read:**
+**Read:** Use `include_related: true` to fetch the manifest with all child tables nested.
+
 ```json
 {
   "tool": "changelog_query",
@@ -84,6 +109,8 @@ Every other documentation table references this row. The manifest ties documenta
   }
 }
 ```
+
+The response nests children as: `metadata`, `sections`, `features` (each with `requirements` array), `coverage` (each with `paths` array), `assets`, `verification`.
 
 ---
 
