@@ -574,15 +574,15 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change_table (
 
 CREATE TABLE IF NOT EXISTS plan_phase_dependency (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  depends_on_phase INTEGER NOT NULL,
+  depends_on_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   reason TEXT,
-  PRIMARY KEY (plan_phase_id, depends_on_phase)
+  PRIMARY KEY (plan_phase_id, depends_on_phase_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_parallel (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  can_parallel_with INTEGER NOT NULL,
-  PRIMARY KEY (plan_phase_id, can_parallel_with)
+  can_parallel_with_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  PRIMARY KEY (plan_phase_id, can_parallel_with_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_risk (
@@ -629,7 +629,7 @@ CREATE TABLE IF NOT EXISTS plan_requirement_mapping (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  plan_phase_number INTEGER NOT NULL,
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   priority TEXT NOT NULL CHECK(priority IN ('critical', 'high', 'medium', 'low')),
   notes TEXT
 );
@@ -649,7 +649,7 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 CREATE TABLE IF NOT EXISTS plan_critical_path (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  phase_number INTEGER NOT NULL,
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   sequence_order INTEGER NOT NULL
 );
 
@@ -674,7 +674,7 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
-  sub_phase_number INTEGER NOT NULL,
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   files_created INTEGER DEFAULT 0,
   files_modified INTEGER DEFAULT 0,

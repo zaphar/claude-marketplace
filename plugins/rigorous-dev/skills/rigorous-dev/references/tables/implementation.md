@@ -37,7 +37,7 @@ The root record for one sub-phase of implementation work. Every time the `senior
 
 ### Context
 
-The implementation phase is divided into sub-phases that mirror `plan_phase` rows. `sub_phase_number` corresponds to the `plan_phase.phase_number` that was just executed. A manifest is written even when work is partial or blocked so that the critic can inspect what was and was not done.
+The implementation phase is divided into sub-phases that mirror `plan_phase` rows. `plan_phase_id` references the `plan_phase(id)` that was just executed. A manifest is written even when work is partial or blocked so that the critic can inspect what was and was not done.
 
 ### Columns
 
@@ -46,7 +46,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Which iteration this belongs to. |
 | `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Producer-critic revision attempt. |
-| `sub_phase_number` | INTEGER | NO | — | — | Plan sub-phase number that was implemented. |
+| `plan_phase_id` | INTEGER | NO | — | FK → `plan_phase(id)` | Plan phase that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
 | `files_created` | INTEGER | YES | 0 | — | Number of net-new files written. |
 | `files_modified` | INTEGER | YES | 0 | — | Number of existing files changed. |

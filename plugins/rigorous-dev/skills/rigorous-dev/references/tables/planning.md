@@ -46,7 +46,7 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 
 ### Purpose
 
-Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field is the public identifier used throughout all child and related tables (e.g., `plan_phase_dependency.depends_on_phase`, `plan_critical_path.phase_number`).
+Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field provides the human-readable sequential ordering; child and related tables reference the phase by its `id` primary key (e.g., `plan_phase_dependency.depends_on_phase_id`, `plan_critical_path.plan_phase_id`).
 
 ### Context
 
@@ -62,7 +62,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables as `plan_phase_id`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this phase belongs to. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The planning revision that produced this phase. |
-| `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Used as the human-readable phase identifier in dependency and critical-path tables. Must be unique within an iteration (enforced by application logic). |
+| `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Human-readable ordering identifier. Dependency and critical-path tables reference phases by surrogate `id` rather than this field. Must be unique within an iteration (enforced by application logic). |
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
 | `type` | TEXT | NOT NULL, CHECK(`feature` \| `infrastructure`) | — | Whether this phase delivers user-facing features or internal infrastructure. |
 | `goal` | TEXT | NOT NULL | — | One-paragraph statement of what this phase achieves and why. |
@@ -76,7 +76,7 @@ Central record for one implementation work chunk. A phase groups related develop
 
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
 - **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_entry_criterion`, `plan_phase_exit_criterion`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_dependency`, `plan_phase_parallel`, `plan_phase_risk`, `plan_checkpoint_focus`
-- **Referenced by value in:** `plan_phase_dependency.depends_on_phase`, `plan_phase_parallel.can_parallel_with`, `plan_critical_path.phase_number`, `plan_requirement_mapping.plan_phase_number`
+- **Referenced by FK in:** `plan_phase_dependency.depends_on_phase_id`, `plan_phase_parallel.can_parallel_with_id`, `plan_critical_path.plan_phase_id`, `plan_requirement_mapping.plan_phase_id`, `implementation_manifest.plan_phase_id`
 
 ### MCP tool access
 
@@ -403,11 +403,11 @@ Records the specific database table names touched by a single migration. Provide
 
 ### Purpose
 
-Records an ordering constraint between two phases: `plan_phase_id` cannot begin until `depends_on_phase` is complete. This table defines the DAG of phase execution order.
+Records an ordering constraint between two phases: `plan_phase_id` cannot begin until `depends_on_phase_id` is complete. This table defines the DAG of phase execution order.
 
 ### Context
 
-- Self-referential dependency graph using `phase_number` integers rather than FK IDs (so the planner can reference phases by number during planning without requiring insertion order).
+- Self-referential dependency graph using `plan_phase(id)` foreign keys for full referential integrity.
 - `implementation_planner` populates this to ensure phases with shared data structures or API contracts are sequenced correctly.
 - `senior_developer` reads this to decide which phases to start and which to queue.
 - `plan_critical_path` is derived from this table — the critical path is the longest chain through these dependencies.
@@ -417,21 +417,21 @@ Records an ordering constraint between two phases: `plan_phase_id` cannot begin 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The phase that has the dependency (the "downstream" phase). |
-| `depends_on_phase` | INTEGER | NOT NULL, part of PK | — | The `phase_number` (not `id`) of the phase that must complete first. Integer reference by phase number, not FK, to allow forward references during planning. |
+| `depends_on_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the phase that must complete first. Foreign key to `plan_phase(id)`. |
 | `reason` | TEXT | nullable | — | Explains why this ordering is required (e.g., "Auth tokens must exist before user profile endpoints can be tested"). |
 
-**Primary key:** `(plan_phase_id, depends_on_phase)` — one dependency row per pair.
+**Primary key:** `(plan_phase_id, depends_on_phase_id)` — one dependency row per pair.
 
 ### Relationships
 
 - **Parent:** `plan_phase` via `plan_phase_id`
-- **References by value:** `plan_phase.phase_number` via `depends_on_phase`
+- **References:** `plan_phase` via `depends_on_phase_id`
 
 ### MCP tool access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `dependencies: [{phase: 2, reason: "..."}]` in the `plan_phase` payload |
+| Insert | `changelog_insert` | Pass `dependencies: [{depends_on_phase_id: 2, reason: "..."}]` in the `plan_phase` payload |
 | Query | `changelog_query` | Retrieved as the `dependencies` array when querying a `plan_phase` |
 
 ---
@@ -453,14 +453,14 @@ Records pairs of phases that can be worked concurrently — i.e., they have no b
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | One of the two parallel phases. |
-| `can_parallel_with` | INTEGER | NOT NULL, part of PK | — | The `phase_number` of the other phase that can run concurrently. Integer reference by phase number (same convention as `plan_phase_dependency`). |
+| `can_parallel_with_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the other phase that can run concurrently. Foreign key to `plan_phase(id)`. |
 
-**Primary key:** `(plan_phase_id, can_parallel_with)` — one row per parallel pair direction.
+**Primary key:** `(plan_phase_id, can_parallel_with_id)` — one row per parallel pair direction.
 
 ### Relationships
 
 - **Parent:** `plan_phase` via `plan_phase_id`
-- **References by value:** `plan_phase.phase_number` via `can_parallel_with`
+- **References:** `plan_phase` via `can_parallel_with_id`
 
 ### MCP tool access
 
@@ -654,7 +654,7 @@ Records assumptions the plan relies on — things outside the team's control tha
 
 ### Purpose
 
-Provides explicit, standalone traceability from each `requirement` to the `plan_phase_number` that implements it, with a priority rating for how critical that requirement is to the plan. This is complementary to `plan_phase_requirement` — it adds priority and notes without being buried in phase child data.
+Provides explicit, standalone traceability from each `requirement` to the `plan_phase_id` that implements it, with a priority rating for how critical that requirement is to the plan. This is complementary to `plan_phase_requirement` — it adds priority and notes without being buried in phase child data.
 
 ### Context
 
@@ -671,14 +671,14 @@ Provides explicit, standalone traceability from each `requirement` to the `plan_
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this mapping belongs to. |
 | `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)` | — | The requirement being mapped (e.g., `REQ-007`). |
-| `plan_phase_number` | INTEGER | NOT NULL | — | The `phase_number` of the phase that implements this requirement. Integer reference by phase number (not FK). |
+| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The `id` of the phase that implements this requirement. Foreign key to `plan_phase(id)`. |
 | `priority` | TEXT | NOT NULL, CHECK(`critical` \| `high` \| `medium` \| `low`) | — | How critical this requirement is to the plan's success. Informs ordering when phases must be cut. |
 | `notes` | TEXT | nullable | — | Additional context about how this requirement is addressed (e.g., "Partial implementation; full support in Phase 4"). |
 
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`; `requirement` via `requirement_id`
-- **References by value:** `plan_phase.phase_number` via `plan_phase_number`
+- **References:** `plan_phase` via `plan_phase_id`
 
 ### MCP tool access
 
@@ -748,13 +748,13 @@ Records the ordered sequence of phases that form the critical path — the chain
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this critical path belongs to. |
-| `phase_number` | INTEGER | NOT NULL | — | The `phase_number` of a phase on the critical path. |
+| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The `id` of a phase on the critical path. |
 | `sequence_order` | INTEGER | NOT NULL | — | The position of this phase within the critical path sequence (1 = first, 2 = second, …). Rows should be read in ascending `sequence_order` to traverse the path. |
 
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`
-- **References by value:** `plan_phase.phase_number` via `phase_number`
+- **References:** `plan_phase` via `plan_phase_id`
 
 ### MCP tool access
 
@@ -827,14 +827,14 @@ iteration ───────────────────────�
 │   ├─ plan_phase_api_endpoint     (1:N)                            │
 │   ├─ plan_phase_db_change        (1:N)                            │
 │   │   └─ plan_phase_db_change_table (1:N)                         │
-│   ├─ plan_phase_dependency  (phase_number references)             │
-│   ├─ plan_phase_parallel    (phase_number references)             │
+│   ├─ plan_phase_dependency  (FK → plan_phase(id))                  │
+│   ├─ plan_phase_parallel    (FK → plan_phase(id))                  │
 │   ├─ plan_phase_risk         (1:N)                                │
 │   └─ plan_checkpoint_focus   (1:N, when review_checkpoint=1)      │
 │                                                                    │
-├─ plan_requirement_mapping  (requirement → phase_number)           │
+├─ plan_requirement_mapping  (requirement → plan_phase FK)           │
 ├─ plan_external_dependency  (1:N)                                  │
-├─ plan_critical_path        (ordered phase_numbers)                │
+├─ plan_critical_path        (ordered plan_phase FKs)                │
 └─ plan_metadata             (version + status)                     │
 ```
 

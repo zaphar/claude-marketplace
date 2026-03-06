@@ -67,7 +67,7 @@ Read all upstream specs and produce phase-level structure:
     - **E2E test scenarios** — user action sequences, expected outcomes, requirements validated
     - **Integration test scenarios** — component boundaries, expected behavior, requirements validated
     - Entry/exit criteria (exit: all E2E + integration tests pass, all previous tests pass, all Feature-Layer Matrix cells covered, all WIs complete)
-    - Parallel execution opportunities and checkpoint designation — when recording each phase via `changelog_insert` (entity_type: `plan_phase`), set `parallel_with: [<phase_number>, ...]` to the list of other phase numbers this phase can run concurrently with (no sequential dependency between them). Use `[]` or omit if all relationships are strictly sequential.
+    - Parallel execution opportunities and checkpoint designation — when recording each phase via `changelog_insert` (entity_type: `plan_phase`), set `parallel_with: [<plan_phase_id>, ...]` to the list of other phase IDs this phase can run concurrently with (no sequential dependency between them). Use `[]` or omit if all relationships are strictly sequential.
 - Produce overall index with phase summary, dependency graph, critical path
 - **Pass 1 complete when** all phase indexes and overall index exist on disk
 

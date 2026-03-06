@@ -807,10 +807,10 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertDep = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_dependency (plan_phase_id, depends_on_phase, reason) VALUES (?, ?, ?)"
+    "INSERT OR IGNORE INTO plan_phase_dependency (plan_phase_id, depends_on_phase_id, reason) VALUES (?, ?, ?)"
   );
   for (const dep of data.dependencies ?? []) {
-    const depPhase = typeof dep === "object" ? dep.depends_on_phase ?? dep.phase : dep;
+    const depPhase = typeof dep === "object" ? dep.depends_on_phase_id ?? dep.phase : dep;
     const reason = typeof dep === "object" ? dep.reason ?? null : null;
     insertDep.run(plan_phase_id, depPhase, reason);
   }
@@ -830,10 +830,10 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertParallel = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_parallel (plan_phase_id, can_parallel_with) VALUES (?, ?)"
+    "INSERT OR IGNORE INTO plan_phase_parallel (plan_phase_id, can_parallel_with_id) VALUES (?, ?)"
   );
-  for (const phase_num of data.parallel_with ?? []) {
-    insertParallel.run(plan_phase_id, phase_num);
+  for (const parallel_id of data.parallel_with ?? []) {
+    insertParallel.run(plan_phase_id, parallel_id);
   }
 
   return { entity_type: "plan_phase", id: plan_phase_id };
@@ -877,13 +877,13 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
 function insertPlanRequirementMapping(db, iteration_id, _revision_id, data) {
   const result = db
     .prepare(
-      `INSERT INTO plan_requirement_mapping (iteration_id, requirement_id, plan_phase_number, priority, notes)
+      `INSERT INTO plan_requirement_mapping (iteration_id, requirement_id, plan_phase_id, priority, notes)
        VALUES (?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       data.requirement_id,
-      data.plan_phase_number,
+      data.plan_phase_id,
       data.priority,
       data.notes ?? null
     );
@@ -910,12 +910,12 @@ function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
 function insertPlanCriticalPath(db, iteration_id, _revision_id, data) {
   const result = db
     .prepare(
-      `INSERT INTO plan_critical_path (iteration_id, phase_number, sequence_order)
+      `INSERT INTO plan_critical_path (iteration_id, plan_phase_id, sequence_order)
        VALUES (?, ?, ?)`
     )
     .run(
       iteration_id,
-      data.phase_number,
+      data.plan_phase_id,
       data.sequence_order
     );
   return { entity_type: "plan_critical_path", id: result.lastInsertRowid };
@@ -949,13 +949,13 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO implementation_manifest
-         (iteration_id, revision_id, sub_phase_number, status, files_created, files_modified, lines_of_code, warnings, build_status, created_at)
+         (iteration_id, revision_id, plan_phase_id, status, files_created, files_modified, lines_of_code, warnings, build_status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
-      data.sub_phase_number,
+      data.plan_phase_id,
       data.status,
       data.files_created ?? 0,
       data.files_modified ?? 0,
