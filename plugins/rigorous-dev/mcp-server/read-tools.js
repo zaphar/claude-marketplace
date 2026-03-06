@@ -23,6 +23,13 @@ const ENTITY_TABLE = {
   operational_requirement: "operational_requirement",
   technology_constraint: "technology_constraint",
   design_system: "design_system",
+  accessibility_config: "accessibility_config",
+  responsive_config: "responsive_config",
+  feedback_pattern: "feedback_pattern",
+  info_architecture: "info_architecture",
+  persona_addressed: "persona_addressed",
+  ux_asset: "ux_asset",
+  ux_requirement_mapping: "ux_requirement_mapping",
   architecture_overview: "architecture_overview",
   data_entity: "data_entity",
   security_config: "security_config",
@@ -383,6 +390,23 @@ function attachRelated(db, entityType, results) {
         diagrams: db
           .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
           .all(o.id),
+      }));
+
+    case "persona_addressed":
+      return results.map((pa) => ({
+        ...pa,
+        flows: db
+          .prepare("SELECT flow_id FROM persona_addressed_flow WHERE persona_addressed_id = ?")
+          .all(pa.id)
+          .map((x) => x.flow_id),
+      }));
+
+    case "info_architecture":
+      return results.map((ia) => ({
+        ...ia,
+        children: db
+          .prepare("SELECT id, category, key, value FROM info_architecture WHERE parent_id = ?")
+          .all(ia.id),
       }));
 
     default:

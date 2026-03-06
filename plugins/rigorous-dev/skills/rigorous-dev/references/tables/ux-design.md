@@ -323,8 +323,8 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - No FK children — flat store
 
 **MCP tool access:**
+- **Write:** `changelog_insert` with `entity_type: "design_system"`. Accepts a single object or an array of `{ category, key, value }` objects — all rows are inserted in one call.
 - **Read:** `changelog_query` with `entity_type: "design_system"`. Filter by `iteration_id` and optionally `filters: { category: "colors" }` to retrieve tokens by category.
-- **Write:** `design_system` appears in the `changelog_insert` enum but does **not** have a handler implemented — calling it will throw `Unsupported entity_type`. Insert rows directly via SQL until a handler is added.
 
 ---
 
@@ -357,8 +357,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - No FK children
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE`; not a handler in `changelog_insert`. Insert and query via direct SQL.
-- `accessibility_config` is listed in the `changelog_insert` input schema enum but has no handler — calling it will throw `Unsupported entity_type`.
+- **Write:** `changelog_insert` with `entity_type: "accessibility_config"`. Accepts a single object or an array of `{ category, key, value }` objects.
+- **Read:** `changelog_query` with `entity_type: "accessibility_config"`. Filter by `iteration_id` and optionally `filters: { category: "wcag" }` to retrieve entries by category.
 
 ---
 
@@ -385,7 +385,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - Informally referenced by `screen_responsive_variant.breakpoint` (no enforced FK)
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL.
+- **Write:** `changelog_insert` with `entity_type: "responsive_config"`. Accepts a single object or an array of `{ category, key, value }` objects.
+- **Read:** `changelog_query` with `entity_type: "responsive_config"`. Filter by `iteration_id` and optionally `filters: { category: "breakpoints" }` to retrieve entries by category.
 
 ---
 
@@ -412,7 +413,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - No FK children
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL.
+- **Write:** `changelog_insert` with `entity_type: "feedback_pattern"`. Accepts a single object or an array of `{ category, key, value }` objects.
+- **Read:** `changelog_query` with `entity_type: "feedback_pattern"`. Filter by `iteration_id` and optionally `filters: { category: "loading" }` to retrieve entries by pattern type.
 
 ---
 
@@ -440,7 +442,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - Self-referential tree via `parent_id` → `info_architecture(id)`
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL. For the full tree, use a recursive CTE: `WITH RECURSIVE tree AS (SELECT * FROM info_architecture WHERE parent_id IS NULL UNION ALL SELECT i.* FROM info_architecture i JOIN tree t ON i.parent_id = t.id) SELECT * FROM tree`.
+- **Write:** `changelog_insert` with `entity_type: "info_architecture"`. Accepts a single object or an array of `{ category, key, value, parent_id }` objects. Set `parent_id` to an existing `info_architecture` row ID for nested nodes, or omit for root nodes.
+- **Read:** `changelog_query` with `entity_type: "info_architecture"`. Use `include_related: true` to attach direct `children` for each node. For the full tree, use `filters: { parent_id: null }` to get root nodes with their children, then recurse as needed.
 
 ---
 
@@ -469,7 +472,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - Has many `persona_addressed_flow`
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL.
+- **Write:** `changelog_insert` with `entity_type: "persona_addressed"`. Pass `persona_id`, `goal`, `how_addressed`, and a `flows` array of flow IDs in the `data` object — the parent row and all `persona_addressed_flow` child rows are inserted atomically.
+- **Read:** `changelog_query` with `entity_type: "persona_addressed"`. Use `include_related: true` to attach the `flows` array (list of `flow_id` values from `persona_addressed_flow`).
 
 ---
 
@@ -492,7 +496,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - References `user_flow`
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL.
+- **Write:** Inserted automatically as part of `changelog_insert` for `persona_addressed` via the `flows` array. Not directly addressable.
+- **Read:** Returned as the `flows` array when querying `persona_addressed` with `include_related: true`.
 
 ---
 
@@ -521,7 +526,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - Optionally belongs to `screen`
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL. Example query to list all wireframes for a screen: `SELECT * FROM ux_asset WHERE screen_id = ? AND type = 'wireframe'`.
+- **Write:** `changelog_insert` with `entity_type: "ux_asset"`. Accepts a single object or an array of `{ name, path, type, screen_id?, description? }` objects.
+- **Read:** `changelog_query` with `entity_type: "ux_asset"`. Filter by `iteration_id` and optionally `filters: { type: "wireframe" }` or `filters: { screen_id: "SCREEN-001" }` to retrieve specific asset types or screen-specific assets.
 
 ---
 
@@ -547,7 +553,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 - References `requirement`
 
 **MCP tool access:**
-- **Write / Read:** Not in `ENTITY_TABLE` and no `changelog_insert` handler. Insert and query via direct SQL. Example query to audit coverage: `SELECT r.id, r.description, m.addressed_by FROM requirement r LEFT JOIN ux_requirement_mapping m ON r.id = m.requirement_id AND m.iteration_id = ? WHERE r.iteration_id = ? ORDER BY r.id`.
+- **Write:** `changelog_insert` with `entity_type: "ux_requirement_mapping"`. Accepts a single object or an array of `{ requirement_id, addressed_by, notes? }` objects.
+- **Read:** `changelog_query` with `entity_type: "ux_requirement_mapping"`. Filter by `iteration_id` and optionally `filters: { requirement_id: "REQ-001" }` to check coverage for a specific requirement.
 
 ---
 
@@ -565,15 +572,15 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 | `screen_component` | via `screen` | via `screen` | Not directly addressable |
 | `screen_state` | via `screen` | via `screen` | Not directly addressable |
 | `screen_responsive_variant` | via `screen` | via `screen` | Not directly addressable |
-| `design_system` | ⚠️ In enum, no handler | ✅ `entity_type: "design_system"` | Write via direct SQL until handler is implemented |
-| `accessibility_config` | ⚠️ In enum, no handler | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `responsive_config` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `feedback_pattern` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `info_architecture` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL; supports recursive CTE for tree traversal |
-| `persona_addressed` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `persona_addressed_flow` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `ux_asset` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
-| `ux_requirement_mapping` | ❌ Not in enum | ❌ Not in ENTITY_TABLE | Insert and query via direct SQL |
+| `design_system` | ✅ `entity_type: "design_system"` | ✅ `entity_type: "design_system"` | Accepts single or array of `{ category, key, value }` |
+| `accessibility_config` | ✅ `entity_type: "accessibility_config"` | ✅ `entity_type: "accessibility_config"` | Accepts single or array of `{ category, key, value }` |
+| `responsive_config` | ✅ `entity_type: "responsive_config"` | ✅ `entity_type: "responsive_config"` | Accepts single or array of `{ category, key, value }` |
+| `feedback_pattern` | ✅ `entity_type: "feedback_pattern"` | ✅ `entity_type: "feedback_pattern"` | Accepts single or array of `{ category, key, value }` |
+| `info_architecture` | ✅ `entity_type: "info_architecture"` | ✅ `entity_type: "info_architecture"` | `include_related: true` attaches direct `children`; supports `parent_id` for tree nesting |
+| `persona_addressed` | ✅ `entity_type: "persona_addressed"` | ✅ `entity_type: "persona_addressed"` | `include_related: true` expands `flows`; pass `flows` array in data for atomic child insert |
+| `persona_addressed_flow` | via `persona_addressed` | via `persona_addressed` | Not directly addressable |
+| `ux_asset` | ✅ `entity_type: "ux_asset"` | ✅ `entity_type: "ux_asset"` | Accepts single or array; filter by `type` or `screen_id` |
+| `ux_requirement_mapping` | ✅ `entity_type: "ux_requirement_mapping"` | ✅ `entity_type: "ux_requirement_mapping"` | Accepts single or array; filter by `requirement_id` |
 
 ### `traceability_query` integration
 
@@ -586,7 +593,7 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 ## Key Design Decisions
 
-1. **Two insertion strategies.** `user_flow` and `screen` use transactional `changelog_insert` handlers that atomically insert parent + all child rows. The flat config tables (`design_system`, `accessibility_config`, etc.) are row-per-token stores without handlers — they are inserted individually via SQL.
+1. **Two insertion strategies.** `user_flow` and `screen` use transactional `changelog_insert` handlers with UPSERT semantics that atomically insert parent + all child rows. The flat config tables (`design_system`, `accessibility_config`, `responsive_config`, `feedback_pattern`, `info_architecture`) use batch-insert handlers that accept a single object or an array of key-value entries. `persona_addressed` uses a parent-child handler that atomically inserts the parent row and its `persona_addressed_flow` children.
 
 2. **Screen referenced by name, not FK.** `user_flow_step.screen` stores a screen name string rather than a `screen_id` FK. This allows steps to reference screens before the screen row is formally created, supporting iterative design. The trade-off is that name consistency must be enforced by the `ux_critic`, not the database.
 

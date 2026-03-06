@@ -1248,6 +1248,184 @@ function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
   return { entity_type: "performance_audit_finding", id: result.lastInsertRowid };
 }
 
+function insertDesignSystem(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO design_system (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "design_system", id: lastId };
+}
+
+function insertAccessibilityConfig(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO accessibility_config (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "accessibility_config", id: lastId };
+}
+
+function insertResponsiveConfig(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO responsive_config (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "responsive_config", id: lastId };
+}
+
+function insertFeedbackPattern(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO feedback_pattern (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "feedback_pattern", id: lastId };
+}
+
+function insertInfoArchitecture(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO info_architecture (iteration_id, revision_id, category, key, value, parent_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      entry.parent_id ?? null,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "info_architecture", id: lastId };
+}
+
+function insertPersonaAddressed(db, iteration_id, revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO persona_addressed (iteration_id, revision_id, persona_id, goal, how_addressed)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    iteration_id,
+    revision_id,
+    data.persona_id,
+    data.goal,
+    data.how_addressed
+  );
+  const persona_addressed_id = result.lastInsertRowid;
+
+  const insertFlow = db.prepare(
+    "INSERT INTO persona_addressed_flow (persona_addressed_id, flow_id) VALUES (?, ?)"
+  );
+  for (const flow_id of data.flows ?? []) {
+    insertFlow.run(persona_addressed_id, flow_id);
+  }
+
+  return { entity_type: "persona_addressed", id: persona_addressed_id };
+}
+
+function insertUxAsset(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO ux_asset (iteration_id, revision_id, name, path, type, screen_id, description, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.name,
+      entry.path,
+      entry.type,
+      entry.screen_id ?? null,
+      entry.description ?? null,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "ux_asset", id: lastId };
+}
+
+function insertUxRequirementMapping(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO ux_requirement_mapping (iteration_id, revision_id, requirement_id, addressed_by, notes)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.requirement_id,
+      entry.addressed_by,
+      entry.notes ?? null
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "ux_requirement_mapping", id: lastId };
+}
+
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -1269,6 +1447,14 @@ function changelogInsert(args) {
     approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
+    design_system: insertDesignSystem,
+    accessibility_config: insertAccessibilityConfig,
+    responsive_config: insertResponsiveConfig,
+    feedback_pattern: insertFeedbackPattern,
+    info_architecture: insertInfoArchitecture,
+    persona_addressed: insertPersonaAddressed,
+    ux_asset: insertUxAsset,
+    ux_requirement_mapping: insertUxRequirementMapping,
     plan_phase: insertPlanPhase,
     plan_overview: insertPlanOverview,
     plan_requirement_mapping: insertPlanRequirementMapping,
@@ -1450,6 +1636,12 @@ export const WRITE_TOOLS = [
             "screen",
             "design_system",
             "accessibility_config",
+            "responsive_config",
+            "feedback_pattern",
+            "info_architecture",
+            "persona_addressed",
+            "ux_asset",
+            "ux_requirement_mapping",
             "plan_phase",
             "plan_overview",
             "plan_requirement_mapping",

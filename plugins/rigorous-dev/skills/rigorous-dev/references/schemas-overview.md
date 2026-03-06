@@ -257,7 +257,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 > **Note:** 4 entity types are write-only — they can be inserted via `changelog_insert` but are not queryable via `changelog_query`: `plan_requirement_mapping`, `vcs_commit`, `intermediate_asset`, `asset_deliverable`. These are stored in dedicated tables and can be queried directly via SQL or through `traceability_query` where applicable.
 >
-> **Known issue:** `accessibility_config` appears in the `changelog_insert` input schema enum but has no handler in the handler map — calling `changelog_insert` with it will throw "Unsupported entity_type" at runtime. This is a pre-existing MCP server bug.
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |
 | `iteration_summary` | Phase-level summary for an iteration. |
