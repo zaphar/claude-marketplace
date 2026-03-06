@@ -213,6 +213,9 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT requirement_id FROM component_requirement WHERE component_id = ?")
           .all(c.id)
           .map((x) => x.requirement_id),
+        integration_test_boundaries: db
+          .prepare("SELECT * FROM integration_test_boundary WHERE component_id = ?")
+          .all(c.id),
       }));
 
     case "adr": {
@@ -368,6 +371,18 @@ function attachRelated(db, entityType, results) {
         relationships: db
           .prepare("SELECT target_entity, relationship_type, description FROM data_entity_relationship WHERE entity_id = ?")
           .all(e.id),
+      }));
+
+    case "architecture_overview":
+      return results.map((o) => ({
+        ...o,
+        principles: db
+          .prepare("SELECT id, principle FROM architecture_principle WHERE overview_id = ?")
+          .all(o.id)
+          .map((x) => x.principle),
+        diagrams: db
+          .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
+          .all(o.id),
       }));
 
     default:

@@ -402,12 +402,12 @@ Integration test boundaries are a direct output of architectural decomposition: 
 
 ```
 # Written as nested children when inserting a component via changelog_insert
-# Queried as part of the component entity
-changelog_query  entity_type="component"  ids=["COMP-001"]
-
-# Cross-component query — all boundaries involving a given component
-changelog_query  entity_type="integration_test_boundary"  [component_id="COMP-001"]
+# Queried as part of the component entity with include_related: true
+changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
+# Returns: interfaces, dependencies, requirements_addressed, integration_test_boundaries
 ```
+
+> **Note:** `integration_test_boundary` is not a standalone queryable entity type — it is always read as a child of `component` when `include_related: true` is set.
 
 ---
 
@@ -482,11 +482,15 @@ There is typically one `architecture_overview` row per iteration (created at the
 ### MCP Tool Access
 
 ```
-# Write
-changelog_insert  entity_type="architecture_overview"  { iteration_id, revision_id, description }
+# Write (with nested children)
+changelog_insert  entity_type="architecture_overview"  {
+  iteration_id, revision_id, description,
+  principles: ["Prefer async over sync", ...],
+  diagrams: [{ name, path, description }, ...]
+}
 
-# Read
-changelog_query   entity_type="architecture_overview"  [iteration_id=N]
+# Read (include_related attaches principles and diagrams)
+changelog_query  entity_type="architecture_overview"  iteration_id=N  include_related=true
 ```
 
 ---
@@ -571,7 +575,7 @@ traceability_query  from="adr"  id="ADR-003"
 ### "What does component COMP-002 do and what does it need?"
 
 ```
-changelog_query  entity_type="component"  ids=["COMP-002"]
+changelog_query  entity_type="component"  ids=["COMP-002"]  include_related=true
 # Returns inline: interfaces, dependency list, requirement mappings, integration test boundaries
 ```
 
@@ -592,8 +596,9 @@ changelog_query  entity_type="adr"  iteration_id=2  filters={status: "accepted"}
 ### "What are the integration test obligations at the API Gateway boundary?"
 
 ```
-changelog_query  entity_type="integration_test_boundary"  filters={component_id: "COMP-001"}
-# Returns all target components, boundary types, and correct_behavior assertions
+changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
+# The integration_test_boundaries array in the response lists all target components,
+# boundary types, and correct_behavior assertions for COMP-001
 ```
 
 ---

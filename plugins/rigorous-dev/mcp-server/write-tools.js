@@ -421,6 +421,39 @@ function insertComponent(db, iteration_id, revision_id, data) {
   return { entity_type: "component", id: data.id, updated: !!existed };
 }
 
+function insertArchitectureOverview(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO architecture_overview (iteration_id, revision_id, description, created_at)
+       VALUES (?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.description,
+      now
+    );
+
+  const overviewId = result.lastInsertRowid;
+
+  const insertPrinciple = db.prepare(
+    "INSERT INTO architecture_principle (overview_id, principle) VALUES (?, ?)"
+  );
+  for (const p of data.principles ?? []) {
+    insertPrinciple.run(overviewId, p);
+  }
+
+  const insertDiagram = db.prepare(
+    "INSERT INTO architecture_diagram (overview_id, name, path, description) VALUES (?, ?, ?, ?)"
+  );
+  for (const d of data.diagrams ?? []) {
+    insertDiagram.run(overviewId, d.name, d.path, d.description ?? null);
+  }
+
+  return { entity_type: "architecture_overview", id: overviewId };
+}
+
 function insertTechnologyChoice(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
@@ -1096,6 +1129,7 @@ function changelogInsert(args) {
     adr: insertAdr,
     component: insertComponent,
     technology_choice: insertTechnologyChoice,
+    architecture_overview: insertArchitectureOverview,
     traceability_mapping: insertTraceabilityMapping,
     user_flow: insertUserFlow,
     screen: insertScreen,
