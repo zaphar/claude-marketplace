@@ -49,8 +49,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | Table | Producer | Purpose |
 |-------|----------|---------|
 | `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context, decision, rationale. |
-| `adr_alternative` | backend_architect | Alternatives considered per ADR. |
-| `adr_alternative_pro` / `adr_alternative_con` | backend_architect | Pros/cons per alternative. |
+| `adr_alternative` | backend_architect | Alternatives considered per ADR, with inline pros/cons (JSON arrays). |
 | `adr_consequence` | backend_architect | Consequences of each decision. |
 | `adr_research_source` | backend_architect | Research citations backing decisions — enables "why are we using X?" queries. |
 | `component` | backend_architect | System components (id: `COMP-XXX`). Type, responsibility, tech stack. |
@@ -281,15 +280,13 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 148 tables with links to their detailed design documents.
+All 146 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
 | `accessibility_config` | [ux-design](tables/ux-design.md) |
 | `adr` | [architecture](tables/architecture.md) |
 | `adr_alternative` | [architecture](tables/architecture.md) |
-| `adr_alternative_con` | [architecture](tables/architecture.md) |
-| `adr_alternative_pro` | [architecture](tables/architecture.md) |
 | `adr_consequence` | [architecture](tables/architecture.md) |
 | `adr_research_source` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
@@ -434,4 +431,4 @@ All 148 tables with links to their detailed design documents.
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 148 tables across 12 domains**
+**Total: 146 tables across 12 domains**

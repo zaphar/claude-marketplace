@@ -235,14 +235,8 @@ function attachRelated(db, entityType, results) {
           .all(a.id)
           .map((alt) => ({
             ...alt,
-            pros: db
-              .prepare("SELECT pro FROM adr_alternative_pro WHERE alternative_id = ?")
-              .all(alt.id)
-              .map((x) => x.pro),
-            cons: db
-              .prepare("SELECT con FROM adr_alternative_con WHERE alternative_id = ?")
-              .all(alt.id)
-              .map((x) => x.con),
+            pros: alt.pros ? JSON.parse(alt.pros) : [],
+            cons: alt.cons ? JSON.parse(alt.cons) : [],
           }));
         return {
           ...a,
@@ -846,7 +840,12 @@ function traceabilityQuery(args) {
 
       const alternatives = db
         .prepare("SELECT * FROM adr_alternative WHERE adr_id = ?")
-        .all(adr.id);
+        .all(adr.id)
+        .map((alt) => ({
+          ...alt,
+          pros: alt.pros ? JSON.parse(alt.pros) : [],
+          cons: alt.cons ? JSON.parse(alt.cons) : [],
+        }));
       if (alternatives.length > 0) chain.push({ type: "alternatives", data: alternatives });
 
       const consequences = db

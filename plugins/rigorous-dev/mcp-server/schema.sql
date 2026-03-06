@@ -185,19 +185,9 @@ CREATE TABLE IF NOT EXISTS adr (
 CREATE TABLE IF NOT EXISTS adr_alternative (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   adr_id TEXT NOT NULL REFERENCES adr(id),
-  option_text TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS adr_alternative_pro (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  alternative_id INTEGER NOT NULL REFERENCES adr_alternative(id),
-  pro TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS adr_alternative_con (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  alternative_id INTEGER NOT NULL REFERENCES adr_alternative(id),
-  con TEXT NOT NULL
+  option_text TEXT NOT NULL,
+  pros TEXT,
+  cons TEXT
 );
 
 CREATE TABLE IF NOT EXISTS adr_consequence (

@@ -1,6 +1,6 @@
 # Architecture Domain — Table Reference
 
-This document covers the 15 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
+This document covers the 13 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
 
 **Producer:** `backend_architect`
 **Critic/Validator:** `architecture_critic`
@@ -12,19 +12,17 @@ This document covers the 15 tables that capture the output of the **backend_arch
 
 1. [adr](#1-adr)
 2. [adr_alternative](#2-adr_alternative)
-3. [adr_alternative_pro](#3-adr_alternative_pro)
-4. [adr_alternative_con](#4-adr_alternative_con)
-5. [adr_consequence](#5-adr_consequence)
-6. [adr_research_source](#6-adr_research_source)
-7. [component](#7-component)
-8. [component_interface](#8-component_interface)
-9. [component_dependency](#9-component_dependency)
-10. [component_requirement](#10-component_requirement)
-11. [integration_test_boundary](#11-integration_test_boundary)
-12. [technology_choice](#12-technology_choice)
-13. [architecture_overview](#13-architecture_overview)
-14. [architecture_principle](#14-architecture_principle)
-15. [architecture_diagram](#15-architecture_diagram)
+3. [adr_consequence](#3-adr_consequence)
+4. [adr_research_source](#4-adr_research_source)
+5. [component](#5-component)
+6. [component_interface](#6-component_interface)
+7. [component_dependency](#7-component_dependency)
+8. [component_requirement](#8-component_requirement)
+9. [integration_test_boundary](#9-integration_test_boundary)
+10. [technology_choice](#10-technology_choice)
+11. [architecture_overview](#11-architecture_overview)
+12. [architecture_principle](#12-architecture_principle)
+13. [architecture_diagram](#13-architecture_diagram)
 
 ---
 
@@ -78,11 +76,11 @@ traceability_query  from="adr"  id="ADR-001"   # follows superseded_by chain, su
 
 ### Purpose
 
-Records each option that was explicitly considered when making an ADR decision. Every ADR should have at least two alternatives (including the chosen option) so that future readers understand what was weighed. Pros and cons for each alternative live in `adr_alternative_pro` / `adr_alternative_con`.
+Records each option that was explicitly considered when making an ADR decision. Every ADR should have at least two alternatives (including the chosen option) so that future readers understand what was weighed. Pros and cons are stored inline as JSON arrays.
 
 ### Context
 
-The alternative-with-pros-and-cons pattern is the structured form of the classic ADR "options considered" section. Splitting it into three tables (alternative, pro, con) allows normalised querying — e.g., "show me all ADRs where an alternative had the con 'vendor lock-in'".
+The alternative-with-pros-and-cons pattern is the structured form of the classic ADR "options considered" section. Pros and cons are stored as nullable TEXT columns containing JSON arrays (e.g., `["Built-in horizontal sharding","Mature ecosystem"]`). When queried via `changelog_query` or `traceability_query`, these columns are parsed back into arrays for convenient consumption.
 
 ### Column Reference
 
@@ -91,84 +89,25 @@ The alternative-with-pros-and-cons pattern is the structured form of the classic
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `adr_id` | TEXT | NOT NULL, FK → `adr(id)` | — | The ADR this alternative belongs to. |
 | `option_text` | TEXT | NOT NULL | — | Name or brief description of the alternative (e.g., "Use Redis as a cache layer"). |
+| `pros` | TEXT | — | NULL | JSON array of advantages (e.g., `["Built-in horizontal sharding","Mature ecosystem"]`). NULL if none stated. |
+| `cons` | TEXT | — | NULL | JSON array of disadvantages (e.g., `["Vendor lock-in","Requires operational expertise"]`). NULL if none stated. |
 
 ### Relationships
 
 - **Parent:** `adr` (via `adr_id`)
-- **Children:** `adr_alternative_pro`, `adr_alternative_con`
 
 ### MCP Tool Access
 
 ```
 # Written as nested children when inserting an adr via changelog_insert
+# Input: alternatives_considered[].pros and .cons are arrays — stored as JSON arrays
 # Queried as part of the adr entity via changelog_query entity_type="adr"
+# Output: pros and cons are returned as arrays (JSON parsed back)
 ```
 
 ---
 
-## 3. `adr_alternative_pro`
-
-### Purpose
-
-Lists the advantages of a specific alternative under an ADR. Multiple pro rows can exist per alternative, each stating one discrete benefit.
-
-### Context
-
-Keeping pros as individual rows (rather than a single comma-separated string) allows the architecture_critic to flag missing considerations and enables future queries like "which alternatives were praised for performance?" Rows are ordered implicitly by insertion order.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `alternative_id` | INTEGER | NOT NULL, FK → `adr_alternative(id)` | — | The alternative this pro belongs to. |
-| `pro` | TEXT | NOT NULL | — | A single, concrete advantage (e.g., "Built-in horizontal sharding avoids manual partitioning"). |
-
-### Relationships
-
-- **Parent:** `adr_alternative` (via `alternative_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting adr_alternative rows via changelog_insert
-# Surfaced when querying entity_type="adr" — pro/con lists are returned inline
-```
-
----
-
-## 4. `adr_alternative_con`
-
-### Purpose
-
-Lists the disadvantages of a specific alternative. Mirrors `adr_alternative_pro` in structure.
-
-### Context
-
-Explicit cons are critical for demonstrating that the chosen alternative's drawbacks were acknowledged and accepted rather than overlooked. The architecture_critic will reject ADRs whose chosen option has no stated cons or where the cons of rejected alternatives were not properly weighed.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `alternative_id` | INTEGER | NOT NULL, FK → `adr_alternative(id)` | — | The alternative this con belongs to. |
-| `con` | TEXT | NOT NULL | — | A single, concrete disadvantage (e.g., "Requires additional operational expertise to tune query planner"). |
-
-### Relationships
-
-- **Parent:** `adr_alternative` (via `alternative_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting adr_alternative rows via changelog_insert
-# Surfaced when querying entity_type="adr" — pro/con lists are returned inline
-```
-
----
-
-## 5. `adr_consequence`
+## 3. `adr_consequence`
 
 ### Purpose
 
@@ -199,7 +138,7 @@ Consequences bridge ADRs and the broader system: they are often the starting poi
 
 ---
 
-## 6. `adr_research_source`
+## 4. `adr_research_source`
 
 ### Purpose
 
@@ -231,7 +170,7 @@ changelog_query  entity_type="adr"  ids=["ADR-001"]   # returns research_sources
 
 ---
 
-## 7. `component`
+## 5. `component`
 
 ### Purpose
 
@@ -273,7 +212,7 @@ traceability_query  from="component"  id="COMP-001"   # shows requirements satis
 
 ---
 
-## 8. `component_interface`
+## 6. `component_interface`
 
 ### Purpose
 
@@ -306,7 +245,7 @@ Describes each interface — HTTP endpoint group, gRPC service definition, messa
 
 ---
 
-## 9. `component_dependency`
+## 7. `component_dependency`
 
 ### Purpose
 
@@ -339,7 +278,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]
 
 ---
 
-## 10. `component_requirement`
+## 8. `component_requirement`
 
 ### Purpose
 
@@ -373,7 +312,7 @@ traceability_query  from="requirement"  id="REQ-005"
 
 ---
 
-## 11. `integration_test_boundary`
+## 9. `integration_test_boundary`
 
 ### Purpose
 
@@ -411,7 +350,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 
 ---
 
-## 12. `technology_choice`
+## 10. `technology_choice`
 
 ### Purpose
 
@@ -454,7 +393,7 @@ changelog_query   entity_type="technology_choice"  [filters={category: "database
 
 ---
 
-## 13. `architecture_overview`
+## 11. `architecture_overview`
 
 ### Purpose
 
@@ -495,7 +434,7 @@ changelog_query  entity_type="architecture_overview"  iteration_id=N  include_re
 
 ---
 
-## 14. `architecture_principle`
+## 12. `architecture_principle`
 
 ### Purpose
 
@@ -527,7 +466,7 @@ changelog_query  entity_type="architecture_overview"  ids=[1]
 
 ---
 
-## 15. `architecture_diagram`
+## 13. `architecture_diagram`
 
 ### Purpose
 
@@ -608,9 +547,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 | Table | PK Type | Parent Tables | Key Constraints |
 |-------|---------|---------------|-----------------|
 | `adr` | TEXT (ADR-XXX) | `iteration`, `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
-| `adr_alternative` | INTEGER AUTO | `adr` | — |
-| `adr_alternative_pro` | INTEGER AUTO | `adr_alternative` | — |
-| `adr_alternative_con` | INTEGER AUTO | `adr_alternative` | — |
+| `adr_alternative` | INTEGER AUTO | `adr` | `pros` and `cons` nullable TEXT (JSON arrays) |
 | `adr_consequence` | INTEGER AUTO | `adr` | — |
 | `adr_research_source` | INTEGER AUTO | `adr` | — |
 | `component` | TEXT (COMP-XXX) | `iteration`, `revision` | `type` CHECK 8 values |

@@ -311,34 +311,19 @@ function insertAdr(db, iteration_id, revision_id, data) {
   );
 
   if (existed) {
-    // Delete child rows via alternatives (cascading to pros/cons)
-    const altIds = db.prepare("SELECT id FROM adr_alternative WHERE adr_id = ?").all(data.id);
-    for (const alt of altIds) {
-      db.prepare("DELETE FROM adr_alternative_pro WHERE alternative_id = ?").run(alt.id);
-      db.prepare("DELETE FROM adr_alternative_con WHERE alternative_id = ?").run(alt.id);
-    }
+    // Delete child rows
     db.prepare("DELETE FROM adr_alternative WHERE adr_id = ?").run(data.id);
     db.prepare("DELETE FROM adr_consequence WHERE adr_id = ?").run(data.id);
     db.prepare("DELETE FROM adr_research_source WHERE adr_id = ?").run(data.id);
   }
 
   const insertAlt = db.prepare(
-    "INSERT INTO adr_alternative (adr_id, option_text) VALUES (?, ?)"
-  );
-  const insertPro = db.prepare(
-    "INSERT INTO adr_alternative_pro (alternative_id, pro) VALUES (?, ?)"
-  );
-  const insertCon = db.prepare(
-    "INSERT INTO adr_alternative_con (alternative_id, con) VALUES (?, ?)"
+    "INSERT INTO adr_alternative (adr_id, option_text, pros, cons) VALUES (?, ?, ?, ?)"
   );
   for (const alt of data.alternatives_considered ?? []) {
-    const altResult = insertAlt.run(data.id, alt.option_text ?? alt.option ?? alt);
-    for (const pro of alt.pros ?? []) {
-      insertPro.run(altResult.lastInsertRowid, pro);
-    }
-    for (const con of alt.cons ?? []) {
-      insertCon.run(altResult.lastInsertRowid, con);
-    }
+    const prosText = (alt.pros ?? []).length > 0 ? JSON.stringify(alt.pros ?? []) : null;
+    const consText = (alt.cons ?? []).length > 0 ? JSON.stringify(alt.cons ?? []) : null;
+    insertAlt.run(data.id, alt.option_text ?? alt.option ?? alt, prosText, consText);
   }
 
   const insertConsequence = db.prepare(
