@@ -419,6 +419,64 @@ function attachRelated(db, entityType, results) {
           .all(ia.id),
       }));
 
+    case "implementation_manifest":
+      return results.map((m) => {
+        const files = db
+          .prepare("SELECT * FROM implementation_file WHERE manifest_id = ?")
+          .all(m.id)
+          .map((f) => ({
+            ...f,
+            requirements: db
+              .prepare("SELECT requirement_id FROM implementation_file_requirement WHERE file_id = ?")
+              .all(f.id)
+              .map((x) => x.requirement_id),
+          }));
+        const api_endpoints = db
+          .prepare("SELECT * FROM implementation_api_endpoint WHERE manifest_id = ?")
+          .all(m.id)
+          .map((ep) => ({
+            ...ep,
+            requirements: db
+              .prepare("SELECT requirement_id FROM implementation_api_endpoint_requirement WHERE endpoint_id = ?")
+              .all(ep.id)
+              .map((x) => x.requirement_id),
+          }));
+        const blockers = db
+          .prepare("SELECT * FROM implementation_blocker WHERE manifest_id = ?")
+          .all(m.id)
+          .map((b) => ({
+            ...b,
+            requirements: db
+              .prepare("SELECT requirement_id FROM implementation_blocker_requirement WHERE blocker_id = ?")
+              .all(b.id)
+              .map((x) => x.requirement_id),
+          }));
+        return {
+          ...m,
+          files,
+          requirement_status: db
+            .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
+            .all(m.id),
+          component_status: db
+            .prepare("SELECT * FROM implementation_component_status WHERE manifest_id = ?")
+            .all(m.id),
+          api_endpoints,
+          dependencies_added: db
+            .prepare("SELECT * FROM implementation_dependency_added WHERE manifest_id = ?")
+            .all(m.id),
+          db_migrations: db
+            .prepare("SELECT * FROM implementation_db_migration WHERE manifest_id = ?")
+            .all(m.id),
+          blockers,
+          review_checklist: db
+            .prepare("SELECT * FROM implementation_review_checklist WHERE manifest_id = ?")
+            .all(m.id),
+          metadata: db
+            .prepare("SELECT * FROM implementation_manifest_metadata WHERE manifest_id = ?")
+            .all(m.id),
+        };
+      });
+
     default:
       return results;
   }

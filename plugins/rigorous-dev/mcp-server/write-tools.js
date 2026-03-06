@@ -1078,6 +1078,42 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
     }
   }
 
+  const insertDepAdded = db.prepare(
+    "INSERT INTO implementation_dependency_added (manifest_id, name, version, purpose, license) VALUES (?, ?, ?, ?, ?)"
+  );
+  for (const dep of data.dependencies_added ?? []) {
+    insertDepAdded.run(manifest_id, dep.name, dep.version, dep.purpose, dep.license ?? null);
+  }
+
+  const insertDbMigration = db.prepare(
+    "INSERT INTO implementation_db_migration (manifest_id, name, description, status) VALUES (?, ?, ?, ?)"
+  );
+  for (const mig of data.db_migrations ?? []) {
+    insertDbMigration.run(manifest_id, mig.name, mig.description ?? null, mig.status);
+  }
+
+  const insertChecklistItem = db.prepare(
+    "INSERT INTO implementation_review_checklist (manifest_id, check_name, passed) VALUES (?, ?, ?)"
+  );
+  for (const item of data.review_checklist ?? []) {
+    insertChecklistItem.run(manifest_id, item.check_name, item.passed ? 1 : 0);
+  }
+
+  const insertMetadata = db.prepare(
+    "INSERT INTO implementation_manifest_metadata (manifest_id, version, created, requirements_version, architecture_version, language, commit_sha) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  );
+  for (const meta of data.metadata ?? []) {
+    insertMetadata.run(
+      manifest_id,
+      meta.version,
+      meta.created,
+      meta.requirements_version,
+      meta.architecture_version,
+      meta.language ?? null,
+      meta.commit_sha ?? null
+    );
+  }
+
   return { entity_type: "implementation_manifest", id: manifest_id };
 }
 

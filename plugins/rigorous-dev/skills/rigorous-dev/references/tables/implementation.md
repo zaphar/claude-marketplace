@@ -64,8 +64,8 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, and blockers are inserted in the same call via nested arrays in `data`. |
-| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, review_checklist, and metadata are inserted in the same call via nested arrays in `data`. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach all child tables (files with their requirements, requirement_status, component_status, api_endpoints with their requirements, dependencies_added, db_migrations, blockers with their requirements, review_checklist, metadata). |
 | Iteration summary | `iteration_summary` | Returns counts of commits and deliverables alongside phase data; does not enumerate manifest fields directly. |
 
 ---
@@ -102,7 +102,7 @@ Written as children of `implementation_manifest`. One row per file path per mani
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Nested under `data.files[]` in the `implementation_manifest` call. Each element includes `path`, `action`, `purpose`, `component_id`, and `requirements[]`. |
-| Query | `changelog_query` | Query `implementation_manifest`; file rows are returned as nested children. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; file rows are returned as nested children, each with a `requirements` array. |
 
 ---
 
@@ -134,7 +134,7 @@ Many files implement multiple requirements; a single requirement is typically sp
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Populated automatically from `data.files[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE` to avoid duplicate constraint errors. |
-| Query | Join `implementation_file` + `implementation_file_requirement` in `changelog_query` or raw SQL. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; file rows include a nested `requirements` array of requirement IDs from this join table. |
 
 ---
 
@@ -168,7 +168,7 @@ Written per manifest. A requirement may appear in multiple manifests across sub-
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Nested under `data.requirement_status[]` in the `implementation_manifest` call. Each element: `{ requirement_id, status, notes }`. |
-| Query | `changelog_query` | Filter `implementation_manifest` by `iteration_id` and inspect nested requirement statuses. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; requirement statuses are returned as the `requirement_status` array. |
 
 ---
 
@@ -202,7 +202,7 @@ Useful for architecture-level dashboards: the critic checks that each component 
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Nested under `data.component_status[]` in the `implementation_manifest` call. Each element: `{ component_id, status, notes }`. |
-| Query | `changelog_query` | Filter `implementation_manifest` by `iteration_id`; component statuses are returned nested. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; component statuses are returned as the `component_status` array. |
 
 ---
 
@@ -236,7 +236,7 @@ The QA engineer uses this table to know which endpoints exist and which are only
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Nested under `data.api_endpoints[]` in the `implementation_manifest` call. Each element: `{ path, method, status, requirements[] }`. |
-| Query | `changelog_query` | Filter by `implementation_manifest` + `iteration_id`; endpoints returned nested. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; endpoints are returned as the `api_endpoints` array, each with a nested `requirements` array. |
 
 ---
 
@@ -264,7 +264,7 @@ Join table linking implemented API endpoints to the requirements they fulfil. En
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Populated from `data.api_endpoints[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE`. |
-| Query | Join via `implementation_api_endpoint` parent. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; endpoint rows include a nested `requirements` array of requirement IDs from this join table. |
 
 ---
 
@@ -297,8 +297,8 @@ The senior_developer must record every `npm install`, `pip install`, `go get`, e
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | Not yet in `insertImplementationManifest` nested arrays. Must be inserted via direct SQL or a future extension of the `changelog_insert` handler. Schema table exists and is ready. |
-| Query | Direct SQL: `SELECT * FROM implementation_dependency_added WHERE manifest_id = ?` |
+| Insert | `changelog_insert` | Nested under `data.dependencies_added[]` in the `implementation_manifest` call. Each element: `{ name, version, purpose, license }`. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; dependencies are returned as the `dependencies_added` array. |
 
 ---
 
@@ -330,8 +330,8 @@ Migrations may be `created` (file written but not yet run), `pending` (queued fo
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | Not yet in `insertImplementationManifest` nested arrays. Schema table exists; direct SQL or future handler extension required. |
-| Query | Direct SQL: `SELECT * FROM implementation_db_migration WHERE manifest_id = ?` |
+| Insert | `changelog_insert` | Nested under `data.db_migrations[]` in the `implementation_manifest` call. Each element: `{ name, description, status }`. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; migrations are returned as the `db_migrations` array. |
 
 ---
 
@@ -366,7 +366,7 @@ Blockers have three severity levels. `needs_escalation = 1` flags that the senio
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Nested under `data.blockers[]` in the `implementation_manifest` call. Each element: `{ description, severity, recommendation, needs_escalation, requirements[] }`. |
-| Query | `changelog_query` | Returned nested under manifest. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; blockers are returned as the `blockers` array, each with a nested `requirements` array. |
 
 ---
 
@@ -394,7 +394,7 @@ Join table associating each blocker with the requirements it prevents from being
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Populated from `data.blockers[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE`. |
-| Query | Join via `implementation_blocker` parent. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; blocker rows include a nested `requirements` array of requirement IDs from this join table. |
 
 ---
 
@@ -425,8 +425,8 @@ Typical checklist items include: "all tests pass", "no hardcoded secrets", "API 
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | Not yet in `insertImplementationManifest` nested arrays. Schema table exists; direct SQL or future handler extension required. |
-| Query | Direct SQL: `SELECT * FROM implementation_review_checklist WHERE manifest_id = ?` |
+| Insert | `changelog_insert` | Nested under `data.review_checklist[]` in the `implementation_manifest` call. Each element: `{ check_name, passed }`. `passed` is treated as boolean (truthy → 1, falsy → 0). |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; checklist items are returned as the `review_checklist` array. |
 
 ---
 
@@ -461,8 +461,8 @@ One row per manifest. `requirements_version` and `architecture_version` should m
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | Not yet in `insertImplementationManifest` nested arrays. Schema table exists; direct SQL or future handler extension required. |
-| Query | Direct SQL: `SELECT * FROM implementation_manifest_metadata WHERE manifest_id = ?` |
+| Insert | `changelog_insert` | Nested under `data.metadata[]` in the `implementation_manifest` call. Each element: `{ version, created, requirements_version, architecture_version, language, commit_sha }`. Typically one row per manifest. |
+| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; metadata rows are returned as the `metadata` array. |
 
 ---
 
@@ -597,16 +597,21 @@ iteration
 
 ---
 
-## Notes on Partially-Wired Tables
+## All Child Tables Fully Wired
 
-The following four tables exist in `schema.sql` and are available for querying, but the `insertImplementationManifest` handler in `write-tools.js` does not yet populate them via nested arrays in `changelog_insert`. They must be inserted via direct SQL or a future extension of the handler:
+All 13 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). No direct SQL is required.
 
-| Table | Missing nested key |
-|-------|--------------------|
-| `implementation_dependency_added` | `data.dependencies[]` |
-| `implementation_db_migration` | `data.migrations[]` |
-| `implementation_review_checklist` | `data.review_checklist[]` |
-| `implementation_manifest_metadata` | `data.metadata` |
+| Nested key in `data` | Child table | Notes |
+|-----------------------|-------------|-------|
+| `files[]` | `implementation_file` + `implementation_file_requirement` | Each file entry accepts `requirements[]` for the join table. |
+| `requirement_status[]` | `implementation_requirement_status` | `{ requirement_id, status, notes }` |
+| `component_status[]` | `implementation_component_status` | `{ component_id, status, notes }` |
+| `api_endpoints[]` | `implementation_api_endpoint` + `implementation_api_endpoint_requirement` | Each endpoint accepts `requirements[]` for the join table. |
+| `blockers[]` | `implementation_blocker` + `implementation_blocker_requirement` | Each blocker accepts `requirements[]` for the join table. |
+| `dependencies_added[]` | `implementation_dependency_added` | `{ name, version, purpose, license }` |
+| `db_migrations[]` | `implementation_db_migration` | `{ name, description, status }` |
+| `review_checklist[]` | `implementation_review_checklist` | `{ check_name, passed }` |
+| `metadata[]` | `implementation_manifest_metadata` | `{ version, created, requirements_version, architecture_version, language, commit_sha }` |
 
 ---
 
