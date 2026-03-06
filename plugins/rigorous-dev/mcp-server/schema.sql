@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
   flow_id TEXT NOT NULL REFERENCES user_flow(id),
   step_number INTEGER NOT NULL,
   action TEXT NOT NULL,
-  screen TEXT NOT NULL,
+  surface TEXT,
   is_decision_point INTEGER DEFAULT 0
 );
 

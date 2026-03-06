@@ -619,7 +619,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   }
 
   const insertStep = db.prepare(
-    `INSERT INTO user_flow_step (flow_id, step_number, action, screen, is_decision_point)
+    `INSERT INTO user_flow_step (flow_id, step_number, action, surface, is_decision_point)
      VALUES (?, ?, ?, ?, ?)`
   );
   const insertBranch = db.prepare(
@@ -630,7 +630,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
       data.id,
       step.step_number,
       step.action,
-      step.screen,
+      step.surface ?? null,
       step.is_decision_point ? 1 : 0
     );
     for (const branch of step.branches ?? []) {

@@ -891,15 +891,17 @@ function traceabilityQuery(args) {
         .prepare("SELECT * FROM user_flow_step WHERE flow_id = ? ORDER BY step_number")
         .all(flow.id);
       if (steps.length > 0) {
-        const screenNames = [...new Set(steps.map((s) => s.screen))];
-        const screens = db
-          .prepare(
-            `SELECT * FROM screen WHERE name IN (${screenNames.map(() => "?").join(",")})` +
-              (iteration_id ? " AND iteration_id = ?" : "")
-          )
-          .all(...screenNames, ...iterParam);
+        const screenNames = [...new Set(steps.map((s) => s.surface).filter(Boolean))];
         chain.push({ type: "steps", data: steps });
-        if (screens.length > 0) chain.push({ type: "referenced_screens", data: screens });
+        if (screenNames.length > 0) {
+          const screens = db
+            .prepare(
+              `SELECT * FROM screen WHERE name IN (${screenNames.map(() => "?").join(",")})` +
+                (iteration_id ? " AND iteration_id = ?" : "")
+            )
+            .all(...screenNames, ...iterParam);
+          if (screens.length > 0) chain.push({ type: "referenced_screens", data: screens });
+        }
       }
 
       // Components via traceability
@@ -924,7 +926,7 @@ function traceabilityQuery(args) {
 
       // Flows that reference this screen name in steps
       const steps = db
-        .prepare("SELECT DISTINCT flow_id FROM user_flow_step WHERE screen = ?")
+        .prepare("SELECT DISTINCT flow_id FROM user_flow_step WHERE surface = ?")
         .all(scr.name);
       const flowIds = steps.map((s) => s.flow_id);
       if (flowIds.length > 0) {

@@ -67,9 +67,9 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 ### `user_flow_step`
 
-**Purpose:** A single discrete action within a user flow. Steps are ordered by `step_number` and each names the screen on which the action occurs. Decision-point steps can have conditional branches.
+**Purpose:** A single discrete action within a user flow. Steps are ordered by `step_number` and each names the interaction surface on which the action occurs — a screen for UI apps, an endpoint for APIs, a CLI command, or NULL when not applicable. Decision-point steps can have conditional branches.
 
-**Context:** The `ux_designer` inserts steps as part of the parent `user_flow` insert (they are not inserted separately). The `backend_architect` uses step-to-screen mappings to validate API coverage. Steps with `is_decision_point = 1` must have at least one `user_flow_step_branch` row.
+**Context:** The `ux_designer` inserts steps as part of the parent `user_flow` insert (they are not inserted separately). The `backend_architect` uses step-to-surface mappings to validate API coverage. Steps with `is_decision_point = 1` must have at least one `user_flow_step_branch` row.
 
 **Columns:**
 
@@ -79,7 +79,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)` | — | Parent flow. |
 | `step_number` | INTEGER | NOT NULL | — | 1-based ordering within the flow. |
 | `action` | TEXT | NOT NULL | — | What the user does, e.g. "Submits login form". |
-| `screen` | TEXT | NOT NULL | — | Screen name where this action occurs (matches `screen.name`). |
+| `surface` | TEXT | — | NULL | Interaction surface where this action occurs. For UI apps, a screen name (matches `screen.name`). For APIs, an endpoint. For CLIs, a command. NULL when not applicable. |
 | `is_decision_point` | INTEGER | — | `0` | `1` if this step branches; `0` otherwise. SQLite boolean. |
 
 **Relationships:**
@@ -193,7 +193,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 **Purpose:** A distinct UI view or page in the application. Screens are the atomic building blocks of the visual design. Each screen has a purpose, optional wireframe and mockup paths, and is decomposed into components, states, and responsive variants.
 
-**Context:** The `ux_designer` creates one `screen` row per unique view (e.g., `SCREEN-001 Dashboard`, `SCREEN-002 Login`). Screens are referenced by name in `user_flow_step.screen`. The `backend_architect` cross-references screens with flow steps to determine which endpoints each screen requires. The `implementation_planner` references `screen_id` in `plan_phase_screen`.
+**Context:** The `ux_designer` creates one `screen` row per unique view (e.g., `SCREEN-001 Dashboard`, `SCREEN-002 Login`). Screens are referenced by name in `user_flow_step.surface`. The `backend_architect` cross-references screens with flow steps to determine which endpoints each screen requires. The `implementation_planner` references `screen_id` in `plan_phase_screen`.
 
 **Columns:**
 
@@ -202,7 +202,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `id` | TEXT | PRIMARY KEY | — | Canonical screen identifier, e.g. `SCREEN-001`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this screen. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
-| `name` | TEXT | NOT NULL | — | Screen name, e.g. "Dashboard". Must match `user_flow_step.screen` references. |
+| `name` | TEXT | NOT NULL | — | Screen name, e.g. "Dashboard". Must match `user_flow_step.surface` references. |
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
 | `mockup_path` | TEXT | — | NULL | Relative path to the high-fidelity mockup file. |
@@ -213,7 +213,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - Has many `screen_component`
 - Has many `screen_state`
 - Has many `screen_responsive_variant`
-- Referenced by `user_flow_step.screen` (by name, not by FK)
+- Referenced by `user_flow_step.surface` (by name, not by FK)
 - Referenced by `ux_asset.screen_id`
 - Referenced by `plan_phase_screen`
 - Referenced by `traceability_mapping` via `addressed_by_type = 'screen'`
@@ -586,8 +586,8 @@ The following four tables — `accessibility_config`, `responsive_config`, `feed
 
 The `traceability_query` tool supports `target_type: "flow"` and `target_type: "screen"`. When called with a flow or screen ID it walks the full chain:
 
-- **flow chain:** requirement → `user_flow_requirement` → `user_flow` → `user_flow_step` → referenced `screen` names → matched `screen` rows
-- **screen chain:** `screen` → `user_flow_step` (by `screen` name) → `user_flow` → `user_flow_requirement` → `requirement`
+- **flow chain:** requirement → `user_flow_requirement` → `user_flow` → `user_flow_step` → referenced `surface` names → matched `screen` rows
+- **screen chain:** `screen` → `user_flow_step` (by `surface` name) → `user_flow` → `user_flow_requirement` → `requirement`
 
 ---
 
@@ -595,7 +595,7 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 1. **Two insertion strategies.** `user_flow` and `screen` use transactional `changelog_insert` handlers with UPSERT semantics that atomically insert parent + all child rows. The flat config tables (`design_system`, `accessibility_config`, `responsive_config`, `feedback_pattern`, `info_architecture`) use batch-insert handlers that accept a single object or an array of key-value entries. `persona_addressed` uses a parent-child handler that atomically inserts the parent row and its `persona_addressed_flow` children.
 
-2. **Screen referenced by name, not FK.** `user_flow_step.screen` stores a screen name string rather than a `screen_id` FK. This allows steps to reference screens before the screen row is formally created, supporting iterative design. The trade-off is that name consistency must be enforced by the `ux_critic`, not the database.
+2. **Surface referenced by name, not FK.** `user_flow_step.surface` stores a surface name string (typically a screen name for UI apps) rather than a `screen_id` FK. This allows steps to reference screens before the screen row is formally created, supporting iterative design. The column is nullable to accommodate API-only and CLI applications where there is no visual screen. The trade-off is that name consistency must be enforced by the `ux_critic`, not the database.
 
 3. **Append-only revision model.** No UX rows are updated in place. When the `ux_critic` rejects a design, a new `revision` is created and the `ux_designer` inserts fresh rows with the new `revision_id`. All prior revisions remain queryable.
 
