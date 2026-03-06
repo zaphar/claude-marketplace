@@ -26,7 +26,7 @@ Represents a single database entity (table, collection, model) in the target sys
 CREATE TABLE IF NOT EXISTS data_entity (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id  INTEGER REFERENCES revision(id),
+  revision_id  INTEGER NOT NULL REFERENCES revision(id),
   entity_name  TEXT NOT NULL,
   description  TEXT NOT NULL,
   created_at   TEXT NOT NULL

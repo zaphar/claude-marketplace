@@ -454,6 +454,40 @@ function insertArchitectureOverview(db, iteration_id, revision_id, data) {
   return { entity_type: "architecture_overview", id: overviewId };
 }
 
+function insertDataEntity(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO data_entity (iteration_id, revision_id, entity_name, description, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.entity_name,
+      data.description,
+      now
+    );
+
+  const entityId = result.lastInsertRowid;
+
+  const insertAttr = db.prepare(
+    "INSERT INTO data_entity_attribute (entity_id, name, type, is_required, description) VALUES (?, ?, ?, ?, ?)"
+  );
+  for (const a of data.attributes ?? []) {
+    insertAttr.run(entityId, a.name, a.type, a.is_required ?? 0, a.description ?? null);
+  }
+
+  const insertRel = db.prepare(
+    "INSERT INTO data_entity_relationship (entity_id, target_entity, relationship_type, description) VALUES (?, ?, ?, ?)"
+  );
+  for (const r of data.relationships ?? []) {
+    insertRel.run(entityId, r.target_entity, r.relationship_type ?? null, r.description ?? null);
+  }
+
+  return { entity_type: "data_entity", id: entityId };
+}
+
 function insertTechnologyChoice(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
@@ -1130,6 +1164,7 @@ function changelogInsert(args) {
     component: insertComponent,
     technology_choice: insertTechnologyChoice,
     architecture_overview: insertArchitectureOverview,
+    data_entity: insertDataEntity,
     traceability_mapping: insertTraceabilityMapping,
     user_flow: insertUserFlow,
     screen: insertScreen,
