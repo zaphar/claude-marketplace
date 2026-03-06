@@ -586,6 +586,117 @@ function attachRelated(db, entityType, results) {
         };
       });
 
+    case "deployment_manifest":
+      return results.map((m) => {
+        // deployment_pipeline → config_files, stages
+        //   deployment_pipeline_stage → triggers, steps, quality_gates
+        const pipelines = db
+          .prepare("SELECT * FROM deployment_pipeline WHERE manifest_id = ?")
+          .all(m.id)
+          .map((p) => ({
+            ...p,
+            config_files: db
+              .prepare("SELECT * FROM deployment_pipeline_config_file WHERE pipeline_id = ?")
+              .all(p.id),
+            stages: db
+              .prepare("SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?")
+              .all(p.id)
+              .map((s) => ({
+                ...s,
+                triggers: db
+                  .prepare("SELECT * FROM deployment_stage_trigger WHERE stage_id = ?")
+                  .all(s.id),
+                steps: db
+                  .prepare("SELECT * FROM deployment_stage_step WHERE stage_id = ?")
+                  .all(s.id),
+                quality_gates: db
+                  .prepare("SELECT * FROM deployment_stage_quality_gate WHERE stage_id = ?")
+                  .all(s.id),
+              })),
+          }));
+        // deployment_environment → infra, vars
+        const environments = db
+          .prepare("SELECT * FROM deployment_environment WHERE manifest_id = ?")
+          .all(m.id)
+          .map((e) => ({
+            ...e,
+            infra: db
+              .prepare("SELECT * FROM deployment_env_infra WHERE environment_id = ?")
+              .all(e.id),
+            vars: db
+              .prepare("SELECT * FROM deployment_env_var WHERE environment_id = ?")
+              .all(e.id),
+          }));
+        // deployment_artifact → platforms
+        const artifacts = db
+          .prepare("SELECT * FROM deployment_artifact WHERE manifest_id = ?")
+          .all(m.id)
+          .map((a) => ({
+            ...a,
+            platforms: db
+              .prepare("SELECT * FROM deployment_artifact_platform WHERE artifact_id = ?")
+              .all(a.id),
+          }));
+        // deployment_local_executable → platforms, channels
+        const local_executables = db
+          .prepare("SELECT * FROM deployment_local_executable WHERE manifest_id = ?")
+          .all(m.id)
+          .map((le) => ({
+            ...le,
+            platforms: db
+              .prepare("SELECT * FROM deployment_local_platform WHERE local_exec_id = ?")
+              .all(le.id),
+            channels: db
+              .prepare("SELECT * FROM deployment_local_channel WHERE local_exec_id = ?")
+              .all(le.id),
+          }));
+        // deployment_runbook → steps
+        const runbooks = db
+          .prepare("SELECT * FROM deployment_runbook WHERE manifest_id = ?")
+          .all(m.id)
+          .map((rb) => ({
+            ...rb,
+            steps: db
+              .prepare("SELECT * FROM deployment_runbook_step WHERE runbook_id = ?")
+              .all(rb.id),
+          }));
+        return {
+          ...m,
+          metadata: db
+            .prepare("SELECT * FROM deployment_manifest_metadata WHERE manifest_id = ?")
+            .all(m.id),
+          targets: db
+            .prepare("SELECT * FROM deployment_target WHERE manifest_id = ?")
+            .all(m.id),
+          blockers: db
+            .prepare("SELECT * FROM deployment_manifest_blocker WHERE manifest_id = ?")
+            .all(m.id),
+          pipelines,
+          quality_gates: db
+            .prepare("SELECT * FROM deployment_quality_gates WHERE manifest_id = ?")
+            .all(m.id),
+          environments,
+          artifacts,
+          signing: db
+            .prepare("SELECT * FROM deployment_signing WHERE manifest_id = ?")
+            .all(m.id),
+          local_executables,
+          secrets: db
+            .prepare("SELECT * FROM deployment_secret WHERE manifest_id = ?")
+            .all(m.id),
+          health_checks: db
+            .prepare("SELECT * FROM deployment_health_check WHERE manifest_id = ?")
+            .all(m.id),
+          alerting: db
+            .prepare("SELECT * FROM deployment_alerting WHERE manifest_id = ?")
+            .all(m.id),
+          runbooks,
+          review_checklist: db
+            .prepare("SELECT * FROM deployment_review_checklist WHERE manifest_id = ?")
+            .all(m.id),
+        };
+      });
+
     default:
       return results;
   }

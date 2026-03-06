@@ -1658,6 +1658,263 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   return { entity_type: "documentation_manifest", id: manifest_id };
 }
 
+function insertDeploymentManifest(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO deployment_manifest
+         (iteration_id, revision_id, status, created_at)
+       VALUES (?, ?, ?, ?)`
+    )
+    .run(iteration_id, revision_id ?? null, data.status, now);
+  const manifest_id = result.lastInsertRowid;
+
+  // -- deployment_manifest_metadata (1:1) --
+  const insertMeta = db.prepare(
+    `INSERT INTO deployment_manifest_metadata
+       (manifest_id, version, created, requirements_version,
+        architecture_version, implementation_version, test_report_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const meta of data.metadata ?? []) {
+    insertMeta.run(
+      manifest_id,
+      meta.version,
+      meta.created,
+      meta.requirements_version,
+      meta.architecture_version,
+      meta.implementation_version,
+      meta.test_report_version ?? null
+    );
+  }
+
+  // -- deployment_target (1:N) --
+  const insertTarget = db.prepare(
+    "INSERT INTO deployment_target (manifest_id, target) VALUES (?, ?)"
+  );
+  for (const t of data.targets ?? []) {
+    insertTarget.run(manifest_id, t.target ?? t);
+  }
+
+  // -- deployment_manifest_blocker (1:N) --
+  const insertBlocker = db.prepare(
+    "INSERT INTO deployment_manifest_blocker (manifest_id, blocker) VALUES (?, ?)"
+  );
+  for (const b of data.blockers ?? []) {
+    insertBlocker.run(manifest_id, b.blocker ?? b);
+  }
+
+  // -- deployment_pipeline (1:N) --
+  //    → deployment_pipeline_config_file (1:N per pipeline)
+  //    → deployment_pipeline_stage (1:N per pipeline)
+  //      → deployment_stage_trigger (1:N per stage)
+  //      → deployment_stage_step (1:N per stage)
+  //      → deployment_stage_quality_gate (1:N per stage)
+  const insertPipeline = db.prepare(
+    "INSERT INTO deployment_pipeline (manifest_id, platform) VALUES (?, ?)"
+  );
+  const insertPipelineConfigFile = db.prepare(
+    "INSERT INTO deployment_pipeline_config_file (pipeline_id, file_path) VALUES (?, ?)"
+  );
+  const insertPipelineStage = db.prepare(
+    "INSERT INTO deployment_pipeline_stage (pipeline_id, name, purpose) VALUES (?, ?, ?)"
+  );
+  const insertStageTrigger = db.prepare(
+    "INSERT INTO deployment_stage_trigger (stage_id, trigger_text) VALUES (?, ?)"
+  );
+  const insertStageStep = db.prepare(
+    "INSERT INTO deployment_stage_step (stage_id, step) VALUES (?, ?)"
+  );
+  const insertStageQualityGate = db.prepare(
+    `INSERT INTO deployment_stage_quality_gate
+       (stage_id, name, condition, failure_action)
+     VALUES (?, ?, ?, ?)`
+  );
+  for (const pipeline of data.pipelines ?? []) {
+    const pipeResult = insertPipeline.run(manifest_id, pipeline.platform);
+    const pipeline_id = pipeResult.lastInsertRowid;
+    for (const cf of pipeline.config_files ?? []) {
+      insertPipelineConfigFile.run(pipeline_id, cf.file_path ?? cf);
+    }
+    for (const stage of pipeline.stages ?? []) {
+      const stageResult = insertPipelineStage.run(
+        pipeline_id,
+        stage.name,
+        stage.purpose
+      );
+      const stage_id = stageResult.lastInsertRowid;
+      for (const tr of stage.triggers ?? []) {
+        insertStageTrigger.run(stage_id, tr.trigger_text ?? tr);
+      }
+      for (const st of stage.steps ?? []) {
+        insertStageStep.run(stage_id, st.step ?? st);
+      }
+      for (const qg of stage.quality_gates ?? []) {
+        insertStageQualityGate.run(stage_id, qg.name, qg.condition, qg.failure_action);
+      }
+    }
+  }
+
+  // -- deployment_quality_gates (1:N) --
+  const insertQualityGates = db.prepare(
+    "INSERT INTO deployment_quality_gates (manifest_id, category, key, value) VALUES (?, ?, ?, ?)"
+  );
+  for (const qg of data.quality_gates ?? []) {
+    insertQualityGates.run(manifest_id, qg.category, qg.key, qg.value);
+  }
+
+  // -- deployment_environment (1:N) --
+  //    → deployment_env_infra (1:N per environment)
+  //    → deployment_env_var (1:N per environment)
+  const insertEnvironment = db.prepare(
+    `INSERT INTO deployment_environment
+       (manifest_id, name, deployment_method, url, rollback_procedure)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  const insertEnvInfra = db.prepare(
+    "INSERT INTO deployment_env_infra (environment_id, provider, resource) VALUES (?, ?, ?)"
+  );
+  const insertEnvVar = db.prepare(
+    `INSERT INTO deployment_env_var
+       (environment_id, name, source, description)
+     VALUES (?, ?, ?, ?)`
+  );
+  for (const env of data.environments ?? []) {
+    const envResult = insertEnvironment.run(
+      manifest_id,
+      env.name,
+      env.deployment_method,
+      env.url ?? null,
+      env.rollback_procedure ?? null
+    );
+    const environment_id = envResult.lastInsertRowid;
+    for (const infra of env.infra ?? []) {
+      insertEnvInfra.run(environment_id, infra.provider ?? null, infra.resource);
+    }
+    for (const v of env.vars ?? []) {
+      insertEnvVar.run(environment_id, v.name, v.source, v.description ?? null);
+    }
+  }
+
+  // -- deployment_artifact (1:N) --
+  //    → deployment_artifact_platform (1:N per artifact)
+  const insertArtifact = db.prepare(
+    `INSERT INTO deployment_artifact
+       (manifest_id, name, type, registry, versioning)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  const insertArtifactPlatform = db.prepare(
+    "INSERT INTO deployment_artifact_platform (artifact_id, platform) VALUES (?, ?)"
+  );
+  for (const art of data.artifacts ?? []) {
+    const artResult = insertArtifact.run(
+      manifest_id,
+      art.name,
+      art.type,
+      art.registry ?? null,
+      art.versioning ?? null
+    );
+    for (const plat of art.platforms ?? []) {
+      insertArtifactPlatform.run(artResult.lastInsertRowid, plat.platform ?? plat);
+    }
+  }
+
+  // -- deployment_signing (1:N) --
+  const insertSigning = db.prepare(
+    "INSERT INTO deployment_signing (manifest_id, enabled, method) VALUES (?, ?, ?)"
+  );
+  for (const s of data.signing ?? []) {
+    insertSigning.run(manifest_id, s.enabled ? 1 : 0, s.method ?? null);
+  }
+
+  // -- deployment_local_executable (1:N) --
+  //    → deployment_local_platform (1:N per executable)
+  //    → deployment_local_channel (1:N per executable)
+  const insertLocalExec = db.prepare(
+    `INSERT INTO deployment_local_executable
+       (manifest_id, installation_method, update_mechanism)
+     VALUES (?, ?, ?)`
+  );
+  const insertLocalPlatform = db.prepare(
+    "INSERT INTO deployment_local_platform (local_exec_id, platform) VALUES (?, ?)"
+  );
+  const insertLocalChannel = db.prepare(
+    "INSERT INTO deployment_local_channel (local_exec_id, channel) VALUES (?, ?)"
+  );
+  for (const le of data.local_executables ?? []) {
+    const leResult = insertLocalExec.run(
+      manifest_id,
+      le.installation_method ?? null,
+      le.update_mechanism ?? null
+    );
+    const local_exec_id = leResult.lastInsertRowid;
+    for (const p of le.platforms ?? []) {
+      insertLocalPlatform.run(local_exec_id, p.platform ?? p);
+    }
+    for (const ch of le.channels ?? []) {
+      insertLocalChannel.run(local_exec_id, ch.channel ?? ch);
+    }
+  }
+
+  // -- deployment_secret (1:N) --
+  const insertSecret = db.prepare(
+    `INSERT INTO deployment_secret
+       (manifest_id, provider, name, purpose, rotation_policy)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  for (const sec of data.secrets ?? []) {
+    insertSecret.run(
+      manifest_id,
+      sec.provider ?? null,
+      sec.name,
+      sec.purpose,
+      sec.rotation_policy ?? null
+    );
+  }
+
+  // -- deployment_health_check (1:N) --
+  const insertHealthCheck = db.prepare(
+    "INSERT INTO deployment_health_check (manifest_id, name, endpoint, interval) VALUES (?, ?, ?, ?)"
+  );
+  for (const hc of data.health_checks ?? []) {
+    insertHealthCheck.run(manifest_id, hc.name, hc.endpoint ?? null, hc.interval ?? null);
+  }
+
+  // -- deployment_alerting (1:N) --
+  const insertAlerting = db.prepare(
+    "INSERT INTO deployment_alerting (manifest_id, provider, channel) VALUES (?, ?, ?)"
+  );
+  for (const al of data.alerting ?? []) {
+    insertAlerting.run(manifest_id, al.provider ?? null, al.channel);
+  }
+
+  // -- deployment_runbook (1:N) --
+  //    → deployment_runbook_step (1:N per runbook)
+  const insertRunbook = db.prepare(
+    "INSERT INTO deployment_runbook (manifest_id, name, scenario) VALUES (?, ?, ?)"
+  );
+  const insertRunbookStep = db.prepare(
+    "INSERT INTO deployment_runbook_step (runbook_id, step, is_rollback) VALUES (?, ?, ?)"
+  );
+  for (const rb of data.runbooks ?? []) {
+    const rbResult = insertRunbook.run(manifest_id, rb.name, rb.scenario);
+    const runbook_id = rbResult.lastInsertRowid;
+    for (const s of rb.steps ?? []) {
+      insertRunbookStep.run(runbook_id, s.step, s.is_rollback ? 1 : 0);
+    }
+  }
+
+  // -- deployment_review_checklist (1:N) --
+  const insertChecklist = db.prepare(
+    "INSERT INTO deployment_review_checklist (manifest_id, check_name, passed) VALUES (?, ?, ?)"
+  );
+  for (const item of data.review_checklist ?? []) {
+    insertChecklist.run(manifest_id, item.check_name, item.passed ? 1 : 0);
+  }
+
+  return { entity_type: "deployment_manifest", id: manifest_id };
+}
+
 function insertDesignSystem(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
@@ -1887,6 +2144,7 @@ function changelogInsert(args) {
     performance_audit_finding: insertPerformanceAuditFinding,
     test_report: insertTestReport,
     documentation_manifest: insertDocumentationManifest,
+    deployment_manifest: insertDeploymentManifest,
   };
 
   const handler = handlers[entity_type];

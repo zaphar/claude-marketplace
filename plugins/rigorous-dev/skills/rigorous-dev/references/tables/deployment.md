@@ -74,8 +74,8 @@ deployment_manifest
 - Children: all 25 remaining tables in this domain
 
 **MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object must include `status` and `created_at`; child records are inserted as separate `changelog_insert` calls referencing the returned `id`.
-- **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Use `include_related: true` to attach child rows (note: the deployment domain's `attachRelated` is not yet specialised, so child tables require direct SQL or separate queries).
+- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required) and all child records as nested arrays (`metadata`, `targets`, `blockers`, `pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All 26 tables are inserted in a single transactional call.
+- **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Returns manifest rows with all children attached via `attachRelated`.
 
 ---
 
@@ -639,10 +639,153 @@ deployment_manifest
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert deployment manifest + all children | `changelog_insert` with `entity_type: "deployment_manifest"` | All child tables must be inserted in separate calls referencing the manifest `id` returned |
-| Query manifest by iteration | `changelog_query` with `entity_type: "deployment_manifest"`, `iteration_id: N` | Returns `deployment_manifest` rows only |
-| Query child tables | Direct SQL via MCP or application layer | No built-in `attachRelated` specialisation for deployment domain yet |
-| Check manifest status | `changelog_query` with `entity_type: "deployment_manifest"`, `filters: { status: "blocked" }` | Returns blocked manifests for a given iteration |
+| Insert deployment manifest + all children | `changelog_insert` with `entity_type: "deployment_manifest"` | All 25 child tables are inserted in a single transactional call via nested `data` properties |
+| Query manifest by iteration | `changelog_query` with `entity_type: "deployment_manifest"`, `iteration_id: N` | Returns `deployment_manifest` rows with all children attached via `attachRelated` |
+| Query with filters | `changelog_query` with `entity_type: "deployment_manifest"`, `filters: { status: "blocked" }` | Returns blocked manifests for a given iteration |
+
+### Write — `changelog_insert` data shape
+
+All child tables are nested inside the `data` object. Every array property is optional and defaults to `[]`.
+
+```jsonc
+{
+  "entity_type": "deployment_manifest",
+  "iteration_id": 1,
+  "revision_id": 1,
+  "data": {
+    "status": "ready",                     // required: "ready" | "not_ready" | "blocked"
+    "metadata": [{                         // → deployment_manifest_metadata
+      "version": "1.0.0",
+      "created": "2025-01-15T00:00:00Z",
+      "requirements_version": "1.0.0",
+      "architecture_version": "1.0.0",
+      "implementation_version": "1.0.0",
+      "test_report_version": "1.0.0"       // optional, null if QA skipped
+    }],
+    "targets": [                           // → deployment_target (string or object)
+      { "target": "private-cloud" },
+      "local-executable"                   // shorthand: bare string accepted
+    ],
+    "blockers": [                          // → deployment_manifest_blocker
+      { "blocker": "DNS records not configured" }
+    ],
+    "pipelines": [{                        // → deployment_pipeline
+      "platform": "github-actions",
+      "config_files": [                    //   → deployment_pipeline_config_file
+        { "file_path": ".github/workflows/release.yml" }
+      ],
+      "stages": [{                         //   → deployment_pipeline_stage
+        "name": "build",
+        "purpose": "Compile and package",
+        "triggers": [                      //     → deployment_stage_trigger
+          { "trigger_text": "on: push to main" }
+        ],
+        "steps": [                         //     → deployment_stage_step
+          { "step": "checkout" },
+          { "step": "go build" }
+        ],
+        "quality_gates": [{                //     → deployment_stage_quality_gate
+          "name": "unit-tests",
+          "condition": "all tests pass",
+          "failure_action": "block"        // "block" | "warn" | "notify"
+        }]
+      }]
+    }],
+    "quality_gates": [{                    // → deployment_quality_gates (global)
+      "category": "testing",
+      "key": "coverage",
+      "value": ">=80%"
+    }],
+    "environments": [{                     // → deployment_environment
+      "name": "production",               // "development" | "staging" | "production"
+      "deployment_method": "kubernetes",
+      "url": "https://app.example.com",
+      "rollback_procedure": "kubectl rollout undo",
+      "infra": [{                          //   → deployment_env_infra
+        "provider": "aws",
+        "resource": "EKS cluster"
+      }],
+      "vars": [{                           //   → deployment_env_var
+        "name": "DATABASE_URL",
+        "source": "secret",               // "secret" | "config" | "hardcoded"
+        "description": "PostgreSQL connection string"
+      }]
+    }],
+    "artifacts": [{                        // → deployment_artifact
+      "name": "myapp",
+      "type": "container-image",           // "container-image" | "binary" | "archive" | "package" | "installer"
+      "registry": "ghcr.io/org/myapp",
+      "versioning": "semantic",            // "semantic" | "git-sha" | "timestamp" | "custom"
+      "platforms": [                       //   → deployment_artifact_platform
+        { "platform": "linux/amd64" }
+      ]
+    }],
+    "signing": [{                          // → deployment_signing
+      "enabled": true,
+      "method": "cosign"
+    }],
+    "local_executables": [{                // → deployment_local_executable
+      "installation_method": "go install",
+      "update_mechanism": "self-update",
+      "platforms": [                       //   → deployment_local_platform
+        "linux-amd64",                     // shorthand: bare string accepted
+        { "platform": "darwin-arm64" }
+      ],
+      "channels": [                        //   → deployment_local_channel
+        { "channel": "homebrew-tap" }
+      ]
+    }],
+    "secrets": [{                          // → deployment_secret
+      "provider": "github-secrets",
+      "name": "DEPLOY_TOKEN",
+      "purpose": "Authenticate to registry",
+      "rotation_policy": "90 days"
+    }],
+    "health_checks": [{                    // → deployment_health_check
+      "name": "readiness",
+      "endpoint": "/healthz",
+      "interval": "30s"
+    }],
+    "alerting": [{                         // → deployment_alerting
+      "provider": "pagerduty",
+      "channel": "#ops-alerts"
+    }],
+    "runbooks": [{                         // → deployment_runbook
+      "name": "Database migration failure",
+      "scenario": "Migration fails in production",
+      "steps": [                           //   → deployment_runbook_step
+        { "step": "Check migration logs", "is_rollback": false },
+        { "step": "Rollback migration", "is_rollback": true }
+      ]
+    }],
+    "review_checklist": [{                 // → deployment_review_checklist
+      "check_name": "All tests passing",
+      "passed": true
+    }]
+  }
+}
+```
+
+### Read — `changelog_query` response shape
+
+When queried via `changelog_query`, each `deployment_manifest` row is returned with all children attached as nested arrays. The shape mirrors the write `data` object with the following property names:
+
+| Property | Source Table | Nesting |
+|----------|-------------|---------|
+| `metadata` | `deployment_manifest_metadata` | flat |
+| `targets` | `deployment_target` | flat |
+| `blockers` | `deployment_manifest_blocker` | flat |
+| `pipelines` | `deployment_pipeline` | → `config_files`, `stages` → `triggers`, `steps`, `quality_gates` |
+| `quality_gates` | `deployment_quality_gates` | flat |
+| `environments` | `deployment_environment` | → `infra`, `vars` |
+| `artifacts` | `deployment_artifact` | → `platforms` |
+| `signing` | `deployment_signing` | flat |
+| `local_executables` | `deployment_local_executable` | → `platforms`, `channels` |
+| `secrets` | `deployment_secret` | flat |
+| `health_checks` | `deployment_health_check` | flat |
+| `alerting` | `deployment_alerting` | flat |
+| `runbooks` | `deployment_runbook` | → `steps` |
+| `review_checklist` | `deployment_review_checklist` | flat |
 
 ### Common SQL Patterns
 
