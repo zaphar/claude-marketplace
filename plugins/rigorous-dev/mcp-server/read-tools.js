@@ -380,7 +380,12 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT name, type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
           .all(e.id),
         relationships: db
-          .prepare("SELECT target_entity, relationship_type, description FROM data_entity_relationship WHERE entity_id = ?")
+          .prepare(
+            `SELECT t.entity_name AS target_entity, r.target_entity_id, r.relationship_type, r.description
+             FROM data_entity_relationship r
+             JOIN data_entity t ON t.id = r.target_entity_id
+             WHERE r.entity_id = ?`
+          )
           .all(e.id),
       }));
 

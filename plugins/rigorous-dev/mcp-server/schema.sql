@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id),
-  target_entity TEXT NOT NULL,
+  target_entity_id INTEGER NOT NULL REFERENCES data_entity(id),
   relationship_type TEXT CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')),
   description TEXT
 );

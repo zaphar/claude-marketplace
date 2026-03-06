@@ -463,11 +463,22 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
     insertAttr.run(entityId, a.name, a.type, a.is_required ?? 0, a.description ?? null);
   }
 
+  // Resolve and insert relationships.
+  // target_entity (name string) is looked up in data_entity within the same iteration.
   const insertRel = db.prepare(
-    "INSERT INTO data_entity_relationship (entity_id, target_entity, relationship_type, description) VALUES (?, ?, ?, ?)"
+    "INSERT INTO data_entity_relationship (entity_id, target_entity_id, relationship_type, description) VALUES (?, ?, ?, ?)"
+  );
+  const lookupTarget = db.prepare(
+    "SELECT id FROM data_entity WHERE entity_name = ? AND iteration_id = ? ORDER BY id DESC LIMIT 1"
   );
   for (const r of data.relationships ?? []) {
-    insertRel.run(entityId, r.target_entity, r.relationship_type ?? null, r.description ?? null);
+    const targetRow = lookupTarget.get(r.target_entity, iteration_id);
+    if (!targetRow) {
+      throw new Error(
+        `Cannot resolve target_entity "${r.target_entity}" — no data_entity with that name exists in iteration ${iteration_id}. Insert the target entity first, then insert this entity's relationships.`
+      );
+    }
+    insertRel.run(entityId, targetRow.id, r.relationship_type ?? null, r.description ?? null);
   }
 
   return { entity_type: "data_entity", id: entityId };
