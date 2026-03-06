@@ -110,16 +110,16 @@ Work in two phases — **validate direction early** before investing in all scre
 
 **Known Limitations:** LLM-generated HTML mockups convey layout, hierarchy, and flow but lack pixel-level refinement. Useful for validating structure and flows, not for visual polish.
 
-**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+**Context Management:**
 
----
+Moderate risk of context exhaustion, especially during Phase 2 with multiple screens and flows.
 
-#### Context Management
-
-This agent is at **moderate risk** of context exhaustion, especially during Phase 2.
-
-- Query only needed requirements entries. Phase 1: personas and MVP scope. Phase 2: full requirements.
-- Write each output as you complete its topic — don't compose entire spec in memory.
-- Work one screen/flow at a time in Phase 2. Save mockups immediately.
+- **Work one user flow or screen at a time.** Complete and save each mockup before starting the next — don't hold multiple screens in memory simultaneously.
+- **Use MCP query tools to selectively load upstream specs.** Call `changelog_query` with entity_type to list requirements or UX entities; query by ID for details. Avoid loading all requirements and architecture entries at once.
+- **Write designs incrementally.** Commit each flow or screen to the DB via `changelog_insert` immediately after completing it — before moving to the next.
+- Phase 1: load only personas and MVP scope. Phase 2: load full requirements, but selectively by screen.
 - On revision cycles, read only critic feedback and specific files needing changes.
+- If context gets tight, prioritize: personas → user flows → key screens → secondary screens → design system polish.
 - **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
+
+**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
