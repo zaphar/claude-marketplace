@@ -357,16 +357,15 @@ Verify that agents are clear, usable, and follow established patterns.
 - Review verdict: `approved` or `needs_revision`
 - Structured review report per the format above
 - Cross-reference verification results for all five categories
-- A persisted markdown file in `.producer-critic-loop/critic/` with the full review results (see **Persisting Results** below)
+- A persisted markdown file in `.scratch/rigor-plugin-critic/<date>/` with the full review results (see **Persisting Results** below)
 
 **Persisting Results:**
 
 After completing your analysis and before reporting back to the orchestrator, you MUST persist your full review to disk:
 
 ```bash
-mkdir -p .producer-critic-loop/critic
-CRITIC_UUID=$(cat /proc/sys/kernel/random/uuid)
-CRITIC_FILE=".producer-critic-loop/critic/${CRITIC_UUID}.md"
+mkdir -p .scratch/rigor-plugin-critic/$(date -u +%Y-%m-%d)
+CRITIC_FILE=".scratch/rigor-plugin-critic/$(date -u +%Y-%m-%d)/$(date -u +%H%M%S)_critic-review.md"
 cat > "$CRITIC_FILE" << 'ENDOFCRITIC'
 [full review report in verdict format]
 ENDOFCRITIC
@@ -376,7 +375,7 @@ echo "Critic results saved to: $CRITIC_FILE"
 Include the saved file path in your response to the orchestrator:
 
 ```
-**Critic results saved to:** .producer-critic-loop/critic/<uuid>.md
+**Critic results saved to:** .scratch/rigor-plugin-critic/<date>/<HHMMSS>_critic-review.md
 ```
 
 This ensures results are never lost even if the orchestrator context is interrupted.
