@@ -528,6 +528,103 @@ function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
   return { entity_type: "traceability_mapping", id: result.lastInsertRowid };
 }
 
+function insertSecurityConfig(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO security_config (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "security_config", id: lastId };
+}
+
+function insertDeploymentConfig(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO deployment_config (iteration_id, revision_id, target, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.target,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "deployment_config", id: lastId };
+}
+
+function insertObservabilityConfig(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO observability_config (iteration_id, revision_id, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.category,
+      entry.key,
+      entry.value,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "observability_config", id: lastId };
+}
+
+function insertApprovedDependency(db, iteration_id, revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  const now = new Date().toISOString();
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO approved_dependency
+       (iteration_id, revision_id, package, version_constraint, purpose, justification, adr_id, license, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      revision_id,
+      entry.package,
+      entry.version_constraint ?? null,
+      entry.purpose,
+      entry.justification,
+      entry.adr_id ?? null,
+      entry.license ?? null,
+      entry.maintenance_activity ?? null,
+      entry.community_adoption ?? null,
+      entry.transitive_deps ?? null,
+      entry.single_maintainer_risk ?? 0,
+      now
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "approved_dependency", id: lastId };
+}
+
 function insertUserFlow(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const existed = snapshotIfExists(db, "user_flow", "user_flow", data.id, revision_id);
@@ -1166,6 +1263,10 @@ function changelogInsert(args) {
     architecture_overview: insertArchitectureOverview,
     data_entity: insertDataEntity,
     traceability_mapping: insertTraceabilityMapping,
+    security_config: insertSecurityConfig,
+    deployment_config: insertDeploymentConfig,
+    observability_config: insertObservabilityConfig,
+    approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
     plan_phase: insertPlanPhase,
