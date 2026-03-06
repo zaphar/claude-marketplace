@@ -239,7 +239,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Tool | Purpose |
 |------|---------|
-| `changelog_insert` | Insert any entity type with full normalization into child tables. Main workhorse — handles ~20 entity types. |
+| `changelog_insert` | Insert any entity type with full normalization into child tables. Main workhorse — handles 45 entity types. |
 | `iteration_create` | Create project + iteration + all phase rows in one call. |
 | `phase_transition` | Update phase status (pending → in_progress → completed/skipped). |
 | `revision_create` | Start a new producer-critic revision within a phase. |
@@ -255,7 +255,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 |------|---------|
 | `changelog_query` | Query entities by type, iteration, IDs, or field filters. |
 
-> **Note:** 4 entity types are write-only — they can be inserted via `changelog_insert` but are not queryable via `changelog_query`: `plan_requirement_mapping`, `vcs_commit`, `intermediate_asset`, `asset_deliverable`. These are stored in dedicated tables and can be queried directly via SQL or through `traceability_query` where applicable.
+> **Note:** 4 entity types are write-only with respect to `changelog_query` — they can be inserted via `changelog_insert` but are not in the `ENTITY_TABLE` map: `plan_requirement_mapping`, `vcs_commit`, `intermediate_asset`, `asset_deliverable`. Of these, `vcs_commit` and `asset_deliverable` are readable via `iteration_summary`. The remaining two (`plan_requirement_mapping`, `intermediate_asset`) are stored in dedicated tables and can be queried directly via SQL.
 >
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |
@@ -274,9 +274,10 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 To add new entity types:
 
 1. Add `CREATE TABLE IF NOT EXISTS` statements to `mcp-server/schema.sql`
-2. Add the entity type to `ENTITY_TABLE` map in `mcp-server/write-tools.js` and `mcp-server/read-tools.js`
-3. Add insert/query logic for child tables if the entity has nested data
-4. Update agent checklists to verify the new fields
+2. **Write side** (`mcp-server/write-tools.js`): Add a handler function (e.g., `insertMyEntity`), add it to the `handlers` map inside `changelogInsert()`, and add the type name to the `enum` array in the `changelog_insert` tool definition
+3. **Read side** (`mcp-server/read-tools.js`): Add the entity type to the `ENTITY_TABLE` map so it is queryable via `changelog_query`
+4. Add insert/query logic for child tables if the entity has nested data
+5. Update agent checklists to verify the new fields
 
 ## Alphabetical Table Index
 
