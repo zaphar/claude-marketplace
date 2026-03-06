@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS component (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('api', 'service', 'worker', 'database', 'cache', 'queue', 'external', 'library')),
+  type TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT
 );

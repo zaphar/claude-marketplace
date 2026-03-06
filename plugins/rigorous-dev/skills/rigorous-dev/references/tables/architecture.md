@@ -189,7 +189,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `name` | TEXT | NOT NULL | — | Short, descriptive name (e.g., "Auth Service", "PostgreSQL Primary", "Payment Gateway"). |
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
-| `type` | TEXT | NOT NULL, CHECK(`type` IN `'api'`, `'service'`, `'worker'`, `'database'`, `'cache'`, `'queue'`, `'external'`, `'library'`) | — | Classification: `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. |
+| `type` | TEXT | NOT NULL | — | Free-form classification of the component. Canonical values (by convention): `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. Custom values are allowed for project-specific component types. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
