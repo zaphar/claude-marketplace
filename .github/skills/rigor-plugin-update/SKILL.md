@@ -19,6 +19,7 @@ Determine which mode to use based on the user's request:
 
 - **Update Mode** — The user asks to make a specific change: add an agent, modify a workflow, fix a bug, update a command, change the schema, etc.
 - **Deep Audit Mode** — The user asks to audit, review, or analyze the plugin's current state without specifying a particular change. Keywords: "audit", "review the plugin", "check consistency", "analyze the plugin", "run a health check".
+- **Schema Audit Mode** — The user asks to audit, simplify, or analyze the database schema specifically. Keywords: "schema audit", "simplify schema", "consolidate tables", "reduce table count", "FK audit", "CHECK constraint audit", "data model audit", "table consolidation", "schema correctness".
 - **Q&A Audit Mode** — The user asks a question about the plugin, wants to understand something, or is exploring. Keywords: "what agents reference X?", "how does Y work?", "is Z up to date?", "show me inconsistencies".
 
 If the mode is ambiguous, ask the user which mode they want.
@@ -186,7 +187,165 @@ If the user chooses to fix issues, enter Update Mode (Step 1) with the selected 
 
 ---
 
-## Mode 3: Q&A Audit Mode
+## Mode 3: Schema Audit Mode
+
+Triggered when the user asks to audit, simplify, or analyze the database schema specifically.
+
+### Step 1: Scope the Audit
+
+Determine audit scope based on the user's request:
+
+- **Full audit** — Run all 20 audit categories across 4 parallel agent groups. Use when the user says "audit the schema", "full schema audit", or doesn't specify categories.
+- **Focused audit** — Run specific category groups. Use when the user asks about a specific concern (e.g., "find tables to consolidate" → Group A, "check FK enforcement" → Group A, "find correctness bugs" → Group B).
+
+If scope is ambiguous, ask the user:
+
+```
+The schema auditor has 20 audit categories across 4 groups. Would you like me to run all of them, or focus on specific areas?
+```
+
+Offer choices via ask_user:
+- **Full audit (all 20 categories)** — Comprehensive analysis across 4 parallel agents
+- **Simplification only (Group A: categories 1-4)** — Table consolidation, child collapse, FK enforcement, CHECK constraints
+- **Correctness only (Group B: categories 5, 12-14)** — Structural bugs, nullability, transactions, circular FKs
+- **Waste & Consistency (Group C: categories 6-9)** — Redundant tables, orphans, naming, column redundancy
+- **Performance & Hygiene (Group D: categories 10-11, 15-20)** — Indexes, timestamps, polymorphic refs, scope leakage, deletion patterns, type precision, doc drift, unused enums
+- **Let me specify** — User picks individual categories
+
+### Step 2: Launch Schema Auditor Agents in Parallel
+
+The 20 audit categories are split across 4 agent groups that run in parallel. Each group uses the `rigor_schema_auditor` agent (always `claude-opus-4.6`) with a scoped prompt.
+
+**Agent Group Assignments:**
+
+| Group | Name | Categories | Focus |
+|-------|------|-----------|-------|
+| A | Simplification | 1, 2, 3, 4 | Table consolidation, child collapse, FK enforcement, CHECK constraints |
+| B | Correctness | 5, 12, 13, 14 | Structural bugs, nullability mismatches, transaction safety, circular FKs |
+| C | Waste & Consistency | 6, 7, 8, 9 | Redundant tables, orphaned tables, naming consistency, column redundancy |
+| D | Performance & Hygiene | 10, 11, 15, 16, 17, 18, 19, 20 | Indexes, timestamps, polymorphic refs, scope leakage, deletion patterns, type precision, doc drift, unused enums |
+
+**For a full audit**, launch all 4 agents in parallel using `mode: "background"` and `model: "claude-opus-4.6"` (mandatory — never use a weaker model for schema audits):
+
+```
+Agent A prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 1: Table Consolidation
+- Category 2: Child Table Collapse
+- Category 3: Foreign Key Enforcement
+- Category 4: CHECK Constraint Audit
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-a-simplification.md
+
+Agent B prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 5: Schema Correctness
+- Category 12: Nullable vs Required Alignment
+- Category 13: Transaction Safety
+- Category 14: Circular FK Dependencies
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-b-correctness.md
+
+Agent C prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 6: Redundant Tables
+- Category 7: Orphaned Tables
+- Category 8: Naming Consistency
+- Category 9: Column Redundancy
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-c-waste-consistency.md
+
+Agent D prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 10: Index Coverage
+- Category 11: Timestamp Consistency
+- Category 15: Polymorphic References
+- Category 16: Scope Leakage
+- Category 17: Soft Delete vs Hard Delete
+- Category 18: Data Type Precision
+- Category 19: Documentation-Schema Drift
+- Category 20: Unused Enum Values
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
+```
+
+**For a focused audit**, launch only the relevant group(s).
+
+### Step 3: Wait for All Agents and Consolidate
+
+Wait for all launched agents to complete using `read_agent` with `wait: true`.
+
+**⚠️ Do NOT delete the individual group reports.** They are preserved as the raw audit fragments.
+
+Once ALL agents have completed, **you (the skill orchestrator) create the consolidated report** by:
+
+1. Reading each group's persisted report from `.scratch/rigor-schema-auditor/<date>/`
+2. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
+3. Writing the consolidated report to `.scratch/rigor-schema-auditor/<date>/<HHMMSS>_consolidated-audit.md`
+
+The consolidated report format:
+
+```markdown
+# Schema Audit — Consolidated Report
+
+**Date:** [date]
+**Schema Tables:** [count]
+**Groups Run:** [A, B, C, D]
+**Total Findings:** [count across all groups]
+
+## Prioritized Recommendations
+
+| Priority | Category | Group | Finding | Severity | Impact | Effort |
+|----------|----------|-------|---------|----------|--------|--------|
+| 1 | [cat] | [A/B/C/D] | [finding] | [critical/medium/low] | [tables eliminated / bugs fixed] | [files affected] |
+| 2 | ... | ... | ... | ... | ... | ... |
+
+## Group A: Simplification (Categories 1-4)
+[paste or summarize findings from group A report]
+
+## Group B: Correctness (Categories 5, 12-14)
+[paste or summarize findings from group B report]
+
+## Group C: Waste & Consistency (Categories 6-9)
+[paste or summarize findings from group C report]
+
+## Group D: Performance & Hygiene (Categories 10-11, 15-20)
+[paste or summarize findings from group D report]
+
+---
+**Individual reports preserved at:**
+- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-a-simplification.md
+- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-b-correctness.md
+- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-c-waste-consistency.md
+- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
+```
+
+### Step 4: Present Consolidated Report
+
+Display the consolidated report to the user, highlighting the top prioritized recommendations.
+
+### Step 5: User Decision
+
+After presenting the report, ask the user how to proceed:
+
+```
+The schema audit found [X] findings across [Y] categories.
+
+Top recommendations by impact:
+1. [finding] — [impact]
+2. [finding] — [impact]
+3. [finding] — [impact]
+
+How would you like to proceed?
+```
+
+Offer choices via ask_user:
+- **Fix all findings** — Enter Update Mode with all findings as the change request (use producer-critic loop)
+- **Fix specific findings** — Let the user select which findings to address
+- **Work through findings interactively** — Enter Q&A Mode to discuss each finding before deciding
+- **No action** — Report is informational only
+
+If the user chooses to fix findings, enter Update Mode (Step 1) with the selected findings as the change request. Each finding goes through the full producer-critic loop.
+
+---
+
+## Mode 4: Q&A Audit Mode
 
 Triggered when the user asks questions about the plugin or is exploring potential changes.
 
@@ -269,14 +428,17 @@ After changes are applied (or declined), return to Q&A mode. The conversation co
 |-------|------|---------------|---------|
 | `rigor_plugin_producer` | Producer | Adaptive (sonnet or opus) | Makes changes to plugin files |
 | `rigor_plugin_critic` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
+| `rigor_schema_auditor` | Auditor | Always `claude-opus-4.6` | Schema simplification, correctness, and consistency analysis (20 audit categories) |
 
-Both agents have deep embedded knowledge of the rigorous-dev plugin's file structure, cross-reference map, and conventions. They are purpose-built for this plugin — not generic tools.
+All agents have deep embedded knowledge of the rigorous-dev plugin's file structure, cross-reference map, and conventions. They are purpose-built for this plugin — not generic tools.
 
 ## Critical Rules
 
 1. **Critic always uses Opus** — Catching subtle cross-reference bugs across 20+ files requires the strongest reasoning model.
-2. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes with no cross-reference impact. Correctness over cost, always.
-3. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user. Never loop silently.
-4. **Critic is read-only** — The critic never modifies files. It only reads and reports.
-5. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
-6. **Deep audits are standalone** — In Deep Audit mode, the critic runs against the current state, not a diff. No producer is involved unless the user asks to fix issues.
+2. **Schema auditor always uses Opus** — Analyzing 141+ tables across schema, handlers, and documentation requires deep reasoning. All 4 audit groups must use `model: "claude-opus-4.6"` — no exceptions.
+3. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes with no cross-reference impact. Correctness over cost, always.
+4. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user. Never loop silently.
+5. **Critic and auditor are read-only** — They never modify files. They only read and report.
+6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
+7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
+8. **Schema audit findings go through producer-critic** — When the user wants to fix schema audit findings, each fix enters Update Mode and goes through the full producer-critic loop. The schema auditor identifies issues; the producer-critic loop implements fixes.
