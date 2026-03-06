@@ -320,7 +320,7 @@ Identifies the interaction points between components where integration tests are
 
 ### Context
 
-Integration test boundaries are a direct output of architectural decomposition: wherever two components communicate, there is a test boundary. By recording these boundaries explicitly during the architecture phase, the backend_architect ensures the test_writer knows exactly which component interactions need contract or integration-level coverage. The `boundary_type` CHECK constraint ensures only well-understood crossing types are recorded.
+Integration test boundaries are a direct output of architectural decomposition: wherever two components communicate, there is a test boundary. By recording these boundaries explicitly during the architecture phase, the backend_architect ensures the test_writer knows exactly which component interactions need contract or integration-level coverage. The `boundary_type` field is free-form text to accommodate project-specific boundary types; canonical values are `api_call`, `database_access`, `message_event`, and `file_system` (see column reference below).
 
 ### Column Reference
 
@@ -329,7 +329,7 @@ Integration test boundaries are a direct output of architectural decomposition: 
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The initiating component (the one that crosses the boundary). |
 | `target_component` | TEXT | NOT NULL, FK → `component(id)` | — | The receiving component (the one being called or accessed). |
-| `boundary_type` | TEXT | NOT NULL, CHECK(`boundary_type` IN `'api_call'`, `'database_access'`, `'message_event'`, `'file_system'`) | — | Mechanism of interaction: `api_call` = HTTP/RPC call; `database_access` = direct DB read/write; `message_event` = message broker publish/subscribe; `file_system` = shared file I/O. |
+| `boundary_type` | TEXT | NOT NULL | — | Mechanism of interaction. Free-form text; canonical values: `api_call` (HTTP/RPC call), `database_access` (direct DB read/write), `message_event` (message broker publish/subscribe), `file_system` (shared file I/O). Custom values are accepted for project-specific boundary types. |
 | `correct_behavior` | TEXT | NOT NULL | — | Human-readable description of what a passing integration test must assert (e.g., "When the Auth Service returns 401, the API Gateway must return 403 to the caller and log the event"). |
 
 ### Relationships
@@ -554,7 +554,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 | `component_interface` | INTEGER AUTO | `component` | — |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
 | `component_requirement` | Composite (component_id, requirement_id) | `component`, `requirement` | Composite PK prevents duplicate mappings |
-| `integration_test_boundary` | INTEGER AUTO | `component` × 2 | `boundary_type` CHECK 4 values |
+| `integration_test_boundary` | INTEGER AUTO | `component` × 2 | `boundary_type` free-form TEXT |
 | `technology_choice` | INTEGER AUTO | `iteration`, `revision` | — |
 | `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | — |
 | `architecture_principle` | INTEGER AUTO | `architecture_overview` | — |

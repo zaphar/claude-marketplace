@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   component_id TEXT NOT NULL REFERENCES component(id),
   target_component TEXT NOT NULL REFERENCES component(id),
-  boundary_type TEXT NOT NULL CHECK(boundary_type IN ('api_call', 'database_access', 'message_event', 'file_system')),
+  boundary_type TEXT NOT NULL,
   correct_behavior TEXT NOT NULL
 );
 
