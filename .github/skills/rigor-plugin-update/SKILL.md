@@ -76,47 +76,47 @@ Report the classification to the user:
 📊 Complexity Assessment: [Simple | Moderate | Complex]
 Reason: [brief explanation]
 Producer model: [claude-sonnet-4.6 | claude-opus-4.6]
-Reviewer model: claude-opus-4.6 (always)
+Critic model: claude-opus-4.6 (always)
 ```
 
 ### Step 3: Producer-Critic Loop
 
 **Iteration 1:**
 
-1. Launch the `rigor_plugin_developer` agent (using the assessed model) with the confirmed change request as the prompt. Include:
+1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the confirmed change request as the prompt. Include:
    - The specific change to make (from Step 1 summary)
    - Any context about why the change is needed
-   - If this is a re-run: the reviewer's feedback from the previous iteration
+   - If this is a re-run: the critic's feedback from the previous iteration
 
-2. After the developer completes, launch the `rigor_plugin_reviewer` agent (always `claude-opus-4.6`) with:
-   - The developer's summary of changes
+2. After the producer completes, launch the `rigor_plugin_critic` agent (always `claude-opus-4.6`) with:
+   - The producer's summary of changes
    - The list of modified files
    - The revision number (starting at 1)
 
-3. Evaluate the reviewer's verdict:
+3. Evaluate the critic's verdict:
    - **`approved`** → proceed to Step 4
    - **`needs_revision`** → proceed to next iteration
 
 **Iterations 2-3 (if needed):**
 
-Feed the reviewer's blocking issues back to the developer agent as the change request:
+Feed the critic's blocking issues back to the producer agent as the change request:
 ```
-Fix the following issues identified by the reviewer in revision [N]:
+Fix the following issues identified by the critic in revision [N]:
 
-[reviewer's blocking issues and recommended changes]
+[critic's blocking issues and recommended changes]
 
 Original change request: [original request]
 ```
 
 **Escalation (iteration > 3):**
 
-If the reviewer has not approved after 3 iterations, stop the loop and escalate to the user:
+If the critic has not approved after 3 iterations, stop the loop and escalate to the user:
 ```
 ⚠️ Escalation Required
 
 The plugin update has gone through 3 producer-critic revisions without approval.
 
-Remaining issues from reviewer:
+Remaining issues from critic:
 [list of blocking issues still present]
 
 How would you like to proceed?
@@ -140,7 +140,8 @@ Files modified: [count]
 Modified files:
 - [file path]: [brief description of change]
 
-Reviewer verdict: approved
+Critic verdict: approved
+Critic results file: [path reported by critic, e.g. .producer-critic-loop/critic/<uuid>.md]
 ```
 
 ---
@@ -149,9 +150,9 @@ Reviewer verdict: approved
 
 Triggered when the user asks for a full audit or analysis of the plugin's current state.
 
-### Step 1: Launch Reviewer
+### Step 1: Launch Critic
 
-Run the `rigor_plugin_reviewer` agent (always `claude-opus-4.6`) in deep audit mode. Prompt:
+Run the `rigor_plugin_critic` agent (always `claude-opus-4.6`) in deep audit mode. Prompt:
 
 ```
 Perform a deep audit of the rigorous-dev plugin at plugins/rigorous-dev/.
@@ -164,7 +165,7 @@ Produce a comprehensive audit report in your standard verdict format with mode: 
 
 ### Step 2: Present Report
 
-Display the reviewer's full audit report to the user.
+Display the critic's full audit report to the user.
 
 ### Step 3: User Decision
 
@@ -266,16 +267,16 @@ After changes are applied (or declined), return to Q&A mode. The conversation co
 
 | Agent | Role | Default Model | Purpose |
 |-------|------|---------------|---------|
-| `rigor_plugin_developer` | Producer | Adaptive (sonnet or opus) | Makes changes to plugin files |
-| `rigor_plugin_reviewer` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
+| `rigor_plugin_producer` | Producer | Adaptive (sonnet or opus) | Makes changes to plugin files |
+| `rigor_plugin_critic` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
 
 Both agents have deep embedded knowledge of the rigorous-dev plugin's file structure, cross-reference map, and conventions. They are purpose-built for this plugin — not generic tools.
 
 ## Critical Rules
 
-1. **Reviewer always uses Opus** — Catching subtle cross-reference bugs across 20+ files requires the strongest reasoning model.
+1. **Critic always uses Opus** — Catching subtle cross-reference bugs across 20+ files requires the strongest reasoning model.
 2. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes with no cross-reference impact. Correctness over cost, always.
 3. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user. Never loop silently.
-4. **Reviewer is read-only** — The reviewer never modifies files. It only reads and reports.
-5. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass review.
-6. **Deep audits are standalone** — In Deep Audit mode, the reviewer runs against the current state, not a diff. No producer is involved unless the user asks to fix issues.
+4. **Critic is read-only** — The critic never modifies files. It only reads and reports.
+5. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
+6. **Deep audits are standalone** — In Deep Audit mode, the critic runs against the current state, not a diff. No producer is involved unless the user asks to fix issues.

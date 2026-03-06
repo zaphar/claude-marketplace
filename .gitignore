@@ -3,6 +3,7 @@
 .claude/rigorous-dev-artifacts/
 .claude/rigorous-dev.local.md
 
+.container-copilot
 # OS files
 .DS_Store
 Thumbs.db
@@ -25,3 +26,4 @@ temp/
 # Backup files
 *.backup
 *.bak
+.producer-critic-loop
