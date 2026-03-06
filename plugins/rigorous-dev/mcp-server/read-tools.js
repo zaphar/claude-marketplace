@@ -14,6 +14,9 @@ const ENTITY_TABLE = {
   screen: "screen",
   plan_phase: "plan_phase",
   plan_overview: "plan_overview",
+  plan_external_dependency: "plan_external_dependency",
+  plan_critical_path: "plan_critical_path",
+  plan_metadata: "plan_metadata",
   implementation_manifest: "implementation_manifest",
   traceability_mapping: "traceability_mapping",
   project_context: "project_context",
@@ -322,8 +325,15 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT method, path, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
           .all(p.id),
         db_changes: db
-          .prepare("SELECT migration_name, description FROM plan_phase_db_change WHERE plan_phase_id = ?")
-          .all(p.id),
+          .prepare("SELECT id, migration_name, description FROM plan_phase_db_change WHERE plan_phase_id = ?")
+          .all(p.id)
+          .map((dc) => ({
+            ...dc,
+            tables: db
+              .prepare("SELECT table_name FROM plan_phase_db_change_table WHERE db_change_id = ?")
+              .all(dc.id)
+              .map((t) => t.table_name),
+          })),
         risks: db
           .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
           .all(p.id),

@@ -805,6 +805,20 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     insertComp.run(plan_phase_id, comp_id);
   }
 
+  const insertFlow = db.prepare(
+    "INSERT OR IGNORE INTO plan_phase_flow (plan_phase_id, flow_id) VALUES (?, ?)"
+  );
+  for (const flow_id of data.flows ?? []) {
+    insertFlow.run(plan_phase_id, flow_id);
+  }
+
+  const insertScreenLink = db.prepare(
+    "INSERT OR IGNORE INTO plan_phase_screen (plan_phase_id, screen_id) VALUES (?, ?)"
+  );
+  for (const screen_id of data.screens ?? []) {
+    insertScreenLink.run(plan_phase_id, screen_id);
+  }
+
   const insertEntry = db.prepare(
     "INSERT INTO plan_phase_entry_criterion (plan_phase_id, criterion) VALUES (?, ?)"
   );
@@ -921,6 +935,60 @@ function insertPlanRequirementMapping(db, iteration_id, _revision_id, data) {
       data.notes ?? null
     );
   return { entity_type: "plan_requirement_mapping", id: result.lastInsertRowid };
+}
+
+function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
+  const result = db
+    .prepare(
+      `INSERT INTO plan_external_dependency (iteration_id, name, description, phase, risk_level, mitigation)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      data.name,
+      data.description,
+      data.phase ?? null,
+      data.risk_level,
+      data.mitigation ?? null
+    );
+  return { entity_type: "plan_external_dependency", id: result.lastInsertRowid };
+}
+
+function insertPlanCriticalPath(db, iteration_id, _revision_id, data) {
+  const result = db
+    .prepare(
+      `INSERT INTO plan_critical_path (iteration_id, phase_number, sequence_order)
+       VALUES (?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      data.phase_number,
+      data.sequence_order
+    );
+  return { entity_type: "plan_critical_path", id: result.lastInsertRowid };
+}
+
+function insertPlanMetadata(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO plan_metadata (iteration_id, revision_id, title, version, created, updated, status, requirements_version, architecture_version, ux_specification_version, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.title,
+      data.version,
+      data.created,
+      data.updated ?? null,
+      data.status,
+      data.requirements_version,
+      data.architecture_version,
+      data.ux_specification_version,
+      now
+    );
+  return { entity_type: "plan_metadata", id: result.lastInsertRowid };
 }
 
 function insertImplementationManifest(db, iteration_id, revision_id, data) {
@@ -1458,6 +1526,9 @@ function changelogInsert(args) {
     plan_phase: insertPlanPhase,
     plan_overview: insertPlanOverview,
     plan_requirement_mapping: insertPlanRequirementMapping,
+    plan_external_dependency: insertPlanExternalDependency,
+    plan_critical_path: insertPlanCriticalPath,
+    plan_metadata: insertPlanMetadata,
     implementation_manifest: insertImplementationManifest,
     project_context: insertProjectContext,
     system_input: insertSystemInput,
@@ -1645,6 +1716,9 @@ export const WRITE_TOOLS = [
             "plan_phase",
             "plan_overview",
             "plan_requirement_mapping",
+            "plan_external_dependency",
+            "plan_critical_path",
+            "plan_metadata",
             "implementation_manifest",
             "test_report",
             "documentation_manifest",

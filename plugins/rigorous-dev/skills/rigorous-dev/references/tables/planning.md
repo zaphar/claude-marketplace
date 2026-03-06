@@ -82,8 +82,8 @@ Central record for one implementation work chunk. A phase groups related develop
 
 | Operation | Tool | Entity type / notes |
 |-----------|------|---------------------|
-| Insert | `changelog_insert` | `entity_type: "plan_phase"` — also inserts all child arrays in one call |
-| Query | `changelog_query` | `entity_type: "plan_phase"` — returns phase with all children hydrated |
+| Insert | `changelog_insert` | `entity_type: "plan_phase"` — inserts the phase and all child arrays in one call: `requirements`, `components`, `flows`, `screens`, `entry_criteria`, `exit_criteria`, `api_endpoints`, `db_changes` (with nested `tables`), `dependencies`, `risks`, `checkpoint_focus`, `parallel_with` |
+| Query | `changelog_query` | `entity_type: "plan_phase"` — with `include_related: true`, returns phase with all children hydrated (including `db_changes[].tables`) |
 | Traceability | `traceability_query` | Look up which phases cover a given `requirement_id` |
 
 ---
@@ -395,7 +395,7 @@ Records the specific database table names touched by a single migration. Provide
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Pass `tables: ["users", "sessions"]` inside each `db_changes` entry in the `plan_phase` payload |
-| Query | `changelog_query` | Returned nested inside `db_changes` when querying a `plan_phase` |
+| Query | `changelog_query` | Returned as the `tables` array nested inside each `db_changes` entry when querying a `plan_phase` with `include_related: true` |
 
 ---
 
@@ -784,7 +784,7 @@ Version and provenance record for the implementation plan. Records what version 
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this plan metadata belongs to. |
-| `revision_id` | INTEGER | FK → `revision(id)`, nullable | — | The revision that produced this plan version. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan version. |
 | `title` | TEXT | NOT NULL | — | Human-readable plan title (e.g., "Implementation Plan — Invoice Generation Feature"). |
 | `version` | TEXT | NOT NULL | — | Semantic version string of this plan (e.g., `1.0.0`, `1.1.0`). |
 | `created` | TEXT | NOT NULL | — | Human-readable creation date (e.g., `2024-01-15`). Distinct from `created_at`. |
