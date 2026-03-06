@@ -247,7 +247,8 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Note:** These tables have no dedicated MCP tool handlers. They are managed via direct SQL in the MCP server's schema but are not currently exposed through `changelog_insert` or `changelog_query` (no `ENTITY_TABLE` entry exists for them).
+**Produced by:** `changelog_insert` with entity_type `"deployment_requirement"`
+**Queried by:** `changelog_query` with entity_type `"deployment_requirement"`
 
 ---
 
@@ -269,7 +270,8 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Note:** These tables have no dedicated MCP tool handlers. They are managed via direct SQL in the MCP server's schema but are not currently exposed through `changelog_insert` or `changelog_query` (no `ENTITY_TABLE` entry exists for them).
+**Produced by:** `changelog_insert` with entity_type `"operational_requirement"`
+**Queried by:** `changelog_query` with entity_type `"operational_requirement"`
 
 ---
 

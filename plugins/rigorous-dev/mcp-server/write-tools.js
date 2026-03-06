@@ -906,6 +906,59 @@ function insertSystemOutput(db, iteration_id, _revision_id, data) {
   return { entity_type: "system_output", id: lastId };
 }
 
+function insertDeploymentRequirement(db, iteration_id, _revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO deployment_requirement (iteration_id, target, requirement, notes) VALUES (?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      entry.target ?? null,
+      entry.requirement,
+      entry.notes ?? null
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "deployment_requirement", id: lastId };
+}
+
+function insertOperationalRequirement(db, iteration_id, _revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO operational_requirement (iteration_id, item, category, notes) VALUES (?, ?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      entry.item,
+      entry.category,
+      entry.notes ?? null
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "operational_requirement", id: lastId };
+}
+
+function insertTechnologyConstraint(db, iteration_id, _revision_id, data) {
+  const entries = Array.isArray(data) ? data : [data];
+  let lastId;
+  const insert = db.prepare(
+    `INSERT INTO technology_constraint (iteration_id, constraint_type, value) VALUES (?, ?, ?)`
+  );
+  for (const entry of entries) {
+    const result = insert.run(
+      iteration_id,
+      entry.constraint_type,
+      entry.value
+    );
+    lastId = result.lastInsertRowid;
+  }
+  return { entity_type: "technology_constraint", id: lastId };
+}
+
 function insertVcsCommit(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
@@ -1053,6 +1106,9 @@ function changelogInsert(args) {
     project_context: insertProjectContext,
     system_input: insertSystemInput,
     system_output: insertSystemOutput,
+    deployment_requirement: insertDeploymentRequirement,
+    operational_requirement: insertOperationalRequirement,
+    technology_constraint: insertTechnologyConstraint,
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,
     asset_deliverable: insertAssetDeliverable,
@@ -1237,6 +1293,9 @@ export const WRITE_TOOLS = [
             "project_context",
             "system_input",
             "system_output",
+            "deployment_requirement",
+            "operational_requirement",
+            "technology_constraint",
             "blocker",
             "project_lesson",
             "security_audit_finding",
