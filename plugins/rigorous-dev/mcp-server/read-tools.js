@@ -477,6 +477,73 @@ function attachRelated(db, entityType, results) {
         };
       });
 
+    case "test_report":
+      return results.map((r) => {
+        // test_requirement_coverage → criterion_results → test_ids
+        const coverage = db
+          .prepare("SELECT * FROM test_requirement_coverage WHERE report_id = ?")
+          .all(r.id)
+          .map((cov) => {
+            const criteria = db
+              .prepare("SELECT * FROM test_acceptance_criterion_result WHERE coverage_id = ?")
+              .all(cov.id)
+              .map((cr) => ({
+                ...cr,
+                test_ids: db
+                  .prepare("SELECT test_id FROM test_acceptance_criterion_test_id WHERE criterion_result_id = ?")
+                  .all(cr.id)
+                  .map((x) => x.test_id),
+              }));
+            return { ...cov, criteria };
+          });
+        // test_suite → test_case → test_case_requirement
+        const suites = db
+          .prepare("SELECT * FROM test_suite WHERE report_id = ?")
+          .all(r.id)
+          .map((s) => ({
+            ...s,
+            cases: db
+              .prepare("SELECT * FROM test_case WHERE suite_id = ?")
+              .all(s.id)
+              .map((tc) => ({
+                ...tc,
+                requirements: db
+                  .prepare("SELECT requirement_id FROM test_case_requirement WHERE test_case_id = ?")
+                  .all(tc.id)
+                  .map((x) => x.requirement_id),
+              })),
+          }));
+        // test_blocker → test_blocker_requirement
+        const blockers = db
+          .prepare("SELECT * FROM test_blocker WHERE report_id = ?")
+          .all(r.id)
+          .map((b) => ({
+            ...b,
+            requirements: db
+              .prepare("SELECT requirement_id FROM test_blocker_requirement WHERE blocker_id = ?")
+              .all(b.id)
+              .map((x) => x.requirement_id),
+          }));
+        return {
+          ...r,
+          metadata: db
+            .prepare("SELECT * FROM test_report_metadata WHERE report_id = ?")
+            .all(r.id),
+          coverage,
+          suites,
+          security_findings: db
+            .prepare("SELECT * FROM test_security_finding WHERE report_id = ?")
+            .all(r.id),
+          performance_benchmarks: db
+            .prepare("SELECT * FROM test_performance_benchmark WHERE report_id = ?")
+            .all(r.id),
+          blockers,
+          recommendations: db
+            .prepare("SELECT * FROM test_recommendation WHERE report_id = ?")
+            .all(r.id),
+        };
+      });
+
     default:
       return results;
   }

@@ -1352,6 +1352,183 @@ function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
   return { entity_type: "performance_audit_finding", id: result.lastInsertRowid };
 }
 
+function insertTestReport(db, iteration_id, revision_id, data) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO test_report
+         (iteration_id, revision_id, total_tests, passed, failed, skipped,
+          coverage_line, coverage_branch, coverage_function,
+          duration_seconds, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.total_tests ?? 0,
+      data.passed ?? 0,
+      data.failed ?? 0,
+      data.skipped ?? 0,
+      data.coverage_line ?? null,
+      data.coverage_branch ?? null,
+      data.coverage_function ?? null,
+      data.duration_seconds ?? null,
+      data.status,
+      now
+    );
+  const report_id = result.lastInsertRowid;
+
+  // -- test_report_metadata (1:1) --
+  const insertMeta = db.prepare(
+    `INSERT INTO test_report_metadata
+       (report_id, version, created, requirements_version, architecture_version, commit_sha)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  for (const meta of data.metadata ?? []) {
+    insertMeta.run(
+      report_id,
+      meta.version,
+      meta.created,
+      meta.requirements_version,
+      meta.architecture_version,
+      meta.commit_sha ?? null
+    );
+  }
+
+  // -- test_requirement_coverage (1:N) --
+  //    → test_acceptance_criterion_result (1:N per coverage)
+  //      → test_acceptance_criterion_test_id (1:N per criterion result)
+  const insertCoverage = db.prepare(
+    "INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (?, ?, ?)"
+  );
+  const insertCriterionResult = db.prepare(
+    "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes) VALUES (?, ?, ?, ?)"
+  );
+  const insertCriterionTestId = db.prepare(
+    "INSERT INTO test_acceptance_criterion_test_id (criterion_result_id, test_id) VALUES (?, ?)"
+  );
+  for (const cov of data.coverage ?? []) {
+    const covResult = insertCoverage.run(report_id, cov.requirement_id, cov.status);
+    const coverage_id = covResult.lastInsertRowid;
+    for (const cr of cov.criteria ?? []) {
+      const crResult = insertCriterionResult.run(
+        coverage_id,
+        cr.criterion,
+        cr.status,
+        cr.notes ?? null
+      );
+      for (const tid of cr.test_ids ?? []) {
+        insertCriterionTestId.run(crResult.lastInsertRowid, tid);
+      }
+    }
+  }
+
+  // -- test_suite (1:N) --
+  //    → test_case (1:N per suite)
+  //      → test_case_requirement (M:N per case)
+  const insertSuite = db.prepare(
+    "INSERT INTO test_suite (report_id, name, type) VALUES (?, ?, ?)"
+  );
+  const insertCase = db.prepare(
+    `INSERT INTO test_case
+       (suite_id, test_id, name, description, status, duration_ms,
+        error_message, stack_trace, retry_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertCaseReq = db.prepare(
+    "INSERT OR IGNORE INTO test_case_requirement (test_case_id, requirement_id) VALUES (?, ?)"
+  );
+  for (const suite of data.suites ?? []) {
+    const suiteResult = insertSuite.run(report_id, suite.name, suite.type);
+    const suite_id = suiteResult.lastInsertRowid;
+    for (const tc of suite.cases ?? []) {
+      const caseResult = insertCase.run(
+        suite_id,
+        tc.test_id,
+        tc.name,
+        tc.description ?? null,
+        tc.status,
+        tc.duration_ms ?? null,
+        tc.error_message ?? null,
+        tc.stack_trace ?? null,
+        tc.retry_count ?? null
+      );
+      for (const req_id of tc.requirements ?? []) {
+        insertCaseReq.run(caseResult.lastInsertRowid, req_id);
+      }
+    }
+  }
+
+  // -- test_security_finding (1:N) --
+  const insertSecFinding = db.prepare(
+    `INSERT INTO test_security_finding
+       (report_id, category, tool, severity, description, location,
+        recommendation, package, advisory)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const sf of data.security_findings ?? []) {
+    insertSecFinding.run(
+      report_id,
+      sf.category,
+      sf.tool ?? null,
+      sf.severity ?? null,
+      sf.description ?? null,
+      sf.location ?? null,
+      sf.recommendation ?? null,
+      sf.package ?? null,
+      sf.advisory ?? null
+    );
+  }
+
+  // -- test_performance_benchmark (1:N) --
+  const insertBenchmark = db.prepare(
+    `INSERT INTO test_performance_benchmark
+       (report_id, name, metric, value, unit, threshold, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const pb of data.performance_benchmarks ?? []) {
+    insertBenchmark.run(
+      report_id,
+      pb.name,
+      pb.metric,
+      pb.value,
+      pb.unit,
+      pb.threshold ?? null,
+      pb.status ?? null
+    );
+  }
+
+  // -- test_blocker (1:N) --
+  //    → test_blocker_requirement (M:N per blocker)
+  const insertBlocker = db.prepare(
+    "INSERT INTO test_blocker (report_id, description, severity, recommendation) VALUES (?, ?, ?, ?)"
+  );
+  const insertBlockerReq = db.prepare(
+    "INSERT OR IGNORE INTO test_blocker_requirement (blocker_id, requirement_id) VALUES (?, ?)"
+  );
+  for (const blocker of data.blockers ?? []) {
+    const blockerResult = insertBlocker.run(
+      report_id,
+      blocker.description,
+      blocker.severity,
+      blocker.recommendation ?? null
+    );
+    for (const req_id of blocker.requirements ?? []) {
+      insertBlockerReq.run(blockerResult.lastInsertRowid, req_id);
+    }
+  }
+
+  // -- test_recommendation (1:N) --
+  const insertRecommendation = db.prepare(
+    "INSERT INTO test_recommendation (report_id, category, description, priority) VALUES (?, ?, ?, ?)"
+  );
+  for (const rec of data.recommendations ?? []) {
+    insertRecommendation.run(report_id, rec.category, rec.description, rec.priority);
+  }
+
+  return { entity_type: "test_report", id: report_id };
+}
+
 function insertDesignSystem(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
@@ -1579,6 +1756,7 @@ function changelogInsert(args) {
     project_lesson: insertProjectLesson,
     security_audit_finding: insertSecurityAuditFinding,
     performance_audit_finding: insertPerformanceAuditFinding,
+    test_report: insertTestReport,
   };
 
   const handler = handlers[entity_type];

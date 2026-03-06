@@ -2,7 +2,7 @@
 .claude/rigorous-dev-state.yaml
 .claude/rigorous-dev-artifacts/
 .claude/rigorous-dev.local.md
-
+rigorous-dev.db
 .container-copilot
 # OS files
 .DS_Store

@@ -67,7 +67,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 
 **Write:** `changelog_insert` with `entity_type: "test_report"`. The `data` object maps to the non-key, non-audit columns above, plus nested child structures (suites, cases, findings, etc.) that the handler normalizes into child tables.
 
-**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`.
+**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`. Returns all child data nested: `metadata`, `coverage` (with nested `criteria`, each with `test_ids`), `suites` (with nested `cases`, each with `requirements`), `security_findings`, `performance_benchmarks`, `blockers` (with nested `requirements`), and `recommendations`.
 
 ---
 
