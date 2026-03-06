@@ -256,7 +256,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 **Purpose:** Each row captures a single operational requirement — an uptime/SLA target, a monitoring item, a logging policy, or an observability item. The `category` column classifies the row into one of four buckets (`uptime`, `monitoring`, `logging`, `observability`), allowing the architecture phase to address each concern with appropriate tooling. Uptime targets (previously stored as a dedicated `uptime_requirement` column) are now just rows with `category = 'uptime'` and the SLA value in `item`.
 
-**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing for reliability (SLOs, redundancy, failover), and by the **observability_config** design in the architecture domain. The **implementation_planner** uses this to flag operational readiness tasks.
+**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing for reliability (SLOs, redundancy, failover), and by the **architecture_config** (config_type: observability) design in the architecture domain. The **implementation_planner** uses this to flag operational readiness tasks.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|

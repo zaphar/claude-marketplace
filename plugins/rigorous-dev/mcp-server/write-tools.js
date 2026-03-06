@@ -524,18 +524,20 @@ function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
   return { entity_type: "traceability_mapping", id: result.lastInsertRowid };
 }
 
-function insertSecurityConfig(db, iteration_id, revision_id, data) {
+function insertArchitectureConfig(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO security_config (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO architecture_config (iteration_id, revision_id, config_type, target, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
       iteration_id,
       revision_id,
+      entry.config_type,
+      entry.target ?? null,
       entry.category,
       entry.key,
       entry.value,
@@ -543,52 +545,7 @@ function insertSecurityConfig(db, iteration_id, revision_id, data) {
     );
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "security_config", id: lastId };
-}
-
-function insertDeploymentConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO deployment_config (iteration_id, revision_id, target, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.target,
-      entry.category,
-      entry.key,
-      entry.value,
-      now
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "deployment_config", id: lastId };
-}
-
-function insertObservabilityConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO observability_config (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.category,
-      entry.key,
-      entry.value,
-      now
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "observability_config", id: lastId };
+  return { entity_type: "architecture_config", id: lastId };
 }
 
 function insertApprovedDependency(db, iteration_id, revision_id, data) {
@@ -2104,9 +2061,7 @@ function changelogInsert(args) {
     architecture_overview: insertArchitectureOverview,
     data_entity: insertDataEntity,
     traceability_mapping: insertTraceabilityMapping,
-    security_config: insertSecurityConfig,
-    deployment_config: insertDeploymentConfig,
-    observability_config: insertObservabilityConfig,
+    architecture_config: insertArchitectureConfig,
     approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
@@ -2296,9 +2251,7 @@ export const WRITE_TOOLS = [
             "technology_choice",
             "architecture_overview",
             "data_entity",
-            "security_config",
-            "deployment_config",
-            "observability_config",
+            "architecture_config",
             "approved_dependency",
             "traceability_mapping",
             "user_flow",

@@ -80,9 +80,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `security_config` | backend_architect | Auth approach, authorization model, data protection, secrets management. |
-| `deployment_config` | backend_architect | Target environments, strategy, containerization, scaling. |
-| `observability_config` | backend_architect | Logging, metrics, tracing, health check config. |
+| `architecture_config` | backend_architect | Unified config store for security, deployment, and observability architecture (discriminated by `config_type`). |
 | `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
 | `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 | `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
@@ -280,7 +278,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 146 tables with links to their detailed design documents.
+All 144 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -290,6 +288,7 @@ All 146 tables with links to their detailed design documents.
 | `adr_consequence` | [architecture](tables/architecture.md) |
 | `adr_research_source` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
+| `architecture_config` | [cross-cutting](tables/cross-cutting.md) |
 | `architecture_diagram` | [architecture](tables/architecture.md) |
 | `architecture_overview` | [architecture](tables/architecture.md) |
 | `architecture_principle` | [architecture](tables/architecture.md) |
@@ -305,7 +304,6 @@ All 146 tables with links to their detailed design documents.
 | `deployment_alerting` | [deployment](tables/deployment.md) |
 | `deployment_artifact` | [deployment](tables/deployment.md) |
 | `deployment_artifact_platform` | [deployment](tables/deployment.md) |
-| `deployment_config` | [cross-cutting](tables/cross-cutting.md) |
 | `deployment_env_infra` | [deployment](tables/deployment.md) |
 | `deployment_env_var` | [deployment](tables/deployment.md) |
 | `deployment_environment` | [deployment](tables/deployment.md) |
@@ -359,7 +357,6 @@ All 146 tables with links to their detailed design documents.
 | `integration_test_boundary` | [architecture](tables/architecture.md) |
 | `intermediate_asset` | [implementation](tables/implementation.md) |
 | `iteration` | [core](tables/core.md) |
-| `observability_config` | [cross-cutting](tables/cross-cutting.md) |
 | `operational_requirement` | [requirements](tables/requirements.md) |
 | `performance_audit_finding` | [audit](tables/audit.md) |
 | `persona` | [requirements](tables/requirements.md) |
@@ -402,7 +399,6 @@ All 146 tables with links to their detailed design documents.
 | `screen_responsive_variant` | [ux-design](tables/ux-design.md) |
 | `screen_state` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
-| `security_config` | [cross-cutting](tables/cross-cutting.md) |
 | `system_input` | [requirements](tables/requirements.md) |
 | `system_output` | [requirements](tables/requirements.md) |
 | `technology_choice` | [architecture](tables/architecture.md) |
@@ -431,4 +427,4 @@ All 146 tables with links to their detailed design documents.
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 146 tables across 12 domains**
+**Total: 144 tables across 12 domains**

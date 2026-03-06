@@ -19,8 +19,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture components (query via `changelog_query`, entity_type: "component") — for component documentation
 - Architecture API spec (`api_spec.yaml`) — for API reference generation
 - Architecture data model (query via `changelog_query`, entity_type: "data_entity") — for data documentation
-- Architecture deployment (query via `changelog_query`, entity_type: "deployment_config") — for operator docs
-- Architecture observability (query via `changelog_query`, entity_type: "observability_config") — for monitoring docs
+- Architecture deployment (query via `changelog_query`, entity_type: "architecture_config", filters: { "config_type": "deployment" }) — for operator docs
+- Architecture observability (query via `changelog_query`, entity_type: "architecture_config", filters: { "config_type": "observability" }) — for monitoring docs
 - Implementation entries (query via `changelog_query`)
 - Deployment entries (query via `changelog_query`) — optional, only available after release workflow runs
 - Codebase

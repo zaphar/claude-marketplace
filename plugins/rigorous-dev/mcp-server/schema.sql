@@ -306,34 +306,13 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
   description TEXT
 );
 
--- Security architecture
-CREATE TABLE IF NOT EXISTS security_config (
+-- Unified architecture config (security, deployment, observability)
+CREATE TABLE IF NOT EXISTS architecture_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
--- Deployment architecture
-CREATE TABLE IF NOT EXISTS deployment_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  target TEXT NOT NULL,
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
--- Observability
-CREATE TABLE IF NOT EXISTS observability_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  config_type TEXT NOT NULL CHECK(config_type IN ('security', 'deployment', 'observability')),
+  target TEXT,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,

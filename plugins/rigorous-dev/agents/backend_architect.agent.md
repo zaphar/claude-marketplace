@@ -71,7 +71,7 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular DB entries, each validated by DB constraints on insert:
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `architecture_overview`, `component`, `data_entity`, `deployment_config`, `security_config`, `observability_config`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `architecture_overview`, `component`, `data_entity`, `architecture_config`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 
 Each entry is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
 

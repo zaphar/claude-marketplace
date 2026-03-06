@@ -63,7 +63,7 @@ Use your reasoning to extract structured entities from the content — even if t
 |-------|-------------|
 | `requirements` | `persona`, `requirement` (with `acceptance_criteria`, `user_stories`, `dependencies`) |
 | `ux_design` | `user_flow`, `screen`, `design_system`, `accessibility_config` |
-| `architecture` | `adr`, `component`, `technology_choice`, `architecture_overview`, `data_entity`, `security_config`, `deployment_config`, `observability_config`, `approved_dependency` |
+| `architecture` | `adr`, `component`, `technology_choice`, `architecture_overview`, `data_entity`, `architecture_config`, `approved_dependency` |
 | `planning` | `plan_phase`, `plan_overview` |
 
 **ID Generation Rules:**

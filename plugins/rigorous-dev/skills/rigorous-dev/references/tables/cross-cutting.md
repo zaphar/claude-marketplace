@@ -11,29 +11,35 @@ These tables are written during the architecture phase after components and ADRs
 
 ## Table of Contents
 
-1. [security_config](#security_config)
-2. [deployment_config](#deployment_config)
-3. [observability_config](#observability_config)
-4. [approved_dependency](#approved_dependency)
-5. [traceability_mapping](#traceability_mapping)
-6. [blocker](#blocker)
-7. [project_lesson](#project_lesson)
+1. [architecture_config](#architecture_config)
+2. [approved_dependency](#approved_dependency)
+3. [traceability_mapping](#traceability_mapping)
+4. [blocker](#blocker)
+5. [project_lesson](#project_lesson)
 
 ---
 
-## security_config
+## architecture_config
 
 ### Purpose
 
-Stores the security architecture decisions for the system as a flat key/value configuration scoped to a logical `category`. Each row captures one security decision or setting — for example, the authentication scheme, authorization model, encryption-at-rest policy, or secrets management strategy.
+Unified key/value store for cross-cutting architecture configuration. Each row captures one architecture decision or setting — for example, an authentication scheme, a deployment scaling policy, or a logging format. The `config_type` discriminator column classifies each row as `security`, `deployment`, or `observability`, collapsing what were previously three separate tables into a single table with a consistent schema.
 
-This is intentionally a key/value store rather than a strongly-typed table so that the schema does not need to change as new security concerns emerge. Categories group related decisions; keys and values carry the substance.
+This is intentionally a key/value store rather than a strongly-typed table so that the schema does not need to change as new concerns emerge. The `config_type` selects the domain, `category` groups related decisions within that domain, and `key`/`value` carry the substance. The optional `target` column scopes entries to a specific deployment environment (e.g., `production`, `staging`) when relevant.
 
 ### Context
 
-Written by `backend_architect` after the requirements analyst has recorded any `technology_constraint` rows with security implications. The architect reads those constraints and translates them into concrete security configuration entries.
+Written by `backend_architect` during the architecture phase. Security entries are driven by `technology_constraint` rows with security implications. Deployment entries are driven by `deployment_requirement` rows. Observability entries are driven by `operational_requirement` rows.
 
-Common category values: `authentication`, `authorization`, `data_protection`, `secrets_management`, `network`, `audit_logging`, `compliance`.
+**config_type = security:**
+Common `category` values: `authentication`, `authorization`, `data_protection`, `secrets_management`, `network`, `audit_logging`, `compliance`.
+
+**config_type = deployment:**
+Common `target` values: `all`, `development`, `staging`, `production`.
+Common `category` values: `containerization`, `orchestration`, `scaling`, `networking`, `storage`, `ci_cd`, `secrets`.
+
+**config_type = observability:**
+Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_checks`, `dashboards`.
 
 ### Column Reference
 
@@ -42,35 +48,60 @@ Common category values: `authentication`, `authorization`, `data_protection`, `s
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration that produced this entry. Scopes the config to a specific development cycle. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | The producer–critic revision that created this row. |
-| `category` | TEXT | NOT NULL | — | — | Logical grouping for the setting (e.g., `authentication`, `authorization`, `data_protection`). |
-| `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `scheme`, `provider`, `algorithm`). |
-| `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JWT`, `OAuth2`, `AES-256-GCM`). |
+| `config_type` | TEXT | NOT NULL | — | CHECK IN (`security`, `deployment`, `observability`) | Discriminator column identifying which cross-cutting concern this entry belongs to. |
+| `target` | TEXT | YES | NULL | — | Deployment environment this setting applies to (e.g., `production`, `staging`, `all`). Primarily used for `config_type = 'deployment'`; NULL for security and observability entries unless environment-specific. |
+| `category` | TEXT | NOT NULL | — | — | Logical grouping within the config_type (e.g., `authentication`, `containerization`, `logging`). |
+| `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `scheme`, `runtime`, `format`). |
+| `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JWT`, `Docker`, `JSON`). |
 | `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
 
 ### Relationships
 
-- **`iteration_id` → `iteration(id)`** — Every security config entry is anchored to an iteration, enabling security posture to evolve across iterations without overwriting history.
+- **`iteration_id` → `iteration(id)`** — Every config entry is anchored to an iteration, enabling architecture to evolve across iterations without overwriting history.
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- No direct foreign keys to `requirement` or `adr`, but security decisions can be correlated via `traceability_mapping` (point `addressed_by` at a component that owns the security concern) or by reading `technology_constraint` rows that share the same `iteration_id`.
+- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `traceability_mapping` or by reading upstream requirement tables that share the same `iteration_id`.
+- Security entries are conceptually downstream of `technology_constraint` rows with security implications.
+- Deployment entries are conceptually downstream of `deployment_requirement`.
+- Observability entries are conceptually downstream of `operational_requirement`.
+- Technology choices that drive config decisions should have corresponding `adr` rows for auditability.
 
 ### MCP Tool Access
 
-**Read** (`changelog_query`):
+**Read all security config** (`changelog_query`):
 ```json
 {
-  "entity_type": "security_config",
+  "entity_type": "architecture_config",
   "iteration_id": 1,
-  "filters": { "category": "authentication" }
+  "filters": { "config_type": "security" }
 }
 ```
 
-**Write** (`changelog_insert`):
+**Read deployment config for a specific target** (`changelog_query`):
 ```json
 {
-  "entity_type": "security_config",
+  "entity_type": "architecture_config",
+  "iteration_id": 1,
+  "filters": { "config_type": "deployment", "target": "production" }
+}
+```
+
+**Read observability config by category** (`changelog_query`):
+```json
+{
+  "entity_type": "architecture_config",
+  "iteration_id": 1,
+  "filters": { "config_type": "observability", "category": "tracing" }
+}
+```
+
+**Write security entry** (`changelog_insert`):
+```json
+{
+  "entity_type": "architecture_config",
   "iteration_id": 1,
   "revision_id": 3,
   "data": {
+    "config_type": "security",
     "category": "authentication",
     "key": "scheme",
     "value": "JWT with RS256, 15-minute access tokens, 7-day refresh tokens"
@@ -78,59 +109,14 @@ Common category values: `authentication`, `authorization`, `data_protection`, `s
 }
 ```
 
----
-
-## deployment_config
-
-### Purpose
-
-Records the deployment architecture for every target environment the system must run in. Like `security_config`, this is a key/value store scoped by both `target` (the environment) and `category` (the concern area), enabling the architect to capture deployment decisions for dev, staging, and production independently without schema duplication.
-
-### Context
-
-Written by `backend_architect` after `deployment_requirement` rows have been established by the requirements analyst. The architect translates high-level deployment requirements into concrete configuration decisions (container runtime, orchestration platform, scaling policy, network topology, etc.).
-
-Common `target` values: `all`, `development`, `staging`, `production`.
-Common `category` values: `containerization`, `orchestration`, `scaling`, `networking`, `storage`, `ci_cd`, `secrets`.
-
-### Column Reference
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this entry. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this entry. |
-| `target` | TEXT | NOT NULL | — | — | Deployment environment this setting applies to (e.g., `production`, `staging`, `all`). |
-| `category` | TEXT | NOT NULL | — | — | Concern area within the target (e.g., `containerization`, `scaling`, `networking`). |
-| `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `runtime`, `min_replicas`, `ingress_controller`). |
-| `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `Docker`, `3`, `nginx`). |
-| `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
-
-### Relationships
-
-- **`iteration_id` → `iteration(id)`** — Scopes all deployment decisions to an iteration.
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- Conceptually downstream of `deployment_requirement` (same `iteration_id`), though there is no enforced FK between them.
-- Technology choices that drive deployment decisions (e.g., "use Kubernetes") should have a corresponding `adr` row for auditability.
-
-### MCP Tool Access
-
-**Read** (`changelog_query`):
+**Write deployment entry** (`changelog_insert`):
 ```json
 {
-  "entity_type": "deployment_config",
-  "iteration_id": 1,
-  "filters": { "target": "production", "category": "scaling" }
-}
-```
-
-**Write** (`changelog_insert`):
-```json
-{
-  "entity_type": "deployment_config",
+  "entity_type": "architecture_config",
   "iteration_id": 1,
   "revision_id": 3,
   "data": {
+    "config_type": "deployment",
     "target": "production",
     "category": "scaling",
     "key": "min_replicas",
@@ -139,57 +125,14 @@ Common `category` values: `containerization`, `orchestration`, `scaling`, `netwo
 }
 ```
 
----
-
-## observability_config
-
-### Purpose
-
-Captures the observability strategy for the system: logging configuration, metrics collection, distributed tracing, alerting rules, and health check endpoints. Like the other config tables, this is a key/value store grouped by `category`, giving the architect flexibility to record any observability concern without schema migration.
-
-### Context
-
-Written by `backend_architect` alongside (or immediately after) security and deployment config. Driven by `operational_requirement` rows that specify what uptime/SLA targets must be met and what must be monitored (via category). The architect translates those requirements into concrete tooling and configuration decisions.
-
-Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_checks`, `dashboards`.
-
-### Column Reference
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this entry. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this entry. |
-| `category` | TEXT | NOT NULL | — | — | Observability concern area (e.g., `logging`, `metrics`, `tracing`, `alerting`). |
-| `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `format`, `aggregator`, `retention_days`, `sampling_rate`). |
-| `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JSON`, `Prometheus`, `30`, `0.1`). |
-| `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
-
-### Relationships
-
-- **`iteration_id` → `iteration(id)`** — Scopes observability decisions to an iteration.
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- Semantically downstream of `operational_requirement`; that table specifies *what* must be observed (via categorised rows), this table specifies *how*.
-- Technology choices for observability tooling (e.g., "use OpenTelemetry") should have corresponding `adr` rows.
-
-### MCP Tool Access
-
-**Read** (`changelog_query`):
+**Write observability entry** (`changelog_insert`):
 ```json
 {
-  "entity_type": "observability_config",
-  "iteration_id": 1,
-  "filters": { "category": "tracing" }
-}
-```
-
-**Write** (`changelog_insert`):
-```json
-{
-  "entity_type": "observability_config",
+  "entity_type": "architecture_config",
   "iteration_id": 1,
   "revision_id": 3,
   "data": {
+    "config_type": "observability",
     "category": "tracing",
     "key": "provider",
     "value": "OpenTelemetry with Jaeger backend"
@@ -550,16 +493,22 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 
 ### Querying all cross-cutting config for an iteration
 
-All seven tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
+All five tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
 
 ```json
-{ "entity_type": "security_config",      "iteration_id": 1 }
-{ "entity_type": "deployment_config",    "iteration_id": 1 }
-{ "entity_type": "observability_config", "iteration_id": 1 }
+{ "entity_type": "architecture_config",  "iteration_id": 1 }
 { "entity_type": "approved_dependency",  "iteration_id": 1 }
 { "entity_type": "traceability_mapping", "iteration_id": 1 }
 { "entity_type": "blocker",             "iteration_id": 1 }
 { "entity_type": "project_lesson",      "iteration_id": 1 }
+```
+
+To query a specific config_type within architecture_config:
+
+```json
+{ "entity_type": "architecture_config", "iteration_id": 1, "filters": { "config_type": "security" } }
+{ "entity_type": "architecture_config", "iteration_id": 1, "filters": { "config_type": "deployment" } }
+{ "entity_type": "architecture_config", "iteration_id": 1, "filters": { "config_type": "observability" } }
 ```
 
 ### Detecting unaddressed requirements

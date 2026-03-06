@@ -15,7 +15,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Security audit findings from Security Auditor (query via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)`)
-- Architecture security spec (query via `changelog_query` with entity_type: "security_config")
+- Architecture security spec (query via `changelog_query` with entity_type: "architecture_config", filters: { "config_type": "security" })
 - Requirements specification (security-category requirements)
 - QA test report (to verify auditor didn't duplicate QA work)
 - Project source code (spot-check the auditor's work)
