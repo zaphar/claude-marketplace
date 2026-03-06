@@ -142,24 +142,30 @@ project (singleton, id=1)
 
 #### Review Process
 
-**⚠️ PRIORITY ONE — Schema-Documentation Agreement:**
-In every review (change review or deep audit), the FIRST thing you check is whether `schema.sql` and the documentation in `references/schemas-overview.md` and `references/tables/*.md` agree. Schema-documentation conflicts are the most dangerous class of bug in this plugin — they cause agents to produce incorrect database operations, silently corrupt data, and cascade into every downstream phase. A single undocumented column rename can break every agent that references that column. **Never approve a change that introduces or leaves a schema-documentation conflict unresolved.**
+**⚠️ PRIORITY ONE — Schema-Documentation Agreement & Handler Coverage:**
+In every review (change review or deep audit), the FIRST things you check are:
+1. Whether `schema.sql` and the documentation in `references/schemas-overview.md` and `references/tables/*.md` agree. Schema-documentation conflicts cause agents to produce incorrect database operations, silently corrupt data, and cascade into every downstream phase.
+2. Whether every table in `schema.sql` has MCP handler coverage (both write and read paths). Tables without handlers are invisible to agents — entire workflow phases will silently fail or crash at runtime. This happened before (77 of 148 tables had no handlers, breaking 5 phases) and must never happen again.
+
+**Never approve a change that introduces or leaves a schema-documentation conflict or handler coverage gap unresolved.**
 
 **When reviewing changes (producer-critic loop):**
 1. Run all Step 0 discovery commands to establish the current plugin state
 2. **Check schema-documentation agreement first** — if the change touches `schema.sql`, `schemas-overview.md`, or any `references/tables/*.md` file, verify they all agree. If they already disagreed before the change, flag that too.
-3. Read the developer's summary of changes and list of modified files
-4. For each modified file, read it and validate against the checklists below
-5. Trace all cross-references from modified files to find secondary impacts
-6. Produce a structured verdict
+3. **Check handler coverage** — if the change touches `schema.sql` (new tables), verify corresponding handlers exist in `write-tools.js` and read paths exist in `read-tools.js`. If the change touches handlers, verify they cover all child tables.
+4. Read the producer's summary of changes and list of modified files
+5. For each modified file, read it and validate against the checklists below
+6. Trace all cross-references from modified files to find secondary impacts
+7. Produce a structured verdict
 
 **When performing standalone audit (deep audit mode):**
 1. Run all Step 0 discovery commands to establish the current plugin state
-2. **Run the Schema Documentation Divergence checklist first** — walk every table in `schema.sql` and verify it appears correctly in the documentation. This is the highest-value check in the entire audit.
-3. Systematically walk through every remaining checklist item below, using discovery results as the authoritative reference
-4. Read files as needed — start with SKILL.md agent tables, then cross-reference against discovered agent files, then README.md
-5. Check MCP tool references by grepping agent files for discovered tool names
-6. Produce a comprehensive audit report
+2. **Run the Schema Documentation Divergence checklist first** — walk every table in `schema.sql` and verify it appears correctly in the documentation.
+3. **Run the SQL Table ↔ MCP Handler Coverage checklist** — verify every table has write and read paths. This is equally high-value.
+4. Systematically walk through every remaining checklist item below, using discovery results as the authoritative reference
+5. Read files as needed — start with SKILL.md agent tables, then cross-reference against discovered agent files, then README.md
+6. Check MCP tool references by grepping agent files for discovered tool names
+7. Produce a comprehensive audit report
 
 ---
 
@@ -229,6 +235,33 @@ Verify that patterns, vocabulary, and relationships are coherent across the plug
 - [ ] DB column names referenced in agent instructions match actual columns in `schema.sql`
 - [ ] Table documentation in `references/tables/` matches actual table definitions in `schema.sql`
 - [ ] Every domain in the discovered `ENTITY_TABLE` has a corresponding doc in `references/tables/`
+
+**SQL Table ↔ MCP Handler Coverage (⚠️ blocking if failed):**
+
+Every table in `schema.sql` MUST have a corresponding MCP handler path for both reads and writes. Tables without handlers are invisible to agents — data cannot be stored or retrieved, and agents that reference them will fail silently or crash at runtime. This is the most dangerous class of coverage gap because it can go undetected until a workflow phase is actually exercised.
+
+Discovery commands for this check:
+```bash
+# All tables in schema
+grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql | sed 's/CREATE TABLE //' | sed 's/ .*//'
+
+# All entity types with write handlers (in changelog_insert enum AND handlers map)
+grep -o 'name: "[a-z_]*"' plugins/rigorous-dev/mcp-server/write-tools.js
+
+# All entity types with read support
+grep -A 50 'const ENTITY_TABLE' plugins/rigorous-dev/mcp-server/read-tools.js
+
+# Entity types in enum but potentially missing from handlers map
+grep -A 80 'handlers\[' plugins/rigorous-dev/mcp-server/write-tools.js
+```
+
+Checklist:
+- [ ] Every entity type in the `changelog_insert` enum has a matching handler function in the `handlers` map — an enum entry without a handler will throw `"Unsupported entity_type"` at runtime
+- [ ] Every table in `schema.sql` is reachable via at least one write path — either as a direct handler, a child table written by a parent handler, or a utility table with automatic writes
+- [ ] Every table in `schema.sql` is reachable via at least one read path — either via `ENTITY_TABLE` + `changelog_query`, via `attachRelated` as a child, or via a dedicated read tool (`project_status`, `iteration_summary`, `revision_history`, `traceability_query`)
+- [ ] Parent handlers that insert child tables cover ALL child tables defined in `schema.sql` for that parent — missing children mean data goes into the parent but related detail is silently dropped
+- [ ] `attachRelated` cases that read child tables cover ALL child tables for that parent — missing children mean data exists in the DB but is invisible to agents on reads
+- [ ] Documentation in `references/tables/*.md` does not claim handler access for tables that lack handlers, and does not warn about missing handlers for tables that have them
 
 **Schema Documentation Divergence (⚠️ blocking if failed):**
 - [ ] `schemas-overview.md` lists every table that exists in `schema.sql` (no missing, no extra)
@@ -304,6 +337,7 @@ Verify that agents are clear, usable, and follow established patterns.
 
 ### Cross-Reference Verification
 - ⚠️ Schema ↔ Documentation agreement: [PASS | FAIL — details]
+- ⚠️ SQL Table ↔ MCP Handler coverage: [PASS | FAIL — details]
 - Agent files ↔ SKILL.md tables: [PASS | FAIL — details]
 - Agent files ↔ README.md: [PASS | FAIL — details]
 - MCP tool references: [PASS | FAIL — details]
@@ -312,7 +346,7 @@ Verify that agents are clear, usable, and follow established patterns.
 ```
 
 **Issue Categories:**
-- **Blocking**: Must fix before approval. Schema-documentation conflicts, broken cross-references, missing agents, incorrect tool names, structural violations. **Schema-documentation conflicts are always blocking — no exceptions.**
+- **Blocking**: Must fix before approval. Schema-documentation conflicts, broken cross-references, missing agents, incorrect tool names, structural violations, **tables without MCP handler coverage**. **Schema-documentation conflicts and handler coverage gaps are always blocking — no exceptions.**
 - **Recommended**: Should fix but not blocking. Inconsistent wording, missing context management guidance, weak checklist items.
 - **Suggestion**: Optional improvements. Style preferences, additional examples, clarity enhancements.
 
@@ -364,4 +398,4 @@ This agent reviews many agent files, command files, a large SKILL.md, and MCP se
 - **For change reviews:** Only read files that were modified and their direct cross-references. Do not read the entire plugin.
 - **For deep audits:** Work systematically by checklist category. Complete correctness checks first (cross-references are highest value), then consistency, then ergonomics. Write findings after each category before moving to the next.
 - **Use grep aggressively:** Instead of reading entire files, grep for specific patterns (tool names, agent references, frontmatter fields).
-- **Prioritize if context gets tight:** Schema-documentation agreement > cross-reference correctness > vocabulary consistency > agent structure > ergonomics.
+- **Prioritize if context gets tight:** Schema-documentation agreement > SQL table ↔ MCP handler coverage > cross-reference correctness > vocabulary consistency > agent structure > ergonomics.
