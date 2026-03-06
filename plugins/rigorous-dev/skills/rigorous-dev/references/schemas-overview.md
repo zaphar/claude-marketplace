@@ -102,10 +102,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `screen_component` | ux_designer | UI components on each screen. |
 | `screen_state` | ux_designer | State variants (loading, empty, error, populated). |
 | `screen_responsive_variant` | ux_designer | Responsive breakpoint behavior. |
-| `design_system` | ux_designer | Colors, typography, spacing, component library. |
-| `accessibility_config` | ux_designer | WCAG level, focus management, ARIA patterns. |
-| `responsive_config` | ux_designer | Breakpoints and layout strategy. |
-| `feedback_pattern` | ux_designer | Loading indicators, success/error toast patterns. |
+| `ux_config` | ux_designer | Unified UX config: design system tokens, accessibility, responsive, feedback patterns. Discriminated by `config_type`. |
 | `info_architecture` | ux_designer | Navigation structure, sitemap. |
 | `persona_addressed` / `persona_addressed_flow` | ux_designer | Which personas each UX design addresses. |
 | `ux_asset` | ux_designer | Mockup/asset references. |
@@ -278,11 +275,10 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 144 tables with links to their detailed design documents.
+All 141 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
-| `accessibility_config` | [ux-design](tables/ux-design.md) |
 | `adr` | [architecture](tables/architecture.md) |
 | `adr_alternative` | [architecture](tables/architecture.md) |
 | `adr_consequence` | [architecture](tables/architecture.md) |
@@ -328,7 +324,6 @@ All 144 tables with links to their detailed design documents.
 | `deployment_stage_step` | [deployment](tables/deployment.md) |
 | `deployment_stage_trigger` | [deployment](tables/deployment.md) |
 | `deployment_target` | [deployment](tables/deployment.md) |
-| `design_system` | [ux-design](tables/ux-design.md) |
 | `documentation_asset` | [documentation](tables/documentation.md) |
 | `documentation_feature` | [documentation](tables/documentation.md) |
 | `documentation_feature_requirement` | [documentation](tables/documentation.md) |
@@ -339,7 +334,6 @@ All 144 tables with links to their detailed design documents.
 | `documentation_section` | [documentation](tables/documentation.md) |
 | `documentation_verification` | [documentation](tables/documentation.md) |
 | `entity_snapshot` | Core | JSON history of entity changes across revisions |
-| `feedback_pattern` | [ux-design](tables/ux-design.md) |
 | `implementation_api_endpoint` | [implementation](tables/implementation.md) |
 | `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |
 | `implementation_blocker` | [implementation](tables/implementation.md) |
@@ -392,7 +386,6 @@ All 144 tables with links to their detailed design documents.
 | `requirement_acceptance_criterion` | [requirements](tables/requirements.md) |
 | `requirement_dependency` | [requirements](tables/requirements.md) |
 | `requirement_persona` | [requirements](tables/requirements.md) |
-| `responsive_config` | [ux-design](tables/ux-design.md) |
 | `revision` | [core](tables/core.md) |
 | `screen` | [ux-design](tables/ux-design.md) |
 | `screen_component` | [ux-design](tables/ux-design.md) |
@@ -424,7 +417,8 @@ All 144 tables with links to their detailed design documents.
 | `user_flow_step` | [ux-design](tables/ux-design.md) |
 | `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
 | `ux_asset` | [ux-design](tables/ux-design.md) |
+| `ux_config` | [ux-design](tables/ux-design.md) |
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 144 tables across 12 domains**
+**Total: 141 tables across 12 domains**

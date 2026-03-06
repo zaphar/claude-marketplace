@@ -436,44 +436,12 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
   layout_changes TEXT
 );
 
--- UX: design system
-CREATE TABLE IF NOT EXISTS design_system (
+-- UX: unified config (design system, accessibility, responsive, feedback patterns)
+CREATE TABLE IF NOT EXISTS ux_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
--- UX: accessibility
-CREATE TABLE IF NOT EXISTS accessibility_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
--- UX: responsive config
-CREATE TABLE IF NOT EXISTS responsive_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
--- UX: feedback patterns
-CREATE TABLE IF NOT EXISTS feedback_pattern (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  config_type TEXT NOT NULL CHECK(config_type IN ('design_system', 'accessibility', 'responsive', 'feedback_pattern')),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,

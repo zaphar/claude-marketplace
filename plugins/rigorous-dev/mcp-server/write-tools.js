@@ -1868,18 +1868,19 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   return { entity_type: "deployment_manifest", id: manifest_id };
 }
 
-function insertDesignSystem(db, iteration_id, revision_id, data) {
+function insertUxConfig(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO design_system (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO ux_config (iteration_id, revision_id, config_type, category, key, value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
       iteration_id,
       revision_id,
+      entry.config_type,
       entry.category,
       entry.key,
       entry.value,
@@ -1887,73 +1888,7 @@ function insertDesignSystem(db, iteration_id, revision_id, data) {
     );
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "design_system", id: lastId };
-}
-
-function insertAccessibilityConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO accessibility_config (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.category,
-      entry.key,
-      entry.value,
-      now
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "accessibility_config", id: lastId };
-}
-
-function insertResponsiveConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO responsive_config (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.category,
-      entry.key,
-      entry.value,
-      now
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "responsive_config", id: lastId };
-}
-
-function insertFeedbackPattern(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO feedback_pattern (iteration_id, revision_id, category, key, value, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.category,
-      entry.key,
-      entry.value,
-      now
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "feedback_pattern", id: lastId };
+  return { entity_type: "ux_config", id: lastId };
 }
 
 function insertInfoArchitecture(db, iteration_id, revision_id, data) {
@@ -2065,10 +2000,7 @@ function changelogInsert(args) {
     approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
-    design_system: insertDesignSystem,
-    accessibility_config: insertAccessibilityConfig,
-    responsive_config: insertResponsiveConfig,
-    feedback_pattern: insertFeedbackPattern,
+    ux_config: insertUxConfig,
     info_architecture: insertInfoArchitecture,
     persona_addressed: insertPersonaAddressed,
     ux_asset: insertUxAsset,
@@ -2256,10 +2188,7 @@ export const WRITE_TOOLS = [
             "traceability_mapping",
             "user_flow",
             "screen",
-            "design_system",
-            "accessibility_config",
-            "responsive_config",
-            "feedback_pattern",
+            "ux_config",
             "info_architecture",
             "persona_addressed",
             "ux_asset",
