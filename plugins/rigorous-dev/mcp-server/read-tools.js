@@ -40,6 +40,8 @@ const ENTITY_TABLE = {
   security_audit_finding: "security_audit_finding",
   performance_audit_finding: "performance_audit_finding",
   intermediate_asset: "intermediate_asset",
+  asset_deliverable: "asset_deliverable",
+  vcs_commit: "vcs_commit",
 };
 
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
