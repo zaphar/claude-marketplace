@@ -1850,6 +1850,55 @@ function changelogInsert(args) {
   return run();
 }
 
+function changelogUpdate(args) {
+  const db = getDb();
+  const { entity_type, entity_id, updates } = args;
+
+  const ALLOWED_TYPES = {
+    security_audit_finding: {
+      table: "security_audit_finding",
+      statuses: ["open", "resolved", "accepted", "false-positive"],
+    },
+    performance_audit_finding: {
+      table: "performance_audit_finding",
+      statuses: ["open", "resolved", "accepted", "deferred"],
+    },
+  };
+
+  const config = ALLOWED_TYPES[entity_type];
+  if (!config) {
+    throw new Error(
+      `changelog_update does not support entity_type: ${entity_type}. Allowed: ${Object.keys(ALLOWED_TYPES).join(", ")}`
+    );
+  }
+
+  const setClauses = [];
+  const params = { entity_id };
+
+  if (updates.status !== undefined) {
+    if (!config.statuses.includes(updates.status)) {
+      throw new Error(
+        `Invalid status '${updates.status}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
+      );
+    }
+    setClauses.push("status = @status");
+    params.status = updates.status;
+  }
+
+  if (setClauses.length === 0) {
+    throw new Error("No valid fields provided in updates");
+  }
+
+  const sql = `UPDATE ${config.table} SET ${setClauses.join(", ")} WHERE id = @entity_id`;
+  const info = db.prepare(sql).run(params);
+
+  if (info.changes === 0) {
+    throw new Error(`${entity_type} with id=${entity_id} not found`);
+  }
+
+  return { entity_type, entity_id, updated_fields: Object.keys(updates) };
+}
+
 function commitLink(args) {
   const db = getDb();
   const { iteration_id, phase_id, commit_sha, message } = args;
@@ -2034,6 +2083,36 @@ export const WRITE_TOOLS = [
     },
   },
   {
+    name: "changelog_update",
+    description:
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding and performance_audit_finding records through their lifecycle (e.g. open → resolved).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_type: {
+          type: "string",
+          enum: ["security_audit_finding", "performance_audit_finding"],
+        },
+        entity_id: {
+          type: "integer",
+          description: "The row ID of the entity to update",
+        },
+        updates: {
+          type: "object",
+          description: "Fields to update. Only provided fields are changed.",
+          properties: {
+            status: {
+              type: "string",
+              description:
+                "New status. security_audit_finding: open|resolved|accepted|false-positive. performance_audit_finding: open|resolved|accepted|deferred.",
+            },
+          },
+        },
+      },
+      required: ["entity_type", "entity_id", "updates"],
+    },
+  },
+  {
     name: "commit_link",
     description: "Links a VCS commit to an iteration and optionally a phase.",
     inputSchema: {
@@ -2092,6 +2171,8 @@ export function handleWriteTool(name, args) {
       return revisionUpdate(args);
     case "changelog_insert":
       return changelogInsert(args);
+    case "changelog_update":
+      return changelogUpdate(args);
     case "commit_link":
       return commitLink(args);
     case "project_update":

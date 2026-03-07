@@ -143,7 +143,21 @@ How would you like to proceed?
 
 Use the ask_user tool to get the user's decision.
 
-### Step 4: Final Report
+### Step 4: Commit
+
+After the critic approves (or the orchestrator fixes blocking issues and is satisfied), **immediately commit the changes to git** before moving to the next work unit. Every approved change must be committed before any subsequent work begins.
+
+```bash
+git add -A && git commit -m "<WU-ID>: <concise description>
+
+<details of what changed>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+Never batch multiple work units into a single commit. Each WU gets its own commit so changes can be reviewed and reverted independently.
+
+### Step 5: Final Report
 
 ```
 ✅ Plugin Update Complete
@@ -152,6 +166,7 @@ Change: [description]
 Complexity: [Simple | Moderate | Complex]
 Revisions: [N]
 Files modified: [count]
+Commit: [hash]
 
 Modified files:
 - [file path]: [brief description of change]
@@ -458,3 +473,4 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
 8. **Schema audit findings go through producer-critic** — When the user wants to fix schema audit findings, each fix enters Update Mode and goes through the full producer-critic loop. The schema auditor identifies issues; the producer-critic loop implements fixes.
 9. **Keep producer tasks small** — A single producer call should touch ≤3 files. Changes spanning 4+ files must be split into sequential sub-tasks. Long-running agents risk API streaming timeouts; smaller tasks complete faster and retry cleanly. Never run multiple producers in parallel — sequential execution avoids rate limiting and thundering-herd failures.
+10. **Commit after every work unit** — Each approved work unit must be committed to git immediately, before starting the next one. Never batch multiple work units into a single commit. This ensures changes are independently reviewable and revertable.
