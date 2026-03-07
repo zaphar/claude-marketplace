@@ -63,9 +63,9 @@ Central record for one implementation work chunk. A phase groups related develop
 | `status` | TEXT | NOT NULL, DEFAULT `'pending'`, CHECK(`pending` \| `test_writing` \| `implementing` \| `completed`) | `'pending'` | Tracks sub-phase progress during implementation. `test_writing` while tests are being written; `implementing` while implementation is in progress; `completed` when the sub-phase is fully approved. |
 | `complexity` | TEXT | CHECK(`XS` \| `S` \| `M` \| `L` \| `XL`), nullable | — | T-shirt size effort estimate. NULL means unestimated. |
 | `review_checkpoint` | INTEGER | — | `0` | Boolean flag (0/1). When `1`, a review checkpoint is required before subsequent phases begin. |
-| `entry_criteria` | TEXT | — | `'[]'` | JSON array of strings. Each string is a precondition that must be true before this phase can begin (e.g., `"Phase 2 is complete and approved"`). Replaces the former `plan_phase_entry_criterion` child table. |
-| `exit_criteria` | TEXT | — | `'[]'` | JSON array of strings. Each string is a done-condition that must be met before the phase is considered complete (e.g., `"All unit tests pass with ≥80% coverage"`). Replaces the former `plan_phase_exit_criterion` child table. |
-| `checkpoint_focus` | TEXT | — | `'[]'` | JSON array of strings drawn from a fixed vocabulary (`requirements`, `architecture`, `ux`). Only populated when `review_checkpoint = 1`. Indicates which domains to examine during the checkpoint. Replaces the former `plan_checkpoint_focus` child table. |
+| `entry_criteria` | TEXT | NOT NULL | `'[]'` | JSON array of strings. Each string is a precondition that must be true before this phase can begin (e.g., `"Phase 2 is complete and approved"`). Replaces the former `plan_phase_entry_criterion` child table. |
+| `exit_criteria` | TEXT | NOT NULL | `'[]'` | JSON array of strings. Each string is a done-condition that must be met before the phase is considered complete (e.g., `"All unit tests pass with ≥80% coverage"`). Replaces the former `plan_phase_exit_criterion` child table. |
+| `checkpoint_focus` | TEXT | NOT NULL | `'[]'` | JSON array of strings drawn from a fixed vocabulary (`requirements`, `architecture`, `ux`). Only populated when `review_checkpoint = 1`. Indicates which domains to examine during the checkpoint. Replaces the former `plan_checkpoint_focus` child table. |
 | `notes` | TEXT | nullable | — | Free-form notes from the planner (caveats, open questions, reminders). |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
@@ -283,7 +283,7 @@ Represents one database migration required within a phase. Each row is a named m
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that runs this migration. |
 | `migration_name` | TEXT | NOT NULL | — | Unique name for this migration (e.g., `001_create_users_table`). Should be sortable/versioned. |
 | `description` | TEXT | nullable | — | What this migration does (e.g., "Creates `users` and `sessions` tables with indexes on email"). |
-| `tables` | TEXT | — | `'[]'` | JSON array of table name strings affected by this migration (e.g., `["users", "sessions"]`). Replaces the former `plan_phase_db_change_table` child table. |
+| `tables` | TEXT | NOT NULL | `'[]'` | JSON array of table name strings affected by this migration (e.g., `["users", "sessions"]`). Replaces the former `plan_phase_db_change_table` child table. |
 
 ### Relationships
 
@@ -430,7 +430,7 @@ One row per planning revision: the high-level summary of the entire implementati
 | `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
 | `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
 | `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
-| `assumptions` | TEXT | — | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
+| `assumptions` | TEXT | NOT NULL | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
 ### Relationships

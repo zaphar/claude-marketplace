@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS persona (
   description TEXT NOT NULL,
   technical_level TEXT,
   frequency_of_use TEXT,
-  goals TEXT DEFAULT '[]',
+  goals TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS requirement (
   rationale TEXT,
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
   category TEXT NOT NULL,
-  acceptance_criteria TEXT DEFAULT '[]',
+  acceptance_criteria TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -161,8 +161,8 @@ CREATE TABLE IF NOT EXISTS adr (
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
   superseded_by TEXT REFERENCES adr(id) ON DELETE SET NULL,
-  consequences TEXT DEFAULT '[]',
-  research_sources TEXT DEFAULT '[]',
+  consequences TEXT NOT NULL DEFAULT '[]',
+  research_sources TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS architecture_overview (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
-  principles TEXT DEFAULT '[]',
+  principles TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -328,7 +328,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
   persona_id TEXT REFERENCES persona(id) ON DELETE SET NULL,
   entry_point TEXT,
   success_state TEXT,
-  data_dependencies TEXT DEFAULT '[]',
+  data_dependencies TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -371,7 +371,7 @@ CREATE TABLE IF NOT EXISTS screen (
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
   mockup_path TEXT,
-  components TEXT DEFAULT '[]',
+  components TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -458,9 +458,9 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')),
   review_checkpoint INTEGER DEFAULT 0,
   notes TEXT,
-  entry_criteria TEXT DEFAULT '[]',
-  exit_criteria TEXT DEFAULT '[]',
-  checkpoint_focus TEXT DEFAULT '[]',
+  entry_criteria TEXT NOT NULL DEFAULT '[]',
+  exit_criteria TEXT NOT NULL DEFAULT '[]',
+  checkpoint_focus TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -503,7 +503,7 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   migration_name TEXT NOT NULL,
   description TEXT,
-  tables TEXT DEFAULT '[]'
+  tables TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_dependency (
@@ -534,7 +534,7 @@ CREATE TABLE IF NOT EXISTS plan_overview (
   strategy TEXT NOT NULL,
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
-  assumptions TEXT DEFAULT '[]',
+  assumptions TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -764,7 +764,7 @@ CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
   criterion TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'not_tested')),
   notes TEXT,
-  test_ids TEXT DEFAULT '[]'
+  test_ids TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS test_suite (
@@ -925,7 +925,7 @@ CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   documented INTEGER DEFAULT 0,
   user_facing INTEGER DEFAULT 0,
   notes TEXT,
-  paths TEXT DEFAULT '[]',
+  paths TEXT NOT NULL DEFAULT '[]',
   UNIQUE(manifest_id, requirement_id)
 );
 
@@ -951,8 +951,8 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
-  targets TEXT DEFAULT '[]',
-  blockers TEXT DEFAULT '[]',
+  targets TEXT NOT NULL DEFAULT '[]',
+  blockers TEXT NOT NULL DEFAULT '[]',
   version TEXT,
   document_date TEXT,
   requirements_version TEXT,
@@ -966,7 +966,7 @@ CREATE TABLE IF NOT EXISTS deployment_pipeline (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
-  config_files TEXT DEFAULT '[]'
+  config_files TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
@@ -974,8 +974,8 @@ CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
   pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
-  triggers TEXT DEFAULT '[]',
-  steps TEXT DEFAULT '[]'
+  triggers TEXT NOT NULL DEFAULT '[]',
+  steps TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
@@ -1025,7 +1025,7 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
   type TEXT NOT NULL CHECK(type IN ('container-image', 'binary', 'archive', 'package', 'installer')),
   registry TEXT,
   versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')),
-  platforms TEXT DEFAULT '[]'
+  platforms TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_signing (
@@ -1040,8 +1040,8 @@ CREATE TABLE IF NOT EXISTS deployment_local_executable (
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   installation_method TEXT,
   update_mechanism TEXT,
-  platforms TEXT DEFAULT '[]',
-  channels TEXT DEFAULT '[]'
+  platforms TEXT NOT NULL DEFAULT '[]',
+  channels TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_secret (

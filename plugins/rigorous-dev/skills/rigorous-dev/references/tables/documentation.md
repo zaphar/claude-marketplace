@@ -243,7 +243,7 @@ This table is the primary coverage report used by the documentation_critic. A re
 | `documented` | INTEGER | NULL | `0` | — | Boolean flag (0/1) — requirement has documentation |
 | `user_facing` | INTEGER | NULL | `0` | — | Boolean flag (0/1) — requirement requires end-user documentation |
 | `notes` | TEXT | NULL | — | — | Free-form notes on coverage status or exceptions |
-| `paths` | TEXT | NULL | `'[]'` | — | JSON array of file path strings where this requirement is documented (e.g., `["docs/README.md", "docs/features/auth.md"]`). Replaces the former `documentation_requirement_path` child table. |
+| `paths` | TEXT | NOT NULL | `'[]'` | — | JSON array of file path strings where this requirement is documented (e.g., `["docs/README.md", "docs/features/auth.md"]`). Replaces the former `documentation_requirement_path` child table. |
 
 ### Relationships
 

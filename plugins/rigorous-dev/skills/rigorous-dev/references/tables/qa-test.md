@@ -123,7 +123,7 @@ Each requirement has one or more acceptance criteria (stored as the `acceptance_
 | `criterion` | TEXT | NOT NULL | — | The acceptance criterion text (verbatim from the requirement) |
 | `status` | TEXT | NOT NULL, CHECK(`pass`, `fail`, `not_tested`) | — | Whether this criterion was satisfied |
 | `notes` | TEXT | — | NULL | Optional evidence, failure details, or explanation |
-| `test_ids` | TEXT | — | `'[]'` | JSON array of test case identifier strings that verify this criterion (e.g., `["auth.login.valid_credentials", "auth.login.expired_token"]`). Each value should match a `test_case.test_id`. Replaces the former `test_acceptance_criterion_test_id` child table. |
+| `test_ids` | TEXT | NOT NULL | `'[]'` | JSON array of test case identifier strings that verify this criterion (e.g., `["auth.login.valid_credentials", "auth.login.expired_token"]`). Each value should match a `test_case.test_id`. Replaces the former `test_acceptance_criterion_test_id` child table. |
 
 ### Relationships
 

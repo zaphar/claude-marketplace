@@ -66,8 +66,8 @@ deployment_manifest
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Links to the workflow iteration this release covers. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Links to the specific producer-critic revision attempt. |
 | `status` | TEXT | NOT NULL, CHECK IN (`ready`, `not_ready`, `blocked`) | — | Overall release readiness. `blocked` means hard blockers prevent deployment. |
-| `targets` | TEXT | — | `'[]'` | JSON array of deployment target strings (e.g., `["private-cloud", "local-executable"]`). Replaces the former `deployment_target` child table. |
-| `blockers` | TEXT | — | `'[]'` | JSON array of blocker description strings (e.g., `["DNS records not configured"]`). When `status` is `blocked`, this array must be non-empty. Replaces the former `deployment_manifest_blocker` child table. |
+| `targets` | TEXT | NOT NULL | `'[]'` | JSON array of deployment target strings (e.g., `["private-cloud", "local-executable"]`). Replaces the former `deployment_target` child table. |
+| `blockers` | TEXT | NOT NULL | `'[]'` | JSON array of blocker description strings (e.g., `["DNS records not configured"]`). When `status` is `blocked`, this array must be non-empty. Replaces the former `deployment_manifest_blocker` child table. |
 | `version` | TEXT | — | NULL | Version label for this manifest (e.g., `1.0.0`, `v2`). Formerly in `deployment_manifest_metadata`. |
 | `document_date` | TEXT | — | NULL | ISO-8601 timestamp when this metadata was created. Formerly `created` in `deployment_manifest_metadata`. |
 | `requirements_version` | TEXT | — | NULL | Version of the requirements specification consulted. Formerly in `deployment_manifest_metadata`. |
@@ -98,7 +98,7 @@ deployment_manifest
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by child stage tables. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `platform` | TEXT | NOT NULL | — | CI/CD platform name (e.g., `github-actions`, `gitlab-ci`, `circleci`). Free text — no enum constraint. |
-| `config_files` | TEXT | — | `'[]'` | JSON array of file path strings for CI/CD configuration files (e.g., `[".github/workflows/release.yml"]`). Replaces the former `deployment_pipeline_config_file` child table. |
+| `config_files` | TEXT | NOT NULL | `'[]'` | JSON array of file path strings for CI/CD configuration files (e.g., `[".github/workflows/release.yml"]`). Replaces the former `deployment_pipeline_config_file` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
@@ -123,8 +123,8 @@ deployment_manifest
 | `pipeline_id` | INTEGER | NOT NULL, FK → `deployment_pipeline(id)` | — | Parent pipeline. |
 | `name` | TEXT | NOT NULL | — | Stage name (e.g., `build`, `integration-test`, `deploy-production`). |
 | `purpose` | TEXT | NOT NULL | — | Human-readable description of what this stage does. |
-| `triggers` | TEXT | — | `'[]'` | JSON array of trigger description strings (e.g., `["on: push to main", "manual approval required"]`). Replaces the former `deployment_stage_trigger` child table. |
-| `steps` | TEXT | — | `'[]'` | JSON array of step description strings (e.g., `["checkout", "go build", "docker push"]`). Replaces the former `deployment_stage_step` child table. |
+| `triggers` | TEXT | NOT NULL | `'[]'` | JSON array of trigger description strings (e.g., `["on: push to main", "manual approval required"]`). Replaces the former `deployment_stage_trigger` child table. |
+| `steps` | TEXT | NOT NULL | `'[]'` | JSON array of step description strings (e.g., `["checkout", "go build", "docker push"]`). Replaces the former `deployment_stage_step` child table. |
 
 **Relationships:**
 - Parent: `deployment_pipeline` (via `pipeline_id`)
@@ -262,7 +262,7 @@ deployment_manifest
 | `type` | TEXT | NOT NULL, CHECK IN (`container-image`, `binary`, `archive`, `package`, `installer`) | — | Artifact type. Determines expected registry and signing approach. |
 | `registry` | TEXT | — | NULL | Where the artifact is stored (e.g., `ghcr.io/org/api-server`, `s3://releases-bucket`, `pypi.org`). NULL for local builds only. |
 | `versioning` | TEXT | CHECK IN (`semantic`, `git-sha`, `timestamp`, `custom`) | NULL | Versioning strategy. NULL means no policy specified (unusual; critic should flag). |
-| `platforms` | TEXT | — | `'[]'` | JSON array of platform target strings (e.g., `["linux/amd64", "darwin/arm64"]`). Replaces the former `deployment_artifact_platform` child table. |
+| `platforms` | TEXT | NOT NULL | `'[]'` | JSON array of platform target strings (e.g., `["linux/amd64", "darwin/arm64"]`). Replaces the former `deployment_artifact_platform` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
@@ -308,8 +308,8 @@ deployment_manifest
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `installation_method` | TEXT | — | NULL | Primary installation method description (e.g., `homebrew tap`, `apt repository`, `winget package`, `curl script`). |
 | `update_mechanism` | TEXT | — | NULL | How users update to new versions (e.g., `brew upgrade`, `apt-get upgrade`, `built-in self-update check`). |
-| `platforms` | TEXT | — | `'[]'` | JSON array of platform strings (e.g., `["linux-amd64", "darwin-arm64"]`). Values correspond to GOARCH/GOOS-style target triples. Replaces the former `deployment_local_platform` child table. |
-| `channels` | TEXT | — | `'[]'` | JSON array of distribution channel strings (e.g., `["homebrew-tap", "apt-repository", "github-releases"]`). Replaces the former `deployment_local_channel` child table. |
+| `platforms` | TEXT | NOT NULL | `'[]'` | JSON array of platform strings (e.g., `["linux-amd64", "darwin-arm64"]`). Values correspond to GOARCH/GOOS-style target triples. Replaces the former `deployment_local_platform` child table. |
+| `channels` | TEXT | NOT NULL | `'[]'` | JSON array of distribution channel strings (e.g., `["homebrew-tap", "apt-repository", "github-releases"]`). Replaces the former `deployment_local_channel` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)

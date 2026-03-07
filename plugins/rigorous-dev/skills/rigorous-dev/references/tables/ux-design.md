@@ -45,7 +45,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `persona_id` | TEXT | FK → `persona(id)` | NULL | Primary persona this flow is designed for. |
 | `entry_point` | TEXT | — | NULL | Where the flow starts (screen name, URL, trigger event). |
 | `success_state` | TEXT | — | NULL | Observable outcome that marks successful completion. |
-| `data_dependencies` | TEXT | — | `'[]'` | JSON array of data dependency strings — data that must be available (from the backend or prior steps) for the flow to proceed (e.g., `"authenticated user session"`, `"product catalogue list"`). Replaces the former `user_flow_data_dependency` child table. |
+| `data_dependencies` | TEXT | NOT NULL | `'[]'` | JSON array of data dependency strings — data that must be available (from the backend or prior steps) for the flow to proceed (e.g., `"authenticated user session"`, `"product catalogue list"`). Replaces the former `user_flow_data_dependency` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
@@ -183,7 +183,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
 | `mockup_path` | TEXT | — | NULL | Relative path to the high-fidelity mockup file. |
-| `components` | TEXT | — | `'[]'` | JSON array of component name strings placed on this screen (e.g., `["NavigationSidebar", "DataTable", "SearchBar"]`). Replaces the former `screen_component` child table. |
+| `components` | TEXT | NOT NULL | `'[]'` | JSON array of component name strings placed on this screen (e.g., `["NavigationSidebar", "DataTable", "SearchBar"]`). Replaces the former `screen_component` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 

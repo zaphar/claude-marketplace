@@ -252,7 +252,7 @@ To add new entity types:
 1. Add `CREATE TABLE IF NOT EXISTS` statements to `mcp-server/schema.sql`
 2. **Write side** (`mcp-server/write-tools.js`): Add a handler function (e.g., `insertMyEntity`), add it to the `handlers` map inside `changelogInsert()`, and add the type name to the `enum` array in the `changelog_insert` tool definition
 3. **Read side** (`mcp-server/read-tools.js`): Add the entity type to the `ENTITY_TABLE` map so it is queryable via `changelog_query`
-4. For simple 1:N string lists, prefer a JSON array column on the parent (with `DEFAULT '[]'`) over a separate child table
+4. For simple 1:N string lists, prefer a JSON array column on the parent (with `NOT NULL DEFAULT '[]'`) over a separate child table
 5. Update agent checklists to verify the new fields
 
 ## Alphabetical Table Index

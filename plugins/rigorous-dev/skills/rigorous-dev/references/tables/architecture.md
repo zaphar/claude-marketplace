@@ -47,8 +47,8 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 | `decision` | TEXT | NOT NULL | — | The decision itself, stated clearly and unambiguously. |
 | `rationale` | TEXT | NOT NULL | — | Why this option was chosen over the alternatives. Should reference alternatives by name and cite research sources. |
 | `superseded_by` | TEXT | FK → `adr(id)` | NULL | If `status = 'superseded'`, points to the newer ADR that replaces this one. |
-| `consequences` | TEXT | — | `'[]'` | JSON array of consequence strings describing effects of accepting this decision (e.g., `["All services must implement circuit-breaker logic"]`). Formerly stored in the `adr_consequence` child table. |
-| `research_sources` | TEXT | — | `'[]'` | JSON array of citation strings (URLs, paper references, etc.) that informed this decision (e.g., `["https://example.com/postgresql-benchmarks"]`). Formerly stored in the `adr_research_source` child table. Enables the "why are we using X?" traceability query. |
+| `consequences` | TEXT | NOT NULL | `'[]'` | JSON array of consequence strings describing effects of accepting this decision (e.g., `["All services must implement circuit-breaker logic"]`). Formerly stored in the `adr_consequence` child table. |
+| `research_sources` | TEXT | NOT NULL | `'[]'` | JSON array of citation strings (URLs, paper references, etc.) that informed this decision (e.g., `["https://example.com/postgresql-benchmarks"]`). Formerly stored in the `adr_research_source` child table. Enables the "why are we using X?" traceability query. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
@@ -349,7 +349,7 @@ There is typically one `architecture_overview` row per iteration (created at the
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this overview describes. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
-| `principles` | TEXT | — | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
+| `principles` | TEXT | NOT NULL | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
 ### Relationships
