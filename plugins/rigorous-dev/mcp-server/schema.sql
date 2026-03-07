@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS deployment_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   target TEXT,
-  requirement TEXT NOT NULL,
+  description TEXT NOT NULL,
   notes TEXT
 );
 
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS component_requirement (
 CREATE TABLE IF NOT EXISTS integration_test_boundary (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   component_id TEXT NOT NULL REFERENCES component(id),
-  target_component TEXT NOT NULL REFERENCES component(id),
+  target_component_id TEXT NOT NULL REFERENCES component(id),
   boundary_type TEXT NOT NULL,
   correct_behavior TEXT NOT NULL
 );
@@ -709,7 +709,7 @@ CREATE TABLE IF NOT EXISTS implementation_manifest_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
   version TEXT NOT NULL,
-  created TEXT NOT NULL,
+  document_date TEXT NOT NULL,
   requirements_version TEXT NOT NULL,
   architecture_version TEXT NOT NULL,
   language TEXT,
@@ -778,7 +778,7 @@ CREATE TABLE IF NOT EXISTS test_report_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id),
   version TEXT NOT NULL,
-  created TEXT NOT NULL,
+  document_date TEXT NOT NULL,
   requirements_version TEXT NOT NULL,
   architecture_version TEXT NOT NULL,
   commit_sha TEXT
@@ -926,7 +926,7 @@ CREATE TABLE IF NOT EXISTS documentation_manifest_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
   version TEXT NOT NULL,
-  created TEXT NOT NULL,
+  document_date TEXT NOT NULL,
   requirements_version TEXT NOT NULL,
   architecture_version TEXT,
   implementation_version TEXT,
@@ -999,7 +999,7 @@ CREATE TABLE IF NOT EXISTS deployment_manifest_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
   version TEXT NOT NULL,
-  created TEXT NOT NULL,
+  document_date TEXT NOT NULL,
   requirements_version TEXT NOT NULL,
   architecture_version TEXT NOT NULL,
   implementation_version TEXT NOT NULL,
@@ -1030,7 +1030,7 @@ CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
   failure_action TEXT NOT NULL CHECK(failure_action IN ('block', 'warn', 'notify'))
 );
 
-CREATE TABLE IF NOT EXISTS deployment_quality_gates (
+CREATE TABLE IF NOT EXISTS deployment_quality_gate (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
   category TEXT NOT NULL,

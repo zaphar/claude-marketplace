@@ -370,11 +370,11 @@ function insertComponent(db, iteration_id, revision_id, data) {
   }
 
   const insertBoundary = db.prepare(
-    `INSERT INTO integration_test_boundary (component_id, target_component, boundary_type, correct_behavior)
+    `INSERT INTO integration_test_boundary (component_id, target_component_id, boundary_type, correct_behavior)
      VALUES (?, ?, ?, ?)`
   );
   for (const b of data.integration_test_boundaries ?? []) {
-    insertBoundary.run(data.id, b.target_component, b.boundary_type, b.correct_behavior);
+    insertBoundary.run(data.id, b.target_component_id, b.boundary_type, b.correct_behavior);
   }
 
   return { entity_type: "component", id: data.id, updated: !!existed };
@@ -976,13 +976,13 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   }
 
   const insertMetadata = db.prepare(
-    "INSERT INTO implementation_manifest_metadata (manifest_id, version, created, requirements_version, architecture_version, language, commit_sha) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO implementation_manifest_metadata (manifest_id, version, document_date, requirements_version, architecture_version, language, commit_sha) VALUES (?, ?, ?, ?, ?, ?, ?)"
   );
   for (const meta of data.metadata ?? []) {
     insertMetadata.run(
       manifest_id,
       meta.version,
-      meta.created,
+      meta.document_date,
       meta.requirements_version,
       meta.architecture_version,
       meta.language ?? null,
@@ -1054,13 +1054,13 @@ function insertDeploymentRequirement(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO deployment_requirement (iteration_id, target, requirement, notes) VALUES (?, ?, ?, ?)`
+    `INSERT INTO deployment_requirement (iteration_id, target, description, notes) VALUES (?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
       iteration_id,
       entry.target ?? null,
-      entry.requirement,
+      entry.description,
       entry.notes ?? null
     );
     lastId = result.lastInsertRowid;
@@ -1257,14 +1257,14 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   // -- test_report_metadata (1:1) --
   const insertMeta = db.prepare(
     `INSERT INTO test_report_metadata
-       (report_id, version, created, requirements_version, architecture_version, commit_sha)
+       (report_id, version, document_date, requirements_version, architecture_version, commit_sha)
      VALUES (?, ?, ?, ?, ?, ?)`
   );
   for (const meta of data.metadata ?? []) {
     insertMeta.run(
       report_id,
       meta.version,
-      meta.created,
+      meta.document_date,
       meta.requirements_version,
       meta.architecture_version,
       meta.commit_sha ?? null
@@ -1422,7 +1422,7 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   // -- documentation_manifest_metadata (1:1) --
   const insertMeta = db.prepare(
     `INSERT INTO documentation_manifest_metadata
-       (manifest_id, version, created, requirements_version,
+       (manifest_id, version, document_date, requirements_version,
         architecture_version, implementation_version, format)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
@@ -1430,7 +1430,7 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
     insertMeta.run(
       manifest_id,
       meta.version,
-      meta.created,
+      meta.document_date,
       meta.requirements_version,
       meta.architecture_version ?? null,
       meta.implementation_version ?? null,
@@ -1542,7 +1542,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   // -- deployment_manifest_metadata (1:1) --
   const insertMeta = db.prepare(
     `INSERT INTO deployment_manifest_metadata
-       (manifest_id, version, created, requirements_version,
+       (manifest_id, version, document_date, requirements_version,
         architecture_version, implementation_version, test_report_version)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
@@ -1550,7 +1550,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
     insertMeta.run(
       manifest_id,
       meta.version,
-      meta.created,
+      meta.document_date,
       meta.requirements_version,
       meta.architecture_version,
       meta.implementation_version,
@@ -1590,9 +1590,9 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
     }
   }
 
-  // -- deployment_quality_gates (1:N) --
+  // -- deployment_quality_gate (1:N) --
   const insertQualityGates = db.prepare(
-    "INSERT INTO deployment_quality_gates (manifest_id, category, key, value) VALUES (?, ?, ?, ?)"
+    "INSERT INTO deployment_quality_gate (manifest_id, category, key, value) VALUES (?, ?, ?, ?)"
   );
   for (const qg of data.quality_gates ?? []) {
     insertQualityGates.run(manifest_id, qg.category, qg.key, qg.value);

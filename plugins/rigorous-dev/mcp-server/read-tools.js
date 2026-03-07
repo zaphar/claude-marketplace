@@ -618,7 +618,7 @@ function attachRelated(db, entityType, results) {
           blockers: JSON.parse(m.blockers || '[]'),
           pipelines,
           quality_gates: db
-            .prepare("SELECT * FROM deployment_quality_gates WHERE manifest_id = ?")
+            .prepare("SELECT * FROM deployment_quality_gate WHERE manifest_id = ?")
             .all(m.id),
           environments,
           artifacts,
