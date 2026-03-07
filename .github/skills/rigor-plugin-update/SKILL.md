@@ -477,6 +477,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 This shared workflow is used by any mode that produces multiple findings (Schema Audit, Deep Audit, Q&A when 2+ changes surface). It covers the full lifecycle from findings presentation through implementation.
 
 **Document scope varies by mode:**
+- **Update Mode** — NO persisted report. The workflow applies when a change request is decomposed into multiple work items. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
 - **Schema Audit Mode** — always creates a persisted consolidated report in `.scratch/`. The findings index, decisions, and implementation phasing are all recorded in that document.
 - **Deep Audit Mode** — the critic already creates a persisted report in `.scratch/`. The orchestrator adds a findings index table to that existing report. Implementation phasing is only appended if the user approves 3+ fixes.
 - **Q&A Mode** — NO persisted document. Findings are presented inline in the conversation. The conversation itself is the record.
