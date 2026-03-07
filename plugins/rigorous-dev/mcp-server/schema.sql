@@ -508,14 +508,14 @@ CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   method TEXT NOT NULL,
   path TEXT NOT NULL,
-  description TEXT NOT NULL
+  description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   migration_name TEXT NOT NULL,
-  description TEXT NOT NULL,
+  description TEXT,
   tables TEXT DEFAULT '[]'
 );
 
@@ -536,7 +536,7 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   risk TEXT NOT NULL,
-  mitigation TEXT NOT NULL
+  mitigation TEXT
 );
 
 -- Implementation plan: overview
@@ -556,7 +556,7 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id),
   risk TEXT NOT NULL,
-  mitigation TEXT NOT NULL,
+  mitigation TEXT,
   phase INTEGER
 );
 

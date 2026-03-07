@@ -735,14 +735,14 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     "INSERT INTO plan_phase_api_endpoint (plan_phase_id, method, path, description) VALUES (?, ?, ?, ?)"
   );
   for (const ep of data.api_endpoints ?? []) {
-    insertEndpoint.run(plan_phase_id, ep.method, ep.path, ep.description ?? "");
+    insertEndpoint.run(plan_phase_id, ep.method, ep.path, ep.description ?? null);
   }
 
   const insertDbChange = db.prepare(
     "INSERT INTO plan_phase_db_change (plan_phase_id, migration_name, description, tables) VALUES (?, ?, ?, ?)"
   );
   for (const change of data.db_changes ?? []) {
-    insertDbChange.run(plan_phase_id, change.migration_name, change.description ?? "", JSON.stringify(change.tables ?? []));
+    insertDbChange.run(plan_phase_id, change.migration_name, change.description ?? null, JSON.stringify(change.tables ?? []));
   }
 
   const insertDep = db.prepare(
@@ -758,7 +758,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     "INSERT INTO plan_phase_risk (plan_phase_id, risk, mitigation) VALUES (?, ?, ?)"
   );
   for (const risk of data.risks ?? []) {
-    insertRisk.run(plan_phase_id, risk.risk, risk.mitigation ?? "");
+    insertRisk.run(plan_phase_id, risk.risk, risk.mitigation ?? null);
   }
 
   const insertParallel = db.prepare(
@@ -794,7 +794,7 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
     "INSERT INTO plan_overview_risk (plan_overview_id, risk, mitigation, phase) VALUES (?, ?, ?, ?)"
   );
   for (const risk of data.risks ?? []) {
-    insertRisk.run(plan_overview_id, risk.risk, risk.mitigation ?? "", risk.phase ?? null);
+    insertRisk.run(plan_overview_id, risk.risk, risk.mitigation ?? null, risk.phase ?? null);
   }
 
   return { entity_type: "plan_overview", id: plan_overview_id };

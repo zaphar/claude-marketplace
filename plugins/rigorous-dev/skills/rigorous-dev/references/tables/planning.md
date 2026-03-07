@@ -246,7 +246,7 @@ Lists the HTTP API endpoints that must be implemented during a phase. This is th
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that implements this endpoint. |
 | `method` | TEXT | NOT NULL | — | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). |
 | `path` | TEXT | NOT NULL | — | URL path, e.g., `/api/v1/users/{id}`. |
-| `description` | TEXT | NOT NULL | — | What this endpoint does and what it returns. |
+| `description` | TEXT | nullable | — | What this endpoint does and what it returns. |
 
 ### Relationships
 
@@ -281,7 +281,7 @@ Represents one database migration required within a phase. Each row is a named m
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that runs this migration. |
 | `migration_name` | TEXT | NOT NULL | — | Unique name for this migration (e.g., `001_create_users_table`). Should be sortable/versioned. |
-| `description` | TEXT | NOT NULL | — | What this migration does (e.g., "Creates `users` and `sessions` tables with indexes on email"). |
+| `description` | TEXT | nullable | — | What this migration does (e.g., "Creates `users` and `sessions` tables with indexes on email"). |
 | `tables` | TEXT | — | `'[]'` | JSON array of table name strings affected by this migration (e.g., `["users", "sessions"]`). Replaces the former `plan_phase_db_change_table` child table. |
 
 ### Relationships
@@ -391,7 +391,7 @@ Records risks specific to a single phase — technical unknowns, integration haz
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase this risk applies to. |
 | `risk` | TEXT | NOT NULL | — | Description of the risk (e.g., "Third-party OAuth provider may rate-limit token validation during load testing"). |
-| `mitigation` | TEXT | NOT NULL | — | How the risk will be addressed (e.g., "Cache token validation results for 60 seconds; implement exponential backoff"). |
+| `mitigation` | TEXT | nullable | — | How the risk will be addressed (e.g., "Cache token validation results for 60 seconds; implement exponential backoff"). |
 
 ### Relationships
 
@@ -468,7 +468,7 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `plan_overview_id` | INTEGER | NOT NULL, FK → `plan_overview(id)` | — | The plan overview this risk belongs to. |
 | `risk` | TEXT | NOT NULL | — | Description of the risk. |
-| `mitigation` | TEXT | NOT NULL | — | How this risk will be managed or reduced. |
+| `mitigation` | TEXT | nullable | — | How this risk will be managed or reduced. |
 | `phase` | INTEGER | nullable | — | The `phase_number` at which this risk is most acute or must be mitigated, if applicable. |
 
 ### Relationships
