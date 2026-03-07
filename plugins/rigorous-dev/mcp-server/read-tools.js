@@ -41,6 +41,7 @@ const ENTITY_TABLE = {
   project_lesson: "project_lesson",
   security_audit_finding: "security_audit_finding",
   performance_audit_finding: "performance_audit_finding",
+  intermediate_asset: "intermediate_asset",
 };
 
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
