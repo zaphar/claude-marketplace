@@ -279,9 +279,11 @@ function attachRelated(db, entityType, results) {
       return results.map((p) => ({
         ...p,
         requirements: db
-          .prepare("SELECT requirement_id FROM plan_phase_requirement WHERE plan_phase_id = ?")
+          .prepare("SELECT requirement_id, priority, notes FROM plan_phase_requirement WHERE plan_phase_id = ?")
           .all(p.id)
-          .map((x) => x.requirement_id),
+          .map((x) => x.priority || x.notes
+            ? { requirement_id: x.requirement_id, priority: x.priority, notes: x.notes }
+            : x.requirement_id),
         components: db
           .prepare("SELECT component_id FROM plan_phase_component WHERE plan_phase_id = ?")
           .all(p.id)

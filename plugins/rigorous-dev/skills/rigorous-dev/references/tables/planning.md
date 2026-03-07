@@ -30,7 +30,6 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_phase_risk`](#plan_phase_risk) | Phase-level risks and mitigations |
 | [`plan_overview`](#plan_overview) | High-level strategy and phase count for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
-| [`plan_requirement_mapping`](#plan_requirement_mapping) | Explicit traceability: requirement → phase number |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
 | [`plan_critical_path`](#plan_critical_path) | Ordered sequence of phases on the critical path |
 | [`plan_metadata`](#plan_metadata) | Plan versioning and source document references |
@@ -75,7 +74,7 @@ Central record for one implementation work chunk. A phase groups related develop
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
 - **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_dependency`, `plan_phase_parallel`, `plan_phase_risk`
 - **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
-- **Referenced by FK in:** `plan_phase_dependency.depends_on_phase_id`, `plan_phase_parallel.can_parallel_with_id`, `plan_critical_path.plan_phase_id`, `plan_requirement_mapping.plan_phase_id`, `implementation_manifest.plan_phase_id`
+- **Referenced by FK in:** `plan_phase_dependency.depends_on_phase_id`, `plan_phase_parallel.can_parallel_with_id`, `plan_critical_path.plan_phase_id`, `implementation_manifest.plan_phase_id`
 
 ### MCP tool access
 
@@ -106,6 +105,8 @@ Links a `plan_phase` to the `requirement` IDs it satisfies. This is the primary 
 |--------|------|-------------|---------|-------------|
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The phase that addresses this requirement. |
 | `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)`, part of PK | — | The requirement being addressed (e.g., `REQ-001`). |
+| `priority` | TEXT | nullable | — | How critical this requirement is to the phase (e.g., `critical`, `high`, `medium`, `low`). Informs ordering when phases must be cut. |
+| `notes` | TEXT | nullable | — | Additional context about how this requirement is addressed in this phase (e.g., "Partial implementation; full support in Phase 4"). |
 
 **Primary key:** `(plan_phase_id, requirement_id)` — prevents duplicate links.
 
@@ -484,45 +485,6 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 
 ---
 
-## `plan_requirement_mapping`
-
-### Purpose
-
-Provides explicit, standalone traceability from each `requirement` to the `plan_phase_id` that implements it, with a priority rating for how critical that requirement is to the plan. This is complementary to `plan_phase_requirement` — it adds priority and notes without being buried in phase child data.
-
-### Context
-
-- One row per requirement per phase mapping. A requirement addressed across two phases would have two rows.
-- `implementation_planner` populates this as a cross-cutting traceability artifact.
-- `implementation_plan_critic` runs a coverage check: every `must_have` and `should_have` requirement must appear here.
-- `senior_developer` queries this to find all requirements assigned to their current phase.
-- Also enables generating a requirements coverage report: which requirements are covered, at what priority, in which phases.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this mapping belongs to. |
-| `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)` | — | The requirement being mapped (e.g., `REQ-007`). |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The `id` of the phase that implements this requirement. Foreign key to `plan_phase(id)`. |
-| `priority` | TEXT | NOT NULL, CHECK(`critical` \| `high` \| `medium` \| `low`) | — | How critical this requirement is to the plan's success. Informs ordering when phases must be cut. |
-| `notes` | TEXT | nullable | — | Additional context about how this requirement is addressed (e.g., "Partial implementation; full support in Phase 4"). |
-
-### Relationships
-
-- **Parent:** `iteration` via `iteration_id`; `requirement` via `requirement_id`
-- **References:** `plan_phase` via `plan_phase_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "plan_requirement_mapping"` |
-| Query | `changelog_query` | `entity_type: "plan_requirement_mapping"` — filter by `iteration_id` or `requirement_id` |
-
----
-
 ## `plan_external_dependency`
 
 ### Purpose
@@ -666,7 +628,6 @@ iteration ───────────────────────�
 │   ├─ plan_phase_parallel    (FK → plan_phase(id))                  │
 │   └─ plan_phase_risk         (1:N)                                │
 │                                                                    │
-├─ plan_requirement_mapping  (requirement → plan_phase FK)           │
 ├─ plan_external_dependency  (1:N)                                  │
 ├─ plan_critical_path        (ordered plan_phase FKs)                │
 └─ plan_metadata             (version + status)                     │
@@ -680,4 +641,3 @@ iteration ───────────────────────�
 | `plan_phase_component` | `component.id` | Architecture |
 | `plan_phase_flow` | `user_flow.id` | UX |
 | `plan_phase_screen` | `screen.id` | UX |
-| `plan_requirement_mapping` | `requirement.id` | Requirements |

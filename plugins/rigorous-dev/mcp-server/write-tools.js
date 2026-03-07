@@ -704,10 +704,14 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   const plan_phase_id = result.lastInsertRowid;
 
   const insertReq = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_requirement (plan_phase_id, requirement_id) VALUES (?, ?)"
+    "INSERT OR IGNORE INTO plan_phase_requirement (plan_phase_id, requirement_id, priority, notes) VALUES (?, ?, ?, ?)"
   );
-  for (const req_id of data.requirements ?? []) {
-    insertReq.run(plan_phase_id, req_id);
+  for (const req of data.requirements ?? []) {
+    if (typeof req === "string") {
+      insertReq.run(plan_phase_id, req, null, null);
+    } else {
+      insertReq.run(plan_phase_id, req.requirement_id, req.priority ?? null, req.notes ?? null);
+    }
   }
 
   const insertComp = db.prepare(
@@ -797,22 +801,6 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   }
 
   return { entity_type: "plan_overview", id: plan_overview_id };
-}
-
-function insertPlanRequirementMapping(db, iteration_id, _revision_id, data) {
-  const result = db
-    .prepare(
-      `INSERT INTO plan_requirement_mapping (iteration_id, requirement_id, plan_phase_id, priority, notes)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-    .run(
-      iteration_id,
-      data.requirement_id,
-      data.plan_phase_id,
-      data.priority,
-      data.notes ?? null
-    );
-  return { entity_type: "plan_requirement_mapping", id: result.lastInsertRowid };
 }
 
 function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
@@ -1832,7 +1820,6 @@ function changelogInsert(args) {
     ux_asset: insertUxAsset,
     plan_phase: insertPlanPhase,
     plan_overview: insertPlanOverview,
-    plan_requirement_mapping: insertPlanRequirementMapping,
     plan_external_dependency: insertPlanExternalDependency,
     plan_critical_path: insertPlanCriticalPath,
     plan_metadata: insertPlanMetadata,
@@ -2018,7 +2005,6 @@ export const WRITE_TOOLS = [
             "ux_asset",
             "plan_phase",
             "plan_overview",
-            "plan_requirement_mapping",
             "plan_external_dependency",
             "plan_critical_path",
             "plan_metadata",

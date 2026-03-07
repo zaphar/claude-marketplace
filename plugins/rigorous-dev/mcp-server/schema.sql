@@ -467,6 +467,8 @@ CREATE TABLE IF NOT EXISTS plan_phase (
 CREATE TABLE IF NOT EXISTS plan_phase_requirement (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  priority TEXT,
+  notes TEXT,
   PRIMARY KEY (plan_phase_id, requirement_id)
 );
 
@@ -542,16 +544,6 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
   risk TEXT NOT NULL,
   mitigation TEXT,
   phase INTEGER
-);
-
--- Implementation plan: requirements mapping
-CREATE TABLE IF NOT EXISTS plan_requirement_mapping (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  priority TEXT NOT NULL CHECK(priority IN ('critical', 'high', 'medium', 'low')),
-  notes TEXT
 );
 
 -- Implementation plan: external dependencies

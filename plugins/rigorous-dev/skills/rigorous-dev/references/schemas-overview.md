@@ -115,7 +115,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `plan_phase_dependency` / `_parallel` / `_risk` | implementation_planner | Phase ordering, parallelism, risks. |
 | `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
 | `plan_overview_risk` | implementation_planner | Plan-level risks. |
-| `plan_requirement_mapping` | implementation_planner | REQ → plan phase mapping (when will each requirement be built?). |
 | `plan_external_dependency` | implementation_planner | External blockers. |
 | `plan_critical_path` | implementation_planner | Critical path phases. |
 | `plan_metadata` | implementation_planner | Plan versioning, upstream artifact versions used. |
@@ -236,7 +235,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 |------|---------|
 | `changelog_query` | Query entities by type, iteration, IDs, or field filters. |
 
-> **Note:** 4 entity types are write-only with respect to `changelog_query` — they can be inserted via `changelog_insert` but are not in the `ENTITY_TABLE` map: `plan_requirement_mapping`, `vcs_commit`, `intermediate_asset`, `asset_deliverable`. Of these, `vcs_commit` and `asset_deliverable` are readable via `iteration_summary`. The remaining two (`plan_requirement_mapping`, `intermediate_asset`) are stored in dedicated tables and can be queried directly via SQL.
+> **Note:** 3 entity types are write-only with respect to `changelog_query` — they can be inserted via `changelog_insert` but are not in the `ENTITY_TABLE` map: `vcs_commit`, `intermediate_asset`, `asset_deliverable`. Of these, `vcs_commit` and `asset_deliverable` are readable via `iteration_summary`. The remaining one (`intermediate_asset`) is stored in a dedicated table and can be queried directly via SQL.
 >
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |
@@ -262,7 +261,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 118 tables with links to their detailed design documents.
+All 117 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -347,7 +346,6 @@ All 118 tables with links to their detailed design documents.
 | `plan_phase_requirement` | [planning](tables/planning.md) |
 | `plan_phase_risk` | [planning](tables/planning.md) |
 | `plan_phase_screen` | [planning](tables/planning.md) |
-| `plan_requirement_mapping` | [planning](tables/planning.md) |
 | `project` | [core](tables/core.md) |
 | `project_context` | [requirements](tables/requirements.md) |
 | `project_lesson` | [cross-cutting](tables/cross-cutting.md) |
