@@ -1,6 +1,6 @@
 # Documentation Domain — Table Design Reference
 
-This document describes the nine tables that capture the output of the **Documentation Master** agent during the `documentation` phase of the rigorous-dev workflow. Together they record what documentation was produced, which features and requirements are covered, where assets live, and whether the documentation passed verification.
+This document describes the eight tables that capture the output of the **Documentation Master** agent during the `documentation` phase of the rigorous-dev workflow. Together they record what documentation was produced, which features and requirements are covered, where assets live, and whether the documentation passed verification.
 
 **Producer:** `documentation_master`  
 **Critic:** `documentation_critic`  
@@ -18,7 +18,7 @@ documentation_manifest                  ← one row per revision
 ├── documentation_feature               ← per-feature documentation entries (1:N)
 │   └── documentation_feature_requirement  ← feature ↔ requirement join (M:N)
 ├── documentation_requirement_coverage  ← per-requirement coverage record (1:N)
-│   └── documentation_requirement_path  ← file paths where requirement is documented (1:N)
+│                                        paths → JSON array on coverage row
 ├── documentation_asset                 ← diagrams, screenshots, code samples (1:N)
 └── documentation_verification          ← named verification checks (1:N)
 ```
@@ -110,7 +110,7 @@ Every other documentation table references this row. The manifest ties documenta
 }
 ```
 
-The response nests children as: `metadata`, `sections`, `features` (each with `requirements` array), `coverage` (each with `paths` array), `assets`, `verification`.
+The response nests children as: `metadata`, `sections`, `features` (each with `requirements` array), `coverage` (each with `paths` JSON array), `assets`, `verification`.
 
 ---
 
@@ -270,7 +270,7 @@ WHERE dfr.requirement_id = 'REQ-001';
 
 ### Purpose
 
-Records per-requirement documentation coverage status. One row per requirement that the documentation_master assessed. Records whether the requirement is documented (`documented` flag), whether it is user-facing, and any free-form notes. Child rows in `documentation_requirement_path` list the actual file paths where coverage appears.
+Records per-requirement documentation coverage status. One row per requirement that the documentation_master assessed. Records whether the requirement is documented (`documented` flag), whether it is user-facing, and any free-form notes. The `paths` JSON array lists the actual file paths where coverage appears.
 
 ### Context
 
@@ -286,12 +286,13 @@ This table is the primary coverage report used by the documentation_critic. A re
 | `documented` | INTEGER | NULL | `0` | — | Boolean flag (0/1) — requirement has documentation |
 | `user_facing` | INTEGER | NULL | `0` | — | Boolean flag (0/1) — requirement requires end-user documentation |
 | `notes` | TEXT | NULL | — | — | Free-form notes on coverage status or exceptions |
+| `paths` | TEXT | NULL | `'[]'` | — | JSON array of file path strings where this requirement is documented (e.g., `["docs/README.md", "docs/features/auth.md"]`). Replaces the former `documentation_requirement_path` child table. |
 
 ### Relationships
 
 - **Parent:** `documentation_manifest` (via `manifest_id`)
 - **Parent:** `requirement` (via `requirement_id`)
-- **Children:** `documentation_requirement_path` (via `coverage_id`)
+- **JSON array:** `paths` (inline on this table)
 
 ### MCP Tool Access
 
@@ -306,45 +307,7 @@ WHERE rc.manifest_id = ?
 
 ---
 
-## 7. `documentation_requirement_path`
-
-### Purpose
-
-Stores one or more file paths for each `documentation_requirement_coverage` record — the actual locations in the documentation tree where a given requirement is addressed. A requirement may be documented in multiple places (e.g., README and API guide), yielding multiple rows.
-
-### Context
-
-The documentation_master inserts one row per file path per requirement. The documentation_critic can then verify that referenced paths actually exist on disk. This table completes the coverage picture: `documentation_requirement_coverage` says "yes this is documented", `documentation_requirement_path` says "here is exactly where".
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|---|---|---|---|---|---|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate key |
-| `coverage_id` | INTEGER | NOT NULL | — | REFERENCES `documentation_requirement_coverage(id)` | Parent coverage record |
-| `path` | TEXT | NOT NULL | — | — | Relative path to the file documenting this requirement |
-
-### Relationships
-
-- **Parent:** `documentation_requirement_coverage` (via `coverage_id`)
-- No children
-
-### MCP Tool Access
-
-```sql
--- All paths for a given requirement's coverage record
-SELECT path FROM documentation_requirement_path WHERE coverage_id = ?;
-
--- Full coverage with paths for a manifest
-SELECT rc.requirement_id, rp.path
-FROM documentation_requirement_coverage rc
-JOIN documentation_requirement_path rp ON rp.coverage_id = rc.id
-WHERE rc.manifest_id = ?;
-```
-
----
-
-## 8. `documentation_asset`
+## 7. `documentation_asset`
 
 ### Purpose
 
@@ -383,7 +346,7 @@ WHERE manifest_id = ?
 
 ---
 
-## 9. `documentation_verification`
+## 8. `documentation_verification`
 
 ### Purpose
 
@@ -440,16 +403,14 @@ SELECT
   rc.documented,
   rc.user_facing,
   rc.notes,
-  GROUP_CONCAT(rp.path, ', ') AS doc_paths
+  rc.paths AS doc_paths
 FROM requirement r
 LEFT JOIN documentation_requirement_coverage rc
   ON rc.requirement_id = r.id
   AND rc.manifest_id = (
     SELECT id FROM documentation_manifest WHERE iteration_id = ? ORDER BY id DESC LIMIT 1
   )
-LEFT JOIN documentation_requirement_path rp ON rp.coverage_id = rc.id
-WHERE r.iteration_id = ?
-GROUP BY r.id;
+WHERE r.iteration_id = ?;
 ```
 
 ### Feature documentation completeness
@@ -488,6 +449,6 @@ ORDER BY passed ASC, check_name ASC;
 | `documentation_feature` | 1 per feature | — | documentation_master |
 | `documentation_feature_requirement` | 1 per feature×requirement pair | composite PK (no duplicates) | documentation_master |
 | `documentation_requirement_coverage` | 1 per requirement assessed | — | documentation_master |
-| `documentation_requirement_path` | 1 per file path per requirement | — | documentation_master |
+| `documentation_requirement_coverage.paths` | JSON array per requirement | — | documentation_master |
 | `documentation_asset` | 1 per asset | `type` CHECK | documentation_master |
 | `documentation_verification` | 1 per check | — | documentation_master / documentation_critic |

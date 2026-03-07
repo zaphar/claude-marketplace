@@ -23,18 +23,13 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_phase_component`](#plan_phase_component) | Architecture components touched by a phase (M:N) |
 | [`plan_phase_flow`](#plan_phase_flow) | User flows covered by a phase (M:N) |
 | [`plan_phase_screen`](#plan_phase_screen) | UI screens delivered by a phase (M:N) |
-| [`plan_phase_entry_criterion`](#plan_phase_entry_criterion) | Conditions that must be true before a phase starts |
-| [`plan_phase_exit_criterion`](#plan_phase_exit_criterion) | Conditions that must be true before a phase is considered done |
 | [`plan_phase_api_endpoint`](#plan_phase_api_endpoint) | API endpoints to build in a phase |
 | [`plan_phase_db_change`](#plan_phase_db_change) | Database migrations required by a phase |
-| [`plan_phase_db_change_table`](#plan_phase_db_change_table) | Tables affected by each migration |
 | [`plan_phase_dependency`](#plan_phase_dependency) | Ordering constraints between phases |
 | [`plan_phase_parallel`](#plan_phase_parallel) | Phases that can be worked concurrently |
 | [`plan_phase_risk`](#plan_phase_risk) | Phase-level risks and mitigations |
-| [`plan_checkpoint_focus`](#plan_checkpoint_focus) | Review areas for phases flagged for checkpoint |
 | [`plan_overview`](#plan_overview) | High-level strategy and phase count for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
-| [`plan_overview_assumption`](#plan_overview_assumption) | Assumptions the plan relies on |
 | [`plan_requirement_mapping`](#plan_requirement_mapping) | Explicit traceability: requirement → phase number |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
 | [`plan_critical_path`](#plan_critical_path) | Ordered sequence of phases on the critical path |
@@ -69,13 +64,17 @@ Central record for one implementation work chunk. A phase groups related develop
 | `status` | TEXT | NOT NULL, DEFAULT `'pending'`, CHECK(`pending` \| `test_writing` \| `implementing` \| `completed`) | `'pending'` | Tracks sub-phase progress during implementation. `test_writing` while tests are being written; `implementing` while implementation is in progress; `completed` when the sub-phase is fully approved. |
 | `complexity` | TEXT | CHECK(`XS` \| `S` \| `M` \| `L` \| `XL`), nullable | — | T-shirt size effort estimate. NULL means unestimated. |
 | `review_checkpoint` | INTEGER | — | `0` | Boolean flag (0/1). When `1`, a review checkpoint is required before subsequent phases begin. |
+| `entry_criteria` | TEXT | — | `'[]'` | JSON array of strings. Each string is a precondition that must be true before this phase can begin (e.g., `"Phase 2 is complete and approved"`). Replaces the former `plan_phase_entry_criterion` child table. |
+| `exit_criteria` | TEXT | — | `'[]'` | JSON array of strings. Each string is a done-condition that must be met before the phase is considered complete (e.g., `"All unit tests pass with ≥80% coverage"`). Replaces the former `plan_phase_exit_criterion` child table. |
+| `checkpoint_focus` | TEXT | — | `'[]'` | JSON array of strings drawn from a fixed vocabulary (`requirements`, `architecture`, `ux`). Only populated when `review_checkpoint = 1`. Indicates which domains to examine during the checkpoint. Replaces the former `plan_checkpoint_focus` child table. |
 | `notes` | TEXT | nullable | — | Free-form notes from the planner (caveats, open questions, reminders). |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
-- **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_entry_criterion`, `plan_phase_exit_criterion`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_dependency`, `plan_phase_parallel`, `plan_phase_risk`, `plan_checkpoint_focus`
+- **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_dependency`, `plan_phase_parallel`, `plan_phase_risk`
+- **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
 - **Referenced by FK in:** `plan_phase_dependency.depends_on_phase_id`, `plan_phase_parallel.can_parallel_with_id`, `plan_critical_path.plan_phase_id`, `plan_requirement_mapping.plan_phase_id`, `implementation_manifest.plan_phase_id`
 
 ### MCP tool access
@@ -225,74 +224,6 @@ Links a `plan_phase` to the `screen` IDs it will build or modify. Records which 
 
 ---
 
-## `plan_phase_entry_criterion`
-
-### Purpose
-
-Records the preconditions that must be satisfied before a phase can begin. Each row is one testable gate. Examples: "Phase 2 is complete and approved", "Auth token signing keys have been provisioned in staging".
-
-### Context
-
-- One-to-many child of `plan_phase`. A phase typically has 1–5 entry criteria.
-- `implementation_planner` derives these from phase dependencies and external setup requirements.
-- `implementation_plan_critic` verifies that entry criteria are concrete and testable, not vague.
-- `senior_developer` checks all entry criteria before declaring a phase ready to start.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase this criterion gates. |
-| `criterion` | TEXT | NOT NULL | — | Human-readable description of the condition that must be true (e.g., "Database migration for Phase 1 has been applied"). |
-
-### Relationships
-
-- **Parent:** `plan_phase` via `plan_phase_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `entry_criteria: ["..."]` in the `plan_phase` payload |
-| Query | `changelog_query` | Retrieved as the `entry_criteria` array when querying a `plan_phase` |
-
----
-
-## `plan_phase_exit_criterion`
-
-### Purpose
-
-Records the conditions that must be met before a phase is considered complete. Each row is one verifiable done-condition. Examples: "All unit tests pass with ≥80% coverage", "API endpoints return correct responses for all acceptance criteria in REQ-012".
-
-### Context
-
-- One-to-many child of `plan_phase`. Typically 2–6 exit criteria per phase.
-- `senior_developer` uses these as a completion checklist.
-- `test_writer` maps these to specific test cases.
-- `implementation_plan_critic` checks that exit criteria are measurable and aligned with phase goals.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase this criterion closes. |
-| `criterion` | TEXT | NOT NULL | — | Human-readable description of the done-condition (e.g., "All API endpoints return correct HTTP status codes as per acceptance criteria"). |
-
-### Relationships
-
-- **Parent:** `plan_phase` via `plan_phase_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `exit_criteria: ["..."]` in the `plan_phase` payload |
-| Query | `changelog_query` | Retrieved as the `exit_criteria` array when querying a `plan_phase` |
-
----
-
 ## `plan_phase_api_endpoint`
 
 ### Purpose
@@ -334,7 +265,7 @@ Lists the HTTP API endpoints that must be implemented during a phase. This is th
 
 ### Purpose
 
-Represents one database migration required within a phase. Each row is a named migration unit (analogous to a migration file). Child rows in `plan_phase_db_change_table` list the specific tables the migration touches.
+Represents one database migration required within a phase. Each row is a named migration unit (analogous to a migration file). The `tables` JSON array lists the specific table names the migration touches.
 
 ### Context
 
@@ -347,55 +278,23 @@ Represents one database migration required within a phase. Each row is a named m
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by `plan_phase_db_change_table.db_change_id`. |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that runs this migration. |
 | `migration_name` | TEXT | NOT NULL | — | Unique name for this migration (e.g., `001_create_users_table`). Should be sortable/versioned. |
 | `description` | TEXT | NOT NULL | — | What this migration does (e.g., "Creates `users` and `sessions` tables with indexes on email"). |
+| `tables` | TEXT | — | `'[]'` | JSON array of table name strings affected by this migration (e.g., `["users", "sessions"]`). Replaces the former `plan_phase_db_change_table` child table. |
 
 ### Relationships
 
 - **Parent:** `plan_phase` via `plan_phase_id`
-- **Children:** `plan_phase_db_change_table` via `db_change_id`
+- **JSON array:** `tables` (inline on this table)
 
 ### MCP tool access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `db_changes: [{migration_name, description, tables: [...]}]` in the `plan_phase` payload; child table rows inserted automatically |
+| Insert | `changelog_insert` | Pass `db_changes: [{migration_name, description, tables: [...]}]` in the `plan_phase` payload |
 | Query | `changelog_query` | Retrieved as the `db_changes` array when querying a `plan_phase` |
-
----
-
-## `plan_phase_db_change_table`
-
-### Purpose
-
-Records the specific database table names touched by a single migration. Provides fine-grained traceability from a migration down to individual tables, enabling conflict detection across parallel phases.
-
-### Context
-
-- One-to-many child of `plan_phase_db_change`. Each migration row can affect multiple tables.
-- `implementation_plan_critic` cross-references these rows across phases to flag migrations that might conflict (e.g., two phases altering the same table).
-- Also useful for documentation and rollback planning.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `db_change_id` | INTEGER | NOT NULL, FK → `plan_phase_db_change(id)` | — | The migration this table is part of. |
-| `table_name` | TEXT | NOT NULL | — | Name of the database table being created, altered, or dropped. |
-
-### Relationships
-
-- **Parent:** `plan_phase_db_change` via `db_change_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `tables: ["users", "sessions"]` inside each `db_changes` entry in the `plan_phase` payload |
-| Query | `changelog_query` | Returned as the `tables` array nested inside each `db_changes` entry when querying a `plan_phase` with `include_related: true` |
 
 ---
 
@@ -446,7 +345,7 @@ Records pairs of phases that can be worked concurrently — i.e., they have no b
 
 - Allows `senior_developer` to maximize team throughput by starting independent phases simultaneously.
 - `implementation_planner` populates this only when phases are confirmed to have no shared mutable state, DB tables, or API contracts.
-- `implementation_plan_critic` verifies claimed parallelism by checking for hidden conflicts in `plan_phase_db_change_table` and `plan_phase_component`.
+- `implementation_plan_critic` verifies claimed parallelism by checking for hidden conflicts in `plan_phase_db_change.tables` and `plan_phase_component`.
 
 ### Columns
 
@@ -507,39 +406,6 @@ Records risks specific to a single phase — technical unknowns, integration haz
 
 ---
 
-## `plan_checkpoint_focus`
-
-### Purpose
-
-When a phase is flagged with `review_checkpoint = 1`, this table records which review domains to focus on during the checkpoint. Each row is one focus area drawn from a fixed vocabulary.
-
-### Context
-
-- One-to-many child of `plan_phase`. Only populated when `plan_phase.review_checkpoint = 1`.
-- `implementation_planner` sets focus areas based on what changed in the phase: if new UX flows were built, focus on `ux`; if new API contracts were established, focus on `architecture`; if new acceptance criteria were implemented, focus on `requirements`.
-- The checkpoint review is conducted by the `implementation_plan_critic` or a senior stakeholder before the next phase begins.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase with the checkpoint. |
-| `focus` | TEXT | NOT NULL, CHECK(`requirements` \| `architecture` \| `ux`) | — | The review domain to examine during the checkpoint. |
-
-### Relationships
-
-- **Parent:** `plan_phase` via `plan_phase_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `checkpoint_focus: ["requirements", "ux"]` in the `plan_phase` payload |
-| Query | `changelog_query` | Retrieved alongside `plan_phase` data |
-
----
-
 ## `plan_overview`
 
 ### Purpose
@@ -551,7 +417,7 @@ One row per planning revision: the high-level summary of the entire implementati
 - Created once per planning revision by `implementation_planner`, alongside all `plan_phase` rows.
 - `implementation_plan_critic` uses this to evaluate whether the strategy is coherent and whether the rationale justifies the phase count.
 - `senior_developer` reads this first to understand the big picture before drilling into individual phases.
-- Child tables `plan_overview_risk` and `plan_overview_assumption` hang off this row.
+- Child table `plan_overview_risk` hangs off this row. Assumptions are stored inline as a JSON array.
 
 ### Columns
 
@@ -564,12 +430,14 @@ One row per planning revision: the high-level summary of the entire implementati
 | `total_phases` | INTEGER | NOT NULL | — | Total number of phases in this plan. Should match the count of `plan_phase` rows for the same `iteration_id`. |
 | `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into this number of phases this way. |
 | `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
+| `assumptions` | TEXT | — | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
-- **Children:** `plan_overview_risk`, `plan_overview_assumption`
+- **Children:** `plan_overview_risk`
+- **JSON array:** `assumptions` (inline on this table)
 
 ### MCP tool access
 
@@ -613,40 +481,6 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 |-----------|------|-------|
 | Insert | `changelog_insert` | Pass `risks: [{risk, mitigation, phase}]` in the `plan_overview` payload |
 | Query | `changelog_query` | Retrieved as the `risks` array when querying a `plan_overview` |
-
----
-
-## `plan_overview_assumption`
-
-### Purpose
-
-Records assumptions the plan relies on — things outside the team's control that are taken as true for planning purposes. If an assumption is invalidated, the plan may need to be revised.
-
-### Context
-
-- One-to-many child of `plan_overview`.
-- Examples: "The third-party payment API supports webhook retries", "Backend team has 2 full-time engineers available for 6 weeks", "No breaking schema changes will be required after Phase 2".
-- `implementation_plan_critic` checks that assumptions are explicit and realistic, not hidden or over-optimistic.
-- `senior_developer` reviews assumptions at the start of each phase to catch invalidated ones early.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_overview_id` | INTEGER | NOT NULL, FK → `plan_overview(id)` | — | The plan overview this assumption belongs to. |
-| `assumption` | TEXT | NOT NULL | — | The assumption text (e.g., "No breaking changes to the Stripe API during development"). |
-
-### Relationships
-
-- **Parent:** `plan_overview` via `plan_overview_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `assumptions: ["..."]` in the `plan_overview` payload |
-| Query | `changelog_query` | Retrieved as the `assumptions` array when querying a `plan_overview` |
 
 ---
 
@@ -815,22 +649,22 @@ iteration ───────────────────────�
 │                                                                    │
 ├─ plan_overview (1:N per revision)                                 │
 │   ├─ plan_overview_risk (1:N)                                     │
-│   └─ plan_overview_assumption (1:N)                               │
+│   └─ assumptions (JSON array, inline)                             │
 │                                                                    │
 ├─ plan_phase (1:N, phase_number sequential within iteration)       │
 │   ├─ plan_phase_requirement  (M:N → requirement)                  │
 │   ├─ plan_phase_component    (M:N → component)                    │
 │   ├─ plan_phase_flow         (M:N → user_flow)                    │
 │   ├─ plan_phase_screen       (M:N → screen)                       │
-│   ├─ plan_phase_entry_criterion  (1:N)                            │
-│   ├─ plan_phase_exit_criterion   (1:N)                            │
+│   ├─ entry_criteria          (JSON array, inline)                 │
+│   ├─ exit_criteria           (JSON array, inline)                 │
+│   ├─ checkpoint_focus        (JSON array, inline)                 │
 │   ├─ plan_phase_api_endpoint     (1:N)                            │
 │   ├─ plan_phase_db_change        (1:N)                            │
-│   │   └─ plan_phase_db_change_table (1:N)                         │
+│   │   └─ tables              (JSON array, inline)                 │
 │   ├─ plan_phase_dependency  (FK → plan_phase(id))                  │
 │   ├─ plan_phase_parallel    (FK → plan_phase(id))                  │
-│   ├─ plan_phase_risk         (1:N)                                │
-│   └─ plan_checkpoint_focus   (1:N, when review_checkpoint=1)      │
+│   └─ plan_phase_risk         (1:N)                                │
 │                                                                    │
 ├─ plan_requirement_mapping  (requirement → plan_phase FK)           │
 ├─ plan_external_dependency  (1:N)                                  │

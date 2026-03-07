@@ -65,14 +65,9 @@ CREATE TABLE IF NOT EXISTS persona (
   description TEXT NOT NULL,
   technical_level TEXT,
   frequency_of_use TEXT,
+  goals TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS persona_goal (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  persona_id TEXT NOT NULL REFERENCES persona(id),
-  goal TEXT NOT NULL
 );
 
 -- Requirements
@@ -86,14 +81,9 @@ CREATE TABLE IF NOT EXISTS requirement (
   category TEXT NOT NULL CHECK(category IN (
     'functional', 'security', 'usability', 'performance', 'operational', 'deployment'
   )),
+  acceptance_criteria TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS requirement_acceptance_criterion (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  criterion TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS requirement_persona (
@@ -178,6 +168,8 @@ CREATE TABLE IF NOT EXISTS adr (
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
   superseded_by TEXT REFERENCES adr(id),
+  consequences TEXT DEFAULT '[]',
+  research_sources TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
 );
@@ -188,18 +180,6 @@ CREATE TABLE IF NOT EXISTS adr_alternative (
   option_text TEXT NOT NULL,
   pros TEXT,
   cons TEXT
-);
-
-CREATE TABLE IF NOT EXISTS adr_consequence (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  adr_id TEXT NOT NULL REFERENCES adr(id),
-  consequence TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS adr_research_source (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  adr_id TEXT NOT NULL REFERENCES adr(id),
-  source TEXT NOT NULL
 );
 
 -- Architecture Components
@@ -262,13 +242,8 @@ CREATE TABLE IF NOT EXISTS architecture_overview (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   description TEXT NOT NULL,
+  principles TEXT DEFAULT '[]',
   created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS architecture_principle (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  overview_id INTEGER NOT NULL REFERENCES architecture_overview(id),
-  principle TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS architecture_diagram (
@@ -359,6 +334,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
   persona_id TEXT REFERENCES persona(id),
   entry_point TEXT,
   success_state TEXT,
+  data_dependencies TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
 );
@@ -392,12 +368,6 @@ CREATE TABLE IF NOT EXISTS user_flow_requirement (
   PRIMARY KEY (flow_id, requirement_id)
 );
 
-CREATE TABLE IF NOT EXISTS user_flow_data_dependency (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id),
-  dependency TEXT NOT NULL
-);
-
 -- UX: screens
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
@@ -407,14 +377,9 @@ CREATE TABLE IF NOT EXISTS screen (
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
   mockup_path TEXT,
+  components TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS screen_component (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  screen_id TEXT NOT NULL REFERENCES screen(id),
-  component_name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS screen_state (
@@ -512,6 +477,9 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')),
   review_checkpoint INTEGER DEFAULT 0,
   notes TEXT,
+  entry_criteria TEXT DEFAULT '[]',
+  exit_criteria TEXT DEFAULT '[]',
+  checkpoint_focus TEXT DEFAULT '[]',
   created_at TEXT NOT NULL
 );
 
@@ -539,18 +507,6 @@ CREATE TABLE IF NOT EXISTS plan_phase_screen (
   PRIMARY KEY (plan_phase_id, screen_id)
 );
 
-CREATE TABLE IF NOT EXISTS plan_phase_entry_criterion (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  criterion TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS plan_phase_exit_criterion (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  criterion TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
@@ -563,13 +519,8 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
   migration_name TEXT NOT NULL,
-  description TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS plan_phase_db_change_table (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  db_change_id INTEGER NOT NULL REFERENCES plan_phase_db_change(id),
-  table_name TEXT NOT NULL
+  description TEXT NOT NULL,
+  tables TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_dependency (
@@ -592,12 +543,6 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
   mitigation TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS plan_checkpoint_focus (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  focus TEXT NOT NULL CHECK(focus IN ('requirements', 'architecture', 'ux'))
-);
-
 -- Implementation plan: overview
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -607,6 +552,7 @@ CREATE TABLE IF NOT EXISTS plan_overview (
   total_phases INTEGER NOT NULL,
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
+  assumptions TEXT DEFAULT '[]',
   created_at TEXT NOT NULL
 );
 
@@ -616,12 +562,6 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
   risk TEXT NOT NULL,
   mitigation TEXT NOT NULL,
   phase INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS plan_overview_assumption (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id),
-  assumption TEXT NOT NULL
 );
 
 -- Implementation plan: requirements mapping
@@ -860,13 +800,8 @@ CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
   coverage_id INTEGER NOT NULL REFERENCES test_requirement_coverage(id),
   criterion TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'not_tested')),
-  notes TEXT
-);
-
-CREATE TABLE IF NOT EXISTS test_acceptance_criterion_test_id (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  criterion_result_id INTEGER NOT NULL REFERENCES test_acceptance_criterion_result(id),
-  test_id TEXT NOT NULL
+  notes TEXT,
+  test_ids TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS test_suite (
@@ -1032,13 +967,8 @@ CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
   documented INTEGER DEFAULT 0,
   user_facing INTEGER DEFAULT 0,
-  notes TEXT
-);
-
-CREATE TABLE IF NOT EXISTS documentation_requirement_path (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  coverage_id INTEGER NOT NULL REFERENCES documentation_requirement_coverage(id),
-  path TEXT NOT NULL
+  notes TEXT,
+  paths TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS documentation_asset (
@@ -1063,6 +993,8 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
+  targets TEXT DEFAULT '[]',
+  blockers TEXT DEFAULT '[]',
   created_at TEXT NOT NULL
 );
 
@@ -1077,47 +1009,20 @@ CREATE TABLE IF NOT EXISTS deployment_manifest_metadata (
   test_report_version TEXT
 );
 
-CREATE TABLE IF NOT EXISTS deployment_target (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
-  target TEXT NOT NULL CHECK(target IN ('private-cloud', 'local-executable'))
-);
-
-CREATE TABLE IF NOT EXISTS deployment_manifest_blocker (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
-  blocker TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS deployment_pipeline (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
-  platform TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS deployment_pipeline_config_file (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id),
-  file_path TEXT NOT NULL
+  platform TEXT NOT NULL,
+  config_files TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id),
   name TEXT NOT NULL,
-  purpose TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS deployment_stage_trigger (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id),
-  trigger_text TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS deployment_stage_step (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id),
-  step TEXT NOT NULL
+  purpose TEXT NOT NULL,
+  triggers TEXT DEFAULT '[]',
+  steps TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
@@ -1166,13 +1071,8 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('container-image', 'binary', 'archive', 'package', 'installer')),
   registry TEXT,
-  versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom'))
-);
-
-CREATE TABLE IF NOT EXISTS deployment_artifact_platform (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  artifact_id INTEGER NOT NULL REFERENCES deployment_artifact(id),
-  platform TEXT NOT NULL
+  versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')),
+  platforms TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_signing (
@@ -1186,19 +1086,9 @@ CREATE TABLE IF NOT EXISTS deployment_local_executable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
   installation_method TEXT,
-  update_mechanism TEXT
-);
-
-CREATE TABLE IF NOT EXISTS deployment_local_platform (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  local_exec_id INTEGER NOT NULL REFERENCES deployment_local_executable(id),
-  platform TEXT NOT NULL CHECK(platform IN ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64', 'windows-amd64'))
-);
-
-CREATE TABLE IF NOT EXISTS deployment_local_channel (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  local_exec_id INTEGER NOT NULL REFERENCES deployment_local_executable(id),
-  channel TEXT NOT NULL
+  update_mechanism TEXT,
+  platforms TEXT DEFAULT '[]',
+  channels TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_secret (

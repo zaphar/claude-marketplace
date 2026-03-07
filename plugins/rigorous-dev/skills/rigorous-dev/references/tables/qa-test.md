@@ -18,7 +18,6 @@ This domain captures the complete output of the **qa_engineer** agent during the
 | [`test_report_metadata`](#test_report_metadata) | Versioning and upstream artifact versions used when the report was produced |
 | [`test_requirement_coverage`](#test_requirement_coverage) | Per-requirement test coverage status |
 | [`test_acceptance_criterion_result`](#test_acceptance_criterion_result) | Pass/fail result for each acceptance criterion |
-| [`test_acceptance_criterion_test_id`](#test_acceptance_criterion_test_id) | Test IDs associated with each acceptance criterion result |
 | [`test_suite`](#test_suite) | Named test suites grouped by type (unit, integration, e2e, etc.) |
 | [`test_case`](#test_case) | Individual test cases with status, timing, and failure details |
 | [`test_case_requirement`](#test_case_requirement) | Many-to-many: links test cases to the requirements they verify |
@@ -67,7 +66,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 
 **Write:** `changelog_insert` with `entity_type: "test_report"`. The `data` object maps to the non-key, non-audit columns above, plus nested child structures (suites, cases, findings, etc.) that the handler normalizes into child tables.
 
-**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`. Returns all child data nested: `metadata`, `coverage` (with nested `criteria`, each with `test_ids`), `suites` (with nested `cases`, each with `requirements`), `security_findings`, `performance_benchmarks`, `blockers` (with nested `requirements`), and `recommendations`.
+**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`. Returns all child data nested: `metadata`, `coverage` (with nested `criteria`, each with `test_ids` JSON array), `suites` (with nested `cases`, each with `requirements`), `security_findings`, `performance_benchmarks`, `blockers` (with nested `requirements`), and `recommendations`.
 
 ---
 
@@ -142,7 +141,7 @@ Records the pass/fail status of a single acceptance criterion for a given requir
 
 ### Context
 
-Each requirement has one or more acceptance criteria (stored in `requirement_acceptance_criterion`). The `qa_engineer` must produce a result row for every criterion. Unverified criteria appear as `not_tested`. The `criterion` text is copied from the source requirement to make the report self-contained.
+Each requirement has one or more acceptance criteria (stored as the `acceptance_criteria` JSON array on the `requirement` table). The `qa_engineer` must produce a result row for every criterion. Unverified criteria appear as `not_tested`. The `criterion` text is copied from the source requirement to make the report self-contained.
 
 ### Columns
 
@@ -153,44 +152,16 @@ Each requirement has one or more acceptance criteria (stored in `requirement_acc
 | `criterion` | TEXT | NOT NULL | — | The acceptance criterion text (verbatim from the requirement) |
 | `status` | TEXT | NOT NULL, CHECK(`pass`, `fail`, `not_tested`) | — | Whether this criterion was satisfied |
 | `notes` | TEXT | — | NULL | Optional evidence, failure details, or explanation |
+| `test_ids` | TEXT | — | `'[]'` | JSON array of test case identifier strings that verify this criterion (e.g., `["auth.login.valid_credentials", "auth.login.expired_token"]`). Each value should match a `test_case.test_id`. Replaces the former `test_acceptance_criterion_test_id` child table. |
 
 ### Relationships
 
 - **Parent:** `test_requirement_coverage` (via `coverage_id`)
-- **Children:** `test_acceptance_criterion_test_id` (1:N)
+- **JSON array:** `test_ids` (inline on this table) — cross-references `test_case.test_id` (soft reference, no FK enforced)
 
 ### MCP Tool Access
 
 Inserted as nested items within the `coverage[].criteria` array of a `changelog_insert` `test_report` payload.
-
----
-
-## test_acceptance_criterion_test_id
-
-### Purpose
-
-Associates one or more specific test case IDs with an acceptance criterion result. Enables cross-referencing between the requirement-centric view (criterion results) and the execution-centric view (test cases in suites).
-
-### Context
-
-A single acceptance criterion may be verified by multiple test cases. Each `test_id` here should correspond to the `test_id` of a row in `test_case`. The link is stored by string ID (not FK) to keep it flexible across heterogeneous test runners.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `criterion_result_id` | INTEGER | NOT NULL, FK → `test_acceptance_criterion_result(id)` | — | The criterion result this test ID belongs to |
-| `test_id` | TEXT | NOT NULL | — | The test case identifier (matches `test_case.test_id`) |
-
-### Relationships
-
-- **Parent:** `test_acceptance_criterion_result` (via `criterion_result_id`)
-- **Cross-reference:** `test_case.test_id` (soft reference, no FK enforced)
-
-### MCP Tool Access
-
-Inserted as items in the `test_ids` array of each criterion result. Not directly queryable — access through the parent criterion result or parent report.
 
 ---
 
@@ -240,7 +211,7 @@ Each `test_case` belongs to a suite. The `test_id` is the canonical identifier u
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `suite_id` | INTEGER | NOT NULL, FK → `test_suite(id)` | — | The suite this test case belongs to |
-| `test_id` | TEXT | NOT NULL | — | Test runner identifier (used as cross-reference in `test_acceptance_criterion_test_id`) |
+| `test_id` | TEXT | NOT NULL | — | Test runner identifier (used as cross-reference in `test_acceptance_criterion_result.test_ids` JSON array) |
 | `name` | TEXT | NOT NULL | — | Short human-readable test name |
 | `description` | TEXT | — | NULL | Longer description of what the test verifies |
 | `status` | TEXT | NOT NULL, CHECK(`pass`, `fail`, `skipped`, `flaky`) | — | Execution result |
@@ -253,7 +224,7 @@ Each `test_case` belongs to a suite. The `test_id` is the canonical identifier u
 
 - **Parent:** `test_suite` (via `suite_id`)
 - **Children:** `test_case_requirement` (M:N bridge to `requirement`)
-- **Cross-referenced by:** `test_acceptance_criterion_test_id.test_id`
+- **Cross-referenced by:** `test_acceptance_criterion_result.test_ids` JSON array
 
 ### MCP Tool Access
 
@@ -457,8 +428,7 @@ iteration
 └── test_report
     ├── test_report_metadata
     ├── test_requirement_coverage
-    │   └── test_acceptance_criterion_result
-    │       └── test_acceptance_criterion_test_id
+    │   └── test_acceptance_criterion_result  (test_ids → JSON array inline)
     ├── test_suite
     │   └── test_case
     │       └── test_case_requirement  ──→ requirement

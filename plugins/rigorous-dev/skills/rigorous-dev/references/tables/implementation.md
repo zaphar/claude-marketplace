@@ -625,4 +625,4 @@ All 13 child tables of `implementation_manifest` are fully supported via `change
 | `requirement` | `requirement_id` | Traceability from code to requirements. |
 | `component` | `component_id` | Traceability from code to architecture. |
 
-The QA engineer joins `implementation_requirement_status` → `requirement` → `requirement_acceptance_criterion` to build the test matrix without re-reading requirements from scratch.
+The QA engineer reads `implementation_requirement_status` → `requirement` (with the `acceptance_criteria` JSON column) to build the test matrix without re-reading requirements from scratch.

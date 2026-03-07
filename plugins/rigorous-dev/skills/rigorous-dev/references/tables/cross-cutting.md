@@ -282,7 +282,7 @@ The full traceability chain is assembled by the `traceability_query` tool by com
 requirement (REQ-XXX)
     └── traceability_mapping.requirement_id → addressed_by (COMP-XXX, flow-XXX, screen-XXX)
             ├── component_requirement (COMP-XXX → REQ-XXX)   [reverse link]
-            ├── adr (which ADRs reference this component?)    [via adr_consequence / adr text]
+            ├── adr (which ADRs reference this component?)    [via adr.consequences JSON / adr text]
             └── screen / user_flow                            [via addressed_by_type = 'screen' | 'flow']
 ```
 
@@ -352,7 +352,7 @@ Write a second mapping for the same requirement to a screen:
 
 ### Purpose
 
-Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`, `deployment_manifest_blocker`) which are child tables of their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
+Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`, `deployment_manifest.blockers` JSON array) which are stored within their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
 
 Blockers use soft-delete semantics: active blockers have `resolved_at IS NULL`. When a blocker is addressed, `blocker_resolve` sets `resolved_at` and optionally records resolution notes.
 

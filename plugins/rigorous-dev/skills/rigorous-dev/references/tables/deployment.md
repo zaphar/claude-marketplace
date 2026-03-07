@@ -7,23 +7,23 @@
 
 ## Overview
 
-The deployment domain captures the full output of the Release Engineer agent. It is the most table-heavy domain (26 tables) because deployment configuration has many orthogonal concerns that must be modelled independently: CI/CD pipeline topology, per-environment configuration, build artifact inventory, code signing, local distribution channels (Homebrew, apt, Winget), secrets inventory, health checks, alerting wiring, operational runbooks, and release review checklists.
+The deployment domain captures the full output of the Release Engineer agent. It is the most table-heavy domain (18 tables) because deployment configuration has many orthogonal concerns that must be modelled independently: CI/CD pipeline topology, per-environment configuration, build artifact inventory, code signing, local distribution channels (Homebrew, apt, Winget), secrets inventory, health checks, alerting wiring, operational runbooks, and release review checklists.
 
-All 26 tables hang off a single `deployment_manifest` row, which is in turn scoped to an `iteration` and optionally a `revision`. The Release Critic validates the manifest and all child data before the release phase is closed.
+All 18 tables hang off a single `deployment_manifest` row, which is in turn scoped to an `iteration` and optionally a `revision`. The Release Critic validates the manifest and all child data before the release phase is closed.
 
 ### Table Hierarchy
 
 ```
 deployment_manifest
 ├── deployment_manifest_metadata        (version provenance)
-├── deployment_target                   (where it deploys: private-cloud | local-executable)
-├── deployment_manifest_blocker         (what prevents release)
+│                                        targets → JSON array on manifest
+│                                        blockers → JSON array on manifest
 │
 ├── deployment_pipeline                 (one CI/CD platform per manifest)
-│   ├── deployment_pipeline_config_file (e.g. .github/workflows/release.yml)
+│                                        config_files → JSON array on pipeline
 │   └── deployment_pipeline_stage       (build / test / deploy / …)
-│       ├── deployment_stage_trigger    (on: push, on: tag, manual, …)
-│       ├── deployment_stage_step       (individual shell/action steps)
+│                                        triggers → JSON array on stage
+│                                        steps → JSON array on stage
 │       └── deployment_stage_quality_gate (per-stage pass/fail gate)
 │
 ├── deployment_quality_gates            (global gate rules by category/key/value)
@@ -33,13 +33,13 @@ deployment_manifest
 │   └── deployment_env_var              (environment variables + source classification)
 │
 ├── deployment_artifact                 (container-image | binary | archive | …)
-│   └── deployment_artifact_platform   (linux/darwin/windows targets)
+│                                        platforms → JSON array on artifact
 │
 ├── deployment_signing                  (code signing on/off + method)
 │
 ├── deployment_local_executable         (local distribution metadata)
-│   ├── deployment_local_platform       (linux-amd64 | darwin-arm64 | …)
-│   └── deployment_local_channel        (homebrew-tap | apt | winget | …)
+│                                        platforms → JSON array on local_executable
+│                                        channels → JSON array on local_executable
 │
 ├── deployment_secret                   (secrets inventory — names/purposes, NOT values)
 ├── deployment_health_check             (endpoints + polling interval)
@@ -67,14 +67,17 @@ deployment_manifest
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Links to the workflow iteration this release covers. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Links to the specific producer-critic revision attempt. |
 | `status` | TEXT | NOT NULL, CHECK IN (`ready`, `not_ready`, `blocked`) | — | Overall release readiness. `blocked` means hard blockers prevent deployment. |
+| `targets` | TEXT | — | `'[]'` | JSON array of deployment target strings (e.g., `["private-cloud", "local-executable"]`). Replaces the former `deployment_target` child table. |
+| `blockers` | TEXT | — | `'[]'` | JSON array of blocker description strings (e.g., `["DNS records not configured"]`). When `status` is `blocked`, this array must be non-empty. Replaces the former `deployment_manifest_blocker` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp when the manifest was created. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- Children: all 25 remaining tables in this domain
+- Children: all 17 remaining tables in this domain
+- JSON arrays: `targets`, `blockers` (inline on this table)
 
 **MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required) and all child records as nested arrays (`metadata`, `targets`, `blockers`, `pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All 26 tables are inserted in a single transactional call.
+- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required), `targets` (JSON array of strings), `blockers` (JSON array of strings), and all child records as nested arrays (`metadata`, `pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All tables are inserted in a single transactional call.
 - **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Returns manifest rows with all children attached via `attachRelated`.
 
 ---
@@ -106,48 +109,6 @@ deployment_manifest
 
 ---
 
-### `deployment_target`
-
-**Purpose:** Declares where the software will be deployed. One row per deployment target; a single manifest may target multiple destinations.
-
-**Context:** The two current targets represent the two primary distribution models in the rigorous-dev workflow: `private-cloud` (Kubernetes, ECS, VMs) and `local-executable` (binary distributed via package managers). The target value gates which sub-tables are relevant: `private-cloud` activates the environment/infra/secret tables; `local-executable` activates the local distribution tables.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
-| `target` | TEXT | NOT NULL, CHECK IN (`private-cloud`, `local-executable`) | — | The deployment target. Exactly one of the two recognised values. |
-
-**Relationships:**
-- Parent: `deployment_manifest` (via `manifest_id`)
-
-**MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"` (targets are part of the manifest payload).
-- **Read:** Direct SQL — `SELECT target FROM deployment_target WHERE manifest_id = ?`.
-
----
-
-### `deployment_manifest_blocker`
-
-**Purpose:** Records hard blockers that prevent the release from proceeding. Each blocker is a distinct row so they can be enumerated, tracked, and resolved independently.
-
-**Context:** When the manifest `status` is `blocked`, at least one row must exist in this table. The `release_critic` validates that every blocker is described clearly enough to be actionable. Blockers are typically failing quality gates, unresolved security findings, or missing sign-offs.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
-| `blocker` | TEXT | NOT NULL | — | Human-readable description of what is blocking the release. |
-
-**Relationships:**
-- Parent: `deployment_manifest` (via `manifest_id`)
-
-**MCP tool access:**
-- **Write:** Part of the manifest payload in `changelog_insert`.
-- **Read:** Direct SQL — `SELECT blocker FROM deployment_manifest_blocker WHERE manifest_id = ?`.
-
----
-
 ### `deployment_pipeline`
 
 **Purpose:** Represents a CI/CD pipeline platform (e.g., GitHub Actions, GitLab CI, CircleCI, Jenkins). One row per pipeline; a manifest may in principle define multiple pipelines for different platforms.
@@ -156,37 +117,19 @@ deployment_manifest
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by child stage/config-file tables. |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by child stage tables. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `platform` | TEXT | NOT NULL | — | CI/CD platform name (e.g., `github-actions`, `gitlab-ci`, `circleci`). Free text — no enum constraint. |
+| `config_files` | TEXT | — | `'[]'` | JSON array of file path strings for CI/CD configuration files (e.g., `[".github/workflows/release.yml"]`). Replaces the former `deployment_pipeline_config_file` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
-- Children: `deployment_pipeline_config_file`, `deployment_pipeline_stage`
+- Children: `deployment_pipeline_stage`
+- JSON array: `config_files` (inline on this table)
 
 **MCP tool access:**
 - **Write:** Part of the manifest payload in `changelog_insert`.
 - **Read:** Direct SQL — `SELECT * FROM deployment_pipeline WHERE manifest_id = ?`.
-
----
-
-### `deployment_pipeline_config_file`
-
-**Purpose:** Lists the actual file paths of CI/CD configuration files that define the pipeline. One row per file.
-
-**Context:** For GitHub Actions this is typically `.github/workflows/release.yml`; for GitLab CI it is `.gitlab-ci.yml`. These paths are informational — they allow the critic to verify the files exist in the implementation manifest and that they are not stale.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `pipeline_id` | INTEGER | NOT NULL, FK → `deployment_pipeline(id)` | — | Parent pipeline. |
-| `file_path` | TEXT | NOT NULL | — | Repository-relative path to the pipeline config file (e.g., `.github/workflows/deploy.yml`). |
-
-**Relationships:**
-- Parent: `deployment_pipeline` (via `pipeline_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT file_path FROM deployment_pipeline_config_file WHERE pipeline_id = ?`.
 
 ---
 
@@ -198,57 +141,20 @@ deployment_manifest
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by trigger/step/quality-gate child tables. |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by quality-gate child table. |
 | `pipeline_id` | INTEGER | NOT NULL, FK → `deployment_pipeline(id)` | — | Parent pipeline. |
 | `name` | TEXT | NOT NULL | — | Stage name (e.g., `build`, `integration-test`, `deploy-production`). |
 | `purpose` | TEXT | NOT NULL | — | Human-readable description of what this stage does. |
+| `triggers` | TEXT | — | `'[]'` | JSON array of trigger description strings (e.g., `["on: push to main", "manual approval required"]`). Replaces the former `deployment_stage_trigger` child table. |
+| `steps` | TEXT | — | `'[]'` | JSON array of step description strings (e.g., `["checkout", "go build", "docker push"]`). Replaces the former `deployment_stage_step` child table. |
 
 **Relationships:**
 - Parent: `deployment_pipeline` (via `pipeline_id`)
-- Children: `deployment_stage_trigger`, `deployment_stage_step`, `deployment_stage_quality_gate`
+- Children: `deployment_stage_quality_gate`
+- JSON arrays: `triggers`, `steps` (inline on this table)
 
 **MCP tool access:**
 - **Read:** Direct SQL — `SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?`.
-
----
-
-### `deployment_stage_trigger`
-
-**Purpose:** Lists the events or conditions that cause a pipeline stage to run (e.g., `push to main`, `on: release published`, `manual approval`). One row per trigger.
-
-**Context:** Triggers are captured as free-text strings rather than an enum because trigger syntax is highly platform-specific. The critic checks that production deploy stages have appropriate gate triggers (e.g., not triggered on every push).
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `stage_id` | INTEGER | NOT NULL, FK → `deployment_pipeline_stage(id)` | — | Parent stage. |
-| `trigger_text` | TEXT | NOT NULL | — | Human-readable trigger description (e.g., `on: push to main`, `manual approval required`). |
-
-**Relationships:**
-- Parent: `deployment_pipeline_stage` (via `stage_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT trigger_text FROM deployment_stage_trigger WHERE stage_id = ?`.
-
----
-
-### `deployment_stage_step`
-
-**Purpose:** Lists the ordered steps executed within a pipeline stage (e.g., `docker build`, `npm test`, `kubectl apply`). One row per step.
-
-**Context:** Steps are free-text descriptions of the commands or actions performed. They provide enough detail for the critic to verify completeness and for engineers to trace what the pipeline does without reading raw YAML.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `stage_id` | INTEGER | NOT NULL, FK → `deployment_pipeline_stage(id)` | — | Parent stage. |
-| `step` | TEXT | NOT NULL | — | Description of the step (e.g., `Run unit tests via npm test`, `Push Docker image to registry`). |
-
-**Relationships:**
-- Parent: `deployment_pipeline_stage` (via `stage_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT step FROM deployment_stage_step WHERE stage_id = ?`.
 
 ---
 
@@ -372,40 +278,21 @@ deployment_manifest
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by `deployment_artifact_platform`. |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `name` | TEXT | NOT NULL | — | Artifact name (e.g., `api-server`, `cli-binary`, `installer.pkg`). |
 | `type` | TEXT | NOT NULL, CHECK IN (`container-image`, `binary`, `archive`, `package`, `installer`) | — | Artifact type. Determines expected registry and signing approach. |
 | `registry` | TEXT | — | NULL | Where the artifact is stored (e.g., `ghcr.io/org/api-server`, `s3://releases-bucket`, `pypi.org`). NULL for local builds only. |
 | `versioning` | TEXT | CHECK IN (`semantic`, `git-sha`, `timestamp`, `custom`) | NULL | Versioning strategy. NULL means no policy specified (unusual; critic should flag). |
+| `platforms` | TEXT | — | `'[]'` | JSON array of platform target strings (e.g., `["linux/amd64", "darwin/arm64"]`). Replaces the former `deployment_artifact_platform` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
-- Children: `deployment_artifact_platform`
+- JSON array: `platforms` (inline on this table)
 - Cross-reference: `deployment_signing` (artifacts of type `binary` or `installer` typically require signing)
 
 **MCP tool access:**
 - **Read:** Direct SQL — `SELECT * FROM deployment_artifact WHERE manifest_id = ?`.
-
----
-
-### `deployment_artifact_platform`
-
-**Purpose:** Lists the OS/architecture targets for which an artifact is built. One row per supported platform.
-
-**Context:** Used primarily for cross-compiled binaries and multi-arch container images. The platform strings are free text here (e.g., `linux/amd64`, `linux/arm64`, `darwin/arm64`) rather than constrained to an enum, allowing flexibility for container manifest lists. For constrained local-distribution platforms, see `deployment_local_platform`.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `artifact_id` | INTEGER | NOT NULL, FK → `deployment_artifact(id)` | — | Parent artifact. |
-| `platform` | TEXT | NOT NULL | — | Platform target string (e.g., `linux/amd64`, `darwin/arm64`, `windows/amd64`). Free text. |
-
-**Relationships:**
-- Parent: `deployment_artifact` (via `artifact_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT platform FROM deployment_artifact_platform WHERE artifact_id = ?`.
 
 ---
 
@@ -435,61 +322,23 @@ deployment_manifest
 
 **Purpose:** Top-level metadata for locally-distributed executables — tools or CLIs shipped directly to end-user machines via package managers rather than deployed to a server.
 
-**Context:** Applies when `deployment_target.target = 'local-executable'`. Captures the installation method (e.g., `homebrew-tap`, `apt-repository`, `winget`, `direct-download`) and the update mechanism (e.g., `brew upgrade`, `apt-get upgrade`, `self-update`). Child tables enumerate specific platforms and channels.
+**Context:** Applies when the manifest targets `local-executable` (as listed in the `deployment_manifest.targets` JSON array). Captures the installation method (e.g., `homebrew-tap`, `apt-repository`, `winget`, `direct-download`) and the update mechanism (e.g., `brew upgrade`, `apt-get upgrade`, `self-update`). Platform and channel lists are stored as JSON arrays on this table.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by platform and channel child tables. |
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `installation_method` | TEXT | — | NULL | Primary installation method description (e.g., `homebrew tap`, `apt repository`, `winget package`, `curl script`). |
 | `update_mechanism` | TEXT | — | NULL | How users update to new versions (e.g., `brew upgrade`, `apt-get upgrade`, `built-in self-update check`). |
+| `platforms` | TEXT | — | `'[]'` | JSON array of platform strings (e.g., `["linux-amd64", "darwin-arm64"]`). Values correspond to GOARCH/GOOS-style target triples. Replaces the former `deployment_local_platform` child table. |
+| `channels` | TEXT | — | `'[]'` | JSON array of distribution channel strings (e.g., `["homebrew-tap", "apt-repository", "github-releases"]`). Replaces the former `deployment_local_channel` child table. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
-- Children: `deployment_local_platform`, `deployment_local_channel`
+- JSON arrays: `platforms`, `channels` (inline on this table)
 
 **MCP tool access:**
 - **Read:** Direct SQL — `SELECT * FROM deployment_local_executable WHERE manifest_id = ?`.
-
----
-
-### `deployment_local_platform`
-
-**Purpose:** Lists the specific OS/architecture combinations for which the local executable is distributed. Uses a constrained enum unlike the free-text `deployment_artifact_platform`.
-
-**Context:** The enum values correspond to GOARCH/GOOS-style target triples standardised in the rigorous-dev workflow. The critic checks that `deployment_artifact` rows exist for each platform declared here.
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `local_exec_id` | INTEGER | NOT NULL, FK → `deployment_local_executable(id)` | — | Parent local executable. |
-| `platform` | TEXT | NOT NULL, CHECK IN (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`, `windows-amd64`) | — | Target platform. Constrained to the five supported combinations. |
-
-**Relationships:**
-- Parent: `deployment_local_executable` (via `local_exec_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT platform FROM deployment_local_platform WHERE local_exec_id = ?`.
-
----
-
-### `deployment_local_channel`
-
-**Purpose:** Lists the distribution channels through which the local executable is published. One row per channel.
-
-**Context:** A single executable may be distributed through multiple channels simultaneously (e.g., `homebrew-tap`, `apt-repository`, `github-releases`). Free text allows flexibility for emerging channels (e.g., `nix`, `scoop`, `snap`).
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `local_exec_id` | INTEGER | NOT NULL, FK → `deployment_local_executable(id)` | — | Parent local executable. |
-| `channel` | TEXT | NOT NULL | — | Distribution channel name (e.g., `homebrew-tap`, `apt-repository`, `winget`, `github-releases`, `nix-flake`). |
-
-**Relationships:**
-- Parent: `deployment_local_executable` (via `local_exec_id`)
-
-**MCP tool access:**
-- **Read:** Direct SQL — `SELECT channel FROM deployment_local_channel WHERE local_exec_id = ?`.
 
 ---
 
@@ -607,7 +456,7 @@ deployment_manifest
 
 **Purpose:** Tracks the release review checklist items that the Release Engineer self-assesses and the Release Critic validates. Each item has a name and a pass/fail state.
 
-**Context:** The review checklist is the final gate before a release is approved. It covers items such as "All quality gates pass", "Rollback procedure documented", "Secrets rotation policy defined", "Health checks configured". The Release Critic verifies that all items are `passed = 1` before issuing an approval verdict. Items with `passed = 0` correspond to blockers in `deployment_manifest_blocker`.
+**Context:** The review checklist is the final gate before a release is approved. It covers items such as "All quality gates pass", "Rollback procedure documented", "Secrets rotation policy defined", "Health checks configured". The Release Critic verifies that all items are `passed = 1` before issuing an approval verdict. Items with `passed = 0` correspond to entries in the `deployment_manifest.blockers` JSON array.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
@@ -618,7 +467,7 @@ deployment_manifest
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
-- Cross-reference: `deployment_manifest_blocker` (failed checklist items should correspond to blockers when manifest `status = 'blocked'`)
+- Cross-reference: `deployment_manifest.blockers` JSON array (failed checklist items should correspond to blocker entries when manifest `status = 'blocked'`)
 
 **MCP tool access:**
 - **Read:** Direct SQL — `SELECT check_name, passed FROM deployment_review_checklist WHERE manifest_id = ?`.
@@ -633,13 +482,13 @@ deployment_manifest
 | `deployment_manifest` | `revision` | `revision_id` |
 | `deployment_manifest_metadata` | `implementation_manifest_metadata` (conceptually) | `implementation_version` string |
 | `deployment_env_var` (source=secret) | `deployment_secret` | `name` match (logical, not FK) |
-| `deployment_local_platform` | `deployment_artifact_platform` | platform string match (logical, not FK) |
+| `deployment_local_executable.platforms` | `deployment_artifact.platforms` | platform string match (logical, not FK) |
 
 ## MCP Tool Summary
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert deployment manifest + all children | `changelog_insert` with `entity_type: "deployment_manifest"` | All 25 child tables are inserted in a single transactional call via nested `data` properties |
+| Insert deployment manifest + all children | `changelog_insert` with `entity_type: "deployment_manifest"` | All child tables are inserted in a single transactional call via nested `data` properties. `targets` and `blockers` are JSON arrays on the manifest row itself. |
 | Query manifest by iteration | `changelog_query` with `entity_type: "deployment_manifest"`, `iteration_id: N` | Returns `deployment_manifest` rows with all children attached via `attachRelated` |
 | Query with filters | `changelog_query` with `entity_type: "deployment_manifest"`, `filters: { status: "blocked" }` | Returns blocked manifests for a given iteration |
 
@@ -654,6 +503,13 @@ All child tables are nested inside the `data` object. Every array property is op
   "revision_id": 1,
   "data": {
     "status": "ready",                     // required: "ready" | "not_ready" | "blocked"
+    "targets": [                           // → JSON array on deployment_manifest
+      "private-cloud",
+      "local-executable"
+    ],
+    "blockers": [                          // → JSON array on deployment_manifest
+      "DNS records not configured"
+    ],
     "metadata": [{                         // → deployment_manifest_metadata
       "version": "1.0.0",
       "created": "2025-01-15T00:00:00Z",
@@ -662,27 +518,20 @@ All child tables are nested inside the `data` object. Every array property is op
       "implementation_version": "1.0.0",
       "test_report_version": "1.0.0"       // optional, null if QA skipped
     }],
-    "targets": [                           // → deployment_target (string or object)
-      { "target": "private-cloud" },
-      "local-executable"                   // shorthand: bare string accepted
-    ],
-    "blockers": [                          // → deployment_manifest_blocker
-      { "blocker": "DNS records not configured" }
-    ],
     "pipelines": [{                        // → deployment_pipeline
       "platform": "github-actions",
-      "config_files": [                    //   → deployment_pipeline_config_file
-        { "file_path": ".github/workflows/release.yml" }
+      "config_files": [                    //   → JSON array on pipeline
+        ".github/workflows/release.yml"
       ],
       "stages": [{                         //   → deployment_pipeline_stage
         "name": "build",
         "purpose": "Compile and package",
-        "triggers": [                      //     → deployment_stage_trigger
-          { "trigger_text": "on: push to main" }
+        "triggers": [                      //     → JSON array on stage
+          "on: push to main"
         ],
-        "steps": [                         //     → deployment_stage_step
-          { "step": "checkout" },
-          { "step": "go build" }
+        "steps": [                         //     → JSON array on stage
+          "checkout",
+          "go build"
         ],
         "quality_gates": [{                //     → deployment_stage_quality_gate
           "name": "unit-tests",
@@ -716,8 +565,8 @@ All child tables are nested inside the `data` object. Every array property is op
       "type": "container-image",           // "container-image" | "binary" | "archive" | "package" | "installer"
       "registry": "ghcr.io/org/myapp",
       "versioning": "semantic",            // "semantic" | "git-sha" | "timestamp" | "custom"
-      "platforms": [                       //   → deployment_artifact_platform
-        { "platform": "linux/amd64" }
+      "platforms": [                       //   → JSON array on artifact
+        "linux/amd64"
       ]
     }],
     "signing": [{                          // → deployment_signing
@@ -727,12 +576,12 @@ All child tables are nested inside the `data` object. Every array property is op
     "local_executables": [{                // → deployment_local_executable
       "installation_method": "go install",
       "update_mechanism": "self-update",
-      "platforms": [                       //   → deployment_local_platform
-        "linux-amd64",                     // shorthand: bare string accepted
-        { "platform": "darwin-arm64" }
+      "platforms": [                       //   → JSON array on local_executable
+        "linux-amd64",
+        "darwin-arm64"
       ],
-      "channels": [                        //   → deployment_local_channel
-        { "channel": "homebrew-tap" }
+      "channels": [                        //   → JSON array on local_executable
+        "homebrew-tap"
       ]
     }],
     "secrets": [{                          // → deployment_secret
@@ -770,17 +619,17 @@ All child tables are nested inside the `data` object. Every array property is op
 
 When queried via `changelog_query`, each `deployment_manifest` row is returned with all children attached as nested arrays. The shape mirrors the write `data` object with the following property names:
 
-| Property | Source Table | Nesting |
-|----------|-------------|---------|
+| Property | Source | Nesting |
+|----------|--------|---------|
+| `targets` | JSON array on `deployment_manifest` | inline |
+| `blockers` | JSON array on `deployment_manifest` | inline |
 | `metadata` | `deployment_manifest_metadata` | flat |
-| `targets` | `deployment_target` | flat |
-| `blockers` | `deployment_manifest_blocker` | flat |
-| `pipelines` | `deployment_pipeline` | → `config_files`, `stages` → `triggers`, `steps`, `quality_gates` |
+| `pipelines` | `deployment_pipeline` | `config_files` (JSON inline), `stages` → `triggers` (JSON inline), `steps` (JSON inline), `quality_gates` |
 | `quality_gates` | `deployment_quality_gates` | flat |
 | `environments` | `deployment_environment` | → `infra`, `vars` |
-| `artifacts` | `deployment_artifact` | → `platforms` |
+| `artifacts` | `deployment_artifact` | `platforms` (JSON inline) |
 | `signing` | `deployment_signing` | flat |
-| `local_executables` | `deployment_local_executable` | → `platforms`, `channels` |
+| `local_executables` | `deployment_local_executable` | `platforms` (JSON inline), `channels` (JSON inline) |
 | `secrets` | `deployment_secret` | flat |
 | `health_checks` | `deployment_health_check` | flat |
 | `alerting` | `deployment_alerting` | flat |
@@ -791,27 +640,20 @@ When queried via `changelog_query`, each `deployment_manifest` row is returned w
 
 **Full manifest read (all children):**
 ```sql
--- Root
-SELECT * FROM deployment_manifest WHERE iteration_id = ?;
+-- Root (targets and blockers are JSON columns on the manifest itself)
+SELECT *, targets, blockers FROM deployment_manifest WHERE iteration_id = ?;
 
--- Targets and blockers
-SELECT target FROM deployment_target WHERE manifest_id = ?;
-SELECT blocker FROM deployment_manifest_blocker WHERE manifest_id = ?;
-
--- Pipeline topology
-SELECT p.*, GROUP_CONCAT(pcf.file_path) AS config_files
+-- Pipeline with config files (JSON column)
+SELECT p.id, p.platform, p.config_files
 FROM deployment_pipeline p
-LEFT JOIN deployment_pipeline_config_file pcf ON pcf.pipeline_id = p.id
-WHERE p.manifest_id = ?
-GROUP BY p.id;
+WHERE p.manifest_id = ?;
 
--- All stages with steps
-SELECT s.name, s.purpose, st.step
+-- All stages with inline steps and triggers (JSON columns)
+SELECT s.name, s.purpose, s.triggers, s.steps
 FROM deployment_pipeline_stage s
 JOIN deployment_pipeline p ON s.pipeline_id = p.id
-JOIN deployment_stage_step st ON st.stage_id = s.id
 WHERE p.manifest_id = ?
-ORDER BY s.id, st.id;
+ORDER BY s.id;
 
 -- Quality gate summary
 SELECT s.name AS stage, qg.name, qg.condition, qg.failure_action
@@ -843,10 +685,9 @@ WHERE manifest_id = ?;
 ```sql
 SELECT
   dm.status,
-  COUNT(DISTINCT b.id) AS blocker_count,
+  json_array_length(dm.blockers) AS blocker_count,
   COUNT(DISTINCT rc.id) FILTER (WHERE rc.passed = 0) AS failed_checks
 FROM deployment_manifest dm
-LEFT JOIN deployment_manifest_blocker b ON b.manifest_id = dm.id
 LEFT JOIN deployment_review_checklist rc ON rc.manifest_id = dm.id
 WHERE dm.iteration_id = ?
 GROUP BY dm.id;

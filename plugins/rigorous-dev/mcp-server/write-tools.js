@@ -188,14 +188,15 @@ function insertPersona(db, iteration_id, revision_id, data) {
   const existed = snapshotIfExists(db, "persona", "persona", data.id, revision_id);
 
   db.prepare(
-    `INSERT INTO persona (id, iteration_id, revision_id, name, description, technical_level, frequency_of_use, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO persona (id, iteration_id, revision_id, name, description, technical_level, frequency_of_use, goals, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        name = excluded.name,
        description = excluded.description,
        technical_level = excluded.technical_level,
        frequency_of_use = excluded.frequency_of_use,
+       goals = excluded.goals,
        updated_at = ?`
   ).run(
     data.id,
@@ -205,19 +206,10 @@ function insertPersona(db, iteration_id, revision_id, data) {
     data.description,
     data.technical_level ?? null,
     data.frequency_of_use ?? null,
+    JSON.stringify(data.goals ?? []),
     now,
     now
   );
-
-  if (existed) {
-    db.prepare("DELETE FROM persona_goal WHERE persona_id = ?").run(data.id);
-  }
-  const insertGoal = db.prepare(
-    "INSERT INTO persona_goal (persona_id, goal) VALUES (?, ?)"
-  );
-  for (const goal of data.goals ?? []) {
-    insertGoal.run(data.id, goal);
-  }
 
   return { entity_type: "persona", id: data.id, updated: !!existed };
 }
@@ -227,14 +219,15 @@ function insertRequirement(db, iteration_id, revision_id, data) {
   const existed = snapshotIfExists(db, "requirement", "requirement", data.id, revision_id);
 
   db.prepare(
-    `INSERT INTO requirement (id, iteration_id, revision_id, description, rationale, priority, category, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO requirement (id, iteration_id, revision_id, description, rationale, priority, category, acceptance_criteria, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        description = excluded.description,
        rationale = excluded.rationale,
        priority = excluded.priority,
        category = excluded.category,
+       acceptance_criteria = excluded.acceptance_criteria,
        updated_at = ?`
   ).run(
     data.id,
@@ -244,21 +237,14 @@ function insertRequirement(db, iteration_id, revision_id, data) {
     data.rationale ?? null,
     data.priority,
     data.category,
+    JSON.stringify(data.acceptance_criteria ?? []),
     now,
     now
   );
 
   if (existed) {
-    db.prepare("DELETE FROM requirement_acceptance_criterion WHERE requirement_id = ?").run(data.id);
     db.prepare("DELETE FROM requirement_persona WHERE requirement_id = ?").run(data.id);
     db.prepare("DELETE FROM requirement_dependency WHERE requirement_id = ?").run(data.id);
-  }
-
-  const insertCriterion = db.prepare(
-    "INSERT INTO requirement_acceptance_criterion (requirement_id, criterion) VALUES (?, ?)"
-  );
-  for (const criterion of data.acceptance_criteria ?? []) {
-    insertCriterion.run(data.id, criterion);
   }
 
   const insertPersonaLink = db.prepare(
@@ -283,8 +269,8 @@ function insertAdr(db, iteration_id, revision_id, data) {
   const existed = snapshotIfExists(db, "adr", "adr", data.id, revision_id);
 
   db.prepare(
-    `INSERT INTO adr (id, iteration_id, revision_id, title, status, date, context, decision, rationale, superseded_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO adr (id, iteration_id, revision_id, title, status, date, context, decision, rationale, superseded_by, consequences, research_sources, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        title = excluded.title,
@@ -294,6 +280,8 @@ function insertAdr(db, iteration_id, revision_id, data) {
        decision = excluded.decision,
        rationale = excluded.rationale,
        superseded_by = excluded.superseded_by,
+       consequences = excluded.consequences,
+       research_sources = excluded.research_sources,
        updated_at = ?`
   ).run(
     data.id,
@@ -306,6 +294,8 @@ function insertAdr(db, iteration_id, revision_id, data) {
     data.decision,
     data.rationale,
     data.superseded_by ?? null,
+    JSON.stringify(data.consequences ?? []),
+    JSON.stringify(data.research_sources ?? []),
     now,
     now
   );
@@ -313,8 +303,6 @@ function insertAdr(db, iteration_id, revision_id, data) {
   if (existed) {
     // Delete child rows
     db.prepare("DELETE FROM adr_alternative WHERE adr_id = ?").run(data.id);
-    db.prepare("DELETE FROM adr_consequence WHERE adr_id = ?").run(data.id);
-    db.prepare("DELETE FROM adr_research_source WHERE adr_id = ?").run(data.id);
   }
 
   const insertAlt = db.prepare(
@@ -324,20 +312,6 @@ function insertAdr(db, iteration_id, revision_id, data) {
     const prosText = (alt.pros ?? []).length > 0 ? JSON.stringify(alt.pros ?? []) : null;
     const consText = (alt.cons ?? []).length > 0 ? JSON.stringify(alt.cons ?? []) : null;
     insertAlt.run(data.id, alt.option_text ?? alt.option ?? alt, prosText, consText);
-  }
-
-  const insertConsequence = db.prepare(
-    "INSERT INTO adr_consequence (adr_id, consequence) VALUES (?, ?)"
-  );
-  for (const consequence of data.consequences ?? []) {
-    insertConsequence.run(data.id, consequence);
-  }
-
-  const insertSource = db.prepare(
-    "INSERT INTO adr_research_source (adr_id, source) VALUES (?, ?)"
-  );
-  for (const source of data.research_sources ?? []) {
-    insertSource.run(data.id, source);
   }
 
   return { entity_type: "adr", id: data.id, updated: !!existed };
@@ -410,24 +384,18 @@ function insertArchitectureOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO architecture_overview (iteration_id, revision_id, description, created_at)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO architecture_overview (iteration_id, revision_id, description, principles, created_at)
+       VALUES (?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
       data.description,
+      JSON.stringify(data.principles ?? []),
       now
     );
 
   const overviewId = result.lastInsertRowid;
-
-  const insertPrinciple = db.prepare(
-    "INSERT INTO architecture_principle (overview_id, principle) VALUES (?, ?)"
-  );
-  for (const p of data.principles ?? []) {
-    insertPrinciple.run(overviewId, p);
-  }
 
   const insertDiagram = db.prepare(
     "INSERT INTO architecture_diagram (overview_id, name, path, description) VALUES (?, ?, ?, ?)"
@@ -583,8 +551,8 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   const existed = snapshotIfExists(db, "user_flow", "user_flow", data.id, revision_id);
 
   db.prepare(
-    `INSERT INTO user_flow (id, iteration_id, revision_id, name, goal, persona_id, entry_point, success_state, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO user_flow (id, iteration_id, revision_id, name, goal, persona_id, entry_point, success_state, data_dependencies, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        name = excluded.name,
@@ -592,6 +560,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
        persona_id = excluded.persona_id,
        entry_point = excluded.entry_point,
        success_state = excluded.success_state,
+       data_dependencies = excluded.data_dependencies,
        updated_at = ?`
   ).run(
     data.id,
@@ -602,6 +571,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     data.persona_id ?? null,
     data.entry_point ?? null,
     data.success_state ?? null,
+    JSON.stringify(data.data_dependencies ?? []),
     now,
     now
   );
@@ -615,7 +585,6 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     db.prepare("DELETE FROM user_flow_step WHERE flow_id = ?").run(data.id);
     db.prepare("DELETE FROM user_flow_error_state WHERE flow_id = ?").run(data.id);
     db.prepare("DELETE FROM user_flow_requirement WHERE flow_id = ?").run(data.id);
-    db.prepare("DELETE FROM user_flow_data_dependency WHERE flow_id = ?").run(data.id);
   }
 
   const insertStep = db.prepare(
@@ -652,13 +621,6 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     insertReq.run(data.id, req_id);
   }
 
-  const insertDataDep = db.prepare(
-    "INSERT INTO user_flow_data_dependency (flow_id, dependency) VALUES (?, ?)"
-  );
-  for (const dep of data.data_dependencies ?? []) {
-    insertDataDep.run(data.id, dep);
-  }
-
   return { entity_type: "user_flow", id: data.id, updated: !!existed };
 }
 
@@ -667,14 +629,15 @@ function insertScreen(db, iteration_id, revision_id, data) {
   const existed = snapshotIfExists(db, "screen", "screen", data.id, revision_id);
 
   db.prepare(
-    `INSERT INTO screen (id, iteration_id, revision_id, name, purpose, wireframe_path, mockup_path, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO screen (id, iteration_id, revision_id, name, purpose, wireframe_path, mockup_path, components, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        name = excluded.name,
        purpose = excluded.purpose,
        wireframe_path = excluded.wireframe_path,
        mockup_path = excluded.mockup_path,
+       components = excluded.components,
        updated_at = ?`
   ).run(
     data.id,
@@ -684,21 +647,14 @@ function insertScreen(db, iteration_id, revision_id, data) {
     data.purpose,
     data.wireframe_path ?? null,
     data.mockup_path ?? null,
+    JSON.stringify((data.components ?? []).map(comp => typeof comp === "string" ? comp : comp.component_name ?? comp.name)),
     now,
     now
   );
 
   if (existed) {
-    db.prepare("DELETE FROM screen_component WHERE screen_id = ?").run(data.id);
     db.prepare("DELETE FROM screen_state WHERE screen_id = ?").run(data.id);
     db.prepare("DELETE FROM screen_responsive_variant WHERE screen_id = ?").run(data.id);
-  }
-
-  const insertComp = db.prepare(
-    "INSERT INTO screen_component (screen_id, component_name) VALUES (?, ?)"
-  );
-  for (const comp of data.components ?? []) {
-    insertComp.run(data.id, typeof comp === "string" ? comp : comp.component_name ?? comp.name);
   }
 
   const insertState = db.prepare(
@@ -727,8 +683,8 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_phase (iteration_id, revision_id, phase_number, name, type, goal, complexity, review_checkpoint, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO plan_phase (iteration_id, revision_id, phase_number, name, type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -740,6 +696,9 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
       data.complexity ?? null,
       data.review_checkpoint ? 1 : 0,
       data.notes ?? null,
+      JSON.stringify(data.entry_criteria ?? []),
+      JSON.stringify(data.exit_criteria ?? []),
+      JSON.stringify(data.checkpoint_focus ?? []),
       now
     );
   const plan_phase_id = result.lastInsertRowid;
@@ -772,20 +731,6 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     insertScreenLink.run(plan_phase_id, screen_id);
   }
 
-  const insertEntry = db.prepare(
-    "INSERT INTO plan_phase_entry_criterion (plan_phase_id, criterion) VALUES (?, ?)"
-  );
-  for (const criterion of data.entry_criteria ?? []) {
-    insertEntry.run(plan_phase_id, criterion);
-  }
-
-  const insertExit = db.prepare(
-    "INSERT INTO plan_phase_exit_criterion (plan_phase_id, criterion) VALUES (?, ?)"
-  );
-  for (const criterion of data.exit_criteria ?? []) {
-    insertExit.run(plan_phase_id, criterion);
-  }
-
   const insertEndpoint = db.prepare(
     "INSERT INTO plan_phase_api_endpoint (plan_phase_id, method, path, description) VALUES (?, ?, ?, ?)"
   );
@@ -794,16 +739,10 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertDbChange = db.prepare(
-    "INSERT INTO plan_phase_db_change (plan_phase_id, migration_name, description) VALUES (?, ?, ?)"
-  );
-  const insertDbTable = db.prepare(
-    "INSERT INTO plan_phase_db_change_table (db_change_id, table_name) VALUES (?, ?)"
+    "INSERT INTO plan_phase_db_change (plan_phase_id, migration_name, description, tables) VALUES (?, ?, ?, ?)"
   );
   for (const change of data.db_changes ?? []) {
-    const changeResult = insertDbChange.run(plan_phase_id, change.migration_name, change.description ?? "");
-    for (const tbl of change.tables ?? []) {
-      insertDbTable.run(changeResult.lastInsertRowid, tbl);
-    }
+    insertDbChange.run(plan_phase_id, change.migration_name, change.description ?? "", JSON.stringify(change.tables ?? []));
   }
 
   const insertDep = db.prepare(
@@ -822,13 +761,6 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     insertRisk.run(plan_phase_id, risk.risk, risk.mitigation ?? "");
   }
 
-  const insertCheckpointFocus = db.prepare(
-    "INSERT INTO plan_checkpoint_focus (plan_phase_id, focus) VALUES (?, ?)"
-  );
-  for (const focus of data.checkpoint_focus ?? []) {
-    insertCheckpointFocus.run(plan_phase_id, focus);
-  }
-
   const insertParallel = db.prepare(
     "INSERT OR IGNORE INTO plan_phase_parallel (plan_phase_id, can_parallel_with_id) VALUES (?, ?)"
   );
@@ -843,8 +775,8 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_overview (iteration_id, revision_id, strategy, total_phases, rationale, phase_one_approach, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO plan_overview (iteration_id, revision_id, strategy, total_phases, rationale, phase_one_approach, assumptions, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -853,6 +785,7 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
       data.total_phases,
       data.rationale,
       data.phase_one_approach ?? null,
+      JSON.stringify(data.assumptions ?? []),
       now
     );
   const plan_overview_id = result.lastInsertRowid;
@@ -862,13 +795,6 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   );
   for (const risk of data.risks ?? []) {
     insertRisk.run(plan_overview_id, risk.risk, risk.mitigation ?? "", risk.phase ?? null);
-  }
-
-  const insertAssumption = db.prepare(
-    "INSERT INTO plan_overview_assumption (plan_overview_id, assumption) VALUES (?, ?)"
-  );
-  for (const assumption of data.assumptions ?? []) {
-    insertAssumption.run(plan_overview_id, assumption);
   }
 
   return { entity_type: "plan_overview", id: plan_overview_id };
@@ -1350,29 +1276,23 @@ function insertTestReport(db, iteration_id, revision_id, data) {
 
   // -- test_requirement_coverage (1:N) --
   //    → test_acceptance_criterion_result (1:N per coverage)
-  //      → test_acceptance_criterion_test_id (1:N per criterion result)
   const insertCoverage = db.prepare(
     "INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (?, ?, ?)"
   );
   const insertCriterionResult = db.prepare(
-    "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes) VALUES (?, ?, ?, ?)"
-  );
-  const insertCriterionTestId = db.prepare(
-    "INSERT INTO test_acceptance_criterion_test_id (criterion_result_id, test_id) VALUES (?, ?)"
+    "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes, test_ids) VALUES (?, ?, ?, ?, ?)"
   );
   for (const cov of data.coverage ?? []) {
     const covResult = insertCoverage.run(report_id, cov.requirement_id, cov.status);
     const coverage_id = covResult.lastInsertRowid;
     for (const cr of cov.criteria ?? []) {
-      const crResult = insertCriterionResult.run(
+      insertCriterionResult.run(
         coverage_id,
         cr.criterion,
         cr.status,
-        cr.notes ?? null
+        cr.notes ?? null,
+        JSON.stringify(cr.test_ids ?? [])
       );
-      for (const tid of cr.test_ids ?? []) {
-        insertCriterionTestId.run(crResult.lastInsertRowid, tid);
-      }
     }
   }
 
@@ -1561,27 +1481,20 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   }
 
   // -- documentation_requirement_coverage (1:N) --
-  //    → documentation_requirement_path (1:N per coverage)
   const insertCoverage = db.prepare(
     `INSERT INTO documentation_requirement_coverage
-       (manifest_id, requirement_id, documented, user_facing, notes)
-     VALUES (?, ?, ?, ?, ?)`
-  );
-  const insertCoveragePath = db.prepare(
-    "INSERT INTO documentation_requirement_path (coverage_id, path) VALUES (?, ?)"
+       (manifest_id, requirement_id, documented, user_facing, notes, paths)
+     VALUES (?, ?, ?, ?, ?, ?)`
   );
   for (const cov of data.coverage ?? []) {
-    const covResult = insertCoverage.run(
+    insertCoverage.run(
       manifest_id,
       cov.requirement_id,
       cov.documented ? 1 : 0,
       cov.user_facing ? 1 : 0,
-      cov.notes ?? null
+      cov.notes ?? null,
+      JSON.stringify(cov.paths ?? [])
     );
-    const coverage_id = covResult.lastInsertRowid;
-    for (const p of cov.paths ?? []) {
-      insertCoveragePath.run(coverage_id, p);
-    }
   }
 
   // -- documentation_asset (1:N) --
@@ -1616,10 +1529,17 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO deployment_manifest
-         (iteration_id, revision_id, status, created_at)
-       VALUES (?, ?, ?, ?)`
+         (iteration_id, revision_id, status, targets, blockers, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(iteration_id, revision_id ?? null, data.status, now);
+    .run(
+      iteration_id,
+      revision_id ?? null,
+      data.status,
+      JSON.stringify((data.targets ?? []).map(t => t.target ?? t)),
+      JSON.stringify((data.blockers ?? []).map(b => b.blocker ?? b)),
+      now
+    );
   const manifest_id = result.lastInsertRowid;
 
   // -- deployment_manifest_metadata (1:1) --
@@ -1641,42 +1561,14 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
     );
   }
 
-  // -- deployment_target (1:N) --
-  const insertTarget = db.prepare(
-    "INSERT INTO deployment_target (manifest_id, target) VALUES (?, ?)"
-  );
-  for (const t of data.targets ?? []) {
-    insertTarget.run(manifest_id, t.target ?? t);
-  }
-
-  // -- deployment_manifest_blocker (1:N) --
-  const insertBlocker = db.prepare(
-    "INSERT INTO deployment_manifest_blocker (manifest_id, blocker) VALUES (?, ?)"
-  );
-  for (const b of data.blockers ?? []) {
-    insertBlocker.run(manifest_id, b.blocker ?? b);
-  }
-
   // -- deployment_pipeline (1:N) --
-  //    → deployment_pipeline_config_file (1:N per pipeline)
   //    → deployment_pipeline_stage (1:N per pipeline)
-  //      → deployment_stage_trigger (1:N per stage)
-  //      → deployment_stage_step (1:N per stage)
   //      → deployment_stage_quality_gate (1:N per stage)
   const insertPipeline = db.prepare(
-    "INSERT INTO deployment_pipeline (manifest_id, platform) VALUES (?, ?)"
-  );
-  const insertPipelineConfigFile = db.prepare(
-    "INSERT INTO deployment_pipeline_config_file (pipeline_id, file_path) VALUES (?, ?)"
+    "INSERT INTO deployment_pipeline (manifest_id, platform, config_files) VALUES (?, ?, ?)"
   );
   const insertPipelineStage = db.prepare(
-    "INSERT INTO deployment_pipeline_stage (pipeline_id, name, purpose) VALUES (?, ?, ?)"
-  );
-  const insertStageTrigger = db.prepare(
-    "INSERT INTO deployment_stage_trigger (stage_id, trigger_text) VALUES (?, ?)"
-  );
-  const insertStageStep = db.prepare(
-    "INSERT INTO deployment_stage_step (stage_id, step) VALUES (?, ?)"
+    "INSERT INTO deployment_pipeline_stage (pipeline_id, name, purpose, triggers, steps) VALUES (?, ?, ?, ?, ?)"
   );
   const insertStageQualityGate = db.prepare(
     `INSERT INTO deployment_stage_quality_gate
@@ -1684,24 +1576,17 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
      VALUES (?, ?, ?, ?)`
   );
   for (const pipeline of data.pipelines ?? []) {
-    const pipeResult = insertPipeline.run(manifest_id, pipeline.platform);
+    const pipeResult = insertPipeline.run(manifest_id, pipeline.platform, JSON.stringify((pipeline.config_files ?? []).map(cf => cf.file_path ?? cf)));
     const pipeline_id = pipeResult.lastInsertRowid;
-    for (const cf of pipeline.config_files ?? []) {
-      insertPipelineConfigFile.run(pipeline_id, cf.file_path ?? cf);
-    }
     for (const stage of pipeline.stages ?? []) {
       const stageResult = insertPipelineStage.run(
         pipeline_id,
         stage.name,
-        stage.purpose
+        stage.purpose,
+        JSON.stringify((stage.triggers ?? []).map(tr => tr.trigger_text ?? tr)),
+        JSON.stringify((stage.steps ?? []).map(st => st.step ?? st))
       );
       const stage_id = stageResult.lastInsertRowid;
-      for (const tr of stage.triggers ?? []) {
-        insertStageTrigger.run(stage_id, tr.trigger_text ?? tr);
-      }
-      for (const st of stage.steps ?? []) {
-        insertStageStep.run(stage_id, st.step ?? st);
-      }
       for (const qg of stage.quality_gates ?? []) {
         insertStageQualityGate.run(stage_id, qg.name, qg.condition, qg.failure_action);
       }
@@ -1750,26 +1635,20 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   }
 
   // -- deployment_artifact (1:N) --
-  //    → deployment_artifact_platform (1:N per artifact)
   const insertArtifact = db.prepare(
     `INSERT INTO deployment_artifact
-       (manifest_id, name, type, registry, versioning)
-     VALUES (?, ?, ?, ?, ?)`
-  );
-  const insertArtifactPlatform = db.prepare(
-    "INSERT INTO deployment_artifact_platform (artifact_id, platform) VALUES (?, ?)"
+       (manifest_id, name, type, registry, versioning, platforms)
+     VALUES (?, ?, ?, ?, ?, ?)`
   );
   for (const art of data.artifacts ?? []) {
-    const artResult = insertArtifact.run(
+    insertArtifact.run(
       manifest_id,
       art.name,
       art.type,
       art.registry ?? null,
-      art.versioning ?? null
+      art.versioning ?? null,
+      JSON.stringify((art.platforms ?? []).map(plat => plat.platform ?? plat))
     );
-    for (const plat of art.platforms ?? []) {
-      insertArtifactPlatform.run(artResult.lastInsertRowid, plat.platform ?? plat);
-    }
   }
 
   // -- deployment_signing (1:N) --
@@ -1781,32 +1660,19 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   }
 
   // -- deployment_local_executable (1:N) --
-  //    → deployment_local_platform (1:N per executable)
-  //    → deployment_local_channel (1:N per executable)
   const insertLocalExec = db.prepare(
     `INSERT INTO deployment_local_executable
-       (manifest_id, installation_method, update_mechanism)
-     VALUES (?, ?, ?)`
-  );
-  const insertLocalPlatform = db.prepare(
-    "INSERT INTO deployment_local_platform (local_exec_id, platform) VALUES (?, ?)"
-  );
-  const insertLocalChannel = db.prepare(
-    "INSERT INTO deployment_local_channel (local_exec_id, channel) VALUES (?, ?)"
+       (manifest_id, installation_method, update_mechanism, platforms, channels)
+     VALUES (?, ?, ?, ?, ?)`
   );
   for (const le of data.local_executables ?? []) {
-    const leResult = insertLocalExec.run(
+    insertLocalExec.run(
       manifest_id,
       le.installation_method ?? null,
-      le.update_mechanism ?? null
+      le.update_mechanism ?? null,
+      JSON.stringify((le.platforms ?? []).map(p => p.platform ?? p)),
+      JSON.stringify((le.channels ?? []).map(ch => ch.channel ?? ch))
     );
-    const local_exec_id = leResult.lastInsertRowid;
-    for (const p of le.platforms ?? []) {
-      insertLocalPlatform.run(local_exec_id, p.platform ?? p);
-    }
-    for (const ch of le.channels ?? []) {
-      insertLocalChannel.run(local_exec_id, ch.channel ?? ch);
-    }
   }
 
   // -- deployment_secret (1:N) --

@@ -23,39 +23,20 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `description` | TEXT | NOT NULL | Narrative description of who this persona is, their role, and their context. |
 | `technical_level` | TEXT | — | Self-reported or inferred technical proficiency (e.g. `"beginner"`, `"intermediate"`, `"expert"`). No CHECK constraint — analyst may use domain-specific values. |
 | `frequency_of_use` | TEXT | — | How often this persona interacts with the system (e.g. `"daily"`, `"weekly"`, `"occasionally"`). |
+| `goals` | TEXT | DEFAULT '[]' | JSON array of goal strings for this persona (e.g. `["Monitor system health without reading log files"]`). Formerly stored in the `persona_goal` child table. |
 | `created_at` | TEXT | NOT NULL | ISO 8601 timestamp recording when this persona was inserted. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
 - Parent: `revision` (via `revision_id`)
-- Children: `persona_goal` (via `persona_id`)
 - Children: `requirement_persona` (via `persona_id`) — links personas to requirements
 - Children: `user_flow` (via `persona_id`) — links personas to UX flows
 
+**Note:** Goals are stored inline as a JSON array in the `goals` column (e.g., `["Monitor system health without reading log files", "Deploy updates without downtime"]`). Formerly stored in the `persona_goal` child table.
+
 **Produced by:** `changelog_insert` with entity_type `"persona"`
 **Queried by:** `changelog_query` with entity_type `"persona"`
-
----
-
-## persona_goal
-
-**Purpose:** Stores individual goals belonging to a persona. A persona typically has multiple goals, each expressed as a concise statement of what that user is trying to accomplish. Separating goals into rows (rather than a single text blob) allows downstream agents to reason about individual goals when generating requirements or user flows.
-
-**Context:** Produced by the **requirements_analyst** as part of persona elaboration. Consumed by the **ux_designer** when defining user flow objectives, and by the **requirements_analyst** when justifying requirement rationale. No critic-level revision tracking — goals are revised by replacing the parent persona record under a new `revision_id`.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `persona_id` | TEXT | NOT NULL, REFERENCES persona(id) | The persona this goal belongs to. |
-| `goal` | TEXT | NOT NULL | A single goal statement for the persona (e.g. `"Monitor system health without reading log files"`). |
-
-**Relationships:**
-- Parent: `persona` (via `persona_id`)
-- Children: none
-
-**Produced by:** `changelog_insert` with entity_type `"persona_goal"`
-**Queried by:** `changelog_query` with entity_type `"persona_goal"`
 
 ---
 
@@ -74,42 +55,23 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `rationale` | TEXT | — | Optional explanation of why this requirement exists or was prioritised as it was. |
 | `priority` | TEXT | NOT NULL, CHECK IN (`'must-have'`, `'should-have'`, `'nice-to-have'`) | MoSCoW-style priority. The implementation planner uses this to sequence work. |
 | `category` | TEXT | NOT NULL, CHECK IN (`'functional'`, `'security'`, `'usability'`, `'performance'`, `'operational'`, `'deployment'`) | Classifies the requirement type to route it to the appropriate downstream agents. |
+| `acceptance_criteria` | TEXT | DEFAULT '[]' | JSON array of testable acceptance criterion strings (e.g. `["Given an unauthenticated request, the API returns HTTP 401"]`). Formerly stored in the `requirement_acceptance_criterion` child table. |
 | `created_at` | TEXT | NOT NULL | ISO 8601 timestamp recording when this requirement was inserted. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
 - Parent: `revision` (via `revision_id`)
-- Children: `requirement_acceptance_criterion` (via `requirement_id`)
 - Children: `requirement_persona` (via `requirement_id`)
 - Children: `requirement_dependency` (via `requirement_id` and `depends_on`)
 - Children: `component_requirement` (via `requirement_id`) — architecture domain
 - Children: `traceability_mapping` (via `requirement_id`) — architecture domain
 - Children: `user_flow_requirement` (via `requirement_id`) — UX domain
 
+**Note:** Acceptance criteria are stored inline as a JSON array in the `acceptance_criteria` column. Formerly stored in the `requirement_acceptance_criterion` child table.
+
 **Produced by:** `changelog_insert` with entity_type `"requirement"`
 **Queried by:** `changelog_query` with entity_type `"requirement"`
-
----
-
-## requirement_acceptance_criterion
-
-**Purpose:** Each row is a single, testable acceptance criterion for a requirement. By decomposing acceptance criteria into individual rows, the implementation planner and QA processes can reference and verify each criterion independently rather than parsing a freeform text block.
-
-**Context:** Produced by the **requirements_analyst** alongside the parent requirement. Validated by the **requirements_critic** — if a requirement is rejected, its acceptance criteria are typically re-written too. Consumed by the **implementation_planner** when defining done-criteria for stories, and referenced during any automated or manual verification process.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `requirement_id` | TEXT | NOT NULL, REFERENCES requirement(id) | The requirement this criterion belongs to. |
-| `criterion` | TEXT | NOT NULL | A single testable acceptance criterion statement (e.g. `"Given an unauthenticated request, the API returns HTTP 401"`). |
-
-**Relationships:**
-- Parent: `requirement` (via `requirement_id`)
-- Children: none
-
-**Produced by:** `changelog_insert` with entity_type `"requirement_acceptance_criterion"`
-**Queried by:** `changelog_query` with entity_type `"requirement_acceptance_criterion"`
 
 ---
 

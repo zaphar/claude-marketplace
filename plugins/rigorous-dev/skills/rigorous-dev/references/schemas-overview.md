@@ -28,10 +28,8 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Name, description, role. |
-| `persona_goal` | requirements_analyst | Goals for each persona (1:N child). |
-| `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must-have/should-have/nice-to-have), category (functional/security/performance/usability/operational/deployment), description, rationale. |
-| `requirement_acceptance_criterion` | requirements_analyst | Testable acceptance criteria per requirement (1:N). |
+| `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Name, description, role. Goals stored as JSON array (`goals` column). |
+| `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must-have/should-have/nice-to-have), category (functional/security/performance/usability/operational/deployment), description, rationale. Acceptance criteria stored as JSON array (`acceptance_criteria` column). |
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
 | `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
@@ -48,18 +46,15 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context, decision, rationale. |
+| `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context, decision, rationale. Consequences and research sources stored as JSON arrays (`consequences`, `research_sources` columns). |
 | `adr_alternative` | backend_architect | Alternatives considered per ADR, with inline pros/cons (JSON arrays). |
-| `adr_consequence` | backend_architect | Consequences of each decision. |
-| `adr_research_source` | backend_architect | Research citations backing decisions — enables "why are we using X?" queries. |
 | `component` | backend_architect | System components (id: `COMP-XXX`). Type, responsibility, tech stack. |
 | `component_interface` | backend_architect | APIs/ports each component exposes. |
 | `component_dependency` | backend_architect | Component-to-component dependency graph (must be a DAG). |
 | `component_requirement` | backend_architect | Which requirements each component satisfies (traceability). |
 | `integration_test_boundary` | backend_architect | Where integration tests are needed between components. |
 | `technology_choice` | backend_architect | Language, framework, DB choices with rationale. |
-| `architecture_overview` | backend_architect | High-level summary, style, communication patterns. |
-| `architecture_principle` | backend_architect | Design principles. |
+| `architecture_overview` | backend_architect | High-level summary, style, communication patterns. Design principles stored as JSON array (`principles` column). |
 | `architecture_diagram` | backend_architect | Diagram references. |
 
 **Critic:** architecture_critic
@@ -92,14 +87,12 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `user_flow` | ux_designer | User journeys (id: `FLOW-XXX`). Trigger, preconditions, success criteria. |
+| `user_flow` | ux_designer | User journeys (id: `FLOW-XXX`). Trigger, preconditions, success criteria. Data dependencies stored as JSON array (`data_dependencies` column). |
 | `user_flow_step` | ux_designer | Steps within each flow. |
 | `user_flow_step_branch` | ux_designer | Conditional branches at each step. |
 | `user_flow_error_state` | ux_designer | Error states per flow. |
 | `user_flow_requirement` | ux_designer | Flow-to-requirement mapping. |
-| `user_flow_data_dependency` | ux_designer | Data needs per flow. |
-| `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. |
-| `screen_component` | ux_designer | UI components on each screen. |
+| `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. UI components stored as JSON array (`components` column). |
 | `screen_state` | ux_designer | State variants (loading, empty, error, populated). |
 | `screen_responsive_variant` | ux_designer | Responsive breakpoint behavior. |
 | `ux_config` | ux_designer | Unified UX config: design system tokens, accessibility, responsive, feedback patterns. Discriminated by `config_type`. |
@@ -116,15 +109,13 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `plan_phase` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). |
+| `plan_phase` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). Entry/exit criteria and checkpoint focus stored as JSON arrays (`entry_criteria`, `exit_criteria`, `checkpoint_focus` columns). |
 | `plan_phase_requirement` / `_component` / `_flow` / `_screen` | implementation_planner | What each plan phase covers. |
-| `plan_phase_entry_criterion` / `_exit_criterion` | implementation_planner | Gate conditions for each phase. |
 | `plan_phase_api_endpoint` | implementation_planner | APIs built in each phase. |
-| `plan_phase_db_change` / `_db_change_table` | implementation_planner | Database migrations per phase. |
+| `plan_phase_db_change` | implementation_planner | Database migrations per phase. Affected tables stored as JSON array (`tables` column). |
 | `plan_phase_dependency` / `_parallel` / `_risk` | implementation_planner | Phase ordering, parallelism, risks. |
-| `plan_checkpoint_focus` | implementation_planner | What to verify at each checkpoint. |
-| `plan_overview` | implementation_planner | High-level plan summary. |
-| `plan_overview_risk` / `_assumption` | implementation_planner | Plan-level risks and assumptions. |
+| `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
+| `plan_overview_risk` | implementation_planner | Plan-level risks. |
 | `plan_requirement_mapping` | implementation_planner | REQ → plan phase mapping (when will each requirement be built?). |
 | `plan_external_dependency` | implementation_planner | External blockers. |
 | `plan_critical_path` | implementation_planner | Critical path phases. |
@@ -163,7 +154,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `test_report` | qa_engineer | Overall test report — pass/fail counts, coverage percentage. |
 | `test_report_metadata` | qa_engineer | Report versioning. |
 | `test_requirement_coverage` | qa_engineer | Which requirements have test coverage. |
-| `test_acceptance_criterion_result` | qa_engineer | Pass/fail per acceptance criterion. |
+| `test_acceptance_criterion_result` | qa_engineer | Pass/fail per acceptance criterion. Associated test IDs stored as JSON array (`test_ids` column). |
 | `test_suite` / `test_case` | qa_engineer | Test suites and individual cases with status, duration. |
 | `test_case_requirement` | qa_engineer | Test-to-requirement traceability. |
 | `test_security_finding` | qa_engineer | Security issues found during testing. |
@@ -195,8 +186,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `documentation_section` | documentation_master | Doc sections (README, API docs, guides). |
 | `documentation_feature` | documentation_master | Feature documentation with examples. |
 | `documentation_feature_requirement` | documentation_master | Feature-to-requirement traceability. |
-| `documentation_requirement_coverage` | documentation_master | Per-requirement doc coverage. |
-| `documentation_requirement_path` | documentation_master | Where each requirement is documented. |
+| `documentation_requirement_coverage` | documentation_master | Per-requirement doc coverage. File paths stored as JSON array (`paths` column). |
 | `documentation_asset` | documentation_master | Generated doc assets (diagrams, etc.). |
 | `documentation_verification` | documentation_master | Doc accuracy verification results. |
 
@@ -208,17 +198,15 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `deployment_manifest` | release_engineer | Release readiness summary. |
+| `deployment_manifest` | release_engineer | Release readiness summary. Targets and blockers stored as JSON arrays (`targets`, `blockers` columns). |
 | `deployment_manifest_metadata` | release_engineer | Manifest versioning. |
-| `deployment_target` | release_engineer | Where it deploys. |
-| `deployment_manifest_blocker` | release_engineer | What blocks release. |
-| `deployment_pipeline` / `_config_file` / `_stage` | release_engineer | CI/CD pipeline definition. |
-| `deployment_stage_trigger` / `_step` / `_quality_gate` | release_engineer | Pipeline stage details. |
+| `deployment_pipeline` | release_engineer | CI/CD pipeline definition. Config files stored as JSON array (`config_files` column). |
+| `deployment_pipeline_stage` | release_engineer | Pipeline stages. Triggers and steps stored as JSON arrays (`triggers`, `steps` columns). |
 | `deployment_quality_gates` | release_engineer | Global quality gate rules. |
 | `deployment_environment` / `_env_infra` / `_env_var` | release_engineer | Environment configs. |
-| `deployment_artifact` / `_artifact_platform` | release_engineer | Build artifacts and platform targets. |
+| `deployment_artifact` | release_engineer | Build artifacts. Platform targets stored as JSON array (`platforms` column). |
 | `deployment_signing` | release_engineer | Code signing config. |
-| `deployment_local_executable` / `_local_platform` / `_local_channel` | release_engineer | Local distribution (Homebrew, apt, etc.). |
+| `deployment_local_executable` | release_engineer | Local distribution metadata. Platforms and channels stored as JSON arrays (`platforms`, `channels` columns). |
 | `deployment_secret` | release_engineer | Secrets inventory (names/purposes, not values). |
 | `deployment_health_check` | release_engineer | Health check config. |
 | `deployment_alerting` | release_engineer | Alerting config. |
@@ -233,7 +221,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Tool | Purpose |
 |------|---------|
-| `changelog_insert` | Insert any entity type with full normalization into child tables. Main workhorse — handles 45 entity types. |
+| `changelog_insert` | Insert any entity type. Main workhorse — handles all entity types with nested child data. |
 | `iteration_create` | Create project + iteration + all phase rows in one call. |
 | `phase_transition` | Update phase status (pending → in_progress → completed/skipped). |
 | `revision_create` | Start a new producer-critic revision within a phase. |
@@ -258,7 +246,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 ## Key Design Principles
 
-1. **Full normalization** — Every YAML array became its own table with foreign keys. No JSON blobs.
+1. **Pragmatic normalization** — Core entities and M:N relationships use proper tables with foreign keys. Simple 1:N string lists (goals, criteria, triggers, steps, etc.) are stored as JSON arrays on the parent row, avoiding unnecessary child tables while keeping data self-contained and queryable via `JSON_EACH()`.
 2. **Append-only** — Revisions are never deleted or overwritten. New revisions create new rows. Full history preserved.
 3. **Traceability** — Every entity carries `iteration_id` and `revision_id`. You can always answer "who produced this, when, and in response to what feedback."
 4. **Idempotent DDL** — All tables use `CREATE TABLE IF NOT EXISTS` so the schema can be re-applied safely.
@@ -270,24 +258,21 @@ To add new entity types:
 1. Add `CREATE TABLE IF NOT EXISTS` statements to `mcp-server/schema.sql`
 2. **Write side** (`mcp-server/write-tools.js`): Add a handler function (e.g., `insertMyEntity`), add it to the `handlers` map inside `changelogInsert()`, and add the type name to the `enum` array in the `changelog_insert` tool definition
 3. **Read side** (`mcp-server/read-tools.js`): Add the entity type to the `ENTITY_TABLE` map so it is queryable via `changelog_query`
-4. Add insert/query logic for child tables if the entity has nested data
+4. For simple 1:N string lists, prefer a JSON array column on the parent (with `DEFAULT '[]'`) over a separate child table
 5. Update agent checklists to verify the new fields
 
 ## Alphabetical Table Index
 
-All 141 tables with links to their detailed design documents.
+All 119 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
 | `adr` | [architecture](tables/architecture.md) |
 | `adr_alternative` | [architecture](tables/architecture.md) |
-| `adr_consequence` | [architecture](tables/architecture.md) |
-| `adr_research_source` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
 | `architecture_config` | [cross-cutting](tables/cross-cutting.md) |
 | `architecture_diagram` | [architecture](tables/architecture.md) |
 | `architecture_overview` | [architecture](tables/architecture.md) |
-| `architecture_principle` | [architecture](tables/architecture.md) |
 | `asset_deliverable` | [implementation](tables/implementation.md) |
 | `blocker` | [cross-cutting](tables/cross-cutting.md) |
 | `component` | [architecture](tables/architecture.md) |
@@ -299,19 +284,14 @@ All 141 tables with links to their detailed design documents.
 | `data_entity_relationship` | [data-model](tables/data-model.md) |
 | `deployment_alerting` | [deployment](tables/deployment.md) |
 | `deployment_artifact` | [deployment](tables/deployment.md) |
-| `deployment_artifact_platform` | [deployment](tables/deployment.md) |
 | `deployment_env_infra` | [deployment](tables/deployment.md) |
 | `deployment_env_var` | [deployment](tables/deployment.md) |
 | `deployment_environment` | [deployment](tables/deployment.md) |
 | `deployment_health_check` | [deployment](tables/deployment.md) |
-| `deployment_local_channel` | [deployment](tables/deployment.md) |
 | `deployment_local_executable` | [deployment](tables/deployment.md) |
-| `deployment_local_platform` | [deployment](tables/deployment.md) |
 | `deployment_manifest` | [deployment](tables/deployment.md) |
-| `deployment_manifest_blocker` | [deployment](tables/deployment.md) |
 | `deployment_manifest_metadata` | [deployment](tables/deployment.md) |
 | `deployment_pipeline` | [deployment](tables/deployment.md) |
-| `deployment_pipeline_config_file` | [deployment](tables/deployment.md) |
 | `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
 | `deployment_quality_gates` | [deployment](tables/deployment.md) |
 | `deployment_requirement` | [requirements](tables/requirements.md) |
@@ -321,16 +301,12 @@ All 141 tables with links to their detailed design documents.
 | `deployment_secret` | [deployment](tables/deployment.md) |
 | `deployment_signing` | [deployment](tables/deployment.md) |
 | `deployment_stage_quality_gate` | [deployment](tables/deployment.md) |
-| `deployment_stage_step` | [deployment](tables/deployment.md) |
-| `deployment_stage_trigger` | [deployment](tables/deployment.md) |
-| `deployment_target` | [deployment](tables/deployment.md) |
 | `documentation_asset` | [documentation](tables/documentation.md) |
 | `documentation_feature` | [documentation](tables/documentation.md) |
 | `documentation_feature_requirement` | [documentation](tables/documentation.md) |
 | `documentation_manifest` | [documentation](tables/documentation.md) |
 | `documentation_manifest_metadata` | [documentation](tables/documentation.md) |
 | `documentation_requirement_coverage` | [documentation](tables/documentation.md) |
-| `documentation_requirement_path` | [documentation](tables/documentation.md) |
 | `documentation_section` | [documentation](tables/documentation.md) |
 | `documentation_verification` | [documentation](tables/documentation.md) |
 | `entity_snapshot` | Core | JSON history of entity changes across revisions |
@@ -356,23 +332,17 @@ All 141 tables with links to their detailed design documents.
 | `persona` | [requirements](tables/requirements.md) |
 | `persona_addressed` | [ux-design](tables/ux-design.md) |
 | `persona_addressed_flow` | [ux-design](tables/ux-design.md) |
-| `persona_goal` | [requirements](tables/requirements.md) |
 | `phase` | [core](tables/core.md) |
-| `plan_checkpoint_focus` | [planning](tables/planning.md) |
 | `plan_critical_path` | [planning](tables/planning.md) |
 | `plan_external_dependency` | [planning](tables/planning.md) |
 | `plan_metadata` | [planning](tables/planning.md) |
 | `plan_overview` | [planning](tables/planning.md) |
-| `plan_overview_assumption` | [planning](tables/planning.md) |
 | `plan_overview_risk` | [planning](tables/planning.md) |
 | `plan_phase` | [planning](tables/planning.md) |
 | `plan_phase_api_endpoint` | [planning](tables/planning.md) |
 | `plan_phase_component` | [planning](tables/planning.md) |
 | `plan_phase_db_change` | [planning](tables/planning.md) |
-| `plan_phase_db_change_table` | [planning](tables/planning.md) |
 | `plan_phase_dependency` | [planning](tables/planning.md) |
-| `plan_phase_entry_criterion` | [planning](tables/planning.md) |
-| `plan_phase_exit_criterion` | [planning](tables/planning.md) |
 | `plan_phase_flow` | [planning](tables/planning.md) |
 | `plan_phase_parallel` | [planning](tables/planning.md) |
 | `plan_phase_requirement` | [planning](tables/planning.md) |
@@ -383,12 +353,10 @@ All 141 tables with links to their detailed design documents.
 | `project_context` | [requirements](tables/requirements.md) |
 | `project_lesson` | [cross-cutting](tables/cross-cutting.md) |
 | `requirement` | [requirements](tables/requirements.md) |
-| `requirement_acceptance_criterion` | [requirements](tables/requirements.md) |
 | `requirement_dependency` | [requirements](tables/requirements.md) |
 | `requirement_persona` | [requirements](tables/requirements.md) |
 | `revision` | [core](tables/core.md) |
 | `screen` | [ux-design](tables/ux-design.md) |
-| `screen_component` | [ux-design](tables/ux-design.md) |
 | `screen_responsive_variant` | [ux-design](tables/ux-design.md) |
 | `screen_state` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
@@ -397,7 +365,6 @@ All 141 tables with links to their detailed design documents.
 | `technology_choice` | [architecture](tables/architecture.md) |
 | `technology_constraint` | [requirements](tables/requirements.md) |
 | `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |
-| `test_acceptance_criterion_test_id` | [qa-test](tables/qa-test.md) |
 | `test_blocker` | [qa-test](tables/qa-test.md) |
 | `test_blocker_requirement` | [qa-test](tables/qa-test.md) |
 | `test_case` | [qa-test](tables/qa-test.md) |
@@ -411,7 +378,6 @@ All 141 tables with links to their detailed design documents.
 | `test_suite` | [qa-test](tables/qa-test.md) |
 | `traceability_mapping` | [cross-cutting](tables/cross-cutting.md) |
 | `user_flow` | [ux-design](tables/ux-design.md) |
-| `user_flow_data_dependency` | [ux-design](tables/ux-design.md) |
 | `user_flow_error_state` | [ux-design](tables/ux-design.md) |
 | `user_flow_requirement` | [ux-design](tables/ux-design.md) |
 | `user_flow_step` | [ux-design](tables/ux-design.md) |
@@ -421,4 +387,4 @@ All 141 tables with links to their detailed design documents.
 | `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 141 tables across 12 domains**
+**Total: 119 tables across 12 domains**

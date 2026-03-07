@@ -1,6 +1,6 @@
 # UX Design Domain — Table Reference
 
-This document covers the 16 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
+This document covers the 14 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
 
 **Database:** `.claude/rigorous-dev.db`  
 **Phase:** `ux_design`  
@@ -16,8 +16,8 @@ The UX design domain is organised into five sub-areas:
 
 | Sub-area | Tables |
 |---|---|
-| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state`, `user_flow_requirement`, `user_flow_data_dependency` |
-| **Screens** | `screen`, `screen_component`, `screen_state`, `screen_responsive_variant` |
+| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state`, `user_flow_requirement` |
+| **Screens** | `screen`, `screen_state`, `screen_responsive_variant` |
 | **UX Configuration** | `ux_config` (discriminated by `config_type`: `design_system`, `accessibility`, `responsive`, `feedback_pattern`), `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset`, `ux_requirement_mapping` |
 
@@ -45,6 +45,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `persona_id` | TEXT | FK → `persona(id)` | NULL | Primary persona this flow is designed for. |
 | `entry_point` | TEXT | — | NULL | Where the flow starts (screen name, URL, trigger event). |
 | `success_state` | TEXT | — | NULL | Observable outcome that marks successful completion. |
+| `data_dependencies` | TEXT | — | `'[]'` | JSON array of data dependency strings — data that must be available (from the backend or prior steps) for the flow to proceed (e.g., `"authenticated user session"`, `"product catalogue list"`). Replaces the former `user_flow_data_dependency` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
@@ -52,7 +53,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - Has many `user_flow_step` (ordered steps)
 - Has many `user_flow_error_state` (error recovery paths)
 - Has many `user_flow_requirement` (requirements this flow satisfies)
-- Has many `user_flow_data_dependency` (data the flow needs)
+- JSON array: `data_dependencies` (inline on this table)
 - Referenced by `persona_addressed_flow` (persona coverage tracking)
 - Referenced by `plan_phase_flow` (implementation planning)
 - Referenced by `traceability_mapping` via `addressed_by_type = 'flow'`
@@ -163,29 +164,6 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 ---
 
-### `user_flow_data_dependency`
-
-**Purpose:** Records data that must be available (from the backend or prior steps) for the flow to proceed. Helps the `backend_architect` identify what the API must supply.
-
-**Context:** Each dependency is a free-text string naming a data item, e.g. "authenticated user session", "product catalogue list", "shipping rate quote". This table is intentionally simple — it is not typed or linked to `data_entity` rows, keeping UX design decoupled from data modelling.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)` | — | Parent flow. |
-| `dependency` | TEXT | NOT NULL | — | Named data item required by the flow. |
-
-**Relationships:**
-- Belongs to `user_flow`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `user_flow` via the `data_dependencies` array.
-- **Read:** Returned as the `data_dependencies` array when querying `user_flow` with `include_related: true`.
-
----
-
 ## Screens
 
 ### `screen`
@@ -205,13 +183,14 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
 | `mockup_path` | TEXT | — | NULL | Relative path to the high-fidelity mockup file. |
+| `components` | TEXT | — | `'[]'` | JSON array of component name strings placed on this screen (e.g., `["NavigationSidebar", "DataTable", "SearchBar"]`). Replaces the former `screen_component` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
-- Has many `screen_component`
 - Has many `screen_state`
 - Has many `screen_responsive_variant`
+- JSON array: `components` (inline on this table)
 - Referenced by `user_flow_step.surface` (by name, not by FK)
 - Referenced by `ux_asset.screen_id`
 - Referenced by `plan_phase_screen`
@@ -221,29 +200,6 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - **Write:** `changelog_insert` with `entity_type: "screen"`. Pass `components`, `states`, and `responsive_variants` arrays in `data` — all child rows inserted atomically.
 - **Read:** `changelog_query` with `entity_type: "screen"`. Use `include_related: true` to get `components`, `states`, and `responsive_variants` expanded inline.
 - **Trace:** `traceability_query` with `target_type: "screen"` to find flows that reference this screen and requirements satisfied by those flows.
-
----
-
-### `screen_component`
-
-**Purpose:** Names a UI component placed on a screen. Establishes the component inventory for each screen — used by the `implementation_planner` to estimate build effort and by the `senior_developer` to know what to implement.
-
-**Context:** Component names should match design system component names where applicable (e.g., "DataTable", "SearchBar", "PrimaryButton"). This is a flat list — component composition and props are out of scope for UX design.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `screen_id` | TEXT | NOT NULL, FK → `screen(id)` | — | Parent screen. |
-| `component_name` | TEXT | NOT NULL | — | Name of the component, e.g. "NavigationSidebar". |
-
-**Relationships:**
-- Belongs to `screen`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `screen` via the `components` array. Values may be plain strings or objects with a `component_name`/`name` key.
-- **Read:** Returned as the `components` array when querying `screen` with `include_related: true`.
 
 ---
 
@@ -383,7 +339,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this record. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
 | `persona_id` | TEXT | NOT NULL, FK → `persona(id)` | — | The persona being addressed. |
-| `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the `persona_goal` text). |
+| `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the persona's goals JSON array). |
 | `how_addressed` | TEXT | NOT NULL | — | How the UX design meets this goal. |
 
 **Relationships:**
@@ -482,14 +438,12 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 | Table | `changelog_insert` | `changelog_query` | Notes |
 |---|---|---|---|
-| `user_flow` | ✅ `entity_type: "user_flow"` | ✅ `entity_type: "user_flow"` | `include_related: true` expands steps, branches, error states, requirements, data dependencies |
+| `user_flow` | ✅ `entity_type: "user_flow"` | ✅ `entity_type: "user_flow"` | `include_related: true` expands steps, branches, error states, requirements; `data_dependencies` is a JSON column |
 | `user_flow_step` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_step_branch` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_error_state` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_requirement` | via `user_flow` | via `user_flow` | Not directly addressable |
-| `user_flow_data_dependency` | via `user_flow` | via `user_flow` | Not directly addressable |
-| `screen` | ✅ `entity_type: "screen"` | ✅ `entity_type: "screen"` | `include_related: true` expands components, states, responsive variants |
-| `screen_component` | via `screen` | via `screen` | Not directly addressable |
+| `screen` | ✅ `entity_type: "screen"` | ✅ `entity_type: "screen"` | `include_related: true` expands states, responsive variants; `components` is a JSON column |
 | `screen_state` | via `screen` | via `screen` | Not directly addressable |
 | `screen_responsive_variant` | via `screen` | via `screen` | Not directly addressable |
 | `ux_config` | ✅ `entity_type: "ux_config"` | ✅ `entity_type: "ux_config"` | Accepts single or array of `{ config_type, category, key, value }`. Filter by `config_type`. |

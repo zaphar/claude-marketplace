@@ -190,10 +190,7 @@ function attachRelated(db, entityType, results) {
     case "requirement":
       return results.map((r) => ({
         ...r,
-        acceptance_criteria: db
-          .prepare("SELECT criterion FROM requirement_acceptance_criterion WHERE requirement_id = ?")
-          .all(r.id)
-          .map((x) => x.criterion),
+        acceptance_criteria: JSON.parse(r.acceptance_criteria || '[]'),
         personas: db
           .prepare("SELECT persona_id FROM requirement_persona WHERE requirement_id = ?")
           .all(r.id)
@@ -236,14 +233,8 @@ function attachRelated(db, entityType, results) {
         return {
           ...a,
           alternatives,
-          consequences: db
-            .prepare("SELECT consequence FROM adr_consequence WHERE adr_id = ?")
-            .all(a.id)
-            .map((x) => x.consequence),
-          research_sources: db
-            .prepare("SELECT source FROM adr_research_source WHERE adr_id = ?")
-            .all(a.id)
-            .map((x) => x.source),
+          consequences: JSON.parse(a.consequences || '[]'),
+          research_sources: JSON.parse(a.research_sources || '[]'),
         };
       });
     }
@@ -269,20 +260,14 @@ function attachRelated(db, entityType, results) {
             .prepare("SELECT requirement_id FROM user_flow_requirement WHERE flow_id = ?")
             .all(f.id)
             .map((x) => x.requirement_id),
-          data_dependencies: db
-            .prepare("SELECT dependency FROM user_flow_data_dependency WHERE flow_id = ?")
-            .all(f.id)
-            .map((x) => x.dependency),
+          data_dependencies: JSON.parse(f.data_dependencies || '[]'),
         };
       });
 
     case "screen":
       return results.map((s) => ({
         ...s,
-        components: db
-          .prepare("SELECT component_name FROM screen_component WHERE screen_id = ?")
-          .all(s.id)
-          .map((x) => x.component_name),
+        components: JSON.parse(s.components || '[]'),
         states: db
           .prepare("SELECT name, description, wireframe_path FROM screen_state WHERE screen_id = ?")
           .all(s.id),
@@ -302,26 +287,17 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT component_id FROM plan_phase_component WHERE plan_phase_id = ?")
           .all(p.id)
           .map((x) => x.component_id),
-        entry_criteria: db
-          .prepare("SELECT criterion FROM plan_phase_entry_criterion WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.criterion),
-        exit_criteria: db
-          .prepare("SELECT criterion FROM plan_phase_exit_criterion WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.criterion),
+        entry_criteria: JSON.parse(p.entry_criteria || '[]'),
+        exit_criteria: JSON.parse(p.exit_criteria || '[]'),
         api_endpoints: db
           .prepare("SELECT method, path, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
           .all(p.id),
         db_changes: db
-          .prepare("SELECT id, migration_name, description FROM plan_phase_db_change WHERE plan_phase_id = ?")
+          .prepare("SELECT id, migration_name, description, tables FROM plan_phase_db_change WHERE plan_phase_id = ?")
           .all(p.id)
           .map((dc) => ({
             ...dc,
-            tables: db
-              .prepare("SELECT table_name FROM plan_phase_db_change_table WHERE db_change_id = ?")
-              .all(dc.id)
-              .map((t) => t.table_name),
+            tables: JSON.parse(dc.tables || '[]'),
           })),
         risks: db
           .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
@@ -341,10 +317,7 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT can_parallel_with_id FROM plan_phase_parallel WHERE plan_phase_id = ?")
           .all(p.id)
           .map((x) => x.can_parallel_with_id),
-        checkpoint_focus: db
-          .prepare("SELECT focus FROM plan_checkpoint_focus WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.focus),
+        checkpoint_focus: JSON.parse(p.checkpoint_focus || '[]'),
       }));
 
     case "plan_overview":
@@ -353,19 +326,13 @@ function attachRelated(db, entityType, results) {
         risks: db
           .prepare("SELECT risk, mitigation, phase FROM plan_overview_risk WHERE plan_overview_id = ?")
           .all(o.id),
-        assumptions: db
-          .prepare("SELECT assumption FROM plan_overview_assumption WHERE plan_overview_id = ?")
-          .all(o.id)
-          .map((x) => x.assumption),
+        assumptions: JSON.parse(o.assumptions || '[]'),
       }));
 
     case "persona":
       return results.map((p) => ({
         ...p,
-        goals: db
-          .prepare("SELECT goal FROM persona_goal WHERE persona_id = ?")
-          .all(p.id)
-          .map((x) => x.goal),
+        goals: JSON.parse(p.goals || '[]'),
       }));
 
     case "data_entity":
@@ -387,10 +354,7 @@ function attachRelated(db, entityType, results) {
     case "architecture_overview":
       return results.map((o) => ({
         ...o,
-        principles: db
-          .prepare("SELECT id, principle FROM architecture_principle WHERE overview_id = ?")
-          .all(o.id)
-          .map((x) => x.principle),
+        principles: JSON.parse(o.principles || '[]'),
         diagrams: db
           .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
           .all(o.id),
@@ -483,10 +447,7 @@ function attachRelated(db, entityType, results) {
               .all(cov.id)
               .map((cr) => ({
                 ...cr,
-                test_ids: db
-                  .prepare("SELECT test_id FROM test_acceptance_criterion_test_id WHERE criterion_result_id = ?")
-                  .all(cr.id)
-                  .map((x) => x.test_id),
+                test_ids: JSON.parse(cr.test_ids || '[]'),
               }));
             return { ...cov, criteria };
           });
@@ -551,15 +512,13 @@ function attachRelated(db, entityType, results) {
               .all(f.id)
               .map((x) => x.requirement_id),
           }));
-        // documentation_requirement_coverage → documentation_requirement_path
+        // documentation_requirement_coverage (with inline paths)
         const coverage = db
           .prepare("SELECT * FROM documentation_requirement_coverage WHERE manifest_id = ?")
           .all(m.id)
           .map((cov) => ({
             ...cov,
-            paths: db
-              .prepare("SELECT * FROM documentation_requirement_path WHERE coverage_id = ?")
-              .all(cov.id),
+            paths: JSON.parse(cov.paths || '[]'),
           }));
         return {
           ...m,
@@ -589,20 +548,14 @@ function attachRelated(db, entityType, results) {
           .all(m.id)
           .map((p) => ({
             ...p,
-            config_files: db
-              .prepare("SELECT * FROM deployment_pipeline_config_file WHERE pipeline_id = ?")
-              .all(p.id),
+            config_files: JSON.parse(p.config_files || '[]'),
             stages: db
               .prepare("SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?")
               .all(p.id)
               .map((s) => ({
                 ...s,
-                triggers: db
-                  .prepare("SELECT * FROM deployment_stage_trigger WHERE stage_id = ?")
-                  .all(s.id),
-                steps: db
-                  .prepare("SELECT * FROM deployment_stage_step WHERE stage_id = ?")
-                  .all(s.id),
+                triggers: JSON.parse(s.triggers || '[]'),
+                steps: JSON.parse(s.steps || '[]'),
                 quality_gates: db
                   .prepare("SELECT * FROM deployment_stage_quality_gate WHERE stage_id = ?")
                   .all(s.id),
@@ -627,9 +580,7 @@ function attachRelated(db, entityType, results) {
           .all(m.id)
           .map((a) => ({
             ...a,
-            platforms: db
-              .prepare("SELECT * FROM deployment_artifact_platform WHERE artifact_id = ?")
-              .all(a.id),
+            platforms: JSON.parse(a.platforms || '[]'),
           }));
         // deployment_local_executable → platforms, channels
         const local_executables = db
@@ -637,12 +588,8 @@ function attachRelated(db, entityType, results) {
           .all(m.id)
           .map((le) => ({
             ...le,
-            platforms: db
-              .prepare("SELECT * FROM deployment_local_platform WHERE local_exec_id = ?")
-              .all(le.id),
-            channels: db
-              .prepare("SELECT * FROM deployment_local_channel WHERE local_exec_id = ?")
-              .all(le.id),
+            platforms: JSON.parse(le.platforms || '[]'),
+            channels: JSON.parse(le.channels || '[]'),
           }));
         // deployment_runbook → steps
         const runbooks = db
@@ -659,12 +606,8 @@ function attachRelated(db, entityType, results) {
           metadata: db
             .prepare("SELECT * FROM deployment_manifest_metadata WHERE manifest_id = ?")
             .all(m.id),
-          targets: db
-            .prepare("SELECT * FROM deployment_target WHERE manifest_id = ?")
-            .all(m.id),
-          blockers: db
-            .prepare("SELECT * FROM deployment_manifest_blocker WHERE manifest_id = ?")
-            .all(m.id),
+          targets: JSON.parse(m.targets || '[]'),
+          blockers: JSON.parse(m.blockers || '[]'),
           pipelines,
           quality_gates: db
             .prepare("SELECT * FROM deployment_quality_gates WHERE manifest_id = ?")
@@ -791,10 +734,7 @@ function traceabilityQuery(args) {
       if (!req) break;
       chain.push({ type: "requirement", data: req });
 
-      const acceptanceCriteria = db
-        .prepare("SELECT criterion FROM requirement_acceptance_criterion WHERE requirement_id = ?")
-        .all(req.id)
-        .map((x) => x.criterion);
+      const acceptanceCriteria = JSON.parse(req.acceptance_criteria || '[]');
       if (acceptanceCriteria.length > 0)
         chain.push({ type: "acceptance_criteria", data: acceptanceCriteria });
 
@@ -848,10 +788,7 @@ function traceabilityQuery(args) {
         }));
       if (alternatives.length > 0) chain.push({ type: "alternatives", data: alternatives });
 
-      const consequences = db
-        .prepare("SELECT consequence FROM adr_consequence WHERE adr_id = ?")
-        .all(adr.id)
-        .map((x) => x.consequence);
+      const consequences = JSON.parse(adr.consequences || '[]');
       if (consequences.length > 0) chain.push({ type: "consequences", data: consequences });
 
       // Components affected (traceability_mapping pointing to components with iteration matching this ADR)

@@ -1,6 +1,6 @@
 # Architecture Domain — Table Reference
 
-This document covers the 13 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
+This document covers the 10 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
 
 **Producer:** `backend_architect`
 **Critic/Validator:** `architecture_critic`
@@ -12,17 +12,14 @@ This document covers the 13 tables that capture the output of the **backend_arch
 
 1. [adr](#1-adr)
 2. [adr_alternative](#2-adr_alternative)
-3. [adr_consequence](#3-adr_consequence)
-4. [adr_research_source](#4-adr_research_source)
-5. [component](#5-component)
-6. [component_interface](#6-component_interface)
-7. [component_dependency](#7-component_dependency)
-8. [component_requirement](#8-component_requirement)
-9. [integration_test_boundary](#9-integration_test_boundary)
-10. [technology_choice](#10-technology_choice)
-11. [architecture_overview](#11-architecture_overview)
-12. [architecture_principle](#12-architecture_principle)
-13. [architecture_diagram](#13-architecture_diagram)
+3. [component](#3-component)
+4. [component_interface](#4-component_interface)
+5. [component_dependency](#5-component_dependency)
+6. [component_requirement](#6-component_requirement)
+7. [integration_test_boundary](#7-integration_test_boundary)
+8. [technology_choice](#8-technology_choice)
+9. [architecture_overview](#9-architecture_overview)
+10. [architecture_diagram](#10-architecture_diagram)
 
 ---
 
@@ -30,11 +27,11 @@ This document covers the 13 tables that capture the output of the **backend_arch
 
 ### Purpose
 
-The central record for each Architecture Decision Record. An ADR captures a single significant technical decision — what was decided, why, and when — giving every future reader a permanent, auditable record of the reasoning behind the system's shape. All alternative options, pros/cons, consequences, and research citations attach to this row via child tables.
+The central record for each Architecture Decision Record. An ADR captures a single significant technical decision — what was decided, why, and when — giving every future reader a permanent, auditable record of the reasoning behind the system's shape. All alternative options are stored in the `adr_alternative` child table; consequences and research citations are stored inline as JSON arrays in the `consequences` and `research_sources` columns.
 
 ### Context
 
-ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current iteration and revision, so the full evolution of any decision across critic feedback rounds is preserved. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `adr_research_source` child table is the key enabler of the "why are we using X?" traceability query.
+ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current iteration and revision, so the full evolution of any decision across critic feedback rounds is preserved. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `research_sources` JSON column is the key enabler of the "why are we using X?" traceability query.
 
 ### Column Reference
 
@@ -50,14 +47,18 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 | `decision` | TEXT | NOT NULL | — | The decision itself, stated clearly and unambiguously. |
 | `rationale` | TEXT | NOT NULL | — | Why this option was chosen over the alternatives. Should reference alternatives by name and cite research sources. |
 | `superseded_by` | TEXT | FK → `adr(id)` | NULL | If `status = 'superseded'`, points to the newer ADR that replaces this one. |
+| `consequences` | TEXT | — | `'[]'` | JSON array of consequence strings describing effects of accepting this decision (e.g., `["All services must implement circuit-breaker logic"]`). Formerly stored in the `adr_consequence` child table. |
+| `research_sources` | TEXT | — | `'[]'` | JSON array of citation strings (URLs, paper references, etc.) that informed this decision (e.g., `["https://example.com/postgresql-benchmarks"]`). Formerly stored in the `adr_research_source` child table. Enables the "why are we using X?" traceability query. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 ### Relationships
 
 - **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`), `adr` self-reference (via `superseded_by`)
-- **Children:** `adr_alternative`, `adr_consequence`, `adr_research_source`
+- **Children:** `adr_alternative`
 - **Referenced by:** `approved_dependency.adr_id` (third-party dependencies may cite a backing ADR)
+
+**Note:** Consequences and research sources are stored inline as JSON arrays in the `consequences` and `research_sources` columns. Formerly stored in the `adr_consequence` and `adr_research_source` child tables.
 
 ### MCP Tool Access
 
@@ -107,70 +108,7 @@ The alternative-with-pros-and-cons pattern is the structured form of the classic
 
 ---
 
-## 3. `adr_consequence`
-
-### Purpose
-
-Records known consequences of accepting a decision — effects on the system, team, or process that will play out downstream. Unlike pros/cons (which apply to alternatives), consequences apply to the **chosen decision** and describe what the system must now live with.
-
-### Context
-
-Consequences bridge ADRs and the broader system: they are often the starting point for follow-up ADRs, new `component` entries, or `technology_constraint` rows. The implementation_planner can use consequence text to identify risk items.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `adr_id` | TEXT | NOT NULL, FK → `adr(id)` | — | The ADR whose consequences these are. |
-| `consequence` | TEXT | NOT NULL | — | A single concrete consequence (e.g., "All services must implement circuit-breaker logic when calling the external payment gateway"). |
-
-### Relationships
-
-- **Parent:** `adr` (via `adr_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting an adr via changelog_insert
-# Queried as part of the adr entity via changelog_query entity_type="adr"
-```
-
----
-
-## 4. `adr_research_source`
-
-### Purpose
-
-Stores citations — URLs, paper references, blog posts, internal docs — that informed an ADR. This is the key enabler of the **"why are we using X?"** traceability query: given any technology or pattern in the codebase, a developer can trace it back to its ADR and then to the primary sources that justified the choice.
-
-### Context
-
-Research sources distinguish evidence-based architecture from cargo-cult decisions. The architecture_critic checks that non-trivial ADRs have at least one cited source. The `traceability_query` MCP tool follows the chain: `component` → `technology_choice` → `adr` → `adr_research_source`, surfacing all relevant citations in one call.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `adr_id` | TEXT | NOT NULL, FK → `adr(id)` | — | The ADR this source supports. |
-| `source` | TEXT | NOT NULL | — | Citation text: a URL, paper title and author, RFC number, or internal document path. Free-form but should be specific enough to be locatable. |
-
-### Relationships
-
-- **Parent:** `adr` (via `adr_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting an adr via changelog_insert
-# Surfaced by traceability_query — the primary "why are we using X?" path terminates here
-changelog_query  entity_type="adr"  ids=["ADR-001"]   # returns research_sources inline
-```
-
----
-
-## 5. `component`
+## 3. `component`
 
 ### Purpose
 
@@ -212,7 +150,7 @@ traceability_query  from="component"  id="COMP-001"   # shows requirements satis
 
 ---
 
-## 6. `component_interface`
+## 4. `component_interface`
 
 ### Purpose
 
@@ -245,7 +183,7 @@ Describes each interface — HTTP endpoint group, gRPC service definition, messa
 
 ---
 
-## 7. `component_dependency`
+## 5. `component_dependency`
 
 ### Purpose
 
@@ -278,7 +216,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]
 
 ---
 
-## 8. `component_requirement`
+## 6. `component_requirement`
 
 ### Purpose
 
@@ -312,7 +250,7 @@ traceability_query  from="requirement"  id="REQ-005"
 
 ---
 
-## 9. `integration_test_boundary`
+## 7. `integration_test_boundary`
 
 ### Purpose
 
@@ -350,7 +288,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 
 ---
 
-## 10. `technology_choice`
+## 8. `technology_choice`
 
 ### Purpose
 
@@ -393,7 +331,7 @@ changelog_query   entity_type="technology_choice"  [filters={category: "database
 
 ---
 
-## 11. `architecture_overview`
+## 9. `architecture_overview`
 
 ### Purpose
 
@@ -401,7 +339,7 @@ Provides the top-level narrative description of the overall system architecture:
 
 ### Context
 
-There is typically one `architecture_overview` row per iteration (created at the start of the architecture phase) with `architecture_principle` and `architecture_diagram` children attached to it. The overview is the first thing the architecture_critic reads and the primary artifact the implementation_planner uses to understand the system's intended shape before diving into individual components.
+There is typically one `architecture_overview` row per iteration (created at the start of the architecture phase). Architectural principles are stored inline in the `principles` JSON column, and `architecture_diagram` children are attached to it. The overview is the first thing the architecture_critic reads and the primary artifact the implementation_planner uses to understand the system's intended shape before diving into individual components.
 
 ### Column Reference
 
@@ -411,62 +349,31 @@ There is typically one `architecture_overview` row per iteration (created at the
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this overview describes. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
+| `principles` | TEXT | — | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
 - **Parent:** `iteration`, `revision`
-- **Children:** `architecture_principle`, `architecture_diagram`
+- **Children:** `architecture_diagram`
 
 ### MCP Tool Access
 
 ```
-# Write (with nested children)
+# Write (principles is a direct JSON column; diagrams are nested children)
 changelog_insert  entity_type="architecture_overview"  {
   iteration_id, revision_id, description,
   principles: ["Prefer async over sync", ...],
   diagrams: [{ name, path, description }, ...]
 }
 
-# Read (include_related attaches principles and diagrams)
+# Read (include_related attaches diagrams; principles are always returned inline)
 changelog_query  entity_type="architecture_overview"  iteration_id=N  include_related=true
 ```
 
 ---
 
-## 12. `architecture_principle`
-
-### Purpose
-
-Enumerates the non-negotiable design principles that govern all architectural decisions in this iteration. Principles are short, memorable axioms (e.g., "Prefer async over sync for inter-service communication", "All state lives in the database, never in application memory") that constrain future decisions.
-
-### Context
-
-Principles are attached to an `architecture_overview` and serve as the rubric the architecture_critic applies when evaluating component designs and ADRs. If a proposed component or technology choice violates a stated principle, the critic should reject it. Multiple principles can share one overview (typical: 4–8 principles per iteration).
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `overview_id` | INTEGER | NOT NULL, FK → `architecture_overview(id)` | — | The overview this principle belongs to. |
-| `principle` | TEXT | NOT NULL | — | The principle stated as a declarative rule or guideline. Should be specific enough to be actionable during design review. |
-
-### Relationships
-
-- **Parent:** `architecture_overview` (via `overview_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting an architecture_overview via changelog_insert
-# Queried as part of the architecture_overview entity
-changelog_query  entity_type="architecture_overview"  ids=[1]
-```
-
----
-
-## 13. `architecture_diagram`
+## 10. `architecture_diagram`
 
 ### Purpose
 
@@ -504,7 +411,7 @@ changelog_query  entity_type="architecture_overview"  ids=[1]
 
 ### "Why are we using X?"
 
-The canonical traceability query traverses: `technology_choice` → `adr` (via rationale mention or `approved_dependency.adr_id`) → `adr_research_source`.
+The canonical traceability query traverses: `technology_choice` → `adr` (via rationale mention or `approved_dependency.adr_id`) → `adr.research_sources` JSON column.
 
 ```
 traceability_query  from="adr"  id="ADR-003"
@@ -548,14 +455,11 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 |-------|---------|---------------|-----------------|
 | `adr` | TEXT (ADR-XXX) | `iteration`, `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
 | `adr_alternative` | INTEGER AUTO | `adr` | `pros` and `cons` nullable TEXT (JSON arrays) |
-| `adr_consequence` | INTEGER AUTO | `adr` | — |
-| `adr_research_source` | INTEGER AUTO | `adr` | — |
 | `component` | TEXT (COMP-XXX) | `iteration`, `revision` | `type` CHECK 8 values |
 | `component_interface` | INTEGER AUTO | `component` | — |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
 | `component_requirement` | Composite (component_id, requirement_id) | `component`, `requirement` | Composite PK prevents duplicate mappings |
 | `integration_test_boundary` | INTEGER AUTO | `component` × 2 | `boundary_type` free-form TEXT |
 | `technology_choice` | INTEGER AUTO | `iteration`, `revision` | — |
-| `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | — |
-| `architecture_principle` | INTEGER AUTO | `architecture_overview` | — |
+| `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | `principles` JSON column |
 | `architecture_diagram` | INTEGER AUTO | `architecture_overview` | — |
