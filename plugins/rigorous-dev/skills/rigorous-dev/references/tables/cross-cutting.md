@@ -16,6 +16,7 @@ These tables are written during the architecture phase after components and ADRs
 3. [traceability_mapping](#traceability_mapping)
 4. [blocker](#blocker)
 5. [project_lesson](#project_lesson)
+6. [entity_snapshot](#entity_snapshot)
 
 ---
 
@@ -485,6 +486,68 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
   "entity_type": "project_lesson",
   "iteration_id": 1,
   "filters": { "recurring": 1 }
+}
+```
+
+---
+
+## entity_snapshot
+
+### Purpose
+
+Stores before-update JSON snapshots of entity rows for audit trail and change history. When a TEXT-PK entity (e.g., `persona`, `requirement`, `adr`, `component`, `screen`, `user_flow`) is updated via UPSERT during a new revision, the `snapshotIfExists` helper in `write-tools.js` captures the complete previous row as a JSON blob before overwriting it. This creates a full revision-by-revision history of how entities evolve across producer-critic cycles.
+
+Unlike most entity tables, `entity_snapshot` is never written directly by agents or via `changelog_insert`. It is populated automatically by the MCP server's internal UPSERT machinery. Agents read snapshots via `changelog_query` with `history: true`.
+
+### Context
+
+Populated automatically by the `snapshotIfExists()` helper in `write-tools.js` whenever a TEXT-PK entity is re-inserted during a new revision. The helper runs a `SELECT *` on the existing row, serialises it to JSON, and inserts it into `entity_snapshot` before the `ON CONFLICT ... DO UPDATE` overwrites the current state.
+
+The `entity_type` column must match a table name in the schema — see the `ENTITY_TABLE` map in `read-tools.js` for the full set and the DDL comment on `entity_snapshot.entity_type` in `schema.sql`.
+
+### Column Reference
+
+| Column | Type | Nullable | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
+| `entity_type` | TEXT | NOT NULL | — | — | The table name of the snapshotted entity (e.g., `'requirement'`, `'adr'`, `'component'`, `'screen'`). Must match a table name in the schema. |
+| `entity_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). |
+| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` ON DELETE CASCADE | The new revision that triggered the snapshot — i.e., the revision whose UPSERT overwrote this entity's previous state. |
+| `snapshot` | JSON | NOT NULL | — | — | Complete JSON serialization of the entity row as it existed immediately before the update. |
+| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of snapshot creation. |
+
+### Relationships
+
+- **`revision_id` → `revision(id)`** — Links the snapshot to the revision whose UPSERT triggered it. ON DELETE CASCADE ensures snapshots are cleaned up if the revision is deleted.
+- **`(entity_type, entity_id)`** — Composite lookup (indexed via `idx_entity_snapshot_lookup`) but not a formal FK, since entity types span multiple tables with different PK types.
+- No `iteration_id` column — the iteration can be derived by joining through `revision.phase_id → phase.iteration_id`.
+
+### Indexes
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_entity_snapshot_lookup` | `(entity_type, entity_id)` | Fast lookup of all snapshots for a given entity across revisions. |
+
+### MCP Tool Access
+
+**Write:** Not directly writable. Snapshots are created automatically by the MCP server during TEXT-PK entity UPSERTs. There is no `changelog_insert` handler for `entity_snapshot`.
+
+**Read** (`changelog_query` with `history: true`):
+```json
+{
+  "entity_type": "requirement",
+  "history": true,
+  "ids": ["REQ-001"]
+}
+```
+
+This returns all snapshots for `REQ-001` from the `entity_snapshot` table, showing how the requirement evolved across revisions.
+
+**Read all snapshots for an entity type:**
+```json
+{
+  "entity_type": "adr",
+  "history": true
 }
 ```
 

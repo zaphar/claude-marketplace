@@ -80,6 +80,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 | `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
 | `project_lesson` | (any critic via orchestrator) | Cross-phase lessons learned — patterns, anti-patterns, conventions, risks, decisions, and process observations recorded by critics for downstream agents. |
+| `entity_snapshot` | (automatic — MCP server internals) | Before-update JSON snapshots of TEXT-PK entities for audit trail. Populated automatically during UPSERT, not written by agents. |
 
 ## UX Design Domain
 
@@ -244,6 +245,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 2. **Append-only** — Revisions are never deleted or overwritten. New revisions create new rows. Full history preserved.
 3. **Traceability** — Every entity carries `iteration_id` and `revision_id`. You can always answer "who produced this, when, and in response to what feedback."
 4. **Idempotent DDL** — All tables use `CREATE TABLE IF NOT EXISTS` so the schema can be re-applied safely.
+5. **UTC timestamps in ISO 8601** — All timestamp columns use `TEXT` type. The DDL declares `DEFAULT (datetime('now'))` as a fallback, but application code explicitly sets timestamps via JavaScript's `new Date().toISOString()`, producing full ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ`). Timestamps are always UTC. Columns auto-populated on insert (e.g., `created_at`) are set explicitly by handler code; columns set later (e.g., `resolved_at` on blockers) use the same `toISOString()` format. No `DATETIME` or `INTEGER` (epoch) types are used — all temporal values are human-readable UTC text.
 
 ## Extending the Schema
 
@@ -301,7 +303,7 @@ All 112 tables with links to their detailed design documents.
 | `documentation_requirement_coverage` | [documentation](tables/documentation.md) |
 | `documentation_section` | [documentation](tables/documentation.md) |
 | `documentation_review_checklist` | [documentation](tables/documentation.md) |
-| `entity_snapshot` | Core | JSON history of entity changes across revisions |
+| `entity_snapshot` | [cross-cutting](tables/cross-cutting.md) |
 | `implementation_api_endpoint` | [implementation](tables/implementation.md) |
 | `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |
 | `implementation_blocker` | [implementation](tables/implementation.md) |
