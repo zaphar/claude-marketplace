@@ -21,6 +21,7 @@ These terms have precise meanings throughout this document. Each word has exactl
 |------|-----------|---------|
 | **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. | "Issue #5: missing UNIQUE constraint on data_entity" |
 | **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never used to mean the plugin's own domain phases. | "Phase 1 has 15 issues with no dependencies" |
+| **Implementation plan** | The phased execution plan produced during Step D of the workflow. Groups approved issues into dependency-ordered phases, each containing one or more work-units. Persisted as the "Implementation Phasing" section in audit reports. | "The implementation plan has 3 phases and 12 work-units" |
 | **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). | "WU-03: remove 9 CHECK constraints (Issues #12, #22, #23)" |
 | **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never used to mean an implementation unit — that is a work-unit. | "Step 2: Complexity Assessment" |
 | **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never used to mean the plugin's own orchestration workflows. | "Enter the workflow at Step B" |
@@ -159,7 +160,7 @@ The Findings Index follows the format defined in the **Findings Review & Impleme
 
 Enter the **Findings Review & Implementation Workflow** starting at **Step B: Interactive Review** (the Findings Index was already built in Step 2).
 
-The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting. After review, the decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md` is created or updated.
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting. After review, the decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md` is created or updated.
 
 If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop**. The complexity assessment should account for the scope of fixes needed.
 
@@ -304,7 +305,7 @@ Note: The `Approved` column starts blank. The `Implementation Phasing` section i
 
 After creating the consolidated report, enter the **Findings Review & Implementation Workflow** starting at **Step A** (the Findings Index is already built in Step 3 above — proceed to **Step B: Interactive Review**).
 
-The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the consolidated report) → execution with progress reporting.
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report) → execution with progress reporting.
 
 If the user chooses to fix findings, each fix goes through the full **Producer-Critic Loop**. The schema auditor identifies issues; the producer-critic loop implements fixes.
 
@@ -388,7 +389,7 @@ Based on this investigation, the following changes would improve the plugin:
 Would you like to review these interactively?
 ```
 
-If the user agrees, enter the **Findings Review & Implementation Workflow** at **Step B: Interactive Review** (the numbered table above serves as the Findings Index). Implementation phasing is only used when 3+ changes are approved; for 1-2 changes, skip phasing and go straight to execution.
+If the user agrees, enter the **Findings Review & Implementation Workflow** at **Step B: Interactive Review** (the numbered table above serves as the Findings Index). The implementation plan is only generated when 3+ changes are approved; for 1-2 changes, skip it and go straight to execution.
 
 ### User Decision
 
@@ -408,7 +409,7 @@ This is the shared execution mechanism used by all modes when making changes. Ev
 
 **Decompose work into the smallest logical chunks possible.** Each producer call should handle one atomic, coherent change — the smallest unit of work that leaves the codebase in a consistent state. This keeps changes reviewable, revertable, and reduces agent failure risk.
 
-When executing work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple work-units in the phasing plan — each work-unit is then a small, focused unit.
+When executing work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple work-units in the implementation plan — each work-unit is then a small, focused unit.
 
 There are **two kinds of iteration** in this loop. They are orthogonal:
 
@@ -494,8 +495,8 @@ This shared workflow is used by any mode that produces multiple findings (Schema
 
 **Document scope varies by mode:**
 - **Update Mode** — NO persisted report. The workflow applies when a change request is decomposed into multiple work-units. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
-- **Schema Audit Mode** — always creates a persisted consolidated report in `.scratch/`. The findings index, decisions, and implementation phasing are all recorded in that document.
-- **Deep Audit Mode** — the critic already creates a persisted report in `.scratch/`. The orchestrator adds a findings index table to that existing report. Implementation phasing is only appended if the user approves 3+ fixes.
+- **Schema Audit Mode** — always creates a persisted consolidated report in `.scratch/`. The findings index, decisions, and implementation plan are all recorded in that document.
+- **Deep Audit Mode** — the critic already creates a persisted report in `.scratch/`. The orchestrator adds a findings index table to that existing report. The implementation plan is only appended if the user approves 3+ fixes.
 - **Q&A Mode** — NO persisted document. Findings are presented inline in the conversation. The conversation itself is the record.
 
 ### Canonical Persisted Report Structure
@@ -599,15 +600,15 @@ Key format rules:
 
 ### Step D: Implementation Phasing
 
-- Generate a phased plan from approved findings + dependency graph:
+- Generate the implementation plan from approved findings + dependency graph:
   - **Phase 1**: No dependencies (can execute in any order)
   - **Phase 2**: Depends on Phase 1 items
   - **Phase N**: Depends on prior phases
 - Each phase has work-units; each work-unit covers 1+ issues
 - Each work-unit shows original issue `#` numbers for traceability
 - For persisted modes: append "Implementation Phasing" section to the report
-- For Q&A mode: present the phased plan in-conversation (only if 3+ approved changes warrant phasing; for 1-2 changes, skip directly to execution)
-- Present phased plan to user for confirmation before starting implementation
+- For Q&A mode: present the implementation plan in-conversation (only if 3+ approved changes warrant it; for 1-2 changes, skip directly to execution)
+- Present implementation plan to user for confirmation before starting implementation
 
 ### Step E: Implementation Execution
 
@@ -644,7 +645,7 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 5. **Critic and auditor are read-only** — They never modify files. They only read and report.
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
-8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and phased implementation. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
+8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and an implementation plan. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
 9. **Decompose into smallest logical chunks** — Each producer call should handle the smallest atomic change that leaves the codebase consistent. Decompose large issues into multiple work-units at the planning stage. Use 1:1 (producer → critic → commit) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small chunks form one logical change. Never run producers in parallel — sequential only to avoid rate limiting.
 10. **Commit frequently and minimally** — Commit as fine-grained as possible. Prefer one commit per coherent sub-change (e.g., schema change, handler change, doc change as separate commits). Each commit should be independently understandable and revertable. At minimum, commit after each issue completes. Never batch multiple unrelated issues into one commit. Fine-grained commits make tracking changes and reverting much easier.
 11. **Report progress during multi-work-unit implementation** — At the start of each work-unit, report done/in-progress/remaining counts and the current work-unit with issue numbers. This keeps the user oriented during long implementation runs.
@@ -657,6 +658,7 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 
 | Term | Definition |
 |------|-----------|
+| **Implementation plan** | The phased execution plan produced during Step D of the workflow. Groups approved issues into dependency-ordered phases, each containing one or more work-units. Persisted as the "Implementation Phasing" section in audit reports. |
 | **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. |
 | **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never refers to the plugin's own domain phases — those are **plugin-phases**. |
 | **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). |
