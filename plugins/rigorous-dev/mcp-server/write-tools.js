@@ -411,13 +411,13 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO data_entity (iteration_id, revision_id, entity_name, description, created_at)
+      `INSERT INTO data_entity (iteration_id, revision_id, name, description, created_at)
        VALUES (?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
-      data.entity_name,
+      data.name,
       data.description,
       now
     );
@@ -437,7 +437,7 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
     "INSERT INTO data_entity_relationship (entity_id, target_entity_id, relationship_type, description) VALUES (?, ?, ?, ?)"
   );
   const lookupTarget = db.prepare(
-    "SELECT id FROM data_entity WHERE entity_name = ? AND iteration_id = ? ORDER BY id DESC LIMIT 1"
+    "SELECT id FROM data_entity WHERE name = ? AND iteration_id = ? ORDER BY id DESC LIMIT 1"
   );
   for (const r of data.relationships ?? []) {
     const targetRow = lookupTarget.get(r.target_entity, iteration_id);

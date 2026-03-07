@@ -347,7 +347,7 @@ function attachRelated(db, entityType, results) {
           .all(e.id),
         relationships: db
           .prepare(
-            `SELECT t.entity_name AS target_entity, r.target_entity_id, r.relationship_type, r.description
+            `SELECT t.name AS target_entity, r.target_entity_id, r.relationship_type, r.description
              FROM data_entity_relationship r
              JOIN data_entity t ON t.id = r.target_entity_id
              WHERE r.entity_id = ?`

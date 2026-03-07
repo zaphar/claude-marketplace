@@ -252,10 +252,10 @@ CREATE TABLE IF NOT EXISTS data_entity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   revision_id INTEGER NOT NULL REFERENCES revision(id),
-  entity_name TEXT NOT NULL,
+  name TEXT NOT NULL,
   description TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  UNIQUE(iteration_id, entity_name)
+  UNIQUE(iteration_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS data_entity_attribute (
