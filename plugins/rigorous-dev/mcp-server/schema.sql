@@ -1134,3 +1134,241 @@ CREATE TABLE IF NOT EXISTS entity_snapshot (
 
 CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
   ON entity_snapshot(entity_type, entity_id);
+
+-- ============================================================
+-- INDEXES: high-frequency FK column lookups
+-- ============================================================
+-- Naming: idx_<table>_<column> (single), idx_<table>_<col1>_<col2> (composite)
+-- Skips: columns already leftmost in a PK or UNIQUE constraint (auto-indexed)
+
+-- ------------------------------------------------------------
+-- iteration_id — on every entity table
+-- Skipped: phase, project_context, data_entity, plan_critical_path
+--   (iteration_id is leftmost in their UNIQUE constraints)
+-- Skipped: traceability_mapping (covered by composite indexes below)
+-- ------------------------------------------------------------
+
+-- Requirements domain
+CREATE INDEX IF NOT EXISTS idx_persona_iteration_id
+  ON persona(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_requirement_iteration_id
+  ON requirement(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_system_io_iteration_id
+  ON system_io(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_requirement_iteration_id
+  ON deployment_requirement(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_operational_requirement_iteration_id
+  ON operational_requirement(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_technology_constraint_iteration_id
+  ON technology_constraint(iteration_id);
+
+-- Architecture domain
+CREATE INDEX IF NOT EXISTS idx_adr_iteration_id
+  ON adr(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_component_iteration_id
+  ON component(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_technology_choice_iteration_id
+  ON technology_choice(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_architecture_overview_iteration_id
+  ON architecture_overview(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_architecture_config_iteration_id
+  ON architecture_config(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_approved_dependency_iteration_id
+  ON approved_dependency(iteration_id);
+
+-- UX design domain
+CREATE INDEX IF NOT EXISTS idx_user_flow_iteration_id
+  ON user_flow(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_screen_iteration_id
+  ON screen(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_ux_config_iteration_id
+  ON ux_config(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_info_architecture_iteration_id
+  ON info_architecture(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_iteration_id
+  ON persona_addressed(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_ux_asset_iteration_id
+  ON ux_asset(iteration_id);
+
+-- Planning domain
+CREATE INDEX IF NOT EXISTS idx_plan_phase_iteration_id
+  ON plan_phase(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_plan_overview_iteration_id
+  ON plan_overview(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_iteration_id
+  ON plan_external_dependency(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_plan_metadata_iteration_id
+  ON plan_metadata(iteration_id);
+
+-- Implementation domain
+CREATE INDEX IF NOT EXISTS idx_implementation_manifest_iteration_id
+  ON implementation_manifest(iteration_id);
+
+-- Release workflow domain
+CREATE INDEX IF NOT EXISTS idx_test_report_iteration_id
+  ON test_report(iteration_id);
+
+-- Audit domain
+CREATE INDEX IF NOT EXISTS idx_security_audit_finding_iteration_id
+  ON security_audit_finding(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_iteration_id
+  ON performance_audit_finding(iteration_id);
+
+-- Documentation domain
+CREATE INDEX IF NOT EXISTS idx_documentation_manifest_iteration_id
+  ON documentation_manifest(iteration_id);
+
+-- Deployment domain
+CREATE INDEX IF NOT EXISTS idx_deployment_manifest_iteration_id
+  ON deployment_manifest(iteration_id);
+
+-- Cross-cutting domain
+CREATE INDEX IF NOT EXISTS idx_vcs_commit_iteration_id
+  ON vcs_commit(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_intermediate_asset_iteration_id
+  ON intermediate_asset(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_asset_deliverable_iteration_id
+  ON asset_deliverable(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_blocker_iteration_id
+  ON blocker(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
+  ON project_lesson(iteration_id);
+
+-- ------------------------------------------------------------
+-- manifest_id — child tables of implementation_manifest,
+--   documentation_manifest, deployment_manifest
+-- Skipped: implementation_requirement_status, implementation_component_status,
+--   documentation_requirement_coverage (manifest_id is leftmost in UNIQUE)
+-- ------------------------------------------------------------
+
+-- Implementation manifest children
+CREATE INDEX IF NOT EXISTS idx_implementation_file_manifest_id
+  ON implementation_file(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_api_endpoint_manifest_id
+  ON implementation_api_endpoint(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_dependency_added_manifest_id
+  ON implementation_dependency_added(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_db_migration_manifest_id
+  ON implementation_db_migration(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_blocker_manifest_id
+  ON implementation_blocker(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_review_checklist_manifest_id
+  ON implementation_review_checklist(manifest_id);
+
+-- Documentation manifest children
+CREATE INDEX IF NOT EXISTS idx_documentation_section_manifest_id
+  ON documentation_section(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_documentation_feature_manifest_id
+  ON documentation_feature(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_documentation_asset_manifest_id
+  ON documentation_asset(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_documentation_verification_manifest_id
+  ON documentation_verification(manifest_id);
+
+-- Deployment manifest children
+CREATE INDEX IF NOT EXISTS idx_deployment_pipeline_manifest_id
+  ON deployment_pipeline(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_quality_gate_manifest_id
+  ON deployment_quality_gate(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_environment_manifest_id
+  ON deployment_environment(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_artifact_manifest_id
+  ON deployment_artifact(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_signing_manifest_id
+  ON deployment_signing(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_local_executable_manifest_id
+  ON deployment_local_executable(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_secret_manifest_id
+  ON deployment_secret(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_health_check_manifest_id
+  ON deployment_health_check(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_alerting_manifest_id
+  ON deployment_alerting(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_runbook_manifest_id
+  ON deployment_runbook(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_review_checklist_manifest_id
+  ON deployment_review_checklist(manifest_id);
+
+-- ------------------------------------------------------------
+-- report_id — child tables of test_report
+-- Skipped: test_requirement_coverage (report_id is leftmost in UNIQUE)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_test_suite_report_id
+  ON test_suite(report_id);
+CREATE INDEX IF NOT EXISTS idx_test_security_finding_report_id
+  ON test_security_finding(report_id);
+CREATE INDEX IF NOT EXISTS idx_test_performance_benchmark_report_id
+  ON test_performance_benchmark(report_id);
+CREATE INDEX IF NOT EXISTS idx_test_blocker_report_id
+  ON test_blocker(report_id);
+CREATE INDEX IF NOT EXISTS idx_test_recommendation_report_id
+  ON test_recommendation(report_id);
+
+-- ------------------------------------------------------------
+-- plan_phase_id — child tables of plan_phase
+-- Skipped: plan_phase_requirement, plan_phase_component, plan_phase_flow,
+--   plan_phase_screen, plan_phase_dependency, plan_phase_parallel
+--   (plan_phase_id is leftmost in their composite PKs)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_plan_phase_api_endpoint_plan_phase_id
+  ON plan_phase_api_endpoint(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_db_change_plan_phase_id
+  ON plan_phase_db_change(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
+  ON plan_phase_risk(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_plan_critical_path_plan_phase_id
+  ON plan_critical_path(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
+  ON implementation_manifest(plan_phase_id);
+
+-- ------------------------------------------------------------
+-- plan_overview_id — child tables of plan_overview
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_plan_overview_risk_plan_overview_id
+  ON plan_overview_risk(plan_overview_id);
+
+-- ------------------------------------------------------------
+-- requirement_id — junction and mapping tables
+-- Skipped: requirement_persona, requirement_dependency
+--   (requirement_id is leftmost in their composite PKs)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_component_requirement_requirement_id
+  ON component_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_user_flow_requirement_requirement_id
+  ON user_flow_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_requirement_requirement_id
+  ON plan_phase_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_file_requirement_requirement_id
+  ON implementation_file_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_requirement_status_requirement_id
+  ON implementation_requirement_status(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_impl_api_endpoint_req_requirement_id
+  ON implementation_api_endpoint_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_blocker_requirement_requirement_id
+  ON implementation_blocker_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_test_requirement_coverage_requirement_id
+  ON test_requirement_coverage(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_test_case_requirement_requirement_id
+  ON test_case_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_test_blocker_requirement_requirement_id
+  ON test_blocker_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_documentation_feature_requirement_requirement_id
+  ON documentation_feature_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_doc_requirement_coverage_requirement_id
+  ON documentation_requirement_coverage(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_traceability_mapping_requirement_id
+  ON traceability_mapping(requirement_id);
+
+-- ------------------------------------------------------------
+-- Composite indexes — traceability_mapping
+-- These also cover single-column iteration_id lookups for this table
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_traceability_mapping_iteration_id_requirement_id
+  ON traceability_mapping(iteration_id, requirement_id);
+CREATE INDEX IF NOT EXISTS idx_traceability_mapping_iteration_id_addressed_by_type
+  ON traceability_mapping(iteration_id, addressed_by_type);
