@@ -67,7 +67,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `exit_criteria` | TEXT | NOT NULL | `'[]'` | JSON array of strings. Each string is a done-condition that must be met before the phase is considered complete (e.g., `"All unit tests pass with ≥80% coverage"`). Replaces the former `plan_phase_exit_criterion` child table. |
 | `checkpoint_focus` | TEXT | NOT NULL | `'[]'` | JSON array of strings drawn from a fixed vocabulary (`requirements`, `architecture`, `ux`). Only populated when `review_checkpoint = 1`. Indicates which domains to examine during the checkpoint. Replaces the former `plan_checkpoint_focus` child table. |
 | `notes` | TEXT | nullable | — | Free-form notes from the planner (caveats, open questions, reminders). |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
@@ -431,7 +431,7 @@ One row per planning revision: the high-level summary of the entire implementati
 | `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
 | `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
 | `assumptions` | TEXT | NOT NULL | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
@@ -586,7 +586,7 @@ Version and provenance record for the implementation plan. Records what version 
 | `requirements_version` | TEXT | NOT NULL | — | Version of the requirements document this plan was based on. |
 | `architecture_version` | TEXT | NOT NULL | — | Version of the architecture document this plan was based on. |
 | `ux_specification_version` | TEXT | NOT NULL | — | Version of the UX specification this plan was based on. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation (machine-generated, unlike `created`). |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation (machine-generated, unlike `created`). |
 
 ### Relationships
 

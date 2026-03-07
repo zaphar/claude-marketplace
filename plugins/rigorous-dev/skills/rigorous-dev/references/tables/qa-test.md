@@ -59,7 +59,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 | `requirements_version` | TEXT | — | NULL | Version of the requirements artifact used. Formerly in `test_report_metadata`. |
 | `architecture_version` | TEXT | — | NULL | Version of the architecture artifact used. Formerly in `test_report_metadata`. |
 | `commit_sha` | TEXT | — | NULL | Git/VCS commit SHA of the code under test. Formerly in `test_report_metadata`. |
-| `created_at` | TEXT | NOT NULL | — | ISO 8601 timestamp when the report was created |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO 8601 timestamp when the report was created |
 
 ### Relationships
 

@@ -54,7 +54,7 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 | `category` | TEXT | NOT NULL | — | — | Logical grouping within the config_type (e.g., `authentication`, `containerization`, `logging`). |
 | `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `scheme`, `runtime`, `format`). |
 | `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JWT`, `Docker`, `JSON`). |
-| `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
 ### Relationships
 
@@ -174,7 +174,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 | `community_adoption` | TEXT | NULL | — | — | Qualitative measure of ecosystem adoption (e.g., `>10M weekly npm downloads`, `widely used in Go stdlib ecosystem`). |
 | `transitive_deps` | INTEGER | NULL | — | — | Approximate count of transitive dependencies pulled in by this package, as a supply-chain surface area indicator. |
 | `single_maintainer_risk` | INTEGER | NOT NULL | `0` | — | Boolean flag (`0` = no, `1` = yes). Set to `1` if the package has a single active maintainer, indicating bus-factor supply-chain risk. |
-| `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
 ### Relationships
 
@@ -262,7 +262,7 @@ The `addressed_by` field is a free-text identifier that should match an existing
 | `addressed_by` | TEXT | NOT NULL | — | — | Identifier of the architectural element satisfying the requirement (e.g., `COMP-002`, `POST /api/payments`, `flow-checkout`, `screen-confirmation`). |
 | `addressed_by_type` | TEXT | NOT NULL | — | — | Category of the addressing element. Conventional values: `component`, `endpoint`, `flow`, `screen`, `other`. Open-domain — no CHECK constraint. |
 | `notes` | TEXT | NULL | — | — | Optional free-text clarification of how or why this element addresses the requirement (e.g., partial coverage, conditions, caveats). |
-| `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
 **`addressed_by_type` values:** The column is open-domain (no CHECK constraint). Conventional values are `component`, `endpoint`, `flow`, `screen`, and `other`. Screen-level traceability (`addressed_by_type = 'screen'`) supersedes the former `ux_requirement_mapping` table.
 
@@ -374,7 +374,7 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 | `raised_by` | TEXT | NOT NULL | — | — | The agent that raised the blocker (e.g., `requirements_critic`, `backend_architect`). |
 | `resolved_at` | TEXT | NULL | — | — | ISO 8601 timestamp when the blocker was resolved. NULL means still active. |
 | `resolution_notes` | TEXT | NULL | — | — | Optional notes describing how the blocker was resolved. |
-| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of row insertion. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
 ### Relationships
 
@@ -439,7 +439,7 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 | `category` | TEXT | NOT NULL | — | CHECK(`category` IN (`'pattern'`, `'anti-pattern'`, `'convention'`, `'risk'`, `'decision'`, `'process'`)) | Classification of the lesson for targeted querying. |
 | `lesson` | TEXT | NOT NULL | — | — | Human-readable description of the lesson learned. |
 | `recurring` | INTEGER | NOT NULL | `0` | — | Set to `1` if this pattern has been observed before. Helps surface systemic issues. |
-| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of row insertion. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
 ### Relationships
 
@@ -514,7 +514,7 @@ The `entity_type` column must match a table name in the schema — see the `ENTI
 | `entity_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` ON DELETE CASCADE | The new revision that triggered the snapshot — i.e., the revision whose UPSERT overwrote this entity's previous state. |
 | `snapshot` | JSON | NOT NULL | — | — | Complete JSON serialization of the entity row as it existed immediately before the update. |
-| `created_at` | TEXT | NOT NULL | `datetime('now')` | — | ISO 8601 timestamp of snapshot creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of snapshot creation. |
 
 ### Relationships
 

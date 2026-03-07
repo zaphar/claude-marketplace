@@ -24,7 +24,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `technical_level` | TEXT | — | Self-reported or inferred technical proficiency (e.g. `"beginner"`, `"intermediate"`, `"expert"`). No CHECK constraint — analyst may use domain-specific values. |
 | `frequency_of_use` | TEXT | — | How often this persona interacts with the system (e.g. `"daily"`, `"weekly"`, `"occasionally"`). |
 | `goals` | TEXT | NOT NULL DEFAULT '[]' | JSON array of goal strings for this persona (e.g. `["Monitor system health without reading log files"]`). Formerly stored in the `persona_goal` child table. |
-| `created_at` | TEXT | NOT NULL | ISO 8601 timestamp recording when this persona was inserted. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO 8601 timestamp recording when this persona was inserted. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
@@ -56,7 +56,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `priority` | TEXT | NOT NULL, CHECK IN (`'must-have'`, `'should-have'`, `'nice-to-have'`) | MoSCoW-style priority. The implementation planner uses this to sequence work. |
 | `category` | TEXT | NOT NULL, CHECK IN (`'functional'`, `'security'`, `'usability'`, `'performance'`, `'operational'`, `'deployment'`) | Classifies the requirement type to route it to the appropriate downstream agents. |
 | `acceptance_criteria` | TEXT | NOT NULL DEFAULT '[]' | JSON array of testable acceptance criterion strings (e.g. `["Given an unauthenticated request, the API returns HTTP 401"]`). Formerly stored in the `requirement_acceptance_criterion` child table. |
-| `created_at` | TEXT | NOT NULL | ISO 8601 timestamp recording when this requirement was inserted. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO 8601 timestamp recording when this requirement was inserted. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**

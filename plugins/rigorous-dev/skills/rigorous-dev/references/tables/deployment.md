@@ -74,7 +74,7 @@ deployment_manifest
 | `architecture_version` | TEXT | — | NULL | Version of the architecture specification consulted. Formerly in `deployment_manifest_metadata`. |
 | `implementation_version` | TEXT | — | NULL | Version of the implementation manifest consulted. Formerly in `deployment_manifest_metadata`. |
 | `test_report_version` | TEXT | — | NULL | Version of the QA test report consulted. NULL if QA phase was skipped. Formerly in `deployment_manifest_metadata`. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp when the manifest was created. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp when the manifest was created. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`), `revision` (via `revision_id`)

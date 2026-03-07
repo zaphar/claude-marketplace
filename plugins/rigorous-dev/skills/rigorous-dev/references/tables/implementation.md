@@ -56,7 +56,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | `architecture_version` | TEXT | YES | NULL | — | Version of the architecture document in scope. Formerly in `implementation_manifest_metadata`. |
 | `language` | TEXT | YES | NULL | — | Primary programming language used (e.g. `TypeScript`, `Python`). Formerly in `implementation_manifest_metadata`. |
 | `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA at time of submission; cross-reference with `vcs_commit`. Formerly in `implementation_manifest_metadata`. |
-| `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
+| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
 
 ### Relationships
 
@@ -455,7 +455,7 @@ Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Optional: which phase of the iteration this commit was made in. |
 | `commit_sha` | TEXT | NO | — | UNIQUE with `iteration_id` | Full or abbreviated VCS commit identifier. |
 | `message` | TEXT | YES | NULL | — | Commit message summary. |
-| `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
+| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
 
 **Constraints:**
 - `UNIQUE(iteration_id, commit_sha)` — prevents recording the same commit SHA twice within an iteration.
@@ -495,7 +495,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 | `asset_type` | TEXT | NO | — | CHECK IN ('work_item','plan','note','commit_ref','file_ref') | Semantic type of the asset. |
 | `title` | TEXT | NO | — | — | Short descriptive title. |
 | `content` | TEXT | YES | NULL | — | Full content; may be NULL for `commit_ref`/`file_ref` where the identifier is in `title`. |
-| `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
+| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
 
 ### Relationships
 
@@ -531,7 +531,7 @@ The `asset_type` enum mirrors the major deliverable categories expected at the e
 | `file_path` | TEXT | NO | — | — | Repository-relative path to the committed file (e.g. `src/api/users.ts`). |
 | `description` | TEXT | YES | NULL | — | Brief explanation of what this file contains. |
 | `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA that introduced this file; cross-reference with `vcs_commit`. |
-| `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
+| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
 
 ### Relationships
 

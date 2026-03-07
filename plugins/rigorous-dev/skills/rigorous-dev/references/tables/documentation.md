@@ -50,7 +50,7 @@ Every other documentation table references this row. The manifest ties documenta
 | `architecture_version` | TEXT | NULL | — | — | Version of architecture spec referenced. Formerly in `documentation_manifest_metadata`. |
 | `implementation_version` | TEXT | NULL | — | — | Version of implementation manifest referenced. Formerly in `documentation_manifest_metadata`. |
 | `format` | TEXT | NULL | — | CHECK(`format` IN (`'markdown'`, `'html'`, `'pdf'`, `'docusaurus'`, `'mkdocs'`, `'other'`)) | Documentation output format. Formerly in `documentation_manifest_metadata`. |
-| `created_at` | TEXT | NOT NULL | — | — | ISO-8601 timestamp of insertion |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO-8601 timestamp of insertion |
 
 ### Relationships
 

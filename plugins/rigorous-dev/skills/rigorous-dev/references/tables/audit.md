@@ -46,7 +46,7 @@ The `security_audit_critic` queries all findings for the current iteration to va
 | `recommendation` | TEXT | NOT NULL | — | Specific remediation steps with code examples |
 | `cve` | TEXT | — | NULL | CVE identifier if the finding relates to a known vulnerability (e.g., `"CVE-2024-12345"`) |
 | `status` | TEXT | NOT NULL, CHECK(`open`, `resolved`, `accepted`, `false-positive`) | `'open'` | Current status: `open` (needs fix), `resolved` (fixed), `accepted` (risk accepted), `false-positive` (not a real issue) |
-| `created_at` | TEXT | NOT NULL | `datetime('now')` | ISO 8601 timestamp when the finding was recorded |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO 8601 timestamp when the finding was recorded |
 
 ### Relationships
 
@@ -90,7 +90,7 @@ The `performance_audit_critic` queries all findings for the current iteration to
 | `actual_value` | TEXT | — | NULL | Measured or observed value (e.g., `"N+1"`, `"850ms"`, `"120MB"`) |
 | `recommendation` | TEXT | NOT NULL | — | Specific remediation steps with code examples |
 | `status` | TEXT | NOT NULL, CHECK(`open`, `resolved`, `accepted`, `deferred`) | `'open'` | Current status: `open` (needs fix), `resolved` (fixed), `accepted` (risk accepted), `deferred` (postponed to future iteration) |
-| `created_at` | TEXT | NOT NULL | `datetime('now')` | ISO 8601 timestamp when the finding was recorded |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO 8601 timestamp when the finding was recorded |
 
 ### Relationships
 

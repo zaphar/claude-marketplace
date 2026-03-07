@@ -49,7 +49,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 | `superseded_by` | TEXT | FK → `adr(id)` | NULL | If `status = 'superseded'`, points to the newer ADR that replaces this one. |
 | `consequences` | TEXT | NOT NULL | `'[]'` | JSON array of consequence strings describing effects of accepting this decision (e.g., `["All services must implement circuit-breaker logic"]`). Formerly stored in the `adr_consequence` child table. |
 | `research_sources` | TEXT | NOT NULL | `'[]'` | JSON array of citation strings (URLs, paper references, etc.) that informed this decision (e.g., `["https://example.com/postgresql-benchmarks"]`). Formerly stored in the `adr_research_source` child table. Enables the "why are we using X?" traceability query. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 ### Relationships
@@ -128,7 +128,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 | `name` | TEXT | NOT NULL | — | Short, descriptive name (e.g., "Auth Service", "PostgreSQL Primary", "Payment Gateway"). |
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
 | `type` | TEXT | NOT NULL | — | Free-form classification of the component. Canonical values (by convention): `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. Custom values are allowed for project-specific component types. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 ### Relationships
@@ -311,7 +311,7 @@ Records each language, framework, runtime, database engine, cloud service, or to
 | `rationale` | TEXT | — | NULL | Justification for the choice. Should cite alternatives considered and the ADR ID if a formal decision record exists. |
 | `version` | TEXT | — | NULL | Specific version pin or minimum version (e.g., `16.x`, `^7.3.0`). |
 | `config` | TEXT | — | NULL | Key configuration notes: notable non-default settings, connection pool sizes, feature flags enabled. Free-text or JSON snippet. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
@@ -350,7 +350,7 @@ There is typically one `architecture_overview` row per iteration (created at the
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
 | `principles` | TEXT | NOT NULL | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 

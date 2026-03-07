@@ -46,7 +46,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `entry_point` | TEXT | — | NULL | Where the flow starts (screen name, URL, trigger event). |
 | `success_state` | TEXT | — | NULL | Observable outcome that marks successful completion. |
 | `data_dependencies` | TEXT | NOT NULL | `'[]'` | JSON array of data dependency strings — data that must be available (from the backend or prior steps) for the flow to proceed (e.g., `"authenticated user session"`, `"product catalogue list"`). Replaces the former `user_flow_data_dependency` child table. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
@@ -184,7 +184,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
 | `mockup_path` | TEXT | — | NULL | Relative path to the high-fidelity mockup file. |
 | `components` | TEXT | NOT NULL | `'[]'` | JSON array of component name strings placed on this screen (e.g., `["NavigationSidebar", "DataTable", "SearchBar"]`). Replaces the former `screen_component` child table. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
@@ -281,7 +281,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `category` | TEXT | NOT NULL | — | Grouping within the config type, e.g. `colors`, `wcag`, `breakpoints`, `loading`. |
 | `key` | TEXT | NOT NULL | — | Config key within the category. |
 | `value` | TEXT | NOT NULL | — | Config value. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
 - Belongs to `iteration` / `revision`
@@ -311,7 +311,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `key` | TEXT | NOT NULL | — | Node identifier, e.g. `main_nav_dashboard`, `/settings/profile`. |
 | `value` | TEXT | NOT NULL | — | Node description or label, e.g. "Dashboard", "User profile settings page". |
 | `parent_id` | INTEGER | FK → `info_architecture(id)` | NULL | Parent node for hierarchical nesting. NULL = root node. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
 - Belongs to `iteration` / `revision`
@@ -395,7 +395,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `type` | TEXT | NOT NULL, CHECK(`type` IN (`wireframe`, `mockup`, `prototype`, `icon`, `image`, `video`)) | — | Asset category. |
 | `screen_id` | TEXT | FK → `screen(id)` | NULL | Screen this asset belongs to, if applicable. |
 | `description` | TEXT | — | NULL | Optional notes about the asset. |
-| `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp set at insert time. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
 - Belongs to `iteration` / `revision`
