@@ -225,9 +225,12 @@ The QA engineer uses this table to know which endpoints exist and which are only
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
-| `path` | TEXT | NO | — | — | URL path pattern (e.g. `/api/v1/users/:id`). |
-| `method` | TEXT | NO | — | — | HTTP verb: GET, POST, PUT, PATCH, DELETE, etc. |
+| `path` | TEXT | NO | — | UNIQUE with (`manifest_id`, `method`) | URL path pattern (e.g. `/api/v1/users/:id`). |
+| `method` | TEXT | NO | — | UNIQUE with (`manifest_id`, `path`) | HTTP verb: GET, POST, PUT, PATCH, DELETE, etc. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','stubbed','not_started') | Implementation state of this endpoint. |
+
+**Constraints:**
+- `UNIQUE(manifest_id, path, method)` — prevents recording the same endpoint (path + method combination) twice within a manifest.
 
 ### Relationships
 
@@ -450,9 +453,12 @@ Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | The iteration this commit belongs to. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Optional: which phase of the iteration this commit was made in. |
-| `commit_sha` | TEXT | NO | — | — | Full or abbreviated VCS commit identifier. |
+| `commit_sha` | TEXT | NO | — | UNIQUE with `iteration_id` | Full or abbreviated VCS commit identifier. |
 | `message` | TEXT | YES | NULL | — | Commit message summary. |
 | `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
+
+**Constraints:**
+- `UNIQUE(iteration_id, commit_sha)` — prevents recording the same commit SHA twice within an iteration.
 
 ### Relationships
 

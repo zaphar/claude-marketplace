@@ -639,7 +639,8 @@ CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   method TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('complete', 'stubbed', 'not_started'))
+  status TEXT NOT NULL CHECK(status IN ('complete', 'stubbed', 'not_started')),
+  UNIQUE(manifest_id, path, method)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
@@ -694,7 +695,8 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
   phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
   commit_sha TEXT NOT NULL,
   message TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(iteration_id, commit_sha)
 );
 
 -- Intermediate assets shared between producer/critic
@@ -784,7 +786,8 @@ CREATE TABLE IF NOT EXISTS test_case (
   duration_ms REAL,
   error_message TEXT,
   stack_trace TEXT,
-  retry_count INTEGER
+  retry_count INTEGER,
+  UNIQUE(suite_id, test_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_case_requirement (

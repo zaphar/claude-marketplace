@@ -182,7 +182,7 @@ Each `test_case` belongs to a suite. The `test_id` is the canonical identifier u
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `suite_id` | INTEGER | NOT NULL, FK → `test_suite(id)` | — | The suite this test case belongs to |
-| `test_id` | TEXT | NOT NULL | — | Test runner identifier (used as cross-reference in `test_acceptance_criterion_result.test_ids` JSON array) |
+| `test_id` | TEXT | NOT NULL, UNIQUE with `suite_id` | — | Test runner identifier (used as cross-reference in `test_acceptance_criterion_result.test_ids` JSON array) |
 | `name` | TEXT | NOT NULL | — | Short human-readable test name |
 | `description` | TEXT | — | NULL | Longer description of what the test verifies |
 | `status` | TEXT | NOT NULL, CHECK(`pass`, `fail`, `skipped`, `flaky`) | — | Execution result |
@@ -190,6 +190,9 @@ Each `test_case` belongs to a suite. The `test_id` is the canonical identifier u
 | `error_message` | TEXT | — | NULL | Error or assertion failure message (populated on `fail`) |
 | `stack_trace` | TEXT | — | NULL | Full stack trace (populated on `fail`) |
 | `retry_count` | INTEGER | — | NULL | Number of retries attempted (relevant for `flaky` status) |
+
+**Constraints:**
+- `UNIQUE(suite_id, test_id)` — prevents recording the same test case identifier twice within a suite.
 
 ### Relationships
 
