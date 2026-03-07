@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS iteration (
 -- Phases within an iteration
 CREATE TABLE IF NOT EXISTS phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL CHECK(name IN (
     'requirements', 'ux_design', 'architecture', 'planning',
     'implementation', 'documentation', 'qa', 'audit', 'release'
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS phase (
 -- Revisions: producer-critic loops within a phase
 CREATE TABLE IF NOT EXISTS revision (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  phase_id INTEGER NOT NULL REFERENCES phase(id),
+  phase_id INTEGER NOT NULL REFERENCES phase(id) ON DELETE CASCADE,
   producer_agent TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   status TEXT NOT NULL CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
@@ -59,8 +59,8 @@ CREATE TABLE IF NOT EXISTS revision (
 -- Personas
 CREATE TABLE IF NOT EXISTS persona (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   technical_level TEXT,
@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS persona (
 -- Requirements
 CREATE TABLE IF NOT EXISTS requirement (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   rationale TEXT,
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
@@ -85,21 +85,21 @@ CREATE TABLE IF NOT EXISTS requirement (
 );
 
 CREATE TABLE IF NOT EXISTS requirement_persona (
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  persona_id TEXT NOT NULL REFERENCES persona(id),
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
+  persona_id TEXT NOT NULL REFERENCES persona(id) ON DELETE CASCADE,
   PRIMARY KEY (requirement_id, persona_id)
 );
 
 CREATE TABLE IF NOT EXISTS requirement_dependency (
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  depends_on TEXT NOT NULL REFERENCES requirement(id),
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
+  depends_on TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (requirement_id, depends_on)
 );
 
 -- Project-level context (problem statement, constraints, assumptions, etc.)
 CREATE TABLE IF NOT EXISTS project_context (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
   category TEXT,
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS project_context (
 -- source is typically set for inputs; destination for outputs (both nullable).
 CREATE TABLE IF NOT EXISTS system_io (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   direction TEXT NOT NULL CHECK(direction IN ('input', 'output')),
   name TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS system_io (
 -- Each row is a single infrastructure/deployment requirement with its target context inline.
 CREATE TABLE IF NOT EXISTS deployment_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   target TEXT,
   description TEXT NOT NULL,
   notes TEXT
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS deployment_requirement (
 -- Monitoring/logging/observability items use their respective categories.
 CREATE TABLE IF NOT EXISTS operational_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   item TEXT NOT NULL,
   category TEXT NOT NULL,
   notes TEXT
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS operational_requirement (
 -- Technology constraints
 CREATE TABLE IF NOT EXISTS technology_constraint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   constraint_type TEXT NOT NULL,
   value TEXT NOT NULL
 );
@@ -152,15 +152,15 @@ CREATE TABLE IF NOT EXISTS technology_constraint (
 -- Architecture Decision Records
 CREATE TABLE IF NOT EXISTS adr (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
   date TEXT,
   context TEXT,
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
-  superseded_by TEXT REFERENCES adr(id),
+  superseded_by TEXT REFERENCES adr(id) ON DELETE CASCADE,
   consequences TEXT DEFAULT '[]',
   research_sources TEXT DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS adr (
 
 CREATE TABLE IF NOT EXISTS adr_alternative (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  adr_id TEXT NOT NULL REFERENCES adr(id),
+  adr_id TEXT NOT NULL REFERENCES adr(id) ON DELETE CASCADE,
   option_text TEXT NOT NULL,
   pros TEXT,
   cons TEXT
@@ -178,8 +178,8 @@ CREATE TABLE IF NOT EXISTS adr_alternative (
 -- Architecture Components
 CREATE TABLE IF NOT EXISTS component (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   type TEXT NOT NULL,
@@ -189,28 +189,28 @@ CREATE TABLE IF NOT EXISTS component (
 
 CREATE TABLE IF NOT EXISTS component_interface (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  component_id TEXT NOT NULL REFERENCES component(id),
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS component_dependency (
-  component_id TEXT NOT NULL REFERENCES component(id),
-  depends_on TEXT NOT NULL REFERENCES component(id),
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+  depends_on TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   PRIMARY KEY (component_id, depends_on)
 );
 
 CREATE TABLE IF NOT EXISTS component_requirement (
-  component_id TEXT NOT NULL REFERENCES component(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (component_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS integration_test_boundary (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  component_id TEXT NOT NULL REFERENCES component(id),
-  target_component_id TEXT NOT NULL REFERENCES component(id),
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+  target_component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   boundary_type TEXT NOT NULL,
   correct_behavior TEXT NOT NULL
 );
@@ -218,8 +218,8 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
 -- Architecture: technology choices
 CREATE TABLE IF NOT EXISTS technology_choice (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   name TEXT NOT NULL,
   purpose TEXT,
@@ -232,8 +232,8 @@ CREATE TABLE IF NOT EXISTS technology_choice (
 -- Architecture overview
 CREATE TABLE IF NOT EXISTS architecture_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   principles TEXT DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS architecture_overview (
 
 CREATE TABLE IF NOT EXISTS architecture_diagram (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  overview_id INTEGER NOT NULL REFERENCES architecture_overview(id),
+  overview_id INTEGER NOT NULL REFERENCES architecture_overview(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   description TEXT
@@ -250,8 +250,8 @@ CREATE TABLE IF NOT EXISTS architecture_diagram (
 -- Data model entities
 CREATE TABLE IF NOT EXISTS data_entity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS data_entity (
 
 CREATE TABLE IF NOT EXISTS data_entity_attribute (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_id INTEGER NOT NULL REFERENCES data_entity(id),
+  entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   is_required INTEGER DEFAULT 0,
@@ -269,8 +269,8 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 
 CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_id INTEGER NOT NULL REFERENCES data_entity(id),
-  target_entity_id INTEGER NOT NULL REFERENCES data_entity(id),
+  entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
+  target_entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   relationship_type TEXT CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')),
   description TEXT
 );
@@ -278,8 +278,8 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
 -- Unified architecture config (security, deployment, observability)
 CREATE TABLE IF NOT EXISTS architecture_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   config_type TEXT NOT NULL CHECK(config_type IN ('security', 'deployment', 'observability')),
   target TEXT,
   category TEXT NOT NULL,
@@ -291,13 +291,13 @@ CREATE TABLE IF NOT EXISTS architecture_config (
 -- Dependencies manifest
 CREATE TABLE IF NOT EXISTS approved_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   package TEXT NOT NULL,
   version_constraint TEXT,
   purpose TEXT NOT NULL,
   justification TEXT NOT NULL,
-  adr_id TEXT REFERENCES adr(id),
+  adr_id TEXT REFERENCES adr(id) ON DELETE CASCADE,
   license TEXT,
   maintenance_activity TEXT,
   community_adoption TEXT,
@@ -309,9 +309,9 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
 -- Traceability: requirement → architecture element
 CREATE TABLE IF NOT EXISTS traceability_mapping (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   addressed_by TEXT NOT NULL,
   addressed_by_type TEXT NOT NULL,
   notes TEXT,
@@ -321,11 +321,11 @@ CREATE TABLE IF NOT EXISTS traceability_mapping (
 -- UX: user flows
 CREATE TABLE IF NOT EXISTS user_flow (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   goal TEXT NOT NULL,
-  persona_id TEXT REFERENCES persona(id),
+  persona_id TEXT REFERENCES persona(id) ON DELETE CASCADE,
   entry_point TEXT,
   success_state TEXT,
   data_dependencies TEXT DEFAULT '[]',
@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
 
 CREATE TABLE IF NOT EXISTS user_flow_step (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id),
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
   step_number INTEGER NOT NULL,
   action TEXT NOT NULL,
   surface TEXT, -- soft reference to screen.name (not a hard FK; screens may not exist yet when flows are defined)
@@ -344,29 +344,29 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
 
 CREATE TABLE IF NOT EXISTS user_flow_step_branch (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  step_id INTEGER NOT NULL REFERENCES user_flow_step(id),
+  step_id INTEGER NOT NULL REFERENCES user_flow_step(id) ON DELETE CASCADE,
   condition TEXT NOT NULL,
   next_step INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS user_flow_error_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id),
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
   condition TEXT NOT NULL,
   recovery TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS user_flow_requirement (
-  flow_id TEXT NOT NULL REFERENCES user_flow(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (flow_id, requirement_id)
 );
 
 -- UX: screens
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS screen (
 
 CREATE TABLE IF NOT EXISTS screen_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  screen_id TEXT NOT NULL REFERENCES screen(id),
+  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   wireframe_path TEXT
@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS screen_state (
 
 CREATE TABLE IF NOT EXISTS screen_responsive_variant (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  screen_id TEXT NOT NULL REFERENCES screen(id),
+  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   breakpoint TEXT NOT NULL,
   wireframe_path TEXT,
   layout_changes TEXT
@@ -395,8 +395,8 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
 -- UX: unified config (design system, accessibility, responsive, feedback patterns)
 CREATE TABLE IF NOT EXISTS ux_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   config_type TEXT NOT NULL CHECK(config_type IN ('design_system', 'accessibility', 'responsive', 'feedback_pattern')),
   category TEXT NOT NULL,
   key TEXT NOT NULL,
@@ -407,40 +407,40 @@ CREATE TABLE IF NOT EXISTS ux_config (
 -- UX: information architecture
 CREATE TABLE IF NOT EXISTS info_architecture (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
-  parent_id INTEGER REFERENCES info_architecture(id),
+  parent_id INTEGER REFERENCES info_architecture(id) ON DELETE CASCADE,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- UX: personas addressed mapping
 CREATE TABLE IF NOT EXISTS persona_addressed (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  persona_id TEXT NOT NULL REFERENCES persona(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  persona_id TEXT NOT NULL REFERENCES persona(id) ON DELETE CASCADE,
   goal TEXT NOT NULL,
   how_addressed TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS persona_addressed_flow (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  persona_addressed_id INTEGER NOT NULL REFERENCES persona_addressed(id),
-  flow_id TEXT NOT NULL REFERENCES user_flow(id)
+  persona_addressed_id INTEGER NOT NULL REFERENCES persona_addressed(id) ON DELETE CASCADE,
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE
 );
 
 -- UX: assets
 CREATE TABLE IF NOT EXISTS ux_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   type TEXT NOT NULL,
-  screen_id TEXT REFERENCES screen(id),
+  screen_id TEXT REFERENCES screen(id) ON DELETE CASCADE,
   description TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -448,8 +448,8 @@ CREATE TABLE IF NOT EXISTS ux_asset (
 -- Implementation plan phases
 CREATE TABLE IF NOT EXISTS plan_phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   phase_number INTEGER NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('feature', 'infrastructure')),
@@ -465,34 +465,34 @@ CREATE TABLE IF NOT EXISTS plan_phase (
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_requirement (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   priority TEXT,
   notes TEXT,
   PRIMARY KEY (plan_phase_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_component (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  component_id TEXT NOT NULL REFERENCES component(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, component_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_flow (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  flow_id TEXT NOT NULL REFERENCES user_flow(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, flow_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_screen (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  screen_id TEXT NOT NULL REFERENCES screen(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, screen_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   method TEXT NOT NULL,
   path TEXT NOT NULL,
   description TEXT
@@ -500,28 +500,28 @@ CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
 
 CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   migration_name TEXT NOT NULL,
   description TEXT,
   tables TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_dependency (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  depends_on_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  depends_on_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   reason TEXT,
   PRIMARY KEY (plan_phase_id, depends_on_phase_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_parallel (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  can_parallel_with_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  can_parallel_with_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, can_parallel_with_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   risk TEXT NOT NULL,
   mitigation TEXT
 );
@@ -529,8 +529,8 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
 -- Implementation plan: overview
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   strategy TEXT NOT NULL,
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
@@ -540,7 +540,7 @@ CREATE TABLE IF NOT EXISTS plan_overview (
 
 CREATE TABLE IF NOT EXISTS plan_overview_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id),
+  plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id) ON DELETE CASCADE,
   risk TEXT NOT NULL,
   mitigation TEXT,
   phase INTEGER
@@ -549,7 +549,7 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
 -- Implementation plan: external dependencies
 CREATE TABLE IF NOT EXISTS plan_external_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   phase INTEGER,
@@ -560,8 +560,8 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 -- Implementation plan: critical path
 CREATE TABLE IF NOT EXISTS plan_critical_path (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   sequence_order INTEGER NOT NULL,
   UNIQUE(iteration_id, plan_phase_id)
 );
@@ -569,8 +569,8 @@ CREATE TABLE IF NOT EXISTS plan_critical_path (
 -- Implementation plan: metadata
 CREATE TABLE IF NOT EXISTS plan_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   version TEXT NOT NULL,
   created TEXT NOT NULL,
@@ -585,9 +585,9 @@ CREATE TABLE IF NOT EXISTS plan_metadata (
 -- Implementation manifests (per sub-phase)
 CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   lines_of_code INTEGER,
   warnings INTEGER DEFAULT 0,
@@ -603,23 +603,23 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
 
 CREATE TABLE IF NOT EXISTS implementation_file (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   action TEXT NOT NULL CHECK(action IN ('created', 'modified', 'deleted')),
   purpose TEXT,
-  component_id TEXT REFERENCES component(id)
+  component_id TEXT REFERENCES component(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS implementation_file_requirement (
-  file_id INTEGER NOT NULL REFERENCES implementation_file(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  file_id INTEGER NOT NULL REFERENCES implementation_file(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (file_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('implemented', 'partial', 'not_started', 'blocked', 'not_applicable')),
   notes TEXT,
   UNIQUE(manifest_id, requirement_id)
@@ -627,8 +627,8 @@ CREATE TABLE IF NOT EXISTS implementation_requirement_status (
 
 CREATE TABLE IF NOT EXISTS implementation_component_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
-  component_id TEXT NOT NULL REFERENCES component(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
+  component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'not_started')),
   notes TEXT,
   UNIQUE(manifest_id, component_id)
@@ -636,21 +636,21 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
 
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   method TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('complete', 'stubbed', 'not_started'))
 );
 
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
-  endpoint_id INTEGER NOT NULL REFERENCES implementation_api_endpoint(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  endpoint_id INTEGER NOT NULL REFERENCES implementation_api_endpoint(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (endpoint_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_dependency_added (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   version TEXT NOT NULL,
   purpose TEXT NOT NULL,
@@ -659,7 +659,7 @@ CREATE TABLE IF NOT EXISTS implementation_dependency_added (
 
 CREATE TABLE IF NOT EXISTS implementation_db_migration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL CHECK(status IN ('created', 'applied', 'pending'))
@@ -667,7 +667,7 @@ CREATE TABLE IF NOT EXISTS implementation_db_migration (
 
 CREATE TABLE IF NOT EXISTS implementation_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
   recommendation TEXT,
@@ -675,14 +675,14 @@ CREATE TABLE IF NOT EXISTS implementation_blocker (
 );
 
 CREATE TABLE IF NOT EXISTS implementation_blocker_requirement (
-  blocker_id INTEGER NOT NULL REFERENCES implementation_blocker(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  blocker_id INTEGER NOT NULL REFERENCES implementation_blocker(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (blocker_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   check_name TEXT NOT NULL,
   passed INTEGER DEFAULT 0
 );
@@ -690,8 +690,8 @@ CREATE TABLE IF NOT EXISTS implementation_review_checklist (
 -- VCS commits linked to iterations
 CREATE TABLE IF NOT EXISTS vcs_commit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  phase_id INTEGER REFERENCES phase(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
   commit_sha TEXT NOT NULL,
   message TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -700,9 +700,9 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
 -- Intermediate assets shared between producer/critic
 CREATE TABLE IF NOT EXISTS intermediate_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  phase_id INTEGER REFERENCES phase(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   asset_type TEXT NOT NULL CHECK(asset_type IN ('work_item', 'plan', 'note', 'commit_ref', 'file_ref')),
   title TEXT NOT NULL,
   content TEXT,
@@ -712,8 +712,8 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
 -- Asset deliverables: files committed to VCS
 CREATE TABLE IF NOT EXISTS asset_deliverable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  phase_id INTEGER REFERENCES phase(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
   asset_type TEXT NOT NULL CHECK(asset_type IN (
     'architecture_diagram', 'data_model', 'interface', 'ux_design_system',
     'source_code', 'toolchain', 'test', 'documentation'
@@ -731,8 +731,8 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
 -- Test report
 CREATE TABLE IF NOT EXISTS test_report (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   total_tests INTEGER NOT NULL DEFAULT 0,
   passed INTEGER NOT NULL DEFAULT 0,
   failed INTEGER NOT NULL DEFAULT 0,
@@ -752,15 +752,15 @@ CREATE TABLE IF NOT EXISTS test_report (
 
 CREATE TABLE IF NOT EXISTS test_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'partial', 'not_tested')),
   UNIQUE(report_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  coverage_id INTEGER NOT NULL REFERENCES test_requirement_coverage(id),
+  coverage_id INTEGER NOT NULL REFERENCES test_requirement_coverage(id) ON DELETE CASCADE,
   criterion TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'not_tested')),
   notes TEXT,
@@ -769,14 +769,14 @@ CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
 
 CREATE TABLE IF NOT EXISTS test_suite (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS test_case (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  suite_id INTEGER NOT NULL REFERENCES test_suite(id),
+  suite_id INTEGER NOT NULL REFERENCES test_suite(id) ON DELETE CASCADE,
   test_id TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
@@ -788,14 +788,14 @@ CREATE TABLE IF NOT EXISTS test_case (
 );
 
 CREATE TABLE IF NOT EXISTS test_case_requirement (
-  test_case_id INTEGER NOT NULL REFERENCES test_case(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  test_case_id INTEGER NOT NULL REFERENCES test_case(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (test_case_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_security_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   tool TEXT,
   severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'info')),
@@ -808,7 +808,7 @@ CREATE TABLE IF NOT EXISTS test_security_finding (
 
 CREATE TABLE IF NOT EXISTS test_performance_benchmark (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   metric TEXT NOT NULL,
   value REAL NOT NULL,
@@ -819,21 +819,21 @@ CREATE TABLE IF NOT EXISTS test_performance_benchmark (
 
 CREATE TABLE IF NOT EXISTS test_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
   recommendation TEXT
 );
 
 CREATE TABLE IF NOT EXISTS test_blocker_requirement (
-  blocker_id INTEGER NOT NULL REFERENCES test_blocker(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  blocker_id INTEGER NOT NULL REFERENCES test_blocker(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (blocker_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_recommendation (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
+  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   category TEXT NOT NULL CHECK(category IN ('coverage', 'reliability', 'performance', 'security', 'maintainability')),
   description TEXT NOT NULL,
   priority TEXT NOT NULL CHECK(priority IN ('high', 'medium', 'low'))
@@ -846,8 +846,8 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
 -- Security audit findings (produced by security_auditor during audit phase)
 CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
   title TEXT NOT NULL,
@@ -862,8 +862,8 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
 -- Performance audit findings (produced by performance_auditor during audit phase)
 CREATE TABLE IF NOT EXISTS performance_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
   title TEXT NOT NULL,
@@ -880,8 +880,8 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
 -- Documentation manifest
 CREATE TABLE IF NOT EXISTS documentation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   total_pages INTEGER,
   accessibility_compliant INTEGER DEFAULT 0,
@@ -896,7 +896,7 @@ CREATE TABLE IF NOT EXISTS documentation_manifest (
 
 CREATE TABLE IF NOT EXISTS documentation_section (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -905,7 +905,7 @@ CREATE TABLE IF NOT EXISTS documentation_section (
 
 CREATE TABLE IF NOT EXISTS documentation_feature (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   includes_examples INTEGER DEFAULT 0,
@@ -913,15 +913,15 @@ CREATE TABLE IF NOT EXISTS documentation_feature (
 );
 
 CREATE TABLE IF NOT EXISTS documentation_feature_requirement (
-  feature_id INTEGER NOT NULL REFERENCES documentation_feature(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  feature_id INTEGER NOT NULL REFERENCES documentation_feature(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (feature_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
+  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
+  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   documented INTEGER DEFAULT 0,
   user_facing INTEGER DEFAULT 0,
   notes TEXT,
@@ -931,7 +931,7 @@ CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
 
 CREATE TABLE IF NOT EXISTS documentation_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('screenshot', 'diagram', 'video', 'code-sample', 'other')),
   description TEXT,
@@ -940,7 +940,7 @@ CREATE TABLE IF NOT EXISTS documentation_asset (
 
 CREATE TABLE IF NOT EXISTS documentation_verification (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
   check_name TEXT NOT NULL,
   passed INTEGER DEFAULT 0
 );
@@ -948,8 +948,8 @@ CREATE TABLE IF NOT EXISTS documentation_verification (
 -- Deployment manifest
 CREATE TABLE IF NOT EXISTS deployment_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
   targets TEXT DEFAULT '[]',
   blockers TEXT DEFAULT '[]',
@@ -964,14 +964,14 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
   config_files TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id),
+  pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   triggers TEXT DEFAULT '[]',
@@ -980,7 +980,7 @@ CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
 
 CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id),
+  stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   condition TEXT NOT NULL,
   failure_action TEXT NOT NULL CHECK(failure_action IN ('block', 'warn', 'notify'))
@@ -988,7 +988,7 @@ CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
 
 CREATE TABLE IF NOT EXISTS deployment_quality_gate (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL
@@ -996,7 +996,7 @@ CREATE TABLE IF NOT EXISTS deployment_quality_gate (
 
 CREATE TABLE IF NOT EXISTS deployment_environment (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   deployment_method TEXT NOT NULL,
   url TEXT,
@@ -1005,14 +1005,14 @@ CREATE TABLE IF NOT EXISTS deployment_environment (
 
 CREATE TABLE IF NOT EXISTS deployment_env_infra (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id),
+  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
   provider TEXT,
   resource TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS deployment_env_var (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id),
+  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   source TEXT NOT NULL CHECK(source IN ('secret', 'config', 'hardcoded')),
   description TEXT
@@ -1020,7 +1020,7 @@ CREATE TABLE IF NOT EXISTS deployment_env_var (
 
 CREATE TABLE IF NOT EXISTS deployment_artifact (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('container-image', 'binary', 'archive', 'package', 'installer')),
   registry TEXT,
@@ -1030,14 +1030,14 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
 
 CREATE TABLE IF NOT EXISTS deployment_signing (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   enabled INTEGER DEFAULT 0,
   method TEXT
 );
 
 CREATE TABLE IF NOT EXISTS deployment_local_executable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   installation_method TEXT,
   update_mechanism TEXT,
   platforms TEXT DEFAULT '[]',
@@ -1046,7 +1046,7 @@ CREATE TABLE IF NOT EXISTS deployment_local_executable (
 
 CREATE TABLE IF NOT EXISTS deployment_secret (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   provider TEXT,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
@@ -1055,7 +1055,7 @@ CREATE TABLE IF NOT EXISTS deployment_secret (
 
 CREATE TABLE IF NOT EXISTS deployment_health_check (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   endpoint TEXT,
   interval TEXT -- duration string, e.g. "30s", "5m", "1h"
@@ -1063,28 +1063,28 @@ CREATE TABLE IF NOT EXISTS deployment_health_check (
 
 CREATE TABLE IF NOT EXISTS deployment_alerting (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   provider TEXT,
   channel TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS deployment_runbook (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   scenario TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS deployment_runbook_step (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  runbook_id INTEGER NOT NULL REFERENCES deployment_runbook(id),
+  runbook_id INTEGER NOT NULL REFERENCES deployment_runbook(id) ON DELETE CASCADE,
   step TEXT NOT NULL,
   is_rollback INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS deployment_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
+  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   check_name TEXT NOT NULL,
   passed INTEGER DEFAULT 0
 );
@@ -1095,7 +1095,7 @@ CREATE TABLE IF NOT EXISTS deployment_review_checklist (
 
 CREATE TABLE IF NOT EXISTS blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
   description TEXT NOT NULL,
   severity TEXT NOT NULL CHECK(severity IN ('critical', 'high', 'medium')),
@@ -1111,7 +1111,7 @@ CREATE TABLE IF NOT EXISTS blocker (
 
 CREATE TABLE IF NOT EXISTS project_lesson (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('pattern', 'anti-pattern', 'convention', 'risk', 'decision', 'process')),
   lesson TEXT NOT NULL,
@@ -1127,7 +1127,7 @@ CREATE TABLE IF NOT EXISTS entity_snapshot (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_type TEXT NOT NULL,
   entity_id TEXT NOT NULL,
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   snapshot JSON NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
