@@ -25,11 +25,12 @@ Represents a single database entity (table, collection, model) in the target sys
 ```sql
 CREATE TABLE IF NOT EXISTS data_entity (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id  INTEGER NOT NULL REFERENCES revision(id),
-  entity_name  TEXT NOT NULL,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  revision_id  INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
   description  TEXT NOT NULL,
-  created_at   TEXT NOT NULL
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(iteration_id, name)
 );
 ```
 
@@ -40,9 +41,9 @@ CREATE TABLE IF NOT EXISTS data_entity (
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Auto-assigned on insert. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration in which this entity was designed. Scopes the entity to a specific change-request cycle. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that produced this entity. |
-| `entity_name` | TEXT | NOT NULL | — | The name of the database entity (e.g., `User`, `Order`, `ProductVariant`). Should match the naming convention of the target system. |
+| `name` | TEXT | NOT NULL | — | The name of the database entity (e.g., `User`, `Order`, `ProductVariant`). Should match the naming convention of the target system. |
 | `description` | TEXT | NOT NULL | — | Human-readable description of what this entity represents and what it stores. |
-| `created_at` | TEXT | NOT NULL | — | ISO 8601 timestamp of when this row was inserted. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | `(datetime('now'))` | ISO 8601 timestamp of when this row was inserted. |
 
 ### Relationships
 
@@ -53,8 +54,8 @@ CREATE TABLE IF NOT EXISTS data_entity (
 
 ### Notes
 
-- No UNIQUE constraint on `entity_name` within an iteration — the architect may revise entity names across revisions. Filter by `revision_id` or the latest revision for a given iteration to get the current model.
-- `entity_name` is free-form text; casing conventions (PascalCase, snake_case) should follow what is specified in `architecture_overview` or `technology_choice`.
+- `UNIQUE(iteration_id, name)` ensures no duplicate entity names within an iteration. Filter by `revision_id` or the latest revision for a given iteration to get the current model.
+- `name` is free-form text; casing conventions (PascalCase, snake_case) should follow what is specified in `architecture_overview` or `technology_choice`.
 
 ---
 
@@ -182,7 +183,7 @@ With `include_related: true`, each result object has the shape:
   "id": 12,
   "iteration_id": 3,
   "revision_id": 7,
-  "entity_name": "Order",
+  "name": "Order",
   "description": "Represents a customer purchase order.",
   "created_at": "2024-11-01T14:32:00Z",
   "attributes": [
@@ -211,7 +212,7 @@ Use `changelog_insert` with `entity_type: "data_entity"` to write entities. The 
     "iteration_id": 3,
     "revision_id": 7,
     "data": {
-      "entity_name": "Order",
+      "name": "Order",
       "description": "Represents a customer purchase order.",
       "attributes": [
         { "name": "id", "type": "UUID", "is_required": 1, "description": "Primary key" },
