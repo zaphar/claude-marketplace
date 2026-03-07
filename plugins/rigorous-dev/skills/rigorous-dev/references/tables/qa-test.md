@@ -153,7 +153,7 @@ The `qa_engineer` organizes test cases into suites reflecting the testing strate
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this suite belongs to |
 | `name` | TEXT | NOT NULL | — | Human-readable suite name (e.g., `"Unit: Auth Module"`) |
-| `type` | TEXT | NOT NULL, CHECK(`unit`, `integration`, `e2e`, `security`, `performance`) | — | Category of tests in this suite |
+| `type` | TEXT | NOT NULL | — | Category of tests in this suite (e.g. `unit`, `integration`, `e2e`, `security`, `performance`). Free text — no enum constraint. |
 
 ### Relationships
 
@@ -249,7 +249,7 @@ The `qa_engineer` runs security tooling (e.g., SAST scanners, `npm audit`, `pip-
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this finding belongs to |
-| `category` | TEXT | NOT NULL, CHECK(`vulnerability_scan`, `dependency_audit`) | — | Whether this came from a code scan or a dependency audit |
+| `category` | TEXT | NOT NULL | — | Whether this came from a code scan or a dependency audit (e.g. `vulnerability_scan`, `dependency_audit`). Free text — no enum constraint. |
 | `tool` | TEXT | — | NULL | Name of the tool that found this issue (e.g., `"snyk"`, `"npm audit"`) |
 | `severity` | TEXT | CHECK(`critical`, `high`, `medium`, `low`, `info`) | NULL | Severity level of the finding |
 | `description` | TEXT | — | NULL | Human-readable description of the vulnerability or issue |

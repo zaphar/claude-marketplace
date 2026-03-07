@@ -32,7 +32,7 @@ This document covers the 15 tables that record output produced during the **impl
 
 ### Purpose
 
-The root record for one sub-phase of implementation work. Every time the `senior_developer` completes a plan sub-phase it writes exactly one manifest row summarising the outcome: overall status, file counts, total lines of code, warning count, and build result. All other implementation tables hang off this row.
+The root record for one sub-phase of implementation work. Every time the `senior_developer` completes a plan sub-phase it writes exactly one manifest row summarising the outcome: overall status, total lines of code, warning count, and build result. All other implementation tables hang off this row.
 
 ### Context
 
@@ -565,7 +565,7 @@ iteration
 
 ## All Child Tables Fully Wired
 
-All 12 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields on the manifest itself (or via a backward-compatible `metadata` object). No direct SQL is required.
+All 11 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields on the manifest itself (or via a backward-compatible `metadata` object). No direct SQL is required.
 
 | Nested key in `data` | Child table | Notes |
 |-----------------------|-------------|-------|

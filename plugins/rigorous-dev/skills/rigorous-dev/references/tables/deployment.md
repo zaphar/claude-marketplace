@@ -25,7 +25,7 @@ deployment_manifest
 │                                        steps → JSON array on stage
 │       └── deployment_stage_quality_gate (per-stage pass/fail gate)
 │
-├── deployment_quality_gates            (global gate rules by category/key/value)
+├── deployment_quality_gate             (global gate rules by category/key/value)
 │
 ├── deployment_environment              (development | staging | production)
 │   ├── deployment_env_infra            (cloud resources per environment)
@@ -158,11 +158,11 @@ deployment_manifest
 
 ---
 
-### `deployment_quality_gates`
+### `deployment_quality_gate`
 
 **Purpose:** Stores global, manifest-level quality gate thresholds and rules organised by category and key/value pairs. Complements the per-stage gates with project-wide standards.
 
-**Context:** While `deployment_stage_quality_gate` attaches gates to specific pipeline stages, `deployment_quality_gates` records the overall policy (e.g., `category: test_coverage, key: minimum_percent, value: 80`). The release critic compares these global rules against the QA test report to verify the release meets the project's own declared standards.
+**Context:** While `deployment_stage_quality_gate` attaches gates to specific pipeline stages, `deployment_quality_gate` records the overall policy (e.g., `category: test_coverage, key: minimum_percent, value: 80`). The release critic compares these global rules against the QA test report to verify the release meets the project's own declared standards.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
@@ -176,7 +176,7 @@ deployment_manifest
 - Parent: `deployment_manifest` (via `manifest_id`)
 
 **MCP tool access:**
-- **Read:** Direct SQL — `SELECT category, key, value FROM deployment_quality_gates WHERE manifest_id = ?`.
+- **Read:** Direct SQL — `SELECT category, key, value FROM deployment_quality_gate WHERE manifest_id = ?`.
 
 ---
 
@@ -190,7 +190,7 @@ deployment_manifest
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by infra and env-var child tables. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
-| `name` | TEXT | NOT NULL, CHECK IN (`development`, `staging`, `production`) | — | Environment name. Exactly one of the three recognised values. |
+| `name` | TEXT | NOT NULL | — | Environment name (e.g. `development`, `staging`, `production`). Free text — no enum constraint. |
 | `deployment_method` | TEXT | NOT NULL | — | How software is deployed to this environment (e.g., `kubectl apply`, `helm upgrade`, `ssh + systemd`, `docker-compose`). |
 | `url` | TEXT | — | NULL | Base URL for this environment (e.g., `https://staging.example.com`). NULL for dev if no stable URL. |
 | `rollback_procedure` | TEXT | — | NULL | Human-readable rollback steps. NULL for development environments where rollback is informal. |
@@ -516,7 +516,7 @@ All child tables are nested inside the `data` object. Every array property is op
         }]
       }]
     }],
-    "quality_gates": [{                    // → deployment_quality_gates (global)
+    "quality_gates": [{                    // → deployment_quality_gate (global)
       "category": "testing",
       "key": "coverage",
       "value": ">=80%"
@@ -600,7 +600,7 @@ When queried via `changelog_query`, each `deployment_manifest` row is returned w
 | `targets` | JSON array on `deployment_manifest` | inline |
 | `blockers` | JSON array on `deployment_manifest` | inline |
 | `pipelines` | `deployment_pipeline` | `config_files` (JSON inline), `stages` → `triggers` (JSON inline), `steps` (JSON inline), `quality_gates` |
-| `quality_gates` | `deployment_quality_gates` | flat |
+| `quality_gates` | `deployment_quality_gate` | flat |
 | `environments` | `deployment_environment` | → `infra`, `vars` |
 | `artifacts` | `deployment_artifact` | `platforms` (JSON inline) |
 | `signing` | `deployment_signing` | flat |
