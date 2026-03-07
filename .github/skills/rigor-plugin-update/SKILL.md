@@ -82,30 +82,16 @@ Critic model: claude-opus-4.6 (always)
 
 ### Step 3: Producer-Critic Loop
 
-**Pre-flight: Scope Check**
+**Decompose work into the smallest logical chunks possible.** Each producer call should handle one atomic, coherent change — the smallest unit of work that leaves the codebase in a consistent state. This keeps changes reviewable, revertable, and reduces agent failure risk.
 
-Before launching the producer, assess how many files the change touches. Sub-agent reliability degrades with task size — long-running agents risk API connection drops and streaming timeouts.
+When planning work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple steps in the phasing plan — each step is then a small, focused unit.
 
-| Files Touched | Action |
-|---------------|--------|
-| **1-3 files** | Proceed with a single producer call. |
-| **4+ files** | **Split into sub-tasks.** Break the change into multiple sequential producer calls, each touching ≤3 files. Run the critic once after all sub-tasks complete. |
+**Producer-to-Critic patterns:**
 
-When splitting:
-- Each sub-task gets its own producer call with a focused prompt (e.g., "Update schema.sql only" → "Update write-tools.js only")
-- Sub-tasks run **sequentially**, not in parallel — parallel API calls risk rate limiting and thundering-herd retries
-- Later sub-tasks must reference what earlier sub-tasks changed (include file paths and summary)
-- The critic reviews the aggregate result after all sub-tasks finish
+- **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
+- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a step covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
 
-**Multi-Producer Batching:**
-
-When executing implementation phases (from the Findings Review & Implementation Workflow), multiple issues or work items may be batched so that N sequential producer calls are followed by 1 critic review:
-
-- **When to batch**: An issue is split into work items (always batch these — they're parts of one logical change). A step covers multiple small/related issues (batch if changes are cohesive and touch similar files).
-- **When NOT to batch**: Don't batch unrelated issues that touch different domains or have no logical connection. When in doubt, keep separate.
-- **How it works**: Run N producer calls sequentially (each with its own focused prompt). After all N complete, run 1 critic to review the aggregate. If the critic approves → commit → report progress → next step.
-- **Commit granularity in batches**: Even within a multi-producer batch, prefer separate commits per issue when the changes are separable. If a batch covers issues #3 and #4, and their changes don't interleave in the same files, commit them separately. The goal is the finest-grained commit history possible while keeping each commit coherent. If changes are deeply interleaved (e.g., both issues modify the same function), a single commit is acceptable.
-- **Heuristic**: Prefer multi-producer batching for 2-3 small related changes. For 4+ issues, split into multiple batches to avoid overwhelming the critic.
+Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
 
 **Iteration 1:**
 
@@ -575,42 +561,17 @@ Key format rules:
 
 ### Step E: Implementation Execution
 
-Execute steps in phase order using the producer-critic loop (Update Mode Step 3). The key decision at each step is **how many producer calls run before a critic reviews**.
+Execute steps in phase order using the producer-critic loop (Update Mode Step 3).
 
-**Producer-to-Critic Orchestration:**
-
-There are two patterns. Choose based on the step's characteristics:
-
-| Pattern | Structure | When to Use |
-|---------|-----------|-------------|
-| **1:1** (standard) | 1 producer → 1 critic | Default. Use for any step covering a single issue that touches ≤3 files. |
-| **N:1** (multi-producer) | N sequential producers → 1 critic | Use when a step has multiple work items that are parts of one logical change. |
-
-**When N:1 is required** — a single issue is split into sub-tasks because it touches 4+ files:
-- Each sub-task gets its own producer call touching ≤3 files (e.g., "Update schema.sql only" → "Update write-tools.js only")
-- Sub-tasks run **sequentially** — never in parallel (parallel API calls risk rate limiting and thundering-herd retries)
-- Later sub-tasks must reference what earlier sub-tasks changed (include file paths and summary of prior changes)
-- The critic reviews the **aggregate result** of all sub-tasks, not each one individually
-- Example: Issue #2 "collapse 22 child tables" touches schema.sql, write-tools.js, read-tools.js → 3 sequential producers → 1 critic
-
-**When N:1 is optional but recommended** — a step covers 2-3 small, related issues:
-- Batch if changes are cohesive (same domain, similar files, logically connected)
-- Example: Issues #12, #22, #23 are all "remove CHECK constraints" → 3 producers (one per issue) → 1 critic
-- Do NOT batch if issues are unrelated, touch different domains, or have no logical connection
-
-**When N:1 must NOT be used:**
-- 4+ unrelated issues — split into multiple separate 1:1 or smaller N:1 batches
-- Issues touching different architectural layers with no overlap — review independently
-- When in doubt, use 1:1 — an unnecessary critic call is cheaper than a critic overwhelmed by unrelated changes
-
-**After critic approval:**
+- Each step decomposes into the smallest logical producer tasks possible
+- Use 1:1 (single producer → critic) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small tasks are parts of one logical change
 - Track and report progress at the start of each work unit:
   ```
   📊 Progress: X/Y issues done | Z in progress | W remaining
   Current: Step N — [description] (Issues #A, #B)
   ```
 - For persisted modes: update the report as issues complete (mark steps done)
-- **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change (e.g., schema change, then handler change, then doc change as separate commits). Even within an N:1 batch, prefer separate commits per issue when the changes are separable. The goal is the finest-grained commit history possible while keeping each commit coherent. If changes are deeply interleaved (e.g., both issues modify the same function), a single commit is acceptable.
+- **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change. Each commit should be independently understandable and revertable.
 
 ---
 
@@ -634,7 +595,7 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
 8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and phased implementation. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
-9. **Keep producer tasks small** — A single producer call should touch ≤3 files. Changes spanning 4+ files must be split into sequential sub-tasks (multi-producer batching). Long-running agents risk API streaming timeouts; smaller tasks complete faster and retry cleanly. Never run multiple producers in parallel — sequential execution avoids rate limiting and thundering-herd failures.
+9. **Decompose into smallest logical chunks** — Each producer call should handle the smallest atomic change that leaves the codebase consistent. Decompose large issues into multiple steps at the planning stage. Use 1:1 (producer → critic → commit) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small chunks form one logical change. Never run producers in parallel — sequential only to avoid rate limiting.
 10. **Commit frequently and minimally** — Commit as fine-grained as possible. Prefer one commit per coherent sub-change (e.g., schema change, handler change, doc change as separate commits). Each commit should be independently understandable and revertable. At minimum, commit after each issue completes. Never batch multiple unrelated issues into one commit. Fine-grained commits make tracking changes and reverting much easier.
 11. **Report progress during multi-step implementation** — At the start of each work unit, report done/in-progress/remaining counts and the current step with issue numbers. This keeps the user oriented during long implementation runs.
 12. **All audit outputs use the Findings Index format** — Every audit mode must produce a Findings Index table with monotonically increasing `#` column, `Approved` column, and consistent column structure. The `#` is the stable identifier for referring to issues across the review and implementation lifecycle.
