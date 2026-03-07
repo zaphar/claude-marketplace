@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS adr (
   context TEXT,
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
-  superseded_by TEXT REFERENCES adr(id) ON DELETE CASCADE,
+  superseded_by TEXT REFERENCES adr(id) ON DELETE SET NULL,
   consequences TEXT DEFAULT '[]',
   research_sources TEXT DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
   version_constraint TEXT,
   purpose TEXT NOT NULL,
   justification TEXT NOT NULL,
-  adr_id TEXT REFERENCES adr(id) ON DELETE CASCADE,
+  adr_id TEXT REFERENCES adr(id) ON DELETE SET NULL,
   license TEXT,
   maintenance_activity TEXT,
   community_adoption TEXT,
@@ -325,7 +325,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   goal TEXT NOT NULL,
-  persona_id TEXT REFERENCES persona(id) ON DELETE CASCADE,
+  persona_id TEXT REFERENCES persona(id) ON DELETE SET NULL,
   entry_point TEXT,
   success_state TEXT,
   data_dependencies TEXT DEFAULT '[]',
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS ux_asset (
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   type TEXT NOT NULL,
-  screen_id TEXT REFERENCES screen(id) ON DELETE CASCADE,
+  screen_id TEXT REFERENCES screen(id) ON DELETE SET NULL,
   description TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -607,7 +607,7 @@ CREATE TABLE IF NOT EXISTS implementation_file (
   path TEXT NOT NULL,
   action TEXT NOT NULL CHECK(action IN ('created', 'modified', 'deleted')),
   purpose TEXT,
-  component_id TEXT REFERENCES component(id) ON DELETE CASCADE
+  component_id TEXT REFERENCES component(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS implementation_file_requirement (
@@ -691,7 +691,7 @@ CREATE TABLE IF NOT EXISTS implementation_review_checklist (
 CREATE TABLE IF NOT EXISTS vcs_commit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
   commit_sha TEXT NOT NULL,
   message TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -701,7 +701,7 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
 CREATE TABLE IF NOT EXISTS intermediate_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   asset_type TEXT NOT NULL CHECK(asset_type IN ('work_item', 'plan', 'note', 'commit_ref', 'file_ref')),
   title TEXT NOT NULL,
@@ -713,7 +713,7 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
 CREATE TABLE IF NOT EXISTS asset_deliverable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  phase_id INTEGER REFERENCES phase(id) ON DELETE CASCADE,
+  phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
   asset_type TEXT NOT NULL CHECK(asset_type IN (
     'architecture_diagram', 'data_model', 'interface', 'ux_design_system',
     'source_code', 'toolchain', 'test', 'documentation'
