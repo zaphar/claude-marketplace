@@ -19,12 +19,29 @@ These terms have precise meanings throughout this document. Each word has exactl
 
 | Term | Definition | Example |
 |------|-----------|---------|
-| **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. | "Issue #5: missing UNIQUE constraint on data_entity" |
-| **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never used to mean the plugin's own domain phases. | "Phase 1 has 15 issues with no dependencies" |
+| **Mode** | One of 4 interaction types: Update, Deep Audit, Schema Audit, Q&A. Determined at session start from the user's request. | "Mode Detection selected Schema Audit Mode" |
+| **Finding** | A raw result from an agent (critic FAIL item, auditor recommendation, Q&A-discovered problem). Findings become issues once numbered in the Findings Index. | "The critic produced 12 findings" |
+| **Issue** | A numbered entry in the Findings Index, identified by a monotonically increasing `#`. The stable identifier used throughout the review and implementation lifecycle. Created from findings during Step A. | "Issue #5: missing UNIQUE constraint on data_entity" |
+| **Findings Index** | The numbered table of issues at the top of every audit report. Columns: `#`, `Group`/`Category`, `Severity`, `Approved`, `Finding`. The authoritative list of all issues. | "The Findings Index has 40 issues across 4 agent groups" |
+| **Phase** | A dependency-ordered set of work-units in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never used to mean the plugin's own domain phases. | "Phase 1 has 15 issues with no dependencies" |
 | **Implementation plan** | The phased execution plan produced during Step D of the workflow. Groups approved issues into dependency-ordered phases, each containing one or more work-units. Persisted as the "Implementation Phasing" section in audit reports. | "The implementation plan has 3 phases and 12 work-units" |
 | **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). | "WU-03: remove 9 CHECK constraints (Issues #12, #22, #23)" |
 | **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never used to mean an implementation unit — that is a work-unit. | "Step 2: Complexity Assessment" |
 | **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never used to mean the plugin's own orchestration workflows. | "Enter the workflow at Step B" |
+| **Report** | A persisted audit output document in `.scratch/`. Created by Schema Audit (consolidated report) and Deep Audit (critic report). Q&A and Update modes do not create reports. | "The consolidated report is at .scratch/rigor-schema-auditor/..." |
+| **Producer** | The `rigor_plugin_producer` agent. Makes changes to plugin files. Never modifies files outside the plugin. | "Launch the producer with the change request" |
+| **Critic** | The `rigor_plugin_critic` agent. Validates changes (or audits the plugin in Deep Audit mode). Read-only — never modifies files. | "The critic approved the change on revision 1" |
+| **Auditor** | The `rigor_schema_auditor` agent. Analyzes the database schema across 20 categories. Read-only — never modifies files. | "Launch 4 auditor agents in parallel" |
+| **Verdict** | The critic's output after reviewing a change: `approved` or `needs_revision`. | "The critic's verdict was needs_revision" |
+| **Revision** | One pass through Loop 2 of the Producer-Critic Loop (producer makes changes → critic reviews). Maximum 3 revisions before escalation. | "The change was approved on revision 2" |
+| **Escalation** | When the critic has not approved after 3 revisions, the loop stops and the user is asked to intervene. | "Escalation required after 3 revisions" |
+| **Change request** | The user-provided description of what to change, confirmed in Update Mode Step 1. Passed as the prompt to the producer. | "Change request: rename backend_architect to system_architect" |
+| **Complexity** | The classification of a change request: Simple, Moderate, or Complex. Determines the producer model. | "Complexity Assessment: Moderate" |
+| **Agent group** | One of 4 parallel schema auditor partitions (Group A–D), each covering a subset of the 20 audit categories. | "Agent Group A covers categories 1-4 (Simplification)" |
+| **Decisions ledger** | A persistent file at `.scratch/<auditor-name>/audit-decisions.md` that records approve/reject/skip decisions across audit runs. Enables deduplication on future audits. | "Check the decisions ledger for prior rulings" |
+| **Consolidated report** | The merged output from all agent groups in a Schema Audit, written to `.scratch/rigor-schema-auditor/<date>/`. Contains the Findings Index and all group details. | "Create the consolidated report from all 4 group reports" |
+| **Orchestrator** | The skill itself — you, the AI running this SKILL.md. Coordinates agents, manages the workflow, and reports to the user. | "The orchestrator creates the consolidated report" |
+| **Deduplication** | Matching new findings against the decisions ledger to avoid re-reviewing previously decided issues. | "Deduplication found 5 prior decisions" |
 
 **When referring to plugin domain concepts**, always use the compound form:
 - **plugin-phase** — the rigorous-dev plugin's own phases (ux_design, implementation, etc.)
@@ -180,7 +197,7 @@ Determine audit scope based on the user's request:
 If scope is ambiguous, ask the user:
 
 ```
-The schema auditor has 20 audit categories across 4 groups. Would you like me to run all of them, or focus on specific areas?
+The schema auditor has 20 audit categories across 4 agent groups. Would you like me to run all of them, or focus on specific areas?
 ```
 
 Offer choices via ask_user:
@@ -193,7 +210,7 @@ Offer choices via ask_user:
 
 ### Step 2: Launch Schema Auditor Agents in Parallel
 
-The 20 audit categories are split across 4 agent groups that run in parallel. Each group uses the `rigor_schema_auditor` agent (always `claude-opus-4.6`) with a scoped prompt.
+The 20 audit categories are split across 4 agent groups that run in parallel. Each agent group uses the `rigor_schema_auditor` agent (always `claude-opus-4.6`) with a scoped prompt.
 
 **Agent Group Assignments:**
 
@@ -244,7 +261,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
 ```
 
-**For a focused audit**, launch only the relevant group(s).
+**For a focused audit**, launch only the relevant agent group(s).
 
 ### Step 3: Wait for All Agents and Consolidate
 
@@ -254,7 +271,7 @@ Wait for all launched agents to complete using `read_agent` with `wait: true`.
 
 Once ALL agents have completed, **you (the skill orchestrator) create the consolidated report** by:
 
-1. Reading each group's persisted report from `.scratch/rigor-schema-auditor/<date>/`
+1. Reading each agent group's persisted report from `.scratch/rigor-schema-auditor/<date>/`
 2. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
 3. Writing the consolidated report to `.scratch/rigor-schema-auditor/<date>/<HHMMSS>_consolidated-audit.md`
 
@@ -307,7 +324,7 @@ After creating the consolidated report, enter the **Findings Review & Implementa
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report) → execution with progress reporting.
 
-If the user chooses to fix findings, each fix goes through the full **Producer-Critic Loop**. The schema auditor identifies issues; the producer-critic loop implements fixes.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop**. The schema auditor identifies findings; the producer-critic loop implements fixes.
 
 ---
 
@@ -567,9 +584,9 @@ Key format rules:
 
 ### Step B: Interactive Review
 
-- Present each finding one at a time to the user
-- For findings with a prior decision: show the prior decision and ask if the user wants to keep it or change it
-- For new findings: show context (category, severity, affected tables/files, what it means, why it matters)
+- Present each issue one at a time to the user
+- For issues with a prior decision: show the prior decision and ask if the user wants to keep it or change it
+- For new issues: show context (category, severity, affected tables/files, what it means, why it matters)
 - Use `ask_user` with choices: `"Approve"`, `"Reject"`, `"Skip"`, `"Expand (tell me more)"`
 - On "Expand": provide deeper analysis (show the actual schema/code, explain tradeoffs), then re-ask for decision
 - Record decision in the Approved column: ✅ (approved), ❌ (rejected), ⏭️ (skipped)
@@ -593,14 +610,14 @@ Key format rules:
 
 ### Step C: Dependency Analysis
 
-- After review, analyze dependencies between **approved** findings only
+- After review, analyze dependencies between **approved** issues only
 - Identify ordering constraints (e.g., "rename column before adding UNIQUE on it", "merge tables before adding indexes", "collapse child tables before adding CASCADE FKs")
 - For persisted modes: record dependencies in the report
 - Present dependency summary to user: which issues block which, and why
 
 ### Step D: Implementation Phasing
 
-- Generate the implementation plan from approved findings + dependency graph:
+- Generate the implementation plan from approved issues + dependency graph:
   - **Phase 1**: No dependencies (can execute in any order)
   - **Phase 2**: Depends on Phase 1 items
   - **Phase N**: Depends on prior phases
@@ -645,7 +662,7 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 5. **Critic and auditor are read-only** — They never modify files. They only read and report.
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
-8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and an implementation plan. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
+8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered as issues, then go through interactive review, dependency analysis, and an implementation plan. The schema/deep auditor produces findings; the producer-critic loop implements fixes.
 9. **Decompose into smallest logical chunks** — Each producer call should handle the smallest atomic change that leaves the codebase consistent. Decompose large issues into multiple work-units at the planning stage. Use 1:1 (producer → critic → commit) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small chunks form one logical change. Never run producers in parallel — sequential only to avoid rate limiting.
 10. **Commit frequently and minimally** — Commit as fine-grained as possible. Prefer one commit per coherent sub-change (e.g., schema change, handler change, doc change as separate commits). Each commit should be independently understandable and revertable. At minimum, commit after each issue completes. Never batch multiple unrelated issues into one commit. Fine-grained commits make tracking changes and reverting much easier.
 11. **Report progress during multi-work-unit implementation** — At the start of each work-unit, report done/in-progress/remaining counts and the current work-unit with issue numbers. This keeps the user oriented during long implementation runs.
@@ -658,11 +675,28 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 
 | Term | Definition |
 |------|-----------|
+| **Agent group** | One of 4 parallel schema auditor partitions (Group A–D), each covering a subset of the 20 audit categories. |
+| **Auditor** | The `rigor_schema_auditor` agent. Analyzes the database schema across 20 categories. Read-only — never modifies files. |
+| **Change request** | The user-provided description of what to change, confirmed in Update Mode Step 1. Passed as the prompt to the producer. |
+| **Complexity** | The classification of a change request: Simple, Moderate, or Complex. Determines the producer model. |
+| **Consolidated report** | The merged output from all agent groups in a Schema Audit, written to `.scratch/rigor-schema-auditor/<date>/`. Contains the Findings Index and all group details. |
+| **Critic** | The `rigor_plugin_critic` agent. Validates changes (or audits the plugin in Deep Audit mode). Read-only — never modifies files. |
+| **Decisions ledger** | A persistent file at `.scratch/<auditor-name>/audit-decisions.md` that records approve/reject/skip decisions across audit runs. Enables deduplication on future audits. |
+| **Deduplication** | Matching new findings against the decisions ledger to avoid re-reviewing previously decided issues. |
+| **Escalation** | When the critic has not approved after 3 revisions, the loop stops and the user is asked to intervene. |
+| **Finding** | A raw result from an agent (critic FAIL item, auditor recommendation, Q&A-discovered problem). Findings become issues once numbered in the Findings Index. |
+| **Findings Index** | The numbered table of issues at the top of every audit report. Columns: `#`, `Group`/`Category`, `Severity`, `Approved`, `Finding`. The authoritative list of all issues. |
 | **Implementation plan** | The phased execution plan produced during Step D of the workflow. Groups approved issues into dependency-ordered phases, each containing one or more work-units. Persisted as the "Implementation Phasing" section in audit reports. |
-| **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. |
-| **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never refers to the plugin's own domain phases — those are **plugin-phases**. |
-| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). |
-| **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never refers to an implementation unit — that is a **work-unit**. |
-| **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never refers to the plugin's own orchestration workflows — those are **plugin-workflows**. |
+| **Issue** | A numbered entry in the Findings Index, identified by a monotonically increasing `#`. The stable identifier used throughout the review and implementation lifecycle. Created from findings during Step A. |
+| **Mode** | One of 4 interaction types: Update, Deep Audit, Schema Audit, Q&A. Determined at session start from the user's request. |
+| **Orchestrator** | The skill itself — you, the AI running this SKILL.md. Coordinates agents, manages the workflow, and reports to the user. |
+| **Phase** | A dependency-ordered set of work-units in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never refers to the plugin's own domain phases — those are **plugin-phases**. |
 | **Plugin-phase** | A phase in the rigorous-dev plugin's own domain (e.g., ux_design, implementation, qa_test). Distinct from **phase**. |
 | **Plugin-workflow** | An orchestration workflow in the rigorous-dev plugin itself. Distinct from **workflow**. |
+| **Producer** | The `rigor_plugin_producer` agent. Makes changes to plugin files. Never modifies files outside the plugin. |
+| **Report** | A persisted audit output document in `.scratch/`. Created by Schema Audit (consolidated report) and Deep Audit (critic report). Q&A and Update modes do not create reports. |
+| **Revision** | One pass through Loop 2 of the Producer-Critic Loop (producer makes changes → critic reviews). Maximum 3 revisions before escalation. |
+| **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never refers to an implementation unit — that is a **work-unit**. |
+| **Verdict** | The critic's output after reviewing a change: `approved` or `needs_revision`. |
+| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). |
+| **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never refers to the plugin's own orchestration workflows — those are **plugin-workflows**. |
