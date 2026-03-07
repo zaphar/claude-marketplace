@@ -1105,7 +1105,8 @@ CREATE TABLE IF NOT EXISTS blocker (
   raised_by TEXT NOT NULL,
   resolved_at TEXT,
   resolution_notes TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (iteration_id, phase_name) REFERENCES phase(iteration_id, name) ON DELETE CASCADE
 );
 
 -- ============================================================
@@ -1119,7 +1120,8 @@ CREATE TABLE IF NOT EXISTS project_lesson (
   category TEXT NOT NULL CHECK (category IN ('pattern', 'anti-pattern', 'convention', 'risk', 'decision', 'process')),
   lesson TEXT NOT NULL,
   recurring INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (iteration_id, phase_name) REFERENCES phase(iteration_id, name) ON DELETE CASCADE
 );
 
 -- ============================================================

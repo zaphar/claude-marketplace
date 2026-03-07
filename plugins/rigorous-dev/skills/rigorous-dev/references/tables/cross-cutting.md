@@ -367,7 +367,7 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this blocker was raised. |
-| `phase_name` | TEXT | NOT NULL | — | — | The phase during which the blocker was raised (e.g., `requirements`, `architecture`, `implementation`). |
+| `phase_name` | TEXT | NOT NULL | — | FK (composite) → `phase(iteration_id, name)` | The phase during which the blocker was raised (e.g., `requirements`, `architecture`, `implementation`). |
 | `description` | TEXT | NOT NULL | — | — | Human-readable description of the blocking issue. |
 | `severity` | TEXT | NOT NULL | — | — | Severity of the blocker (e.g. `'critical'`, `'high'`, `'medium'`). |
 | `raised_by` | TEXT | NOT NULL | — | — | The agent that raised the blocker (e.g., `requirements_critic`, `backend_architect`). |
@@ -378,6 +378,7 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Blockers are scoped to an iteration. Active blockers from prior iterations are not automatically carried forward.
+- **`(iteration_id, phase_name)` → `phase(iteration_id, name)`** — Composite FK ensures the phase_name is valid for the given iteration. ON DELETE CASCADE.
 - No `revision_id` — blockers are lifecycle events that exist outside the producer-critic revision loop.
 
 ### MCP Tool Access
@@ -433,7 +434,7 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this lesson was recorded. |
-| `phase_name` | TEXT | NOT NULL | — | — | The phase during which the lesson was recorded (e.g., `requirements`, `architecture`, `implementation`). |
+| `phase_name` | TEXT | NOT NULL | — | FK (composite) → `phase(iteration_id, name)` | The phase during which the lesson was recorded (e.g., `requirements`, `architecture`, `implementation`). |
 | `category` | TEXT | NOT NULL | — | CHECK(`category` IN (`'pattern'`, `'anti-pattern'`, `'convention'`, `'risk'`, `'decision'`, `'process'`)) | Classification of the lesson for targeted querying. |
 | `lesson` | TEXT | NOT NULL | — | — | Human-readable description of the lesson learned. |
 | `recurring` | INTEGER | NOT NULL | `0` | — | Set to `1` if this pattern has been observed before. Helps surface systemic issues. |
@@ -442,6 +443,7 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 ### Relationships
 
 - **`iteration_id` → `iteration(id)`** — Lessons are scoped to an iteration. Lessons from prior iterations remain queryable for cross-iteration knowledge.
+- **`(iteration_id, phase_name)` → `phase(iteration_id, name)`** — Composite FK ensures the phase_name is valid for the given iteration. ON DELETE CASCADE.
 - No `revision_id` — lessons are observations that exist outside the producer-critic revision loop.
 
 ### MCP Tool Access
