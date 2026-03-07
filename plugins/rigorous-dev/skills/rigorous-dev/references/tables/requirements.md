@@ -143,51 +143,29 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ---
 
-## system_input
+## system_io
 
-**Purpose:** Describes the inputs the system expects to receive: named data sources, files, API feeds, or user-provided content. Each row names a single input, describes it, and optionally records where it comes from and what format it takes. This information is essential for the **backend_architect** when designing ingestion pipelines and data contracts.
+**Purpose:** Describes the inputs and outputs of the system in a single unified table. Each row names a single input or output, describes it, and optionally records its source, destination, and format. The `direction` column distinguishes inputs from outputs. This information is essential for the **backend_architect** when designing ingestion pipelines, output interfaces, and data contracts.
 
-**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when modelling data entities and integration boundaries, and by the **implementation_planner** when identifying external dependencies that affect delivery sequencing.
+**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when modelling data entities, integration boundaries, and output interfaces, and by the **implementation_planner** when identifying external dependencies that affect delivery sequencing. The **ux_designer** also reads output rows to understand what information must be surfaced in screens and flows.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this input belongs to. |
-| `name` | TEXT | NOT NULL | Short name for the input (e.g. `"Customer order feed"`). |
-| `description` | TEXT | NOT NULL | Narrative description of the input's content and purpose. |
-| `source` | TEXT | — | Optional. Where this input originates (e.g. `"upstream ERP system"`, `"user file upload"`). |
-| `format` | TEXT | — | Optional. The expected data format (e.g. `"JSON"`, `"CSV"`, `"binary"`). |
+| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this system I/O entry belongs to. |
+| `direction` | TEXT | NOT NULL, CHECK IN (`'input'`, `'output'`) | Whether this row describes a system input or a system output. |
+| `name` | TEXT | NOT NULL | Short name for the input or output (e.g. `"Customer order feed"`, `"Monthly billing report"`). |
+| `description` | TEXT | NOT NULL | Narrative description of the entry's content and purpose. |
+| `source` | TEXT | — | Optional. Where this input originates (e.g. `"upstream ERP system"`, `"user file upload"`). Typically populated for `direction = 'input'`. |
+| `destination` | TEXT | — | Optional. Where this output is sent or stored (e.g. `"S3 bucket"`, `"webhook endpoint"`). Typically populated for `direction = 'output'`. |
+| `format` | TEXT | — | Optional. The expected data format (e.g. `"JSON"`, `"CSV"`, `"PDF"`, `"Parquet"`). |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"system_input"`
-**Queried by:** `changelog_query` with entity_type `"system_input"`
-
----
-
-## system_output
-
-**Purpose:** Describes the outputs the system produces: reports, API responses, files, events, or any other artefact the system emits. Symmetric to `system_input`, this table documents what the system will deliver and to whom, informing downstream design of data contracts, delivery mechanisms, and observability requirements.
-
-**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing output interfaces and data models, and by the **ux_designer** when understanding what information must be surfaced in screens and flows.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this output belongs to. |
-| `name` | TEXT | NOT NULL | Short name for the output (e.g. `"Monthly billing report"`). |
-| `description` | TEXT | NOT NULL | Narrative description of the output's content and purpose. |
-| `destination` | TEXT | — | Optional. Where this output is sent or stored (e.g. `"S3 bucket"`, `"webhook endpoint"`). |
-| `format` | TEXT | — | Optional. The format of the output (e.g. `"PDF"`, `"JSON"`, `"Parquet"`). |
-
-**Relationships:**
-- Parent: `iteration` (via `iteration_id`)
-- Children: none
-
-**Produced by:** `changelog_insert` with entity_type `"system_output"`
-**Queried by:** `changelog_query` with entity_type `"system_output"`
+**Produced by:** `changelog_insert` with entity_type `"system_io"`
+**Queried by:** `changelog_query` with entity_type `"system_io"`
 
 ---
 
@@ -201,8 +179,8 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this deployment requirement belongs to. |
-| `target` | TEXT | CHECK IN (`'private-cloud'`, `'local-executable'`, `'both'`, `'other'`) | The deployment target classification. NULL is permitted when the target is not yet determined. |
-| `requirement` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
+| `target` | TEXT | — | The deployment target classification (e.g. `"private-cloud"`, `"local-executable"`, `"both"`). NULL is permitted when the target is not yet determined. |
+| `description` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
 | `notes` | TEXT | — | Optional free-text notes elaborating on the deployment target choice or constraints. |
 
 **Relationships:**

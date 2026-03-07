@@ -28,7 +28,7 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_phase_dependency`](#plan_phase_dependency) | Ordering constraints between phases |
 | [`plan_phase_parallel`](#plan_phase_parallel) | Phases that can be worked concurrently |
 | [`plan_phase_risk`](#plan_phase_risk) | Phase-level risks and mitigations |
-| [`plan_overview`](#plan_overview) | High-level strategy and phase count for a plan |
+| [`plan_overview`](#plan_overview) | High-level strategy and rationale for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
 | [`plan_critical_path`](#plan_critical_path) | Ordered sequence of phases on the critical path |
@@ -411,7 +411,7 @@ Records risks specific to a single phase — technical unknowns, integration haz
 
 ### Purpose
 
-One row per planning revision: the high-level summary of the entire implementation plan. Records the overall strategy, total number of phases, the rationale for the chosen breakdown, and a description of the Phase 1 approach.
+One row per planning revision: the high-level summary of the entire implementation plan. Records the overall strategy, the rationale for the chosen breakdown, and a description of the Phase 1 approach.
 
 ### Context
 
@@ -428,8 +428,7 @@ One row per planning revision: the high-level summary of the entire implementati
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this plan overview belongs to. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan. |
 | `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
-| `total_phases` | INTEGER | NOT NULL | — | Total number of phases in this plan. Should match the count of `plan_phase` rows for the same `iteration_id`. |
-| `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into this number of phases this way. |
+| `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
 | `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
 | `assumptions` | TEXT | — | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp of row creation. |

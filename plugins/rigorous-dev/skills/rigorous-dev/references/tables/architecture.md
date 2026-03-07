@@ -266,13 +266,13 @@ Integration test boundaries are a direct output of architectural decomposition: 
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The initiating component (the one that crosses the boundary). |
-| `target_component` | TEXT | NOT NULL, FK → `component(id)` | — | The receiving component (the one being called or accessed). |
+| `target_component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The receiving component (the one being called or accessed). |
 | `boundary_type` | TEXT | NOT NULL | — | Mechanism of interaction. Free-form text; canonical values: `api_call` (HTTP/RPC call), `database_access` (direct DB read/write), `message_event` (message broker publish/subscribe), `file_system` (shared file I/O). Custom values are accepted for project-specific boundary types. |
 | `correct_behavior` | TEXT | NOT NULL | — | Human-readable description of what a passing integration test must assert (e.g., "When the Auth Service returns 401, the API Gateway must return 403 to the caller and log the event"). |
 
 ### Relationships
 
-- **Parents:** `component` × 2 (both `component_id` and `target_component`)
+- **Parents:** `component` × 2 (both `component_id` and `target_component_id`)
 - **Consumed by:** `test_writer` (derives integration test scaffolding from this table)
 
 ### MCP Tool Access
