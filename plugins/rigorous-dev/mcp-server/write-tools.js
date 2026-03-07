@@ -12,6 +12,47 @@ const PHASES = [
   "release",
 ];
 
+// Canonical set of entity type names (must match ENTITY_TABLE keys in read-tools.js)
+const VALID_ENTITY_TYPES = [
+  "persona",
+  "requirement",
+  "adr",
+  "component",
+  "technology_choice",
+  "architecture_overview",
+  "data_entity",
+  "architecture_config",
+  "approved_dependency",
+  "traceability_mapping",
+  "user_flow",
+  "screen",
+  "ux_config",
+  "info_architecture",
+  "persona_addressed",
+  "ux_asset",
+  "plan_phase",
+  "plan_overview",
+  "plan_external_dependency",
+  "plan_critical_path",
+  "plan_metadata",
+  "implementation_manifest",
+  "test_report",
+  "documentation_manifest",
+  "deployment_manifest",
+  "vcs_commit",
+  "intermediate_asset",
+  "asset_deliverable",
+  "project_context",
+  "system_io",
+  "deployment_requirement",
+  "operational_requirement",
+  "technology_constraint",
+  "blocker",
+  "project_lesson",
+  "security_audit_finding",
+  "performance_audit_finding",
+];
+
 // ---------------------------------------------------------------------------
 // Tool implementations
 // ---------------------------------------------------------------------------
@@ -474,6 +515,12 @@ function insertTechnologyChoice(db, iteration_id, revision_id, data) {
 }
 
 function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
+  // Validate addressed_by_type against the canonical entity type list
+  if (!VALID_ENTITY_TYPES.includes(data.addressed_by_type)) {
+    throw new Error(
+      `Invalid addressed_by_type: "${data.addressed_by_type}". Must be one of: ${VALID_ENTITY_TYPES.join(", ")}`
+    );
+  }
   // Soft-FK validation: verify the referenced screen exists
   if (data.addressed_by_type === "screen") {
     const exists = db
@@ -2012,45 +2059,7 @@ export const WRITE_TOOLS = [
       properties: {
         entity_type: {
           type: "string",
-          enum: [
-            "persona",
-            "requirement",
-            "adr",
-            "component",
-            "technology_choice",
-            "architecture_overview",
-            "data_entity",
-            "architecture_config",
-            "approved_dependency",
-            "traceability_mapping",
-            "user_flow",
-            "screen",
-            "ux_config",
-            "info_architecture",
-            "persona_addressed",
-            "ux_asset",
-            "plan_phase",
-            "plan_overview",
-            "plan_external_dependency",
-            "plan_critical_path",
-            "plan_metadata",
-            "implementation_manifest",
-            "test_report",
-            "documentation_manifest",
-            "deployment_manifest",
-            "vcs_commit",
-            "intermediate_asset",
-            "asset_deliverable",
-            "project_context",
-            "system_io",
-            "deployment_requirement",
-            "operational_requirement",
-            "technology_constraint",
-            "blocker",
-            "project_lesson",
-            "security_audit_finding",
-            "performance_audit_finding",
-          ],
+          enum: VALID_ENTITY_TYPES,
         },
         iteration_id: { type: "integer" },
         revision_id: { type: "integer" },
