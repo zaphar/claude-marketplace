@@ -201,7 +201,7 @@ function insertPersona(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.name,
     data.description,
     data.technical_level ?? null,
@@ -232,7 +232,7 @@ function insertRequirement(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.description,
     data.rationale ?? null,
     data.priority,
@@ -286,7 +286,7 @@ function insertAdr(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.title,
     data.status ?? "proposed",
     data.date ?? null,
@@ -333,7 +333,7 @@ function insertComponent(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.name,
     data.purpose,
     data.type,
@@ -389,7 +389,7 @@ function insertArchitectureOverview(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.description,
       JSON.stringify(data.principles ?? []),
       now
@@ -416,7 +416,7 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.name,
       data.description,
       now
@@ -461,7 +461,7 @@ function insertTechnologyChoice(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.category,
       data.name,
       data.purpose ?? null,
@@ -493,7 +493,7 @@ function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.requirement_id,
       data.addressed_by,
       data.addressed_by_type,
@@ -576,7 +576,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.name,
     data.goal,
     data.persona_id ?? null,
@@ -653,7 +653,7 @@ function insertScreen(db, iteration_id, revision_id, data) {
   ).run(
     data.id,
     iteration_id,
-    revision_id ?? null,
+    revision_id,
     data.name,
     data.purpose,
     data.wireframe_path ?? null,
@@ -699,7 +699,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.phase_number,
       data.name,
       data.type,
@@ -795,7 +795,7 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.strategy,
       data.rationale,
       data.phase_one_approach ?? null,
@@ -853,7 +853,7 @@ function insertPlanMetadata(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.title,
       data.version,
       data.created,
@@ -880,7 +880,7 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.plan_phase_id,
       data.status,
       data.lines_of_code ?? null,
@@ -1105,7 +1105,7 @@ function insertIntermediateAsset(db, iteration_id, revision_id, data) {
     .run(
       iteration_id,
       data.phase_id ?? null,
-      revision_id ?? null,
+      revision_id,
       data.asset_type,
       data.title,
       data.content ?? null,
@@ -1218,7 +1218,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.total_tests ?? 0,
       data.passed ?? 0,
       data.failed ?? 0,
@@ -1381,7 +1381,7 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.status,
       data.total_pages ?? null,
       data.accessibility_compliant ?? 0,
@@ -1492,7 +1492,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
     )
     .run(
       iteration_id,
-      revision_id ?? null,
+      revision_id,
       data.status,
       JSON.stringify((data.targets ?? []).map(t => t.target ?? t)),
       JSON.stringify((data.blockers ?? []).map(b => b.blocker ?? b)),
