@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
   closed_at TEXT,
   critic_model TEXT DEFAULT 'sonnet',
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS project (
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
-  started_at TEXT NOT NULL,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT,
   notes TEXT DEFAULT ''
 );

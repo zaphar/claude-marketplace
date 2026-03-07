@@ -18,8 +18,8 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY CHECK(id = 1) | Singleton enforcer. Always 1. |
 | `project_name` | TEXT | NOT NULL | Human-readable project name. |
-| `created_at` | TEXT | NOT NULL | ISO-8601 timestamp when the project was created. |
-| `updated_at` | TEXT | NOT NULL | ISO-8601 timestamp of the last update to this row. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp when the project was created. |
+| `updated_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of the last update to this row. |
 | `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. `active` while work is ongoing; `closed` when the project is complete or archived. |
 | `closed_at` | TEXT | — | ISO-8601 timestamp when the project was closed. NULL while active. |
 | `critic_model` | TEXT | DEFAULT `'sonnet'` | The LLM model identifier used for critic agents in this project. |
@@ -44,7 +44,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `status` | TEXT | NOT NULL, CHECK(`active`, `closed`) | Lifecycle state. Only one iteration should be `active` at a time. |
-| `started_at` | TEXT | NOT NULL | ISO-8601 timestamp when this iteration was opened. |
+| `started_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp when this iteration was opened. |
 | `closed_at` | TEXT | — | ISO-8601 timestamp when this iteration was closed. NULL while active. |
 | `notes` | TEXT | DEFAULT `''` | Free-text notes about this iteration's scope or outcomes. |
 
@@ -97,7 +97,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `phase_id` | INTEGER | NOT NULL, REFERENCES `phase(id)` | Parent phase. |
 | `producer_agent` | TEXT | NOT NULL | Identifier of the agent that produced this revision's output. |
-| `created_at` | TEXT | NOT NULL | ISO-8601 timestamp when the revision was created (producer submitted work). |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp when the revision was created (producer submitted work). |
 | `status` | TEXT | NOT NULL, CHECK(`draft`, `submitted`, `approved`, `rejected`) | Lifecycle state. `draft` → `submitted` when producer finishes; `approved` or `rejected` after critic review. |
 | `critic_agent` | TEXT | — | Identifier of the critic agent that reviewed this revision. NULL until reviewed. |
 | `critic_feedback` | TEXT | — | Feedback text from the critic. NULL if not yet reviewed; populated for both `approved` and `rejected` outcomes. |
