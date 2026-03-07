@@ -96,6 +96,9 @@ These patterns have already been successfully applied to this schema. Use them a
 - `component.type` (8 fixed values → free-form TEXT)
 - `integration_test_boundary.boundary_type` (4 fixed values → free-form TEXT)
 
+**Design Principle — CHECK constraints are for closed domains only:**
+CHECK constraints should only be applied to columns with genuinely closed, finite value sets — status enums (pass/fail), binary discriminators (input/output), lifecycle states (draft/submitted/approved/rejected), or values that drive handler branching logic. Never apply CHECK constraints to open-ended domains where values naturally grow over time (types, categories, kinds, formats) — use free-form TEXT instead and let agents provide contextually appropriate values.
+
 ---
 
 #### Audit Categories
@@ -156,7 +159,11 @@ For each candidate, report:
 
 ##### Category 4: CHECK Constraint Audit — Remove Overly Rigid Enums
 
-Identify CHECK constraints on columns whose value domain is open-ended and will grow over time.
+CHECK constraints must only exist on columns with genuinely closed, finite value sets. Identify CHECK constraints on columns whose value domain is open-ended and will grow over time — these should be free-form TEXT with no constraint.
+
+**Decision framework:**
+- **Closed domain (KEEP CHECK):** Status enums (pass/fail/blocked), binary discriminators (input/output), lifecycle states (draft/submitted/approved/rejected), standard scales (critical/high/medium/low), values that drive handler branching or query routing.
+- **Open domain (REMOVE CHECK):** Types, categories, kinds, formats, roles, tags — any column where future values are unpredictable and agents should be free to use contextually appropriate values.
 
 For each candidate, report:
 - Table, column, and current CHECK values
