@@ -84,7 +84,7 @@ Critic model: claude-opus-4.6 (always)
 
 **Pre-flight: Scope Check**
 
-Before launching the producer, assess how many files the change touches. Sub-agent reliability degrades with task size — long-running agents risk API connection drops and streaming timeouts (see `sync-agent-timeout-patch.md` for details).
+Before launching the producer, assess how many files the change touches. Sub-agent reliability degrades with task size — long-running agents risk API connection drops and streaming timeouts.
 
 | Files Touched | Action |
 |---------------|--------|
@@ -575,14 +575,42 @@ Key format rules:
 
 ### Step E: Implementation Execution
 
-- Execute steps in phase order using the producer-critic loop (Update Mode Step 3)
+Execute steps in phase order using the producer-critic loop (Update Mode Step 3). The key decision at each step is **how many producer calls run before a critic reviews**.
+
+**Producer-to-Critic Orchestration:**
+
+There are two patterns. Choose based on the step's characteristics:
+
+| Pattern | Structure | When to Use |
+|---------|-----------|-------------|
+| **1:1** (standard) | 1 producer → 1 critic | Default. Use for any step covering a single issue that touches ≤3 files. |
+| **N:1** (multi-producer) | N sequential producers → 1 critic | Use when a step has multiple work items that are parts of one logical change. |
+
+**When N:1 is required** — a single issue is split into sub-tasks because it touches 4+ files:
+- Each sub-task gets its own producer call touching ≤3 files (e.g., "Update schema.sql only" → "Update write-tools.js only")
+- Sub-tasks run **sequentially** — never in parallel (parallel API calls risk rate limiting and thundering-herd retries)
+- Later sub-tasks must reference what earlier sub-tasks changed (include file paths and summary of prior changes)
+- The critic reviews the **aggregate result** of all sub-tasks, not each one individually
+- Example: Issue #2 "collapse 22 child tables" touches schema.sql, write-tools.js, read-tools.js → 3 sequential producers → 1 critic
+
+**When N:1 is optional but recommended** — a step covers 2-3 small, related issues:
+- Batch if changes are cohesive (same domain, similar files, logically connected)
+- Example: Issues #12, #22, #23 are all "remove CHECK constraints" → 3 producers (one per issue) → 1 critic
+- Do NOT batch if issues are unrelated, touch different domains, or have no logical connection
+
+**When N:1 must NOT be used:**
+- 4+ unrelated issues — split into multiple separate 1:1 or smaller N:1 batches
+- Issues touching different architectural layers with no overlap — review independently
+- When in doubt, use 1:1 — an unnecessary critic call is cheaper than a critic overwhelmed by unrelated changes
+
+**After critic approval:**
 - Track and report progress at the start of each work unit:
   ```
   📊 Progress: X/Y issues done | Z in progress | W remaining
   Current: Step N — [description] (Issues #A, #B)
   ```
 - For persisted modes: update the report as issues complete (mark steps done)
-- **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change (e.g., schema change, then handler change, then doc change as separate commits). Fine-grained commits make tracking changes and reverting much easier. Each commit should be independently understandable and revertable.
+- **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change (e.g., schema change, then handler change, then doc change as separate commits). Even within an N:1 batch, prefer separate commits per issue when the changes are separable. The goal is the finest-grained commit history possible while keeping each commit coherent. If changes are deeply interleaved (e.g., both issues modify the same function), a single commit is acceptable.
 
 ---
 
