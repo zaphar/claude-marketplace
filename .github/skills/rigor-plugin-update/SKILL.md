@@ -25,7 +25,7 @@ These terms have precise meanings throughout this document. Each word has exactl
 | **Findings Index** | The numbered table of issues at the top of every audit report. Columns: `#`, `Group`/`Category`, `Severity`, `Approved`, `Finding`. The authoritative list of all issues. | "The Findings Index has 40 issues across 4 agent groups" |
 | **Phase** | A dependency-ordered set of work-units in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never used to mean the plugin's own domain phases. | "Phase 1 has 15 issues with no dependencies" |
 | **Implementation plan** | The phased execution plan produced during Step D of the workflow. Groups approved issues into dependency-ordered phases, each containing one or more work-units. Persisted as the "Implementation Phasing" section in audit reports. | "The implementation plan has 3 phases and 12 work-units" |
-| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one loop cycle. | "WU-03: remove 9 CHECK constraints (Issues #12, #22, #23)" |
+| **Work-unit** | The smallest executable chunk of implementation. Each issue produces one or more work-units; a large issue is decomposed into multiple work-units at the planning stage. Trivially similar issues (same change pattern repeated) may be batched into a single work-unit. Each work-unit goes through one loop cycle. | "Issue #5 decomposes into WU-01 (schema), WU-02 (handlers), WU-03 (docs)" |
 | **Loop cycle** | One complete pass through the Producer-Critic Loop: 1+ sequential producer calls → 1 critic review → commit. In the 1:1 pattern, the cycle has 1 producer call. In the N:1 pattern, it has N sequential producer calls. Either way, the cycle ends with one critic verdict and one commit. | "This work-unit took one loop cycle with 3 producer calls (N:1)" |
 | **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never used to mean an implementation unit — that is a work-unit. | "Step 2: Complexity Assessment" |
 | **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never used to mean the plugin's own orchestration workflows. | "Enter the workflow at Step B" |
@@ -436,7 +436,7 @@ There are **two kinds of iteration** in this loop. They are orthogonal:
 This controls how many producer calls run before the critic reviews:
 
 - **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
-- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a work-unit covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
+- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or when a single work-unit spans multiple producer tasks. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
 
 Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
 
@@ -622,7 +622,7 @@ Key format rules:
   - **Phase 1**: No dependencies (can execute in any order)
   - **Phase 2**: Depends on Phase 1 items
   - **Phase N**: Depends on prior phases
-- Each phase has work-units; each work-unit covers 1+ issues
+- Each phase has work-units; each issue produces one or more work-units (trivially similar issues may be batched into one)
 - Each work-unit shows original issue `#` numbers for traceability
 - For persisted modes: append "Implementation Phasing" section to the report
 - For Q&A mode: present the implementation plan in-conversation (only if 3+ approved changes warrant it; for 1-2 changes, skip directly to execution)
@@ -700,5 +700,5 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 | **Revision** | One pass through Loop 2 of the Producer-Critic Loop (producer makes changes → critic reviews). Maximum 3 revisions before escalation. |
 | **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never refers to an implementation unit — that is a **work-unit**. |
 | **Verdict** | The critic's output after reviewing a change: `approved` or `needs_revision`. |
-| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one loop cycle. |
+| **Work-unit** | The smallest executable chunk of implementation. Each issue produces one or more work-units; a large issue is decomposed into multiple work-units at the planning stage. Trivially similar issues (same change pattern repeated) may be batched into a single work-unit. Each work-unit goes through one loop cycle. |
 | **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never refers to the plugin's own orchestration workflows — those are **plugin-workflows**. |
