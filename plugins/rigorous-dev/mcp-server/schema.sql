@@ -78,9 +78,7 @@ CREATE TABLE IF NOT EXISTS requirement (
   description TEXT NOT NULL,
   rationale TEXT,
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
-  category TEXT NOT NULL CHECK(category IN (
-    'functional', 'security', 'usability', 'performance', 'operational', 'deployment'
-  )),
+  category TEXT NOT NULL,
   acceptance_criteria TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT
@@ -132,7 +130,7 @@ CREATE TABLE IF NOT EXISTS system_output (
 CREATE TABLE IF NOT EXISTS deployment_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  target TEXT CHECK(target IN ('private-cloud', 'local-executable', 'both', 'other')),
+  target TEXT,
   requirement TEXT NOT NULL,
   notes TEXT
 );
@@ -144,7 +142,7 @@ CREATE TABLE IF NOT EXISTS operational_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   item TEXT NOT NULL,
-  category TEXT NOT NULL CHECK(category IN ('uptime', 'monitoring', 'logging', 'observability')),
+  category TEXT NOT NULL,
   notes TEXT
 );
 
@@ -152,7 +150,7 @@ CREATE TABLE IF NOT EXISTS operational_requirement (
 CREATE TABLE IF NOT EXISTS technology_constraint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  constraint_type TEXT NOT NULL CHECK(constraint_type IN ('allowed_language', 'forbidden_dependency', 'required_framework')),
+  constraint_type TEXT NOT NULL,
   value TEXT NOT NULL
 );
 
@@ -385,10 +383,7 @@ CREATE TABLE IF NOT EXISTS screen (
 CREATE TABLE IF NOT EXISTS screen_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   screen_id TEXT NOT NULL REFERENCES screen(id),
-  name TEXT NOT NULL CHECK(name IN (
-    'default', 'loading', 'empty', 'error', 'success',
-    'session_expired', 'forced', 'editing', 'reviewing', 'search_results', 'complete'
-  )),
+  name TEXT NOT NULL,
   description TEXT,
   wireframe_path TEXT
 );
@@ -448,7 +443,7 @@ CREATE TABLE IF NOT EXISTS ux_asset (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   path TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('wireframe', 'mockup', 'prototype', 'icon', 'image', 'video')),
+  type TEXT NOT NULL,
   screen_id TEXT REFERENCES screen(id),
   description TEXT,
   created_at TEXT NOT NULL
@@ -808,7 +803,7 @@ CREATE TABLE IF NOT EXISTS test_suite (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id),
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('unit', 'integration', 'e2e', 'security', 'performance'))
+  type TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS test_case (
@@ -833,7 +828,7 @@ CREATE TABLE IF NOT EXISTS test_case_requirement (
 CREATE TABLE IF NOT EXISTS test_security_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id),
-  category TEXT NOT NULL CHECK(category IN ('vulnerability_scan', 'dependency_audit')),
+  category TEXT NOT NULL,
   tool TEXT,
   severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'info')),
   description TEXT,
@@ -1044,7 +1039,7 @@ CREATE TABLE IF NOT EXISTS deployment_quality_gates (
 CREATE TABLE IF NOT EXISTS deployment_environment (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
-  name TEXT NOT NULL CHECK(name IN ('development', 'staging', 'production')),
+  name TEXT NOT NULL,
   deployment_method TEXT NOT NULL,
   url TEXT,
   rollback_procedure TEXT
