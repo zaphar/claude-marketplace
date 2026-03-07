@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
   flow_id TEXT NOT NULL REFERENCES user_flow(id),
   step_number INTEGER NOT NULL,
   action TEXT NOT NULL,
-  surface TEXT,
+  surface TEXT, -- soft reference to screen.name (not a hard FK; screens may not exist yet when flows are defined)
   is_decision_point INTEGER DEFAULT 0
 );
 
@@ -1102,7 +1102,7 @@ CREATE TABLE IF NOT EXISTS deployment_health_check (
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
   name TEXT NOT NULL,
   endpoint TEXT,
-  interval TEXT
+  interval TEXT -- duration string, e.g. "30s", "5m", "1h"
 );
 
 CREATE TABLE IF NOT EXISTS deployment_alerting (
