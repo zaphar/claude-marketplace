@@ -97,6 +97,16 @@ When splitting:
 - Later sub-tasks must reference what earlier sub-tasks changed (include file paths and summary)
 - The critic reviews the aggregate result after all sub-tasks finish
 
+**Multi-Producer Batching:**
+
+When executing implementation phases (from the Findings Review & Implementation Workflow), multiple issues or work items may be batched so that N sequential producer calls are followed by 1 critic review:
+
+- **When to batch**: An issue is split into work items (always batch these — they're parts of one logical change). A step covers multiple small/related issues (batch if changes are cohesive and touch similar files).
+- **When NOT to batch**: Don't batch unrelated issues that touch different domains or have no logical connection. When in doubt, keep separate.
+- **How it works**: Run N producer calls sequentially (each with its own focused prompt). After all N complete, run 1 critic to review the aggregate. If the critic approves → commit → report progress → next step.
+- **Commit granularity in batches**: Even within a multi-producer batch, prefer separate commits per issue when the changes are separable. If a batch covers issues #3 and #4, and their changes don't interleave in the same files, commit them separately. The goal is the finest-grained commit history possible while keeping each commit coherent. If changes are deeply interleaved (e.g., both issues modify the same function), a single commit is acceptable.
+- **Heuristic**: Prefer multi-producer batching for 2-3 small related changes. For 4+ issues, split into multiple batches to avoid overwhelming the critic.
+
 **Iteration 1:**
 
 1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the confirmed change request as the prompt. Include:
@@ -194,26 +204,30 @@ For each checklist category, report every item as PASS or FAIL with specific det
 Produce a comprehensive audit report in your standard verdict format with mode: deep_audit.
 ```
 
-### Step 2: Present Report
+### Step 2: Build Findings Index
 
-Display the critic's full audit report to the user.
+After the critic completes, read its report and build a **Findings Index** from all FAIL items:
 
-### Step 3: User Decision
+1. Each FAIL item gets a monotonically increasing `#` (starting at 1)
+2. Add the Findings Index table to the critic's existing `.scratch/` report (this is an addition to the report the critic already creates — not a new file)
+3. Present the report to the user with the Findings Index highlighted at the top
 
-After presenting the report, ask the user how to proceed:
+The Findings Index follows the format defined in the **Findings Review & Implementation Workflow** section:
 
 ```
-The audit found [X] issues ([Y] blocking, [Z] recommended, [W] suggestions).
-
-How would you like to proceed?
+| # | Category | Severity | Approved | Finding |
+|---|----------|----------|----------|---------|
+| 1 | Correctness | blocking | | [FAIL item one-line summary] |
+| 2 | Consistency | recommended | | [FAIL item one-line summary] |
 ```
 
-Offer choices via ask_user:
-- **Fix all issues** — Enter Update Mode with all findings as the change request
-- **Fix specific issues** — Let the user select which findings to address
-- **No action** — Report is informational only
+### Step 3: Enter Findings Review & Implementation Workflow
 
-If the user chooses to fix issues, enter Update Mode (Step 1) with the selected findings as the change request. The complexity assessment should account for the scope of fixes needed.
+Enter the **Findings Review & Implementation Workflow** starting at **Step B: Interactive Review** (the Findings Index was already built in Step 2).
+
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting.
+
+If the user chooses to fix issues, each fix enters Update Mode and goes through the full producer-critic loop. The complexity assessment should account for the scope of fixes needed.
 
 ---
 
@@ -309,7 +323,7 @@ Once ALL agents have completed, **you (the skill orchestrator) create the consol
 2. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
 3. Writing the consolidated report to `.scratch/rigor-schema-auditor/<date>/<HHMMSS>_consolidated-audit.md`
 
-The consolidated report format:
+The consolidated report format — use the **Canonical Persisted Report Structure** from the Findings Review & Implementation Workflow section:
 
 ```markdown
 # Schema Audit — Consolidated Report
@@ -319,12 +333,16 @@ The consolidated report format:
 **Groups Run:** [A, B, C, D]
 **Total Findings:** [count across all groups]
 
-## Prioritized Recommendations
+---
 
-| Priority | Category | Group | Finding | Severity | Impact | Effort |
-|----------|----------|-------|---------|----------|--------|--------|
-| 1 | [cat] | [A/B/C/D] | [finding] | [critical/medium/low] | [tables eliminated / bugs fixed] | [files affected] |
-| 2 | ... | ... | ... | ... | ... | ... |
+## Findings Index
+
+| # | Group | Severity | Approved | Finding |
+|---|-------|----------|----------|---------|
+| 1 | [A/B/C/D] | [critical/medium/low] | | [one-line summary — include impact, e.g. "22 child tables can collapse to JSON columns"] |
+| 2 | ... | ... | | ... |
+
+---
 
 ## Group A: Simplification (Categories 1-4)
 [paste or summarize findings from group A report]
@@ -346,32 +364,15 @@ The consolidated report format:
 - .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
 ```
 
-### Step 4: Present Consolidated Report
+Note: The `Approved` column starts blank. The `Implementation Phasing` section is NOT included in the initial report — it is appended later during the shared workflow (Step D).
 
-Display the consolidated report to the user, highlighting the top prioritized recommendations.
+### Step 4: Enter Findings Review & Implementation Workflow
 
-### Step 5: User Decision
+After creating the consolidated report, enter the **Findings Review & Implementation Workflow** starting at **Step A** (the Findings Index is already built in Step 3 above — proceed to **Step B: Interactive Review**).
 
-After presenting the report, ask the user how to proceed:
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the consolidated report) → execution with progress reporting.
 
-```
-The schema audit found [X] findings across [Y] categories.
-
-Top recommendations by impact:
-1. [finding] — [impact]
-2. [finding] — [impact]
-3. [finding] — [impact]
-
-How would you like to proceed?
-```
-
-Offer choices via ask_user:
-- **Fix all findings** — Enter Update Mode with all findings as the change request (use producer-critic loop)
-- **Fix specific findings** — Let the user select which findings to address
-- **Work through findings interactively** — Enter Q&A Mode to discuss each finding before deciding
-- **No action** — Report is informational only
-
-If the user chooses to fix findings, enter Update Mode (Step 1) with the selected findings as the change request. Each finding goes through the full producer-critic loop.
+If the user chooses to fix findings, each fix goes through the full producer-critic loop (Update Mode Step 3). The schema auditor identifies issues; the producer-critic loop implements fixes.
 
 ---
 
@@ -426,29 +427,162 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 While answering questions, track whether the investigation reveals issues that would benefit from changes:
 
 - **No changes needed** — The answer is purely informational. Continue Q&A.
-- **Changes identified** — Present the potential changes to the user:
+- **Single change identified** — Present the change to the user and offer to enter Update Mode (Step 1) directly:
+
+```
+📋 Proposed Change
+
+Based on this investigation, the following change would improve the plugin:
+
+1. [Change description + rationale + affected files]
+
+Complexity: [Simple | Moderate | Complex]
+
+Would you like me to implement this change?
+```
+
+- **Multiple changes identified (2+)** — Present them as a numbered Findings Index inline (no persisted document) and offer to enter the shared workflow:
 
 ```
 📋 Proposed Changes
 
 Based on this investigation, the following changes would improve the plugin:
 
-1. [Change description + rationale + affected files]
-2. [Change description + rationale + affected files]
+| # | Category | Severity | Finding |
+|---|----------|----------|---------|
+| 1 | [cat]    | [sev]    | [one-line summary + affected files] |
+| 2 | [cat]    | [sev]    | [one-line summary + affected files] |
 
-Complexity: [Simple | Moderate | Complex]
-
-Would you like me to implement these changes?
+Would you like to review these interactively?
 ```
+
+If the user agrees, enter the **Findings Review & Implementation Workflow** at **Step B: Interactive Review** (the numbered table above serves as the Findings Index). Implementation phasing is only used when 3+ changes are approved; for 1-2 changes, skip phasing and go straight to execution.
 
 ### User Decision
 
 Use ask_user to offer choices:
-- **Yes, implement** → Enter Update Mode (Step 1) with the proposed changes as the change request
+- **Yes, review interactively** → Enter the Findings Review & Implementation Workflow (Step B)
+- **Yes, implement all** → Enter Update Mode (Step 1) with all proposed changes
 - **No, continue Q&A** → Continue answering questions
 - **Modify the proposal** → Let the user adjust, then re-evaluate
 
 After changes are applied (or declined), return to Q&A mode. The conversation continues until the user is done.
+
+---
+
+## Findings Review & Implementation Workflow
+
+This shared workflow is used by any mode that produces multiple findings (Schema Audit, Deep Audit, Q&A when 2+ changes surface). It covers the full lifecycle from findings presentation through implementation.
+
+**Document scope varies by mode:**
+- **Schema Audit Mode** — always creates a persisted consolidated report in `.scratch/`. The findings index, decisions, and implementation phasing are all recorded in that document.
+- **Deep Audit Mode** — the critic already creates a persisted report in `.scratch/`. The orchestrator adds a findings index table to that existing report. Implementation phasing is only appended if the user approves 3+ fixes.
+- **Q&A Mode** — NO persisted document. Findings are presented inline in the conversation. The conversation itself is the record.
+
+### Canonical Persisted Report Structure
+
+When a mode produces a persisted report, it must follow this structure:
+
+```markdown
+# [Audit Type] — Consolidated Report
+
+**Date:** [date]
+**[Domain-specific metadata]:** [e.g., Schema Tables: 112, Files Analyzed: 47]
+**[Scope metadata]:** [e.g., Groups Run: A, B, C, D]
+**Total Findings:** [count]
+
+---
+
+## Findings Index
+
+| # | Group | Severity | Approved | Finding |
+|---|-------|----------|----------|---------|
+| 1 | [grp] | critical |          | [one-line summary] |
+| 2 | [grp] | medium   |          | [one-line summary] |
+
+---
+
+## [Group/Category Detail Sections]
+[Detailed findings per group/category — full analysis, affected files, rationale]
+
+---
+
+## Implementation Phasing
+[Appended after interactive review + dependency analysis — NOT in initial report]
+
+### Phase 1 — No dependencies
+| Issue | Summary |
+|-------|---------|
+| 1     | [desc]  |
+
+### Phase 2 — Depends on Phase 1
+| Issue | Depends on | Summary |
+|-------|------------|---------|
+| 5     | 1          | [desc]  |
+
+---
+
+**Individual reports preserved at:**
+- [paths to raw audit fragments, if applicable]
+```
+
+Key format rules:
+- **Findings Index is the first content section** — always at the top after header metadata
+- The `#` column uses monotonically increasing integers — stable identifiers for referring to issues (e.g., "issue 5")
+- The `Approved` column starts blank and gets filled with ✅/❌/⏭️ during interactive review
+- Findings are ordered by impact (most critical / highest elimination first)
+- Group detail sections preserve the full analysis from each auditor/critic agent
+- **Implementation Phasing is appended later** — it is NOT part of the initial report; it gets added after Step D below
+- Each phase table includes the original `#` issue numbers for traceability
+
+### Step A: Build Findings Index
+
+- Collect all findings from agent reports (or investigation results)
+- Assign monotonically increasing `#` starting at 1
+- Build the findings table with columns: `#`, `Group`/`Category`, `Severity`, `Finding` (one-line summary), `Approved` (blank)
+- Order by impact: critical bugs first, then high-elimination changes, then medium, then low
+- For persisted modes: write the full report (header + Findings Index + group details) to the report file
+- For Q&A mode: present the numbered table inline in conversation
+
+### Step B: Interactive Review
+
+- Present each finding one at a time to the user
+- For each finding, show context: category, severity, affected tables/files, what it means, and why it matters
+- Use `ask_user` with choices: `"Approve"`, `"Reject"`, `"Skip"`, `"Expand (tell me more)"`
+- On "Expand": provide deeper analysis (show the actual schema/code, explain tradeoffs), then re-ask for decision
+- Record decision in the Approved column: ✅ (approved), ❌ (rejected), ⏭️ (skipped)
+- For persisted modes: update the report file with decisions after each batch or at the end
+- Report running tally after each decision: `"X approved, Y rejected, Z skipped, W remaining"`
+
+### Step C: Dependency Analysis
+
+- After review, analyze dependencies between **approved** findings only
+- Identify ordering constraints (e.g., "rename column before adding UNIQUE on it", "merge tables before adding indexes", "collapse child tables before adding CASCADE FKs")
+- For persisted modes: record dependencies in the report
+- Present dependency summary to user: which issues block which, and why
+
+### Step D: Implementation Phasing
+
+- Generate a phased plan from approved findings + dependency graph:
+  - **Phase 1**: No dependencies (can execute in any order)
+  - **Phase 2**: Depends on Phase 1 items
+  - **Phase N**: Depends on prior phases
+- Each phase has steps; each step covers 1+ issues
+- Each step shows original issue `#` numbers for traceability
+- For persisted modes: append "Implementation Phasing" section to the report
+- For Q&A mode: present the phased plan in-conversation (only if 3+ approved changes warrant phasing; for 1-2 changes, skip directly to execution)
+- Present phased plan to user for confirmation before starting implementation
+
+### Step E: Implementation Execution
+
+- Execute steps in phase order using the producer-critic loop (Update Mode Step 3)
+- Track and report progress at the start of each work unit:
+  ```
+  📊 Progress: X/Y issues done | Z in progress | W remaining
+  Current: Step N — [description] (Issues #A, #B)
+  ```
+- For persisted modes: update the report as issues complete (mark steps done)
+- **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change (e.g., schema change, then handler change, then doc change as separate commits). Fine-grained commits make tracking changes and reverting much easier. Each commit should be independently understandable and revertable.
 
 ---
 
@@ -471,6 +605,8 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 5. **Critic and auditor are read-only** — They never modify files. They only read and report.
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
-8. **Schema audit findings go through producer-critic** — When the user wants to fix schema audit findings, each fix enters Update Mode and goes through the full producer-critic loop. The schema auditor identifies issues; the producer-critic loop implements fixes.
-9. **Keep producer tasks small** — A single producer call should touch ≤3 files. Changes spanning 4+ files must be split into sequential sub-tasks. Long-running agents risk API streaming timeouts; smaller tasks complete faster and retry cleanly. Never run multiple producers in parallel — sequential execution avoids rate limiting and thundering-herd failures.
-10. **Commit after every work unit** — Each approved work unit must be committed to git immediately, before starting the next one. Never batch multiple work units into a single commit. This ensures changes are independently reviewable and revertable.
+8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and phased implementation. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
+9. **Keep producer tasks small** — A single producer call should touch ≤3 files. Changes spanning 4+ files must be split into sequential sub-tasks (multi-producer batching). Long-running agents risk API streaming timeouts; smaller tasks complete faster and retry cleanly. Never run multiple producers in parallel — sequential execution avoids rate limiting and thundering-herd failures.
+10. **Commit frequently and minimally** — Commit as fine-grained as possible. Prefer one commit per coherent sub-change (e.g., schema change, handler change, doc change as separate commits). Each commit should be independently understandable and revertable. At minimum, commit after each issue completes. Never batch multiple unrelated issues into one commit. Fine-grained commits make tracking changes and reverting much easier.
+11. **Report progress during multi-step implementation** — At the start of each work unit, report done/in-progress/remaining counts and the current step with issue numbers. This keeps the user oriented during long implementation runs.
+12. **All audit outputs use the Findings Index format** — Every audit mode must produce a Findings Index table with monotonically increasing `#` column, `Approved` column, and consistent column structure. The `#` is the stable identifier for referring to issues across the review and implementation lifecycle.
