@@ -328,8 +328,6 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 - `plugins/rigorous-dev/mcp-server/read-tools.js` — Read tool handlers (shows query logic, entity type mappings, TEXT-PK types)
 - `plugins/rigorous-dev/mcp-server/db.js` — Database initialization (WAL mode, foreign keys)
 
-**⚠️ Schema Documentation Divergence:** `schema.sql` is always the source of truth for the database. If `schemas-overview.md` or any file in `references/tables/` describes tables, columns, or constraints that don't match `schema.sql`, that is a **blocking issue** that must be surfaced to the user immediately. This applies in all modes — Q&A, Deep Audit, and Update.
-
 **Capabilities:**
 - Trace cross-references: "What agents reference tool X?" → grep agent files for the tool name
 - Check consistency: "Are there orphaned agents?" → diff `agents/` directory listing against SKILL.md tables
