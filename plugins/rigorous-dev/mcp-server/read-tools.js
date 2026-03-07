@@ -28,7 +28,6 @@ const ENTITY_TABLE = {
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
   ux_asset: "ux_asset",
-  ux_requirement_mapping: "ux_requirement_mapping",
   architecture_overview: "architecture_overview",
   data_entity: "data_entity",
   architecture_config: "architecture_config",

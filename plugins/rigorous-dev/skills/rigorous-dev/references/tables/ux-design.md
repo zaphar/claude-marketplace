@@ -1,6 +1,6 @@
 # UX Design Domain — Table Reference
 
-This document covers the 14 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
+This document covers the 13 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
 
 **Database:** `.claude/rigorous-dev.db`  
 **Phase:** `ux_design`  
@@ -19,7 +19,7 @@ The UX design domain is organised into five sub-areas:
 | **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state`, `user_flow_requirement` |
 | **Screens** | `screen`, `screen_state`, `screen_responsive_variant` |
 | **UX Configuration** | `ux_config` (discriminated by `config_type`: `design_system`, `accessibility`, `responsive`, `feedback_pattern`), `info_architecture` |
-| **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset`, `ux_requirement_mapping` |
+| **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
 
 Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT NULL) to pin rows to the exact producer-critic loop that created them.
 
@@ -407,30 +407,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 ---
 
-### `ux_requirement_mapping`
-
-**Purpose:** Explicit traceability from a requirement to the UX artefact (screen, flow, or design decision) that addresses it. Answers: "is every requirement visible in the UX design, and where?" Distinct from `user_flow_requirement` (which links flows to requirements) — this table allows linking any UX artefact to a requirement via free text.
-
-**Context:** The `ux_designer` populates this table to demonstrate coverage of all `usability`, `functional`, and `performance` requirements in the UX design. The `ux_critic` uses it to check completeness. The `backend_architect` cross-references it when designing APIs to ensure all requirement-driven screens have endpoints.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this mapping. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
-| `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)` | — | The requirement being addressed. |
-| `addressed_by` | TEXT | NOT NULL | — | Free-text identifier of the UX artefact: a screen ID, flow ID, design system category, or prose description. |
-| `notes` | TEXT | — | NULL | Additional context about how this requirement is addressed. |
-
-**Relationships:**
-- Belongs to `iteration` / `revision`
-- References `requirement`
-
-**MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "ux_requirement_mapping"`. Accepts a single object or an array of `{ requirement_id, addressed_by, notes? }` objects.
-- **Read:** `changelog_query` with `entity_type: "ux_requirement_mapping"`. Filter by `iteration_id` and optionally `filters: { requirement_id: "REQ-001" }` to check coverage for a specific requirement.
+> **Note:** UX screen-level requirement traceability (formerly tracked in a dedicated `ux_requirement_mapping` table) is now handled via `traceability_mapping` with `addressed_by_type = 'screen'`. See [cross-cutting.md](cross-cutting.md#traceability_mapping) for details.
 
 ---
 
@@ -451,7 +428,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `persona_addressed` | ✅ `entity_type: "persona_addressed"` | ✅ `entity_type: "persona_addressed"` | `include_related: true` expands `flows`; pass `flows` array in data for atomic child insert |
 | `persona_addressed_flow` | via `persona_addressed` | via `persona_addressed` | Not directly addressable |
 | `ux_asset` | ✅ `entity_type: "ux_asset"` | ✅ `entity_type: "ux_asset"` | Accepts single or array; filter by `type` or `screen_id` |
-| `ux_requirement_mapping` | ✅ `entity_type: "ux_requirement_mapping"` | ✅ `entity_type: "ux_requirement_mapping"` | Accepts single or array; filter by `requirement_id` |
+| _(screen traceability)_ | — | — | Now via `traceability_mapping` with `addressed_by_type = 'screen'` (see [cross-cutting.md](cross-cutting.md#traceability_mapping)) |
 
 ### `traceability_query` integration
 
@@ -472,4 +449,4 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 4. **Flat key-value for config.** `ux_config` and `info_architecture` use a `category / key / value` pattern rather than typed columns. This makes them extensible without schema changes — new token categories can be added freely. `ux_config` adds a `config_type` discriminator to distinguish design system, accessibility, responsive, and feedback pattern entries in a single table. The `info_architecture` table adds `parent_id` to support a tree structure within this flat scheme.
 
-5. **`ux_requirement_mapping` vs `user_flow_requirement`.** Both tables link requirements to UX artefacts, but they serve different purposes: `user_flow_requirement` is a precise FK join (flow → requirement) used for automated coverage checks. `ux_requirement_mapping` is a free-text association that can point to any UX artefact (screen, flow, design decision) and is used by the designer to demonstrate broader coverage in prose form.
+5. **Screen traceability via `traceability_mapping`.** UX screen-level requirement coverage was previously tracked in a dedicated `ux_requirement_mapping` table. This is now consolidated into the cross-cutting `traceability_mapping` table using `addressed_by_type = 'screen'`, giving a single unified traceability chain across all artifact types. `user_flow_requirement` remains the precise FK join (flow → requirement) used for automated coverage checks within the UX domain.

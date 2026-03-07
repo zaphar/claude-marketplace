@@ -246,7 +246,9 @@ This table is the primary data source for the `traceability_query` MCP tool, whi
 
 Written by `backend_architect` after components, user flows, and screens have been defined. A complete architecture phase should have at least one `traceability_mapping` row per requirement — requirements with no mapping are dark requirements that cannot be verified during QA.
 
-The `addressed_by` field is a free-text identifier that should match an existing entity ID: `COMP-XXX` for components, an endpoint path/name, a `user_flow.id`, a `screen.id`, or a descriptive label for `other`. The `addressed_by_type` CHECK constraint enforces that one of five categories is used.
+The `addressed_by` field is a free-text identifier that should match an existing entity ID: `COMP-XXX` for components, an endpoint path/name, a `user_flow.id`, a `screen.id`, or a descriptive label for `other`. The `addressed_by_type` column is open-domain (no CHECK constraint) — conventional values are `component`, `endpoint`, `flow`, `screen`, and `other`, but agents may use additional types as the model evolves.
+
+> **Note:** Screen-level requirement traceability (formerly tracked in a dedicated `ux_requirement_mapping` table in the UX design domain) is now consolidated here. Use `addressed_by_type = 'screen'` and set `addressed_by` to the screen ID (e.g., `screen-payment-confirmation`).
 
 ### Column Reference
 
@@ -257,14 +259,11 @@ The `addressed_by` field is a free-text identifier that should match an existing
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
 | `requirement_id` | TEXT | NOT NULL | — | FK → `requirement(id)` | The requirement being addressed (e.g., `REQ-007`). |
 | `addressed_by` | TEXT | NOT NULL | — | — | Identifier of the architectural element satisfying the requirement (e.g., `COMP-002`, `POST /api/payments`, `flow-checkout`, `screen-confirmation`). |
-| `addressed_by_type` | TEXT | NOT NULL | — | CHECK(`addressed_by_type` IN (`'component'`, `'endpoint'`, `'flow'`, `'screen'`, `'other'`)) | Category of the addressing element. Constrains values to five known types. |
+| `addressed_by_type` | TEXT | NOT NULL | — | — | Category of the addressing element. Conventional values: `component`, `endpoint`, `flow`, `screen`, `other`. Open-domain — no CHECK constraint. |
 | `notes` | TEXT | NULL | — | — | Optional free-text clarification of how or why this element addresses the requirement (e.g., partial coverage, conditions, caveats). |
 | `created_at` | TEXT | NOT NULL | — | — | ISO 8601 timestamp of row insertion. |
 
-**CHECK constraint on `addressed_by_type`:**
-```sql
-CHECK(addressed_by_type IN ('component', 'endpoint', 'flow', 'screen', 'other'))
-```
+**`addressed_by_type` values:** The column is open-domain (no CHECK constraint). Conventional values are `component`, `endpoint`, `flow`, `screen`, and `other`. Screen-level traceability (`addressed_by_type = 'screen'`) supersedes the former `ux_requirement_mapping` table.
 
 ### Relationships
 

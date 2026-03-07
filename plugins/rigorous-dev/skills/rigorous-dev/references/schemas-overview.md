@@ -99,7 +99,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `info_architecture` | ux_designer | Navigation structure, sitemap. |
 | `persona_addressed` / `persona_addressed_flow` | ux_designer | Which personas each UX design addresses. |
 | `ux_asset` | ux_designer | Mockup/asset references. |
-| `ux_requirement_mapping` | ux_designer | UX-to-requirement coverage. |
 
 **Critic:** ux_critic
 
@@ -263,7 +262,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 119 tables with links to their detailed design documents.
+All 118 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -384,7 +383,6 @@ All 119 tables with links to their detailed design documents.
 | `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `ux_config` | [ux-design](tables/ux-design.md) |
-| `ux_requirement_mapping` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 119 tables across 12 domains**
+**Total: 118 tables across 12 domains**

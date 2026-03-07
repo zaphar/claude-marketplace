@@ -82,6 +82,21 @@ Critic model: claude-opus-4.6 (always)
 
 ### Step 3: Producer-Critic Loop
 
+**Pre-flight: Scope Check**
+
+Before launching the producer, assess how many files the change touches. Sub-agent reliability degrades with task size — long-running agents risk API connection drops and streaming timeouts (see `sync-agent-timeout-patch.md` for details).
+
+| Files Touched | Action |
+|---------------|--------|
+| **1-3 files** | Proceed with a single producer call. |
+| **4+ files** | **Split into sub-tasks.** Break the change into multiple sequential producer calls, each touching ≤3 files. Run the critic once after all sub-tasks complete. |
+
+When splitting:
+- Each sub-task gets its own producer call with a focused prompt (e.g., "Update schema.sql only" → "Update write-tools.js only")
+- Sub-tasks run **sequentially**, not in parallel — parallel API calls risk rate limiting and thundering-herd retries
+- Later sub-tasks must reference what earlier sub-tasks changed (include file paths and summary)
+- The critic reviews the aggregate result after all sub-tasks finish
+
 **Iteration 1:**
 
 1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the confirmed change request as the prompt. Include:
@@ -442,3 +457,4 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
 8. **Schema audit findings go through producer-critic** — When the user wants to fix schema audit findings, each fix enters Update Mode and goes through the full producer-critic loop. The schema auditor identifies issues; the producer-critic loop implements fixes.
+9. **Keep producer tasks small** — A single producer call should touch ≤3 files. Changes spanning 4+ files must be split into sequential sub-tasks. Long-running agents risk API streaming timeouts; smaller tasks complete faster and retry cleanly. Never run multiple producers in parallel — sequential execution avoids rate limiting and thundering-herd failures.

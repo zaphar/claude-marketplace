@@ -1807,26 +1807,6 @@ function insertUxAsset(db, iteration_id, revision_id, data) {
   return { entity_type: "ux_asset", id: lastId };
 }
 
-function insertUxRequirementMapping(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO ux_requirement_mapping (iteration_id, revision_id, requirement_id, addressed_by, notes)
-     VALUES (?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      revision_id,
-      entry.requirement_id,
-      entry.addressed_by,
-      entry.notes ?? null
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "ux_requirement_mapping", id: lastId };
-}
-
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -1850,7 +1830,6 @@ function changelogInsert(args) {
     info_architecture: insertInfoArchitecture,
     persona_addressed: insertPersonaAddressed,
     ux_asset: insertUxAsset,
-    ux_requirement_mapping: insertUxRequirementMapping,
     plan_phase: insertPlanPhase,
     plan_overview: insertPlanOverview,
     plan_requirement_mapping: insertPlanRequirementMapping,
@@ -2037,7 +2016,6 @@ export const WRITE_TOOLS = [
             "info_architecture",
             "persona_addressed",
             "ux_asset",
-            "ux_requirement_mapping",
             "plan_phase",
             "plan_overview",
             "plan_requirement_mapping",

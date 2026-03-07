@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS traceability_mapping (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
   addressed_by TEXT NOT NULL,
-  addressed_by_type TEXT NOT NULL CHECK(addressed_by_type IN ('component', 'endpoint', 'flow', 'screen', 'other')),
+  addressed_by_type TEXT NOT NULL,
   notes TEXT,
   created_at TEXT NOT NULL
 );
@@ -443,16 +443,6 @@ CREATE TABLE IF NOT EXISTS ux_asset (
   screen_id TEXT REFERENCES screen(id),
   description TEXT,
   created_at TEXT NOT NULL
-);
-
--- UX: requirements mapping
-CREATE TABLE IF NOT EXISTS ux_requirement_mapping (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  revision_id INTEGER NOT NULL REFERENCES revision(id),
-  requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  addressed_by TEXT NOT NULL,
-  notes TEXT
 );
 
 -- Implementation plan phases
