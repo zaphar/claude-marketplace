@@ -80,80 +80,11 @@ Producer model: [claude-sonnet-4.6 | claude-opus-4.6]
 Critic model: claude-opus-4.6 (always)
 ```
 
-### Step 3: Producer-Critic Loop
+### Step 3: Execute Change
 
-**Decompose work into the smallest logical chunks possible.** Each producer call should handle one atomic, coherent change — the smallest unit of work that leaves the codebase in a consistent state. This keeps changes reviewable, revertable, and reduces agent failure risk.
+Run the **Producer-Critic Loop** (see standalone section below) with the confirmed change request.
 
-When planning work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple steps in the phasing plan — each step is then a small, focused unit.
-
-**Producer-to-Critic patterns:**
-
-- **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
-- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a step covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
-
-Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
-
-**Iteration 1:**
-
-1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the confirmed change request as the prompt. Include:
-   - The specific change to make (from Step 1 summary)
-   - Any context about why the change is needed
-   - If this is a re-run: the critic's feedback from the previous iteration
-
-2. After the producer completes, launch the `rigor_plugin_critic` agent (always `claude-opus-4.6`) with:
-   - The producer's summary of changes
-   - The list of modified files
-   - The revision number (starting at 1)
-
-3. Evaluate the critic's verdict:
-   - **`approved`** → proceed to Step 4
-   - **`needs_revision`** → proceed to next iteration
-
-**Iterations 2-3 (if needed):**
-
-Feed the critic's blocking issues back to the producer agent as the change request:
-```
-Fix the following issues identified by the critic in revision [N]:
-
-[critic's blocking issues and recommended changes]
-
-Original change request: [original request]
-```
-
-**Escalation (iteration > 3):**
-
-If the critic has not approved after 3 iterations, stop the loop and escalate to the user:
-```
-⚠️ Escalation Required
-
-The plugin update has gone through 3 producer-critic revisions without approval.
-
-Remaining issues from critic:
-[list of blocking issues still present]
-
-How would you like to proceed?
-1. Provide guidance on the remaining issues and retry
-2. Override the reviewer and accept current changes
-3. Abandon the change
-```
-
-Use the ask_user tool to get the user's decision.
-
-### Step 4: Commit
-
-After the critic approves (or the orchestrator fixes blocking issues and is satisfied), **immediately commit the changes to git** before moving to the next work unit. Every approved change must be committed before any subsequent work begins.
-
-```bash
-git add -A && git commit -m "<WU-ID>: <concise description>
-
-<details of what changed>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-Never batch multiple work units into a single commit. Each WU gets its own commit so changes can be reviewed and reverted independently.
-
-### Step 5: Final Report
+### Step 4: Final Report
 
 ```
 ✅ Plugin Update Complete
@@ -213,7 +144,7 @@ Enter the **Findings Review & Implementation Workflow** starting at **Step B: In
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting.
 
-If the user chooses to fix issues, each fix enters Update Mode and goes through the full producer-critic loop. The complexity assessment should account for the scope of fixes needed.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop**. The complexity assessment should account for the scope of fixes needed.
 
 ---
 
@@ -358,7 +289,7 @@ After creating the consolidated report, enter the **Findings Review & Implementa
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the consolidated report) → execution with progress reporting.
 
-If the user chooses to fix findings, each fix goes through the full producer-critic loop (Update Mode Step 3). The schema auditor identifies issues; the producer-critic loop implements fixes.
+If the user chooses to fix findings, each fix goes through the full **Producer-Critic Loop**. The schema auditor identifies issues; the producer-critic loop implements fixes.
 
 ---
 
@@ -453,6 +384,83 @@ Use ask_user to offer choices:
 - **Modify the proposal** → Let the user adjust, then re-evaluate
 
 After changes are applied (or declined), return to Q&A mode. The conversation continues until the user is done.
+
+---
+
+## Producer-Critic Loop
+
+This is the shared execution mechanism used by all modes when making changes. Every change — whether from Update Mode, audit fix, or Q&A-discovered issue — goes through this loop.
+
+**Decompose work into the smallest logical chunks possible.** Each producer call should handle one atomic, coherent change — the smallest unit of work that leaves the codebase in a consistent state. This keeps changes reviewable, revertable, and reduces agent failure risk.
+
+When executing work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple steps in the phasing plan — each step is then a small, focused unit.
+
+**Producer-to-Critic patterns:**
+
+- **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
+- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a step covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
+
+Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
+
+### Iteration 1
+
+1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the change request as the prompt. Include:
+   - The specific change to make
+   - Any context about why the change is needed
+   - If this is a re-run: the critic's feedback from the previous iteration
+
+2. After the producer completes, launch the `rigor_plugin_critic` agent (always `claude-opus-4.6`) with:
+   - The producer's summary of changes
+   - The list of modified files
+   - The revision number (starting at 1)
+
+3. Evaluate the critic's verdict:
+   - **`approved`** → commit and proceed
+   - **`needs_revision`** → proceed to next iteration
+
+### Iterations 2-3 (if needed)
+
+Feed the critic's blocking issues back to the producer agent as the change request:
+```
+Fix the following issues identified by the critic in revision [N]:
+
+[critic's blocking issues and recommended changes]
+
+Original change request: [original request]
+```
+
+### Escalation (iteration > 3)
+
+If the critic has not approved after 3 iterations, stop the loop and escalate to the user:
+```
+⚠️ Escalation Required
+
+The plugin update has gone through 3 producer-critic revisions without approval.
+
+Remaining issues from critic:
+[list of blocking issues still present]
+
+How would you like to proceed?
+1. Provide guidance on the remaining issues and retry
+2. Override the reviewer and accept current changes
+3. Abandon the change
+```
+
+Use the ask_user tool to get the user's decision.
+
+### Commit
+
+After the critic approves, **immediately commit the changes to git** before moving to the next work unit. Every approved change must be committed before any subsequent work begins.
+
+**Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change. Each commit should be independently understandable and revertable.
+
+```bash
+git add -A && git commit -m "<concise description>
+
+<details of what changed>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
 
 ---
 
@@ -561,7 +569,7 @@ Key format rules:
 
 ### Step E: Implementation Execution
 
-Execute steps in phase order using the producer-critic loop (Update Mode Step 3).
+Execute steps in phase order using the **Producer-Critic Loop** (see standalone section above).
 
 - Each step decomposes into the smallest logical producer tasks possible
 - Use 1:1 (single producer → critic) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small tasks are parts of one logical change
