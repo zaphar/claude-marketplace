@@ -1227,8 +1227,7 @@ CREATE INDEX IF NOT EXISTS idx_deployment_manifest_iteration_id
   ON deployment_manifest(iteration_id);
 
 -- Cross-cutting domain
-CREATE INDEX IF NOT EXISTS idx_vcs_commit_iteration_id
-  ON vcs_commit(iteration_id);
+-- Skipped: vcs_commit (iteration_id is leftmost in UNIQUE(iteration_id, commit_sha))
 CREATE INDEX IF NOT EXISTS idx_intermediate_asset_iteration_id
   ON intermediate_asset(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_asset_deliverable_iteration_id
@@ -1248,8 +1247,7 @@ CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
 -- Implementation manifest children
 CREATE INDEX IF NOT EXISTS idx_implementation_file_manifest_id
   ON implementation_file(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_api_endpoint_manifest_id
-  ON implementation_api_endpoint(manifest_id);
+-- Skipped: implementation_api_endpoint (manifest_id is leftmost in UNIQUE(manifest_id, path, method))
 CREATE INDEX IF NOT EXISTS idx_implementation_dependency_added_manifest_id
   ON implementation_dependency_added(manifest_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_db_migration_manifest_id
@@ -1322,8 +1320,7 @@ CREATE INDEX IF NOT EXISTS idx_plan_phase_db_change_plan_phase_id
   ON plan_phase_db_change(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
   ON plan_phase_risk(plan_phase_id);
-CREATE INDEX IF NOT EXISTS idx_plan_critical_path_plan_phase_id
-  ON plan_critical_path(plan_phase_id);
+-- Skipped: plan_critical_path (plan_phase_id is in UNIQUE(plan_phase_id))
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
   ON implementation_manifest(plan_phase_id);
 
@@ -1376,3 +1373,240 @@ CREATE INDEX IF NOT EXISTS idx_traceability_mapping_iteration_id_requirement_id
   ON traceability_mapping(iteration_id, requirement_id);
 CREATE INDEX IF NOT EXISTS idx_traceability_mapping_iteration_id_addressed_by_type
   ON traceability_mapping(iteration_id, addressed_by_type);
+
+-- ------------------------------------------------------------
+-- revision_id — provenance FK on every entity table
+-- ------------------------------------------------------------
+
+-- Requirements domain
+CREATE INDEX IF NOT EXISTS idx_persona_revision_id
+  ON persona(revision_id);
+CREATE INDEX IF NOT EXISTS idx_requirement_revision_id
+  ON requirement(revision_id);
+
+-- Architecture domain
+CREATE INDEX IF NOT EXISTS idx_adr_revision_id
+  ON adr(revision_id);
+CREATE INDEX IF NOT EXISTS idx_component_revision_id
+  ON component(revision_id);
+CREATE INDEX IF NOT EXISTS idx_technology_choice_revision_id
+  ON technology_choice(revision_id);
+CREATE INDEX IF NOT EXISTS idx_architecture_overview_revision_id
+  ON architecture_overview(revision_id);
+CREATE INDEX IF NOT EXISTS idx_data_entity_revision_id
+  ON data_entity(revision_id);
+CREATE INDEX IF NOT EXISTS idx_architecture_config_revision_id
+  ON architecture_config(revision_id);
+CREATE INDEX IF NOT EXISTS idx_approved_dependency_revision_id
+  ON approved_dependency(revision_id);
+CREATE INDEX IF NOT EXISTS idx_traceability_mapping_revision_id
+  ON traceability_mapping(revision_id);
+
+-- UX design domain
+CREATE INDEX IF NOT EXISTS idx_user_flow_revision_id
+  ON user_flow(revision_id);
+CREATE INDEX IF NOT EXISTS idx_screen_revision_id
+  ON screen(revision_id);
+CREATE INDEX IF NOT EXISTS idx_ux_config_revision_id
+  ON ux_config(revision_id);
+CREATE INDEX IF NOT EXISTS idx_info_architecture_revision_id
+  ON info_architecture(revision_id);
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_revision_id
+  ON persona_addressed(revision_id);
+CREATE INDEX IF NOT EXISTS idx_ux_asset_revision_id
+  ON ux_asset(revision_id);
+
+-- Planning domain
+CREATE INDEX IF NOT EXISTS idx_plan_phase_revision_id
+  ON plan_phase(revision_id);
+CREATE INDEX IF NOT EXISTS idx_plan_overview_revision_id
+  ON plan_overview(revision_id);
+CREATE INDEX IF NOT EXISTS idx_plan_metadata_revision_id
+  ON plan_metadata(revision_id);
+
+-- Implementation domain
+CREATE INDEX IF NOT EXISTS idx_implementation_manifest_revision_id
+  ON implementation_manifest(revision_id);
+
+-- Release workflow domain
+CREATE INDEX IF NOT EXISTS idx_test_report_revision_id
+  ON test_report(revision_id);
+
+-- Audit domain
+CREATE INDEX IF NOT EXISTS idx_security_audit_finding_revision_id
+  ON security_audit_finding(revision_id);
+CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_revision_id
+  ON performance_audit_finding(revision_id);
+
+-- Documentation domain
+CREATE INDEX IF NOT EXISTS idx_documentation_manifest_revision_id
+  ON documentation_manifest(revision_id);
+
+-- Deployment domain
+CREATE INDEX IF NOT EXISTS idx_deployment_manifest_revision_id
+  ON deployment_manifest(revision_id);
+
+-- Cross-cutting domain
+CREATE INDEX IF NOT EXISTS idx_intermediate_asset_revision_id
+  ON intermediate_asset(revision_id);
+CREATE INDEX IF NOT EXISTS idx_entity_snapshot_revision_id
+  ON entity_snapshot(revision_id);
+
+-- ------------------------------------------------------------
+-- phase_id — FK to phase(id)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_revision_phase_id
+  ON revision(phase_id);
+CREATE INDEX IF NOT EXISTS idx_vcs_commit_phase_id
+  ON vcs_commit(phase_id);
+CREATE INDEX IF NOT EXISTS idx_intermediate_asset_phase_id
+  ON intermediate_asset(phase_id);
+CREATE INDEX IF NOT EXISTS idx_asset_deliverable_phase_id
+  ON asset_deliverable(phase_id);
+
+-- ------------------------------------------------------------
+-- persona_id — FK to persona(id)
+-- Skipped: requirement_persona (persona_id is not leftmost,
+--   but requirement_id is — need index on non-PK side)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_requirement_persona_persona_id
+  ON requirement_persona(persona_id);
+CREATE INDEX IF NOT EXISTS idx_user_flow_persona_id
+  ON user_flow(persona_id);
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_persona_id
+  ON persona_addressed(persona_id);
+
+-- ------------------------------------------------------------
+-- component_id — FK to component(id)
+-- Skipped: component_dependency, component_requirement
+--   (component_id is leftmost in their composite PKs)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_component_interface_component_id
+  ON component_interface(component_id);
+CREATE INDEX IF NOT EXISTS idx_integration_test_boundary_component_id
+  ON integration_test_boundary(component_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_component_component_id
+  ON plan_phase_component(component_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_file_component_id
+  ON implementation_file(component_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
+  ON implementation_component_status(component_id);
+
+-- ------------------------------------------------------------
+-- screen_id — FK to screen(id)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_screen_state_screen_id
+  ON screen_state(screen_id);
+CREATE INDEX IF NOT EXISTS idx_screen_responsive_variant_screen_id
+  ON screen_responsive_variant(screen_id);
+CREATE INDEX IF NOT EXISTS idx_ux_asset_screen_id
+  ON ux_asset(screen_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_screen_screen_id
+  ON plan_phase_screen(screen_id);
+
+-- ------------------------------------------------------------
+-- flow_id — FK to user_flow(id)
+-- Skipped: user_flow_requirement (flow_id is leftmost in PK)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_user_flow_step_flow_id
+  ON user_flow_step(flow_id);
+CREATE INDEX IF NOT EXISTS idx_user_flow_error_state_flow_id
+  ON user_flow_error_state(flow_id);
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_flow_id
+  ON persona_addressed_flow(flow_id);
+CREATE INDEX IF NOT EXISTS idx_plan_phase_flow_flow_id
+  ON plan_phase_flow(flow_id);
+
+-- ------------------------------------------------------------
+-- adr_id — FK to adr(id)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_adr_alternative_adr_id
+  ON adr_alternative(adr_id);
+CREATE INDEX IF NOT EXISTS idx_approved_dependency_adr_id
+  ON approved_dependency(adr_id);
+
+-- ------------------------------------------------------------
+-- Remaining FK columns — one-off or small groups
+-- ------------------------------------------------------------
+
+-- requirement_dependency.depends_on → requirement(id)
+CREATE INDEX IF NOT EXISTS idx_requirement_dependency_depends_on
+  ON requirement_dependency(depends_on);
+
+-- component_dependency.depends_on → component(id)
+CREATE INDEX IF NOT EXISTS idx_component_dependency_depends_on
+  ON component_dependency(depends_on);
+
+-- integration_test_boundary.target_component_id → component(id)
+CREATE INDEX IF NOT EXISTS idx_integration_test_boundary_target_component_id
+  ON integration_test_boundary(target_component_id);
+
+-- adr.superseded_by → adr(id)
+CREATE INDEX IF NOT EXISTS idx_adr_superseded_by
+  ON adr(superseded_by);
+
+-- architecture_diagram.overview_id → architecture_overview(id)
+CREATE INDEX IF NOT EXISTS idx_architecture_diagram_overview_id
+  ON architecture_diagram(overview_id);
+
+-- data_entity_attribute.entity_id → data_entity(id)
+CREATE INDEX IF NOT EXISTS idx_data_entity_attribute_entity_id
+  ON data_entity_attribute(entity_id);
+
+-- data_entity_relationship.entity_id → data_entity(id)
+CREATE INDEX IF NOT EXISTS idx_data_entity_relationship_entity_id
+  ON data_entity_relationship(entity_id);
+
+-- data_entity_relationship.target_entity_id → data_entity(id)
+CREATE INDEX IF NOT EXISTS idx_data_entity_relationship_target_entity_id
+  ON data_entity_relationship(target_entity_id);
+
+-- info_architecture.parent_id → info_architecture(id) (self-referencing)
+CREATE INDEX IF NOT EXISTS idx_info_architecture_parent_id
+  ON info_architecture(parent_id);
+
+-- persona_addressed_flow.persona_addressed_id → persona_addressed(id)
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_persona_addressed_id
+  ON persona_addressed_flow(persona_addressed_id);
+
+-- user_flow_step_branch.step_id → user_flow_step(id)
+CREATE INDEX IF NOT EXISTS idx_user_flow_step_branch_step_id
+  ON user_flow_step_branch(step_id);
+
+-- plan_phase_dependency.depends_on_phase_id → plan_phase(id)
+CREATE INDEX IF NOT EXISTS idx_plan_phase_dependency_depends_on_phase_id
+  ON plan_phase_dependency(depends_on_phase_id);
+
+-- plan_phase_parallel.can_parallel_with_id → plan_phase(id)
+CREATE INDEX IF NOT EXISTS idx_plan_phase_parallel_can_parallel_with_id
+  ON plan_phase_parallel(can_parallel_with_id);
+
+-- test_acceptance_criterion_result.coverage_id → test_requirement_coverage(id)
+CREATE INDEX IF NOT EXISTS idx_test_acceptance_criterion_result_coverage_id
+  ON test_acceptance_criterion_result(coverage_id);
+
+-- deployment_pipeline_stage.pipeline_id → deployment_pipeline(id)
+CREATE INDEX IF NOT EXISTS idx_deployment_pipeline_stage_pipeline_id
+  ON deployment_pipeline_stage(pipeline_id);
+
+-- deployment_stage_quality_gate.stage_id → deployment_pipeline_stage(id)
+CREATE INDEX IF NOT EXISTS idx_deployment_stage_quality_gate_stage_id
+  ON deployment_stage_quality_gate(stage_id);
+
+-- deployment_env_infra.environment_id → deployment_environment(id)
+CREATE INDEX IF NOT EXISTS idx_deployment_env_infra_environment_id
+  ON deployment_env_infra(environment_id);
+
+-- deployment_env_var.environment_id → deployment_environment(id)
+CREATE INDEX IF NOT EXISTS idx_deployment_env_var_environment_id
+  ON deployment_env_var(environment_id);
+
+-- deployment_runbook_step.runbook_id → deployment_runbook(id)
+CREATE INDEX IF NOT EXISTS idx_deployment_runbook_step_runbook_id
+  ON deployment_runbook_step(runbook_id);
