@@ -20,7 +20,7 @@ Four tables form the backbone — everything else hangs off them:
 
 **Hierarchy:** project → iteration → phase → revision
 
-Every changelog entity below carries `iteration_id` and `revision_id` (both NOT NULL) to trace exactly when and why it was created. The exceptions are `project_context`, `system_input`, `system_output`, `blocker`, and `project_lesson`, which carry only `iteration_id` with no revision tracking.
+Every changelog entity below carries `iteration_id` and `revision_id` (both NOT NULL) to trace exactly when and why it was created. The exceptions are `project_context`, `system_io`, `blocker`, and `project_lesson`, which carry only `iteration_id` with no revision tracking.
 
 ## Requirements Domain
 
@@ -33,7 +33,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
 | `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
-| `system_input` / `system_output` | requirements_analyst | What goes in/out of the system being built. |
+| `system_io` | requirements_analyst | What goes in/out of the system being built. Direction discriminator ('input'/'output') distinguishes the two. |
 | `deployment_requirement` | requirements_analyst | Deployment infrastructure requirements with target context (private-cloud, local-executable, both, other). |
 | `operational_requirement` | requirements_analyst | Operational requirements: uptime/SLA targets, monitoring, logging, observability items (categorised per row). |
 | `technology_constraint` | requirements_analyst | User-imposed tech constraints (e.g., "must use PostgreSQL"). |
@@ -196,7 +196,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `deployment_manifest` | release_engineer | Release readiness summary. Targets, blockers, and version provenance metadata stored as columns. |
 | `deployment_pipeline` | release_engineer | CI/CD pipeline definition. Config files stored as JSON array (`config_files` column). |
 | `deployment_pipeline_stage` | release_engineer | Pipeline stages. Triggers and steps stored as JSON arrays (`triggers`, `steps` columns). |
-| `deployment_quality_gates` | release_engineer | Global quality gate rules. |
+| `deployment_quality_gate` | release_engineer | Global quality gate rules. |
 | `deployment_environment` / `_env_infra` / `_env_var` | release_engineer | Environment configs. |
 | `deployment_artifact` | release_engineer | Build artifacts. Platform targets stored as JSON array (`platforms` column). |
 | `deployment_signing` | release_engineer | Code signing config. |
@@ -257,7 +257,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 113 tables with links to their detailed design documents.
+All 112 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -286,7 +286,7 @@ All 113 tables with links to their detailed design documents.
 | `deployment_manifest` | [deployment](tables/deployment.md) |
 | `deployment_pipeline` | [deployment](tables/deployment.md) |
 | `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
-| `deployment_quality_gates` | [deployment](tables/deployment.md) |
+| `deployment_quality_gate` | [deployment](tables/deployment.md) |
 | `deployment_requirement` | [requirements](tables/requirements.md) |
 | `deployment_review_checklist` | [deployment](tables/deployment.md) |
 | `deployment_runbook` | [deployment](tables/deployment.md) |
@@ -350,8 +350,7 @@ All 113 tables with links to their detailed design documents.
 | `screen_responsive_variant` | [ux-design](tables/ux-design.md) |
 | `screen_state` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
-| `system_input` | [requirements](tables/requirements.md) |
-| `system_output` | [requirements](tables/requirements.md) |
+| `system_io` | [requirements](tables/requirements.md) |
 | `technology_choice` | [architecture](tables/architecture.md) |
 | `technology_constraint` | [requirements](tables/requirements.md) |
 | `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |
@@ -375,4 +374,4 @@ All 113 tables with links to their detailed design documents.
 | `ux_config` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 113 tables across 12 domains**
+**Total: 112 tables across 12 domains**
