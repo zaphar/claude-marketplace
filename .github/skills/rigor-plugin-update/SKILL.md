@@ -125,9 +125,10 @@ Produce a comprehensive audit report in your standard verdict format with mode: 
 
 After the critic completes, read its report and build a **Findings Index** from all FAIL items:
 
-1. Each FAIL item gets a monotonically increasing `#` (starting at 1)
-2. Add the Findings Index table to the critic's existing `.scratch/` report (this is an addition to the report the critic already creates — not a new file)
-3. Present the report to the user with the Findings Index highlighted at the top
+1. **Deduplication**: Check for a prior decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md`. Match each FAIL item against prior decisions using category + affected files (structural fingerprint) or summary (fuzzy text match). Pre-fill the `Approved` column for matches and mark with `(prior)`.
+2. Each FAIL item gets a monotonically increasing `#` (starting at 1)
+3. Add the Findings Index table to the critic's existing `.scratch/` report (this is an addition to the report the critic already creates — not a new file)
+4. Present the report to the user with the Findings Index highlighted at the top
 
 The Findings Index follows the format defined in the **Findings Review & Implementation Workflow** section:
 
@@ -135,14 +136,14 @@ The Findings Index follows the format defined in the **Findings Review & Impleme
 | # | Category | Severity | Approved | Finding |
 |---|----------|----------|----------|---------|
 | 1 | Correctness | blocking | | [FAIL item one-line summary] |
-| 2 | Consistency | recommended | | [FAIL item one-line summary] |
+| 2 | Consistency | recommended | ✅ (prior) | [FAIL item one-line summary] |
 ```
 
 ### Step 3: Enter Findings Review & Implementation Workflow
 
 Enter the **Findings Review & Implementation Workflow** starting at **Step B: Interactive Review** (the Findings Index was already built in Step 2).
 
-The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting.
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation phasing (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting. After review, the decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md` is created or updated.
 
 If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop**. The complexity assessment should account for the scope of fixes needed.
 
@@ -532,8 +533,9 @@ Key format rules:
 ### Step A: Build Findings Index
 
 - Collect all findings from agent reports (or investigation results)
+- **Deduplication**: Before building the index, check for a prior decisions ledger at `.scratch/<auditor-name>/audit-decisions.md`. If it exists, match each finding against prior decisions using `category` + `tables` (structural fingerprint) or `summary` (fuzzy text match). Findings that match a prior decision should be pre-filled with that decision in the `Approved` column and marked with `(prior)` so the user can see they were already decided. The user can override any prior decision during interactive review.
 - Assign monotonically increasing `#` starting at 1
-- Build the findings table with columns: `#`, `Group`/`Category`, `Severity`, `Finding` (one-line summary), `Approved` (blank)
+- Build the findings table with columns: `#`, `Group`/`Category`, `Severity`, `Finding` (one-line summary), `Approved` (blank, or pre-filled from prior decisions)
 - Order by impact: critical bugs first, then high-elimination changes, then medium, then low
 - For persisted modes: write the full report (header + Findings Index + group details) to the report file
 - For Q&A mode: present the numbered table inline in conversation
@@ -541,12 +543,28 @@ Key format rules:
 ### Step B: Interactive Review
 
 - Present each finding one at a time to the user
-- For each finding, show context: category, severity, affected tables/files, what it means, and why it matters
+- For findings with a prior decision: show the prior decision and ask if the user wants to keep it or change it
+- For new findings: show context (category, severity, affected tables/files, what it means, why it matters)
 - Use `ask_user` with choices: `"Approve"`, `"Reject"`, `"Skip"`, `"Expand (tell me more)"`
 - On "Expand": provide deeper analysis (show the actual schema/code, explain tradeoffs), then re-ask for decision
 - Record decision in the Approved column: ✅ (approved), ❌ (rejected), ⏭️ (skipped)
 - For persisted modes: update the report file with decisions after each batch or at the end
 - Report running tally after each decision: `"X approved, Y rejected, Z skipped, W remaining"`
+
+**After interactive review completes**, update the decisions ledger:
+- Create or update `.scratch/<auditor-name>/audit-decisions.md`
+- Each decision gets a ledger entry with: date, category, tables, summary, decision, action/reason
+- The ledger is the persistent record across audit runs — it enables deduplication on future audits
+- Format per entry:
+  ```markdown
+  ### D[N]
+  - **Date:** [date]
+  - **Category:** [N] ([name])
+  - **Tables:** [affected tables]
+  - **Summary:** [one-line finding]
+  - **Decision:** approved | rejected | skipped
+  - **Action:** [what was done] | **Reason:** [why rejected/skipped]
+  ```
 
 ### Step C: Dependency Analysis
 
