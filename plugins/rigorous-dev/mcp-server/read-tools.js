@@ -324,6 +324,9 @@ function attachRelated(db, entityType, results) {
     case "plan_overview":
       return results.map((o) => ({
         ...o,
+        total_phases: db
+          .prepare("SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?")
+          .get(o.iteration_id).cnt,
         risks: db
           .prepare("SELECT risk, mitigation, phase FROM plan_overview_risk WHERE plan_overview_id = ?")
           .all(o.id),
@@ -412,6 +415,8 @@ function attachRelated(db, entityType, results) {
           }));
         return {
           ...m,
+          files_created: files.filter((f) => f.action === "created").length,
+          files_modified: files.filter((f) => f.action === "modified").length,
           files,
           requirement_status: db
             .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
@@ -521,14 +526,16 @@ function attachRelated(db, entityType, results) {
             ...cov,
             paths: JSON.parse(cov.paths || '[]'),
           }));
+        const sections = db
+          .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
+          .all(m.id);
         return {
           ...m,
+          documents_created: sections.length,
           metadata: db
             .prepare("SELECT * FROM documentation_manifest_metadata WHERE manifest_id = ?")
             .all(m.id),
-          sections: db
-            .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
-            .all(m.id),
+          sections,
           features,
           coverage,
           assets: db

@@ -775,14 +775,13 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_overview (iteration_id, revision_id, strategy, total_phases, rationale, phase_one_approach, assumptions, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO plan_overview (iteration_id, revision_id, strategy, rationale, phase_one_approach, assumptions, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
       data.strategy,
-      data.total_phases,
       data.rationale,
       data.phase_one_approach ?? null,
       JSON.stringify(data.assumptions ?? []),
@@ -875,16 +874,14 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO implementation_manifest
-         (iteration_id, revision_id, plan_phase_id, status, files_created, files_modified, lines_of_code, warnings, build_status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (iteration_id, revision_id, plan_phase_id, status, lines_of_code, warnings, build_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
       data.plan_phase_id,
       data.status,
-      data.files_created ?? 0,
-      data.files_modified ?? 0,
       data.lines_of_code ?? null,
       data.warnings ?? 0,
       data.build_status ?? null,
@@ -1408,15 +1405,14 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO documentation_manifest
-         (iteration_id, revision_id, status, documents_created, total_pages,
+         (iteration_id, revision_id, status, total_pages,
           accessibility_compliant, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       revision_id ?? null,
       data.status,
-      data.documents_created ?? 0,
       data.total_pages ?? null,
       data.accessibility_compliant ?? 0,
       now
