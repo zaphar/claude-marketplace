@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
   step_number INTEGER NOT NULL,
   action TEXT NOT NULL,
-  surface TEXT, -- soft reference to screen.name (not a hard FK; screens may not exist yet when flows are defined)
+  surface TEXT, -- soft FK → screen.name (no constraint: references name, not id; screens may not exist yet when flows are defined)
   is_decision_point INTEGER DEFAULT 0
 );
 
@@ -1130,7 +1130,7 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 
 CREATE TABLE IF NOT EXISTS entity_snapshot (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_type TEXT NOT NULL,
+  entity_type TEXT NOT NULL, -- must match a table name in the schema (e.g. 'requirement', 'adr', 'component', 'screen', 'user_flow', 'plan_phase', etc.) — see ENTITY_TABLE in read-tools.js for the full set
   entity_id TEXT NOT NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   snapshot JSON NOT NULL,
