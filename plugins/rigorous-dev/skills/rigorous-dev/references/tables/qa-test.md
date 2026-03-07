@@ -14,8 +14,7 @@ This domain captures the complete output of the **qa_engineer** agent during the
 
 | Table | Purpose |
 |-------|---------|
-| [`test_report`](#test_report) | Root entity — overall pass/fail counts, coverage percentages, and status |
-| [`test_report_metadata`](#test_report_metadata) | Versioning and upstream artifact versions used when the report was produced |
+| [`test_report`](#test_report) | Root entity — overall pass/fail counts, coverage percentages, status, and version provenance metadata |
 | [`test_requirement_coverage`](#test_requirement_coverage) | Per-requirement test coverage status |
 | [`test_acceptance_criterion_result`](#test_acceptance_criterion_result) | Pass/fail result for each acceptance criterion |
 | [`test_suite`](#test_suite) | Named test suites grouped by type (unit, integration, e2e, etc.) |
@@ -55,51 +54,23 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 | `coverage_function` | REAL | — | NULL | Function coverage percentage (0.0–100.0) |
 | `duration_seconds` | REAL | — | NULL | Total test suite execution time in seconds |
 | `status` | TEXT | NOT NULL, CHECK(`pass`, `fail`, `blocked`) | — | Overall verdict for this test run |
+| `version` | TEXT | — | NULL | Version label for this report (e.g., `1.0.0`, `r3`). Formerly in `test_report_metadata`. |
+| `document_date` | TEXT | — | NULL | ISO 8601 creation timestamp for this report version. Formerly `created` in `test_report_metadata`. |
+| `requirements_version` | TEXT | — | NULL | Version of the requirements artifact used. Formerly in `test_report_metadata`. |
+| `architecture_version` | TEXT | — | NULL | Version of the architecture artifact used. Formerly in `test_report_metadata`. |
+| `commit_sha` | TEXT | — | NULL | Git/VCS commit SHA of the code under test. Formerly in `test_report_metadata`. |
 | `created_at` | TEXT | NOT NULL | — | ISO 8601 timestamp when the report was created |
 
 ### Relationships
 
 - **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- **Children:** `test_report_metadata` (1:1), `test_requirement_coverage` (1:N), `test_suite` (1:N), `test_security_finding` (1:N), `test_performance_benchmark` (1:N), `test_blocker` (1:N), `test_recommendation` (1:N)
+- **Children:** `test_requirement_coverage` (1:N), `test_suite` (1:N), `test_security_finding` (1:N), `test_performance_benchmark` (1:N), `test_blocker` (1:N), `test_recommendation` (1:N)
 
 ### MCP Tool Access
 
 **Write:** `changelog_insert` with `entity_type: "test_report"`. The `data` object maps to the non-key, non-audit columns above, plus nested child structures (suites, cases, findings, etc.) that the handler normalizes into child tables.
 
-**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`. Returns all child data nested: `metadata`, `coverage` (with nested `criteria`, each with `test_ids` JSON array), `suites` (with nested `cases`, each with `requirements`), `security_findings`, `performance_benchmarks`, `blockers` (with nested `requirements`), and `recommendations`.
-
----
-
-## test_report_metadata
-
-### Purpose
-
-Captures the exact versions of upstream artifacts (requirements doc, architecture doc) that were current when the test report was produced. Enables auditors to detect if requirements have changed since the last test run.
-
-### Context
-
-Written by the `qa_engineer` alongside the root `test_report`. One metadata row per report. The `commit_sha` field records the VCS commit under test when known.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this metadata describes |
-| `version` | TEXT | NOT NULL | — | Version label for this report (e.g., `1.0.0`, `r3`) |
-| `created` | TEXT | NOT NULL | — | ISO 8601 timestamp of report creation |
-| `requirements_version` | TEXT | NOT NULL | — | Version of the requirements artifact used |
-| `architecture_version` | TEXT | NOT NULL | — | Version of the architecture artifact used |
-| `commit_sha` | TEXT | — | NULL | Git/VCS commit SHA of the code under test |
-
-### Relationships
-
-- **Parent:** `test_report` (via `report_id`)
-- **Children:** none
-
-### MCP Tool Access
-
-Inserted automatically by the `changelog_insert` handler when a `test_report` entity includes a `metadata` sub-object. Not directly addressable via `changelog_query` — accessed through the parent report.
+**Read:** `changelog_query` with `entity_type: "test_report"`. Supports filtering by `iteration_id`, `ids`, or field `filters`. Returns all child data nested: `coverage` (with nested `criteria`, each with `test_ids` JSON array), `suites` (with nested `cases`, each with `requirements`), `security_findings`, `performance_benchmarks`, `blockers` (with nested `requirements`), and `recommendations`. Metadata columns (`version`, `document_date`, `requirements_version`, `architecture_version`, `commit_sha`) are returned as flat fields on the report row.
 
 ---
 
@@ -426,7 +397,6 @@ Inserted as items in the `recommendations` array of a `changelog_insert` `test_r
 ```
 iteration
 └── test_report
-    ├── test_report_metadata
     ├── test_requirement_coverage
     │   └── test_acceptance_criterion_result  (test_ids → JSON array inline)
     ├── test_suite

@@ -1,6 +1,6 @@
 # Implementation Domain — Table Design Reference
 
-This document covers the 16 tables that record output produced during the **implementation phase** (senior_developer) and the **test-writing step** (test_writer). It includes all files created or modified, per-requirement and per-component status, API endpoints built, dependencies added, database migrations run, blockers encountered, VCS commits, and intermediate/deliverable assets.
+This document covers the 15 tables that record output produced during the **implementation phase** (senior_developer) and the **test-writing step** (test_writer). It includes all files created or modified, per-requirement and per-component status, API endpoints built, dependencies added, database migrations run, blockers encountered, VCS commits, and intermediate/deliverable assets.
 
 **Producers:** `senior_developer`, `test_writer`
 **Validator:** `senior_developer_critic`
@@ -22,10 +22,9 @@ This document covers the 16 tables that record output produced during the **impl
 10. [implementation_blocker](#10-implementation_blocker)
 11. [implementation_blocker_requirement](#11-implementation_blocker_requirement)
 12. [implementation_review_checklist](#12-implementation_review_checklist)
-13. [implementation_manifest_metadata](#13-implementation_manifest_metadata)
-14. [vcs_commit](#14-vcs_commit)
-15. [intermediate_asset](#15-intermediate_asset)
-16. [asset_deliverable](#16-asset_deliverable)
+13. [vcs_commit](#13-vcs_commit)
+14. [intermediate_asset](#14-intermediate_asset)
+15. [asset_deliverable](#15-asset_deliverable)
 
 ---
 
@@ -48,24 +47,28 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Producer-critic revision attempt. |
 | `plan_phase_id` | INTEGER | NO | — | FK → `plan_phase(id)` | Plan phase that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
-| `files_created` | INTEGER | YES | 0 | — | Number of net-new files written. |
-| `files_modified` | INTEGER | YES | 0 | — | Number of existing files changed. |
 | `lines_of_code` | INTEGER | YES | NULL | — | Total non-blank, non-comment lines added/changed; NULL if not measured. |
 | `warnings` | INTEGER | YES | 0 | — | Build/lint warning count at time of submission. |
 | `build_status` | TEXT | YES | NULL | CHECK IN ('success','failure') | Result of the build step; NULL if build was not run. |
+| `version` | TEXT | YES | NULL | — | Version string for this manifest (e.g. `1.0.0`). Formerly in `implementation_manifest_metadata`. |
+| `document_date` | TEXT | YES | NULL | — | Creation timestamp (agent-supplied). Formerly `created` in `implementation_manifest_metadata`. |
+| `requirements_version` | TEXT | YES | NULL | — | Version of the requirements document in scope. Formerly in `implementation_manifest_metadata`. |
+| `architecture_version` | TEXT | YES | NULL | — | Version of the architecture document in scope. Formerly in `implementation_manifest_metadata`. |
+| `language` | TEXT | YES | NULL | — | Primary programming language used (e.g. `TypeScript`, `Python`). Formerly in `implementation_manifest_metadata`. |
+| `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA at time of submission; cross-reference with `vcs_commit`. Formerly in `implementation_manifest_metadata`. |
 | `created_at` | TEXT | NO | — | ISO 8601 | Timestamp set by the MCP server on insert. |
 
 ### Relationships
 
 - **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- **Children:** `implementation_file`, `implementation_requirement_status`, `implementation_component_status`, `implementation_api_endpoint`, `implementation_dependency_added`, `implementation_db_migration`, `implementation_blocker`, `implementation_review_checklist`, `implementation_manifest_metadata`
+- **Children:** `implementation_file`, `implementation_requirement_status`, `implementation_component_status`, `implementation_api_endpoint`, `implementation_dependency_added`, `implementation_db_migration`, `implementation_blocker`, `implementation_review_checklist`
 
 ### MCP Tool Access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, review_checklist, and metadata are inserted in the same call via nested arrays in `data`. |
-| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach all child tables (files with their requirements, requirement_status, component_status, api_endpoints with their requirements, dependencies_added, db_migrations, blockers with their requirements, review_checklist, metadata). |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, and review_checklist are inserted in the same call via nested arrays in `data`. Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields or via a backward-compatible `metadata` object. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach all child tables (files with their requirements, requirement_status, component_status, api_endpoints with their requirements, dependencies_added, db_migrations, blockers with their requirements, review_checklist). Metadata columns are returned as flat fields on the manifest row. |
 | Iteration summary | `iteration_summary` | Returns counts of commits and deliverables alongside phase data; does not enumerate manifest fields directly. |
 
 ---
@@ -430,43 +433,7 @@ Typical checklist items include: "all tests pass", "no hardcoded secrets", "API 
 
 ---
 
-## 13. `implementation_manifest_metadata`
-
-### Purpose
-
-Stores versioning metadata for an implementation manifest, pinning which upstream artifact versions (requirements doc, architecture doc) were in scope when the code was written. Enables audit of "what spec was this implementation based on?"
-
-### Context
-
-One row per manifest. `requirements_version` and `architecture_version` should match the versions recorded in the planning metadata to confirm no drift. `commit_sha` is the VCS HEAD at time of submission.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | The manifest this metadata describes. |
-| `version` | TEXT | NO | — | — | Version string for this manifest (e.g. `1.0.0`). |
-| `created` | TEXT | NO | — | ISO 8601 | Creation timestamp (agent-supplied, may differ from `implementation_manifest.created_at`). |
-| `requirements_version` | TEXT | NO | — | — | Version of the requirements document in scope. |
-| `architecture_version` | TEXT | NO | — | — | Version of the architecture document in scope. |
-| `language` | TEXT | YES | NULL | — | Primary programming language used (e.g. `TypeScript`, `Python`). |
-| `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA at time of submission; cross-reference with `vcs_commit`. |
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.metadata[]` in the `implementation_manifest` call. Each element: `{ version, created, requirements_version, architecture_version, language, commit_sha }`. Typically one row per manifest. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; metadata rows are returned as the `metadata` array. |
-
----
-
-## 14. `vcs_commit`
+## 13. `vcs_commit`
 
 ### Purpose
 
@@ -501,7 +468,7 @@ Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific
 
 ---
 
-## 15. `intermediate_asset`
+## 14. `intermediate_asset`
 
 ### Purpose
 
@@ -537,7 +504,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ---
 
-## 16. `asset_deliverable`
+## 15. `asset_deliverable`
 
 ### Purpose
 
@@ -589,7 +556,6 @@ iteration
  │    ├── implementation_blocker (manifest_id)
  │    │    └── implementation_blocker_requirement (blocker_id, requirement_id)
  │    ├── implementation_review_checklist (manifest_id)
- │    └── implementation_manifest_metadata (manifest_id)
  ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
  ├── intermediate_asset (iteration_id, phase_id, revision_id)
  └── asset_deliverable (iteration_id, phase_id)
@@ -599,7 +565,7 @@ iteration
 
 ## All Child Tables Fully Wired
 
-All 13 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). No direct SQL is required.
+All 12 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields on the manifest itself (or via a backward-compatible `metadata` object). No direct SQL is required.
 
 | Nested key in `data` | Child table | Notes |
 |-----------------------|-------------|-------|
@@ -611,7 +577,6 @@ All 13 child tables of `implementation_manifest` are fully supported via `change
 | `dependencies_added[]` | `implementation_dependency_added` | `{ name, version, purpose, license }` |
 | `db_migrations[]` | `implementation_db_migration` | `{ name, description, status }` |
 | `review_checklist[]` | `implementation_review_checklist` | `{ check_name, passed }` |
-| `metadata[]` | `implementation_manifest_metadata` | `{ version, created, requirements_version, architecture_version, language, commit_sha }` |
 
 ---
 

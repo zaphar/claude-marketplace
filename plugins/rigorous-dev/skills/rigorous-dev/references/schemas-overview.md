@@ -127,7 +127,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `implementation_manifest` | senior_developer | Per-phase implementation summary — status, files changed, tests. |
+| `implementation_manifest` | senior_developer | Per-phase implementation summary — status, files changed, tests, and version provenance metadata. |
 | `implementation_file` | senior_developer | Each file created/modified with purpose. |
 | `implementation_file_requirement` | senior_developer | File-to-requirement traceability. |
 | `implementation_requirement_status` | senior_developer | Per-requirement implementation progress. |
@@ -137,7 +137,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `implementation_db_migration` | senior_developer | Migrations actually run. |
 | `implementation_blocker` / `_blocker_requirement` | senior_developer | Issues encountered and affected requirements. |
 | `implementation_review_checklist` | senior_developer | Self-review items. |
-| `implementation_manifest_metadata` | senior_developer | Implementation versioning. |
 | `vcs_commit` | (commit_link tool) | Git/jj commits linked to iterations. |
 | `intermediate_asset` / `asset_deliverable` | senior_developer | Build artifacts and deliverables. |
 
@@ -149,8 +148,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `test_report` | qa_engineer | Overall test report — pass/fail counts, coverage percentage. |
-| `test_report_metadata` | qa_engineer | Report versioning. |
+| `test_report` | qa_engineer | Overall test report — pass/fail counts, coverage percentage, and version provenance metadata. |
 | `test_requirement_coverage` | qa_engineer | Which requirements have test coverage. |
 | `test_acceptance_criterion_result` | qa_engineer | Pass/fail per acceptance criterion. Associated test IDs stored as JSON array (`test_ids` column). |
 | `test_suite` / `test_case` | qa_engineer | Test suites and individual cases with status, duration. |
@@ -179,8 +177,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `documentation_manifest` | documentation_master | Doc coverage summary. |
-| `documentation_manifest_metadata` | documentation_master | Manifest versioning. |
+| `documentation_manifest` | documentation_master | Doc coverage summary and version provenance metadata. |
 | `documentation_section` | documentation_master | Doc sections (README, API docs, guides). |
 | `documentation_feature` | documentation_master | Feature documentation with examples. |
 | `documentation_feature_requirement` | documentation_master | Feature-to-requirement traceability. |
@@ -196,8 +193,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `deployment_manifest` | release_engineer | Release readiness summary. Targets and blockers stored as JSON arrays (`targets`, `blockers` columns). |
-| `deployment_manifest_metadata` | release_engineer | Manifest versioning. |
+| `deployment_manifest` | release_engineer | Release readiness summary. Targets, blockers, and version provenance metadata stored as columns. |
 | `deployment_pipeline` | release_engineer | CI/CD pipeline definition. Config files stored as JSON array (`config_files` column). |
 | `deployment_pipeline_stage` | release_engineer | Pipeline stages. Triggers and steps stored as JSON arrays (`triggers`, `steps` columns). |
 | `deployment_quality_gates` | release_engineer | Global quality gate rules. |
@@ -261,7 +257,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 117 tables with links to their detailed design documents.
+All 113 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -288,7 +284,6 @@ All 117 tables with links to their detailed design documents.
 | `deployment_health_check` | [deployment](tables/deployment.md) |
 | `deployment_local_executable` | [deployment](tables/deployment.md) |
 | `deployment_manifest` | [deployment](tables/deployment.md) |
-| `deployment_manifest_metadata` | [deployment](tables/deployment.md) |
 | `deployment_pipeline` | [deployment](tables/deployment.md) |
 | `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
 | `deployment_quality_gates` | [deployment](tables/deployment.md) |
@@ -303,7 +298,6 @@ All 117 tables with links to their detailed design documents.
 | `documentation_feature` | [documentation](tables/documentation.md) |
 | `documentation_feature_requirement` | [documentation](tables/documentation.md) |
 | `documentation_manifest` | [documentation](tables/documentation.md) |
-| `documentation_manifest_metadata` | [documentation](tables/documentation.md) |
 | `documentation_requirement_coverage` | [documentation](tables/documentation.md) |
 | `documentation_section` | [documentation](tables/documentation.md) |
 | `documentation_verification` | [documentation](tables/documentation.md) |
@@ -318,7 +312,6 @@ All 117 tables with links to their detailed design documents.
 | `implementation_file` | [implementation](tables/implementation.md) |
 | `implementation_file_requirement` | [implementation](tables/implementation.md) |
 | `implementation_manifest` | [implementation](tables/implementation.md) |
-| `implementation_manifest_metadata` | [implementation](tables/implementation.md) |
 | `implementation_requirement_status` | [implementation](tables/implementation.md) |
 | `implementation_review_checklist` | [implementation](tables/implementation.md) |
 | `info_architecture` | [ux-design](tables/ux-design.md) |
@@ -369,7 +362,6 @@ All 117 tables with links to their detailed design documents.
 | `test_performance_benchmark` | [qa-test](tables/qa-test.md) |
 | `test_recommendation` | [qa-test](tables/qa-test.md) |
 | `test_report` | [qa-test](tables/qa-test.md) |
-| `test_report_metadata` | [qa-test](tables/qa-test.md) |
 | `test_requirement_coverage` | [qa-test](tables/qa-test.md) |
 | `test_security_finding` | [qa-test](tables/qa-test.md) |
 | `test_suite` | [qa-test](tables/qa-test.md) |
@@ -383,4 +375,4 @@ All 117 tables with links to their detailed design documents.
 | `ux_config` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 118 tables across 12 domains**
+**Total: 113 tables across 12 domains**

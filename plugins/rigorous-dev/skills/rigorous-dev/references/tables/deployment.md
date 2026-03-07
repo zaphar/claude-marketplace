@@ -7,15 +7,14 @@
 
 ## Overview
 
-The deployment domain captures the full output of the Release Engineer agent. It is the most table-heavy domain (18 tables) because deployment configuration has many orthogonal concerns that must be modelled independently: CI/CD pipeline topology, per-environment configuration, build artifact inventory, code signing, local distribution channels (Homebrew, apt, Winget), secrets inventory, health checks, alerting wiring, operational runbooks, and release review checklists.
+The deployment domain captures the full output of the Release Engineer agent. It is the most table-heavy domain (17 tables) because deployment configuration has many orthogonal concerns that must be modelled independently: CI/CD pipeline topology, per-environment configuration, build artifact inventory, code signing, local distribution channels (Homebrew, apt, Winget), secrets inventory, health checks, alerting wiring, operational runbooks, and release review checklists.
 
-All 18 tables hang off a single `deployment_manifest` row, which is in turn scoped to an `iteration` and optionally a `revision`. The Release Critic validates the manifest and all child data before the release phase is closed.
+All 17 tables hang off a single `deployment_manifest` row, which is in turn scoped to an `iteration` and optionally a `revision`. The Release Critic validates the manifest and all child data before the release phase is closed.
 
 ### Table Hierarchy
 
 ```
 deployment_manifest
-├── deployment_manifest_metadata        (version provenance)
 │                                        targets → JSON array on manifest
 │                                        blockers → JSON array on manifest
 │
@@ -69,43 +68,22 @@ deployment_manifest
 | `status` | TEXT | NOT NULL, CHECK IN (`ready`, `not_ready`, `blocked`) | — | Overall release readiness. `blocked` means hard blockers prevent deployment. |
 | `targets` | TEXT | — | `'[]'` | JSON array of deployment target strings (e.g., `["private-cloud", "local-executable"]`). Replaces the former `deployment_target` child table. |
 | `blockers` | TEXT | — | `'[]'` | JSON array of blocker description strings (e.g., `["DNS records not configured"]`). When `status` is `blocked`, this array must be non-empty. Replaces the former `deployment_manifest_blocker` child table. |
+| `version` | TEXT | — | NULL | Version label for this manifest (e.g., `1.0.0`, `v2`). Formerly in `deployment_manifest_metadata`. |
+| `document_date` | TEXT | — | NULL | ISO-8601 timestamp when this metadata was created. Formerly `created` in `deployment_manifest_metadata`. |
+| `requirements_version` | TEXT | — | NULL | Version of the requirements specification consulted. Formerly in `deployment_manifest_metadata`. |
+| `architecture_version` | TEXT | — | NULL | Version of the architecture specification consulted. Formerly in `deployment_manifest_metadata`. |
+| `implementation_version` | TEXT | — | NULL | Version of the implementation manifest consulted. Formerly in `deployment_manifest_metadata`. |
+| `test_report_version` | TEXT | — | NULL | Version of the QA test report consulted. NULL if QA phase was skipped. Formerly in `deployment_manifest_metadata`. |
 | `created_at` | TEXT | NOT NULL | — | ISO-8601 timestamp when the manifest was created. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- Children: all 17 remaining tables in this domain
+- Children: all 16 remaining tables in this domain
 - JSON arrays: `targets`, `blockers` (inline on this table)
 
 **MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required), `targets` (JSON array of strings), `blockers` (JSON array of strings), and all child records as nested arrays (`metadata`, `pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All tables are inserted in a single transactional call.
+- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required), `targets` (JSON array of strings), `blockers` (JSON array of strings), metadata fields as flat properties (`version`, `document_date`, `requirements_version`, `architecture_version`, `implementation_version`, `test_report_version`) or via a backward-compatible `metadata` object, and all child records as nested arrays (`pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All tables are inserted in a single transactional call.
 - **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Returns manifest rows with all children attached via `attachRelated`.
-
----
-
-### `deployment_manifest_metadata`
-
-**Purpose:** Version provenance for the manifest — records what versions of upstream artifacts (requirements, architecture, implementation, test report) the Release Engineer consulted when producing this manifest.
-
-**Context:** Mirrors the `implementation_manifest_metadata` and `documentation_manifest_metadata` patterns. Enables the critic and future auditors to detect version drift (e.g., deployment manifest based on an older implementation version than what was actually shipped).
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
-| `version` | TEXT | NOT NULL | — | Version label for this manifest (e.g., `1.0.0`, `v2`). |
-| `created` | TEXT | NOT NULL | — | ISO-8601 timestamp when this metadata record was created. |
-| `requirements_version` | TEXT | NOT NULL | — | Version of the requirements specification consulted. |
-| `architecture_version` | TEXT | NOT NULL | — | Version of the architecture specification consulted. |
-| `implementation_version` | TEXT | NOT NULL | — | Version of the implementation manifest consulted. |
-| `test_report_version` | TEXT | — | NULL | Version of the QA test report consulted. NULL if QA phase was skipped. |
-
-**Relationships:**
-- Parent: `deployment_manifest` (via `manifest_id`)
-- No children.
-
-**MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. Metadata is inserted as part of the manifest payload (the insert handler should create this row alongside the root manifest row).
-- **Read:** Direct SQL — `SELECT * FROM deployment_manifest_metadata WHERE manifest_id = ?`.
 
 ---
 
@@ -480,7 +458,7 @@ deployment_manifest
 |-------------|-----------|-----|
 | `deployment_manifest` | `iteration` | `iteration_id` |
 | `deployment_manifest` | `revision` | `revision_id` |
-| `deployment_manifest_metadata` | `implementation_manifest_metadata` (conceptually) | `implementation_version` string |
+| `deployment_manifest` | `implementation_manifest` (conceptually) | `implementation_version` string |
 | `deployment_env_var` (source=secret) | `deployment_secret` | `name` match (logical, not FK) |
 | `deployment_local_executable.platforms` | `deployment_artifact.platforms` | platform string match (logical, not FK) |
 
@@ -510,14 +488,12 @@ All child tables are nested inside the `data` object. Every array property is op
     "blockers": [                          // → JSON array on deployment_manifest
       "DNS records not configured"
     ],
-    "metadata": [{                         // → deployment_manifest_metadata
-      "version": "1.0.0",
-      "created": "2025-01-15T00:00:00Z",
-      "requirements_version": "1.0.0",
-      "architecture_version": "1.0.0",
-      "implementation_version": "1.0.0",
-      "test_report_version": "1.0.0"       // optional, null if QA skipped
-    }],
+    "version": "1.0.0",                   // metadata fields (flat on manifest)
+    "document_date": "2025-01-15T00:00:00Z",
+    "requirements_version": "1.0.0",
+    "architecture_version": "1.0.0",
+    "implementation_version": "1.0.0",
+    "test_report_version": "1.0.0",        // optional, null if QA skipped
     "pipelines": [{                        // → deployment_pipeline
       "platform": "github-actions",
       "config_files": [                    //   → JSON array on pipeline
@@ -623,7 +599,6 @@ When queried via `changelog_query`, each `deployment_manifest` row is returned w
 |----------|--------|---------|
 | `targets` | JSON array on `deployment_manifest` | inline |
 | `blockers` | JSON array on `deployment_manifest` | inline |
-| `metadata` | `deployment_manifest_metadata` | flat |
 | `pipelines` | `deployment_pipeline` | `config_files` (JSON inline), `stages` → `triggers` (JSON inline), `steps` (JSON inline), `quality_gates` |
 | `quality_gates` | `deployment_quality_gates` | flat |
 | `environments` | `deployment_environment` | → `infra`, `vars` |

@@ -859,11 +859,14 @@ function insertPlanMetadata(db, iteration_id, revision_id, data) {
 
 function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
   const result = db
     .prepare(
       `INSERT INTO implementation_manifest
-         (iteration_id, revision_id, plan_phase_id, status, lines_of_code, warnings, build_status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (iteration_id, revision_id, plan_phase_id, status, lines_of_code, warnings, build_status,
+          version, document_date, requirements_version, architecture_version, language, commit_sha,
+          created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -873,6 +876,12 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
       data.lines_of_code ?? null,
       data.warnings ?? 0,
       data.build_status ?? null,
+      meta?.version ?? data.version ?? null,
+      meta?.document_date ?? data.document_date ?? null,
+      meta?.requirements_version ?? data.requirements_version ?? null,
+      meta?.architecture_version ?? data.architecture_version ?? null,
+      meta?.language ?? data.language ?? null,
+      meta?.commit_sha ?? data.commit_sha ?? null,
       now
     );
   const manifest_id = result.lastInsertRowid;
@@ -961,21 +970,6 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   );
   for (const item of data.review_checklist ?? []) {
     insertChecklistItem.run(manifest_id, item.check_name, item.passed ? 1 : 0);
-  }
-
-  const insertMetadata = db.prepare(
-    "INSERT INTO implementation_manifest_metadata (manifest_id, version, document_date, requirements_version, architecture_version, language, commit_sha) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  );
-  for (const meta of data.metadata ?? []) {
-    insertMetadata.run(
-      manifest_id,
-      meta.version,
-      meta.document_date,
-      meta.requirements_version,
-      meta.architecture_version,
-      meta.language ?? null,
-      meta.commit_sha ?? null
-    );
   }
 
   return { entity_type: "implementation_manifest", id: manifest_id };
@@ -1201,13 +1195,16 @@ function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
 
 function insertTestReport(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
   const result = db
     .prepare(
       `INSERT INTO test_report
          (iteration_id, revision_id, total_tests, passed, failed, skipped,
           coverage_line, coverage_branch, coverage_function,
-          duration_seconds, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          duration_seconds, status,
+          version, document_date, requirements_version, architecture_version, commit_sha,
+          created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -1221,26 +1218,14 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       data.coverage_function ?? null,
       data.duration_seconds ?? null,
       data.status,
+      meta?.version ?? data.version ?? null,
+      meta?.document_date ?? data.document_date ?? null,
+      meta?.requirements_version ?? data.requirements_version ?? null,
+      meta?.architecture_version ?? data.architecture_version ?? null,
+      meta?.commit_sha ?? data.commit_sha ?? null,
       now
     );
   const report_id = result.lastInsertRowid;
-
-  // -- test_report_metadata (1:1) --
-  const insertMeta = db.prepare(
-    `INSERT INTO test_report_metadata
-       (report_id, version, document_date, requirements_version, architecture_version, commit_sha)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
-  for (const meta of data.metadata ?? []) {
-    insertMeta.run(
-      report_id,
-      meta.version,
-      meta.document_date,
-      meta.requirements_version,
-      meta.architecture_version,
-      meta.commit_sha ?? null
-    );
-  }
 
   // -- test_requirement_coverage (1:N) --
   //    → test_acceptance_criterion_result (1:N per coverage)
@@ -1373,12 +1358,16 @@ function insertTestReport(db, iteration_id, revision_id, data) {
 
 function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
   const result = db
     .prepare(
       `INSERT INTO documentation_manifest
          (iteration_id, revision_id, status, total_pages,
-          accessibility_compliant, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+          accessibility_compliant,
+          version, document_date, requirements_version,
+          architecture_version, implementation_version, format,
+          created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -1386,28 +1375,15 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
       data.status,
       data.total_pages ?? null,
       data.accessibility_compliant ?? 0,
+      meta?.version ?? data.version ?? null,
+      meta?.document_date ?? data.document_date ?? null,
+      meta?.requirements_version ?? data.requirements_version ?? null,
+      meta?.architecture_version ?? data.architecture_version ?? null,
+      meta?.implementation_version ?? data.implementation_version ?? null,
+      meta?.format ?? data.format ?? null,
       now
     );
   const manifest_id = result.lastInsertRowid;
-
-  // -- documentation_manifest_metadata (1:1) --
-  const insertMeta = db.prepare(
-    `INSERT INTO documentation_manifest_metadata
-       (manifest_id, version, document_date, requirements_version,
-        architecture_version, implementation_version, format)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  );
-  for (const meta of data.metadata ?? []) {
-    insertMeta.run(
-      manifest_id,
-      meta.version,
-      meta.document_date,
-      meta.requirements_version,
-      meta.architecture_version ?? null,
-      meta.implementation_version ?? null,
-      meta.format ?? null
-    );
-  }
 
   // -- documentation_section (1:N) --
   const insertSection = db.prepare(
@@ -1494,11 +1470,15 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
 
 function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
+  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
   const result = db
     .prepare(
       `INSERT INTO deployment_manifest
-         (iteration_id, revision_id, status, targets, blockers, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+         (iteration_id, revision_id, status, targets, blockers,
+          version, document_date, requirements_version,
+          architecture_version, implementation_version, test_report_version,
+          created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
@@ -1506,28 +1486,15 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
       data.status,
       JSON.stringify((data.targets ?? []).map(t => t.target ?? t)),
       JSON.stringify((data.blockers ?? []).map(b => b.blocker ?? b)),
+      meta?.version ?? data.version ?? null,
+      meta?.document_date ?? data.document_date ?? null,
+      meta?.requirements_version ?? data.requirements_version ?? null,
+      meta?.architecture_version ?? data.architecture_version ?? null,
+      meta?.implementation_version ?? data.implementation_version ?? null,
+      meta?.test_report_version ?? data.test_report_version ?? null,
       now
     );
   const manifest_id = result.lastInsertRowid;
-
-  // -- deployment_manifest_metadata (1:1) --
-  const insertMeta = db.prepare(
-    `INSERT INTO deployment_manifest_metadata
-       (manifest_id, version, document_date, requirements_version,
-        architecture_version, implementation_version, test_report_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  );
-  for (const meta of data.metadata ?? []) {
-    insertMeta.run(
-      manifest_id,
-      meta.version,
-      meta.document_date,
-      meta.requirements_version,
-      meta.architecture_version,
-      meta.implementation_version,
-      meta.test_report_version ?? null
-    );
-  }
 
   // -- deployment_pipeline (1:N) --
   //    → deployment_pipeline_stage (1:N per pipeline)

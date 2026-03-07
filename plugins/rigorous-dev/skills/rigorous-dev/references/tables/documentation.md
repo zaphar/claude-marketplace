@@ -1,6 +1,6 @@
 # Documentation Domain — Table Design Reference
 
-This document describes the eight tables that capture the output of the **Documentation Master** agent during the `documentation` phase of the rigorous-dev workflow. Together they record what documentation was produced, which features and requirements are covered, where assets live, and whether the documentation passed verification.
+This document describes the seven tables that capture the output of the **Documentation Master** agent during the `documentation` phase of the rigorous-dev workflow. Together they record what documentation was produced, which features and requirements are covered, where assets live, and whether the documentation passed verification.
 
 **Producer:** `documentation_master`  
 **Critic:** `documentation_critic`  
@@ -13,7 +13,6 @@ This document describes the eight tables that capture the output of the **Docume
 
 ```
 documentation_manifest                  ← one row per revision
-├── documentation_manifest_metadata     ← version metadata (1:1)
 ├── documentation_section               ← key/value doc-section records (1:N)
 ├── documentation_feature               ← per-feature documentation entries (1:N)
 │   └── documentation_feature_requirement  ← feature ↔ requirement join (M:N)
@@ -43,15 +42,20 @@ Every other documentation table references this row. The manifest ties documenta
 | `iteration_id` | INTEGER | NOT NULL | — | REFERENCES `iteration(id)` | Which iteration this documentation belongs to |
 | `revision_id` | INTEGER | NOT NULL | — | REFERENCES `revision(id)` | Which producer-critic revision attempt produced this. |
 | `status` | TEXT | NOT NULL | — | CHECK(`status` IN (`'complete'`, `'partial'`, `'blocked'`)) | Overall documentation completeness |
-| `documents_created` | INTEGER | NULL | `0` | — | Count of documentation files/pages created |
 | `total_pages` | INTEGER | NULL | — | — | Total page count across all documents (NULL if unknown) |
 | `accessibility_compliant` | INTEGER | NULL | `0` | — | Boolean flag (0/1) — whether docs meet accessibility standards |
+| `version` | TEXT | NULL | — | — | Documentation version string (e.g., `"1.0.0"`). Formerly in `documentation_manifest_metadata`. |
+| `document_date` | TEXT | NULL | — | — | ISO-8601 creation timestamp for this documentation version. Formerly `created` in `documentation_manifest_metadata`. |
+| `requirements_version` | TEXT | NULL | — | — | Version of requirements spec this documentation covers. Formerly in `documentation_manifest_metadata`. |
+| `architecture_version` | TEXT | NULL | — | — | Version of architecture spec referenced. Formerly in `documentation_manifest_metadata`. |
+| `implementation_version` | TEXT | NULL | — | — | Version of implementation manifest referenced. Formerly in `documentation_manifest_metadata`. |
+| `format` | TEXT | NULL | — | CHECK(`format` IN (`'markdown'`, `'html'`, `'pdf'`, `'docusaurus'`, `'mkdocs'`, `'other'`)) | Documentation output format. Formerly in `documentation_manifest_metadata`. |
 | `created_at` | TEXT | NOT NULL | — | — | ISO-8601 timestamp of insertion |
 
 ### Relationships
 
 - **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- **Children:** `documentation_manifest_metadata`, `documentation_section`, `documentation_feature`, `documentation_requirement_coverage`, `documentation_asset`, `documentation_verification`
+- **Children:** `documentation_section`, `documentation_feature`, `documentation_requirement_coverage`, `documentation_asset`, `documentation_verification`
 
 ### MCP Tool Access
 
@@ -66,17 +70,14 @@ Every other documentation table references this row. The manifest ties documenta
     "revision_id": 2,
     "data": {
       "status": "complete",
-      "documents_created": 5,
       "total_pages": 42,
       "accessibility_compliant": 1,
-      "metadata": [{
-        "version": "1.0.0",
-        "created": "2025-01-15T10:00:00Z",
-        "requirements_version": "1.0.0",
-        "architecture_version": "1.0.0",
-        "implementation_version": "1.0.0",
-        "format": "markdown"
-      }],
+      "version": "1.0.0",
+      "document_date": "2025-01-15T10:00:00Z",
+      "requirements_version": "1.0.0",
+      "architecture_version": "1.0.0",
+      "implementation_version": "1.0.0",
+      "format": "markdown",
       "sections": [
         { "category": "readme", "key": "installation", "value": "...", "path": "docs/README.md" }
       ],
@@ -110,55 +111,11 @@ Every other documentation table references this row. The manifest ties documenta
 }
 ```
 
-The response nests children as: `metadata`, `sections`, `features` (each with `requirements` array), `coverage` (each with `paths` JSON array), `assets`, `verification`.
+The response nests children as: `sections`, `features` (each with `requirements` array), `coverage` (each with `paths` JSON array), `assets`, `verification`. Metadata columns (`version`, `document_date`, `requirements_version`, `architecture_version`, `implementation_version`, `format`) are returned as flat fields on the manifest row.
 
 ---
 
-## 2. `documentation_manifest_metadata`
-
-### Purpose
-
-Stores versioning metadata for a documentation manifest: the documentation version string, creation timestamp, and which versions of upstream artifacts (requirements, architecture, implementation) this documentation is based on. Also records the output format (markdown, HTML, PDF, etc.).
-
-### Context
-
-The documentation_master populates this immediately after creating the manifest row. It provides the traceability chain — an auditor can look at `requirements_version`, `architecture_version`, and `implementation_version` to confirm the documentation was built against the correct upstream revisions. `format` indicates how the docs were rendered.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|---|---|---|---|---|---|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate key |
-| `manifest_id` | INTEGER | NOT NULL | — | REFERENCES `documentation_manifest(id)` | Parent manifest |
-| `version` | TEXT | NOT NULL | — | — | Documentation version string (e.g., `"1.0.0"`) |
-| `created` | TEXT | NOT NULL | — | — | ISO-8601 creation timestamp for this documentation version |
-| `requirements_version` | TEXT | NOT NULL | — | — | Version of requirements spec this documentation covers |
-| `architecture_version` | TEXT | NULL | — | — | Version of architecture spec referenced (NULL if not applicable) |
-| `implementation_version` | TEXT | NULL | — | — | Version of implementation manifest referenced (NULL if not applicable) |
-| `format` | TEXT | NULL | — | CHECK(`format` IN (`'markdown'`, `'html'`, `'pdf'`, `'docusaurus'`, `'mkdocs'`, `'other'`)) | Documentation output format |
-
-### Relationships
-
-- **Parent:** `documentation_manifest` (via `manifest_id`)
-- No children
-
-### MCP Tool Access
-
-Inserted as part of the `documentation_manifest` `changelog_insert` payload (child data). Query via:
-```json
-{
-  "tool": "changelog_query",
-  "args": {
-    "entity_type": "documentation_manifest",
-    "iteration_id": 1,
-    "include_related": true
-  }
-}
-```
-
----
-
-## 3. `documentation_section`
+## 2. `documentation_section`
 
 ### Purpose
 
@@ -190,7 +147,7 @@ Inserted as child data within `changelog_insert` for `documentation_manifest`. Q
 
 ---
 
-## 4. `documentation_feature`
+## 3. `documentation_feature`
 
 ### Purpose
 
@@ -225,7 +182,7 @@ SELECT * FROM documentation_feature WHERE manifest_id = ? AND includes_examples 
 
 ---
 
-## 5. `documentation_feature_requirement`
+## 4. `documentation_feature_requirement`
 
 ### Purpose
 
@@ -266,7 +223,7 @@ WHERE dfr.requirement_id = 'REQ-001';
 
 ---
 
-## 6. `documentation_requirement_coverage`
+## 5. `documentation_requirement_coverage`
 
 ### Purpose
 
@@ -307,7 +264,7 @@ WHERE rc.manifest_id = ?
 
 ---
 
-## 7. `documentation_asset`
+## 6. `documentation_asset`
 
 ### Purpose
 
@@ -346,7 +303,7 @@ WHERE manifest_id = ?
 
 ---
 
-## 8. `documentation_verification`
+## 7. `documentation_verification`
 
 ### Purpose
 
@@ -443,8 +400,7 @@ ORDER BY passed ASC, check_name ASC;
 
 | Table | Rows per manifest | Key constraint | Written by |
 |---|---|---|---|
-| `documentation_manifest` | 1 | `status` CHECK | documentation_master |
-| `documentation_manifest_metadata` | 1 | `format` CHECK | documentation_master |
+| `documentation_manifest` | 1 | `status` CHECK, `format` CHECK | documentation_master |
 | `documentation_section` | 1 per doc section | — | documentation_master |
 | `documentation_feature` | 1 per feature | — | documentation_master |
 | `documentation_feature_requirement` | 1 per feature×requirement pair | composite PK (no duplicates) | documentation_master |

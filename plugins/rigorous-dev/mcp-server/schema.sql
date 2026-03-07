@@ -592,6 +592,12 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   lines_of_code INTEGER,
   warnings INTEGER DEFAULT 0,
   build_status TEXT CHECK(build_status IN ('success', 'failure')),
+  version TEXT,
+  document_date TEXT,
+  requirements_version TEXT,
+  architecture_version TEXT,
+  language TEXT,
+  commit_sha TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -681,18 +687,6 @@ CREATE TABLE IF NOT EXISTS implementation_review_checklist (
   passed INTEGER DEFAULT 0
 );
 
--- Implementation manifest metadata
-CREATE TABLE IF NOT EXISTS implementation_manifest_metadata (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
-  version TEXT NOT NULL,
-  document_date TEXT NOT NULL,
-  requirements_version TEXT NOT NULL,
-  architecture_version TEXT NOT NULL,
-  language TEXT,
-  commit_sha TEXT
-);
-
 -- VCS commits linked to iterations
 CREATE TABLE IF NOT EXISTS vcs_commit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -748,17 +742,12 @@ CREATE TABLE IF NOT EXISTS test_report (
   coverage_function REAL,
   duration_seconds REAL,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'blocked')),
+  version TEXT,
+  document_date TEXT,
+  requirements_version TEXT,
+  architecture_version TEXT,
+  commit_sha TEXT,
   created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS test_report_metadata (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id),
-  version TEXT NOT NULL,
-  document_date TEXT NOT NULL,
-  requirements_version TEXT NOT NULL,
-  architecture_version TEXT NOT NULL,
-  commit_sha TEXT
 );
 
 CREATE TABLE IF NOT EXISTS test_requirement_coverage (
@@ -896,18 +885,13 @@ CREATE TABLE IF NOT EXISTS documentation_manifest (
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   total_pages INTEGER,
   accessibility_compliant INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS documentation_manifest_metadata (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id),
-  version TEXT NOT NULL,
-  document_date TEXT NOT NULL,
-  requirements_version TEXT NOT NULL,
+  version TEXT,
+  document_date TEXT,
+  requirements_version TEXT,
   architecture_version TEXT,
   implementation_version TEXT,
-  format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other'))
+  format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other')),
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS documentation_section (
@@ -969,18 +953,13 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
   status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
   targets TEXT DEFAULT '[]',
   blockers TEXT DEFAULT '[]',
+  version TEXT,
+  document_date TEXT,
+  requirements_version TEXT,
+  architecture_version TEXT,
+  implementation_version TEXT,
+  test_report_version TEXT,
   created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS deployment_manifest_metadata (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id),
-  version TEXT NOT NULL,
-  document_date TEXT NOT NULL,
-  requirements_version TEXT NOT NULL,
-  architecture_version TEXT NOT NULL,
-  implementation_version TEXT NOT NULL,
-  test_report_version TEXT
 );
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline (

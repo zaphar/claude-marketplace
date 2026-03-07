@@ -435,9 +435,6 @@ function attachRelated(db, entityType, results) {
           review_checklist: db
             .prepare("SELECT * FROM implementation_review_checklist WHERE manifest_id = ?")
             .all(m.id),
-          metadata: db
-            .prepare("SELECT * FROM implementation_manifest_metadata WHERE manifest_id = ?")
-            .all(m.id),
         };
       });
 
@@ -487,9 +484,6 @@ function attachRelated(db, entityType, results) {
           }));
         return {
           ...r,
-          metadata: db
-            .prepare("SELECT * FROM test_report_metadata WHERE report_id = ?")
-            .all(r.id),
           coverage,
           suites,
           security_findings: db
@@ -532,9 +526,6 @@ function attachRelated(db, entityType, results) {
         return {
           ...m,
           documents_created: sections.length,
-          metadata: db
-            .prepare("SELECT * FROM documentation_manifest_metadata WHERE manifest_id = ?")
-            .all(m.id),
           sections,
           features,
           coverage,
@@ -611,9 +602,6 @@ function attachRelated(db, entityType, results) {
           }));
         return {
           ...m,
-          metadata: db
-            .prepare("SELECT * FROM deployment_manifest_metadata WHERE manifest_id = ?")
-            .all(m.id),
           targets: JSON.parse(m.targets || '[]'),
           blockers: JSON.parse(m.blockers || '[]'),
           pipelines,
