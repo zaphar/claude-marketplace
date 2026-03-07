@@ -183,7 +183,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `documentation_feature_requirement` | documentation_master | Feature-to-requirement traceability. |
 | `documentation_requirement_coverage` | documentation_master | Per-requirement doc coverage. File paths stored as JSON array (`paths` column). |
 | `documentation_asset` | documentation_master | Generated doc assets (diagrams, etc.). |
-| `documentation_verification` | documentation_master | Doc accuracy verification results. |
+| `documentation_review_checklist` | documentation_master | Doc accuracy verification results. |
 
 **Critic:** documentation_critic
 
@@ -300,7 +300,7 @@ All 112 tables with links to their detailed design documents.
 | `documentation_manifest` | [documentation](tables/documentation.md) |
 | `documentation_requirement_coverage` | [documentation](tables/documentation.md) |
 | `documentation_section` | [documentation](tables/documentation.md) |
-| `documentation_verification` | [documentation](tables/documentation.md) |
+| `documentation_review_checklist` | [documentation](tables/documentation.md) |
 | `entity_snapshot` | Core | JSON history of entity changes across revisions |
 | `implementation_api_endpoint` | [implementation](tables/implementation.md) |
 | `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |

@@ -535,7 +535,7 @@ function attachRelated(db, entityType, results) {
             .prepare("SELECT * FROM documentation_asset WHERE manifest_id = ?")
             .all(m.id),
           verification: db
-            .prepare("SELECT * FROM documentation_verification WHERE manifest_id = ?")
+            .prepare("SELECT * FROM documentation_review_checklist WHERE manifest_id = ?")
             .all(m.id),
         };
       });

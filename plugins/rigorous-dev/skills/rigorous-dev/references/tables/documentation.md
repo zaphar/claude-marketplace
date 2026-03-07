@@ -19,7 +19,7 @@ documentation_manifest                  ← one row per revision
 ├── documentation_requirement_coverage  ← per-requirement coverage record (1:N)
 │                                        paths → JSON array on coverage row
 ├── documentation_asset                 ← diagrams, screenshots, code samples (1:N)
-└── documentation_verification          ← named verification checks (1:N)
+└── documentation_review_checklist      ← named verification checks (1:N)
 ```
 
 ---
@@ -55,7 +55,7 @@ Every other documentation table references this row. The manifest ties documenta
 ### Relationships
 
 - **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
-- **Children:** `documentation_section`, `documentation_feature`, `documentation_requirement_coverage`, `documentation_asset`, `documentation_verification`
+- **Children:** `documentation_section`, `documentation_feature`, `documentation_requirement_coverage`, `documentation_asset`, `documentation_review_checklist`
 
 ### MCP Tool Access
 
@@ -303,7 +303,7 @@ WHERE manifest_id = ?
 
 ---
 
-## 7. `documentation_verification`
+## 7. `documentation_review_checklist`
 
 ### Purpose
 
@@ -332,7 +332,7 @@ The documentation_critic populates this table (or the documentation_master self-
 Find failed checks for a manifest:
 ```sql
 SELECT check_name
-FROM documentation_verification
+FROM documentation_review_checklist
 WHERE manifest_id = ?
   AND passed = 0;
 ```
@@ -343,7 +343,7 @@ SELECT
   SUM(passed) AS passed_count,
   SUM(1 - passed) AS failed_count,
   COUNT(*) AS total
-FROM documentation_verification
+FROM documentation_review_checklist
 WHERE manifest_id = ?;
 ```
 
@@ -389,7 +389,7 @@ GROUP BY df.id;
 
 ```sql
 SELECT check_name, passed
-FROM documentation_verification
+FROM documentation_review_checklist
 WHERE manifest_id = ?
 ORDER BY passed ASC, check_name ASC;
 ```
@@ -407,4 +407,4 @@ ORDER BY passed ASC, check_name ASC;
 | `documentation_requirement_coverage` | 1 per requirement assessed | — | documentation_master |
 | `documentation_requirement_coverage.paths` | JSON array per requirement | — | documentation_master |
 | `documentation_asset` | 1 per asset | `type` CHECK | documentation_master |
-| `documentation_verification` | 1 per check | — | documentation_master / documentation_critic |
+| `documentation_review_checklist` | 1 per check | — | documentation_master / documentation_critic |

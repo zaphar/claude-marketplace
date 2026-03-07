@@ -1467,9 +1467,9 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
     );
   }
 
-  // -- documentation_verification (1:N) --
+  // -- documentation_review_checklist (1:N) --
   const insertVerification = db.prepare(
-    "INSERT INTO documentation_verification (manifest_id, check_name, passed) VALUES (?, ?, ?)"
+    "INSERT INTO documentation_review_checklist (manifest_id, check_name, passed) VALUES (?, ?, ?)"
   );
   for (const v of data.verification ?? []) {
     insertVerification.run(manifest_id, v.check_name, v.passed ? 1 : 0);

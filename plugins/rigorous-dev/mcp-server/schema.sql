@@ -940,7 +940,7 @@ CREATE TABLE IF NOT EXISTS documentation_asset (
   alt_text TEXT
 );
 
-CREATE TABLE IF NOT EXISTS documentation_verification (
+CREATE TABLE IF NOT EXISTS documentation_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
   check_name TEXT NOT NULL,
@@ -1266,8 +1266,8 @@ CREATE INDEX IF NOT EXISTS idx_documentation_feature_manifest_id
   ON documentation_feature(manifest_id);
 CREATE INDEX IF NOT EXISTS idx_documentation_asset_manifest_id
   ON documentation_asset(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_documentation_verification_manifest_id
-  ON documentation_verification(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_documentation_review_checklist_manifest_id
+  ON documentation_review_checklist(manifest_id);
 
 -- Deployment manifest children
 CREATE INDEX IF NOT EXISTS idx_deployment_pipeline_manifest_id
