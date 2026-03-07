@@ -474,6 +474,17 @@ function insertTechnologyChoice(db, iteration_id, revision_id, data) {
 }
 
 function insertTraceabilityMapping(db, iteration_id, revision_id, data) {
+  // Soft-FK validation: verify the referenced screen exists
+  if (data.addressed_by_type === "screen") {
+    const exists = db
+      .prepare(`SELECT 1 FROM screen WHERE name = ? AND iteration_id = ?`)
+      .get(data.addressed_by, iteration_id);
+    if (!exists) {
+      throw new Error(
+        `Screen '${data.addressed_by}' not found in iteration ${iteration_id}`
+      );
+    }
+  }
   const now = new Date().toISOString();
   const result = db
     .prepare(
