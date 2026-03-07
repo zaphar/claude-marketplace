@@ -2088,7 +2088,7 @@ export const WRITE_TOOLS = [
         revision_id: { type: "integer" },
         data: { type: "object", description: "Entity-specific fields" },
       },
-      required: ["entity_type", "iteration_id", "data"],
+      required: ["entity_type", "iteration_id", "revision_id", "data"],
     },
   },
   {
