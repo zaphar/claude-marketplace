@@ -13,11 +13,27 @@ You are orchestrating changes to the rigorous-dev plugin located at `plugins/rig
 
 **Before any mode:** Read `plugins/rigorous-dev/README.md` to understand the plugin's purpose, workflows, agents, and design conventions. This context is essential for complexity assessment, change proposals, and audit interpretation.
 
+## Terminology
+
+These terms have precise meanings throughout this document. Each word has exactly one meaning.
+
+| Term | Definition | Example |
+|------|-----------|---------|
+| **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. | "Issue #5: missing UNIQUE constraint on data_entity" |
+| **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never used to mean the plugin's own domain phases. | "Phase 1 has 15 issues with no dependencies" |
+| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). | "WU-03: remove 9 CHECK constraints (Issues #12, #22, #23)" |
+| **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never used to mean an implementation unit — that is a work-unit. | "Step 2: Complexity Assessment" |
+| **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never used to mean the plugin's own orchestration workflows. | "Enter the workflow at Step B" |
+
+**When referring to plugin domain concepts**, always use the compound form:
+- **plugin-phase** — the rigorous-dev plugin's own phases (ux_design, implementation, etc.)
+- **plugin-workflow** — the rigorous-dev plugin's own orchestration workflows
+
 ## Mode Detection
 
 Determine which mode to use based on the user's request:
 
-- **Update Mode** — The user asks to make a specific change: add an agent, modify a workflow, fix a bug, update a command, change the schema, etc.
+- **Update Mode** — The user asks to make a specific change: add an agent, modify a plugin-workflow, fix a bug, update a command, change the schema, etc.
 - **Deep Audit Mode** — The user asks to audit, review, or analyze the plugin's current state without specifying a particular change. Keywords: "audit", "review the plugin", "check consistency", "analyze the plugin", "run a health check".
 - **Schema Audit Mode** — The user asks to audit, simplify, or analyze the database schema specifically. Keywords: "schema audit", "simplify schema", "consolidate tables", "reduce table count", "FK audit", "CHECK constraint audit", "data model audit", "table consolidation", "schema correctness".
 - **Q&A Audit Mode** — The user asks a question about the plugin, wants to understand something, or is exploring. Keywords: "what agents reference X?", "how does Y work?", "is Z up to date?", "show me inconsistencies".
@@ -38,12 +54,12 @@ Before assessing complexity or launching agents, make sure you fully understand 
 - Summarize your understanding back to the user in 1-2 sentences
 - Proceed to Step 2
 
-**If the request is ambiguous or underspecified** (e.g., "improve the implementation phase", "add better error handling"):
+**If the request is ambiguous or underspecified** (e.g., "improve the implementation plugin-phase", "add better error handling"):
 - Identify what's missing: scope, affected files, expected behavior, edge cases
 - Use ask_user to ask **one focused question at a time** until the request is actionable
 - Do not ask the user to re-explain what they already said — build on their input
 
-**If the request could have unintended consequences** (e.g., "remove the ux_design phase", "change the revision escalation threshold"):
+**If the request could have unintended consequences** (e.g., "remove the ux_design plugin-phase", "change the revision escalation threshold"):
 - Explain the downstream impact: what files would change, what cross-references would break, what behavior would shift
 - Confirm the user wants to proceed with full awareness of the impact
 
@@ -68,7 +84,7 @@ Analyze the change request and classify its complexity:
 |-----------|----------|----------------|
 | **Simple** | Single-file edit, typo fix, minor wording change, frontmatter update | `claude-sonnet-4.6` |
 | **Moderate** | Multi-file consistency updates, README updates, command changes | `claude-opus-4.6` |
-| **Complex** | New agent pair, workflow restructuring, schema changes, MCP server modifications, new phases, SKILL.md rewrite | `claude-opus-4.6` |
+| **Complex** | New agent pair, plugin-workflow restructuring, schema changes, MCP server modifications, new plugin-phases, SKILL.md rewrite | `claude-opus-4.6` |
 
 **Default to Opus.** Only use Sonnet for changes that are obviously simple — a single-file edit with no cross-reference impact. Any change that touches multiple files or could affect consistency gets Opus. Correctness always takes priority over cost; a subtle cross-reference bug that slips past a weaker model costs far more to fix than the token difference.
 
@@ -310,7 +326,7 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 | Command files | `ls plugins/rigorous-dev/commands/*.md` |
 | MCP tool names | `grep -o 'name: "[a-z_]*"' plugins/rigorous-dev/mcp-server/write-tools.js plugins/rigorous-dev/mcp-server/read-tools.js` |
 | Entity types | `grep -A 30 'const ENTITY_TABLE' plugins/rigorous-dev/mcp-server/read-tools.js` |
-| Workflow phases | `grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js` |
+| Plugin-phases | `grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js` |
 | DB tables | `grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql` |
 | Table docs | `ls plugins/rigorous-dev/skills/rigorous-dev/references/tables/` |
 | SKILL.md agent tables | `grep -A 20 'Producer Agent.*Critic Agent' plugins/rigorous-dev/skills/rigorous-dev/SKILL.md` |
@@ -331,12 +347,12 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 **Capabilities:**
 - Trace cross-references: "What agents reference tool X?" → grep agent files for the tool name
 - Check consistency: "Are there orphaned agents?" → diff `agents/` directory listing against SKILL.md tables
-- Impact analysis: "What would I need to change to add a new phase?" → trace all files that would need updates
-- Explain structure: "How does the implementation phase work?" → read SKILL.md section 8 and relevant agents
+- Impact analysis: "What would I need to change to add a new plugin-phase?" → trace all files that would need updates
+- Explain structure: "How does the implementation plugin-phase work?" → read SKILL.md section 8 and relevant agents
 - Spot-check: "Is the README agent listing up to date?" → compare agents/ filenames with README content
 - Data model questions: "What columns does the requirement table have?" → grep schema.sql for the CREATE TABLE
 - Tool behavior: "What does changelog_insert do?" → read the handler in write-tools.js
-- Entity relationships: "How do iterations relate to phases?" → read core.md and grep schema.sql for REFERENCES
+- Entity relationships: "How do iterations relate to plugin-phases?" → read core.md and grep schema.sql for REFERENCES
 
 ### Change Detection
 
@@ -392,7 +408,7 @@ This is the shared execution mechanism used by all modes when making changes. Ev
 
 **Decompose work into the smallest logical chunks possible.** Each producer call should handle one atomic, coherent change — the smallest unit of work that leaves the codebase in a consistent state. This keeps changes reviewable, revertable, and reduces agent failure risk.
 
-When executing work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple steps in the phasing plan — each step is then a small, focused unit.
+When executing work from the Findings Review & Implementation Workflow, break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple work-units in the phasing plan — each work-unit is then a small, focused unit.
 
 There are **two kinds of iteration** in this loop. They are orthogonal:
 
@@ -401,7 +417,7 @@ There are **two kinds of iteration** in this loop. They are orthogonal:
 This controls how many producer calls run before the critic reviews:
 
 - **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
-- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a step covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
+- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or a work-unit covers closely related issues. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
 
 Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
 
@@ -458,7 +474,7 @@ Use the ask_user tool to get the user's decision.
 
 ### Commit
 
-After the critic approves, **immediately commit the changes to git** before moving to the next work unit. Every approved change must be committed before any subsequent work begins.
+After the critic approves, **immediately commit the changes to git** before moving to the next work-unit. Every approved change must be committed before any subsequent work begins.
 
 **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change. Each commit should be independently understandable and revertable.
 
@@ -477,7 +493,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 This shared workflow is used by any mode that produces multiple findings (Schema Audit, Deep Audit, Q&A when 2+ changes surface). It covers the full lifecycle from findings presentation through implementation.
 
 **Document scope varies by mode:**
-- **Update Mode** — NO persisted report. The workflow applies when a change request is decomposed into multiple work items. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
+- **Update Mode** — NO persisted report. The workflow applies when a change request is decomposed into multiple work-units. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
 - **Schema Audit Mode** — always creates a persisted consolidated report in `.scratch/`. The findings index, decisions, and implementation phasing are all recorded in that document.
 - **Deep Audit Mode** — the critic already creates a persisted report in `.scratch/`. The orchestrator adds a findings index table to that existing report. Implementation phasing is only appended if the user approves 3+ fixes.
 - **Q&A Mode** — NO persisted document. Findings are presented inline in the conversation. The conversation itself is the record.
@@ -587,22 +603,22 @@ Key format rules:
   - **Phase 1**: No dependencies (can execute in any order)
   - **Phase 2**: Depends on Phase 1 items
   - **Phase N**: Depends on prior phases
-- Each phase has steps; each step covers 1+ issues
-- Each step shows original issue `#` numbers for traceability
+- Each phase has work-units; each work-unit covers 1+ issues
+- Each work-unit shows original issue `#` numbers for traceability
 - For persisted modes: append "Implementation Phasing" section to the report
 - For Q&A mode: present the phased plan in-conversation (only if 3+ approved changes warrant phasing; for 1-2 changes, skip directly to execution)
 - Present phased plan to user for confirmation before starting implementation
 
 ### Step E: Implementation Execution
 
-Execute steps in phase order using the **Producer-Critic Loop** (see standalone section above).
+Execute work-units in phase order using the **Producer-Critic Loop** (see standalone section above).
 
-- Each step decomposes into the smallest logical producer tasks possible
+- Each work-unit decomposes into the smallest logical producer tasks possible
 - Use 1:1 (single producer → critic) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small tasks are parts of one logical change
-- Track and report progress at the start of each work unit:
+- Track and report progress at the start of each work-unit:
   ```
   📊 Progress: X/Y issues done | Z in progress | W remaining
-  Current: Step N — [description] (Issues #A, #B)
+  Current: WU-N — [description] (Issues #A, #B)
   ```
 - For persisted modes: update the report as issues complete (mark steps done)
 - **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change. Each commit should be independently understandable and revertable.
@@ -629,8 +645,22 @@ All agents have deep embedded knowledge of the rigorous-dev plugin's file struct
 6. **Changes always go through the loop** — Even in Q&A mode, proposed changes enter the full producer-critic loop. No direct edits bypass critique.
 7. **Deep audits are standalone** — In Deep Audit and Schema Audit modes, auditors run against the current state, not a diff. No producer is involved unless the user asks to fix issues.
 8. **Audit findings go through the Findings Review & Implementation Workflow** — All audit modes (Schema Audit, Deep Audit) and Q&A (when 2+ changes surface) use the shared Findings Review & Implementation Workflow. Findings get numbered IDs, interactive review, dependency analysis, and phased implementation. The schema/deep auditor identifies issues; the producer-critic loop implements fixes.
-9. **Decompose into smallest logical chunks** — Each producer call should handle the smallest atomic change that leaves the codebase consistent. Decompose large issues into multiple steps at the planning stage. Use 1:1 (producer → critic → commit) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small chunks form one logical change. Never run producers in parallel — sequential only to avoid rate limiting.
+9. **Decompose into smallest logical chunks** — Each producer call should handle the smallest atomic change that leaves the codebase consistent. Decompose large issues into multiple work-units at the planning stage. Use 1:1 (producer → critic → commit) for standalone changes; use N:1 (N sequential producers → 1 critic) when multiple small chunks form one logical change. Never run producers in parallel — sequential only to avoid rate limiting.
 10. **Commit frequently and minimally** — Commit as fine-grained as possible. Prefer one commit per coherent sub-change (e.g., schema change, handler change, doc change as separate commits). Each commit should be independently understandable and revertable. At minimum, commit after each issue completes. Never batch multiple unrelated issues into one commit. Fine-grained commits make tracking changes and reverting much easier.
-11. **Report progress during multi-step implementation** — At the start of each work unit, report done/in-progress/remaining counts and the current step with issue numbers. This keeps the user oriented during long implementation runs.
+11. **Report progress during multi-work-unit implementation** — At the start of each work-unit, report done/in-progress/remaining counts and the current work-unit with issue numbers. This keeps the user oriented during long implementation runs.
 12. **All audit outputs use the Findings Index format** — Every audit mode must produce a Findings Index table with monotonically increasing `#` column, `Approved` column, and consistent column structure. The `#` is the stable identifier for referring to issues across the review and implementation lifecycle.
 13. **Schema documentation divergence is a blocking issue** — `schema.sql` is always the source of truth for the database. If `schemas-overview.md` or any file in `references/tables/` describes tables, columns, or constraints that don't match `schema.sql`, that is a **blocking issue** that must be surfaced to the user immediately. This applies in all modes — Schema Audit, Deep Audit, Q&A, and Update.
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Issue** | A single finding from an audit or investigation, identified by a monotonically increasing `#` in the Findings Index. The atomic unit of audit output. |
+| **Phase** | A dependency-ordered group in the implementation plan. Phase 1 has no dependencies; Phase 2 depends on Phase 1 completions. Never refers to the plugin's own domain phases — those are **plugin-phases**. |
+| **Work-unit** | The smallest executable chunk of implementation. A work-unit covers 1+ issues and goes through one Producer-Critic Loop cycle (producer → critic → commit). |
+| **Step** | A procedural instruction within a mode or the shared workflow. Modes use numbered steps (Step 1, 2, 3); the shared workflow uses lettered steps (Step A, B, C, D, E). Never refers to an implementation unit — that is a **work-unit**. |
+| **Workflow** | The Findings Review & Implementation Workflow defined in this document. Never refers to the plugin's own orchestration workflows — those are **plugin-workflows**. |
+| **Plugin-phase** | A phase in the rigorous-dev plugin's own domain (e.g., ux_design, implementation, qa_test). Distinct from **phase**. |
+| **Plugin-workflow** | An orchestration workflow in the rigorous-dev plugin itself. Distinct from **workflow**. |
