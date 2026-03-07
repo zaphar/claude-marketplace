@@ -259,7 +259,8 @@ CREATE TABLE IF NOT EXISTS data_entity (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   entity_name TEXT NOT NULL,
   description TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  UNIQUE(iteration_id, entity_name)
 );
 
 CREATE TABLE IF NOT EXISTS data_entity_attribute (
@@ -585,7 +586,8 @@ CREATE TABLE IF NOT EXISTS plan_critical_path (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id),
-  sequence_order INTEGER NOT NULL
+  sequence_order INTEGER NOT NULL,
+  UNIQUE(iteration_id, plan_phase_id)
 );
 
 -- Implementation plan: metadata
@@ -639,7 +641,8 @@ CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
   status TEXT NOT NULL CHECK(status IN ('implemented', 'partial', 'not_started', 'blocked', 'not_applicable')),
-  notes TEXT
+  notes TEXT,
+  UNIQUE(manifest_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_component_status (
@@ -647,7 +650,8 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id),
   component_id TEXT NOT NULL REFERENCES component(id),
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'not_started')),
-  notes TEXT
+  notes TEXT,
+  UNIQUE(manifest_id, component_id)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
@@ -787,7 +791,8 @@ CREATE TABLE IF NOT EXISTS test_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id),
   requirement_id TEXT NOT NULL REFERENCES requirement(id),
-  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'partial', 'not_tested'))
+  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'partial', 'not_tested')),
+  UNIQUE(report_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
@@ -963,7 +968,8 @@ CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   documented INTEGER DEFAULT 0,
   user_facing INTEGER DEFAULT 0,
   notes TEXT,
-  paths TEXT DEFAULT '[]'
+  paths TEXT DEFAULT '[]',
+  UNIQUE(manifest_id, requirement_id)
 );
 
 CREATE TABLE IF NOT EXISTS documentation_asset (

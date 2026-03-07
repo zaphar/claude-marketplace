@@ -912,14 +912,14 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   }
 
   const insertReqStatus = db.prepare(
-    "INSERT INTO implementation_requirement_status (manifest_id, requirement_id, status, notes) VALUES (?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO implementation_requirement_status (manifest_id, requirement_id, status, notes) VALUES (?, ?, ?, ?)"
   );
   for (const rs of data.requirement_status ?? []) {
     insertReqStatus.run(manifest_id, rs.requirement_id, rs.status, rs.notes ?? null);
   }
 
   const insertCompStatus = db.prepare(
-    "INSERT INTO implementation_component_status (manifest_id, component_id, status, notes) VALUES (?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO implementation_component_status (manifest_id, component_id, status, notes) VALUES (?, ?, ?, ?)"
   );
   for (const cs of data.component_status ?? []) {
     insertCompStatus.run(manifest_id, cs.component_id, cs.status, cs.notes ?? null);
@@ -1277,7 +1277,8 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   // -- test_requirement_coverage (1:N) --
   //    → test_acceptance_criterion_result (1:N per coverage)
   const insertCoverage = db.prepare(
-    "INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (?, ?, ?)"
+    `INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (?, ?, ?)
+     ON CONFLICT(report_id, requirement_id) DO UPDATE SET status = excluded.status`
   );
   const insertCriterionResult = db.prepare(
     "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes, test_ids) VALUES (?, ?, ?, ?, ?)"
@@ -1482,7 +1483,7 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
 
   // -- documentation_requirement_coverage (1:N) --
   const insertCoverage = db.prepare(
-    `INSERT INTO documentation_requirement_coverage
+    `INSERT OR REPLACE INTO documentation_requirement_coverage
        (manifest_id, requirement_id, documented, user_facing, notes, paths)
      VALUES (?, ?, ?, ?, ?, ?)`
   );
