@@ -1012,42 +1012,25 @@ function insertProjectContext(db, iteration_id, _revision_id, data) {
   return { entity_type: "project_context", id: lastId };
 }
 
-function insertSystemInput(db, iteration_id, _revision_id, data) {
+function insertSystemIo(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO system_input (iteration_id, name, description, source, format) VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO system_io (iteration_id, direction, name, description, source, destination, format) VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
       iteration_id,
+      entry.direction,
       entry.name,
       entry.description,
       entry.source ?? null,
-      entry.format ?? null
-    );
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "system_input", id: lastId };
-}
-
-function insertSystemOutput(db, iteration_id, _revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO system_output (iteration_id, name, description, destination, format) VALUES (?, ?, ?, ?, ?)`
-  );
-  for (const entry of entries) {
-    const result = insert.run(
-      iteration_id,
-      entry.name,
-      entry.description,
       entry.destination ?? null,
       entry.format ?? null
     );
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "system_output", id: lastId };
+  return { entity_type: "system_io", id: lastId };
 }
 
 function insertDeploymentRequirement(db, iteration_id, _revision_id, data) {
@@ -1876,8 +1859,7 @@ function changelogInsert(args) {
     plan_metadata: insertPlanMetadata,
     implementation_manifest: insertImplementationManifest,
     project_context: insertProjectContext,
-    system_input: insertSystemInput,
-    system_output: insertSystemOutput,
+    system_io: insertSystemIo,
     deployment_requirement: insertDeploymentRequirement,
     operational_requirement: insertOperationalRequirement,
     technology_constraint: insertTechnologyConstraint,
@@ -2070,8 +2052,7 @@ export const WRITE_TOOLS = [
             "intermediate_asset",
             "asset_deliverable",
             "project_context",
-            "system_input",
-            "system_output",
+            "system_io",
             "deployment_requirement",
             "operational_requirement",
             "technology_constraint",

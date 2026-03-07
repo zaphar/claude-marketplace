@@ -107,20 +107,15 @@ CREATE TABLE IF NOT EXISTS project_context (
 );
 
 -- System inputs and outputs (per iteration)
-CREATE TABLE IF NOT EXISTS system_input (
+-- direction discriminator: 'input' for data the system receives, 'output' for data it emits.
+-- source is typically set for inputs; destination for outputs (both nullable).
+CREATE TABLE IF NOT EXISTS system_io (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id),
+  direction TEXT NOT NULL CHECK(direction IN ('input', 'output')),
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source TEXT,
-  format TEXT
-);
-
-CREATE TABLE IF NOT EXISTS system_output (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id),
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
   destination TEXT,
   format TEXT
 );
