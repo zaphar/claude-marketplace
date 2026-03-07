@@ -831,14 +831,13 @@ function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
   return { entity_type: "plan_external_dependency", id: result.lastInsertRowid };
 }
 
-function insertPlanCriticalPath(db, iteration_id, _revision_id, data) {
+function insertPlanCriticalPath(db, _iteration_id, _revision_id, data) {
   const result = db
     .prepare(
-      `INSERT INTO plan_critical_path (iteration_id, plan_phase_id, sequence_order)
-       VALUES (?, ?, ?)`
+      `INSERT INTO plan_critical_path (plan_phase_id, sequence_order)
+       VALUES (?, ?)`
     )
     .run(
-      iteration_id,
       data.plan_phase_id,
       data.sequence_order
     );

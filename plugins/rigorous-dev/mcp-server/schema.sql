@@ -560,10 +560,9 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 -- Implementation plan: critical path
 CREATE TABLE IF NOT EXISTS plan_critical_path (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   sequence_order INTEGER NOT NULL,
-  UNIQUE(iteration_id, plan_phase_id)
+  UNIQUE(plan_phase_id)
 );
 
 -- Implementation plan: metadata
@@ -1148,7 +1147,7 @@ CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
 
 -- ------------------------------------------------------------
 -- iteration_id — on every entity table
--- Skipped: phase, project_context, data_entity, plan_critical_path
+-- Skipped: phase, project_context, data_entity
 --   (iteration_id is leftmost in their UNIQUE constraints)
 -- Skipped: traceability_mapping (covered by composite indexes below)
 -- ------------------------------------------------------------
