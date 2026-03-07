@@ -178,7 +178,7 @@ Identify schema-level correctness issues that could cause data integrity problem
 Look for:
 - **Missing NOT NULL constraints** on columns that should never be NULL based on how they're written
 - **Missing UNIQUE constraints** where duplicates would be logically invalid
-- **Missing ON DELETE CASCADE / ON UPDATE CASCADE** on FK constraints where orphaned child rows would be meaningless
+- **Wrong ON DELETE action** — NOT NULL child FKs should use `ON DELETE CASCADE` (orphaned child rows are meaningless); nullable/optional FKs should use `ON DELETE SET NULL` (preserve the owning row, clear the optional reference). A blanket CASCADE on nullable FKs risks destroying independently valuable rows when the optional reference is deleted.
 - **Inconsistent FK target types** — column is INTEGER but references a TEXT primary key, or vice versa
 - **Columns typed as TEXT that should be INTEGER** (booleans, counts) or vice versa
 - **Missing DEFAULT values** where the write handler always supplies the same fallback
