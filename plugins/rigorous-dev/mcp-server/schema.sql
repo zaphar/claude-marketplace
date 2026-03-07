@@ -1014,7 +1014,7 @@ CREATE TABLE IF NOT EXISTS deployment_env_var (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  source TEXT NOT NULL CHECK(source IN ('secret', 'config', 'hardcoded')),
+  source TEXT NOT NULL,
   description TEXT
 );
 
@@ -1098,7 +1098,7 @@ CREATE TABLE IF NOT EXISTS blocker (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
   description TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK(severity IN ('critical', 'high', 'medium')),
+  severity TEXT NOT NULL,
   raised_by TEXT NOT NULL,
   resolved_at TEXT,
   resolution_notes TEXT,

@@ -229,14 +229,14 @@ deployment_manifest
 
 **Purpose:** Inventories the environment variables used by the application in a specific environment, along with their source classification. Does NOT store values.
 
-**Context:** Tracking env-var sources (`secret`, `config`, `hardcoded`) is essential for security review. `secret` vars are expected to be sourced from a secrets manager (cross-referenced with `deployment_secret`). `config` vars come from CI/CD config files or infrastructure config maps. `hardcoded` vars are baked into the image or binary — flagged for review if they contain sensitive data.
+**Context:** Common env-var source values include `secret`, `config`, and `hardcoded`. `secret` vars are expected to be sourced from a secrets manager (cross-referenced with `deployment_secret`). `config` vars come from CI/CD config files or infrastructure config maps. `hardcoded` vars are baked into the image or binary — flagged for review if they contain sensitive data.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `environment_id` | INTEGER | NOT NULL, FK → `deployment_environment(id)` | — | Parent environment. |
 | `name` | TEXT | NOT NULL | — | Environment variable name (e.g., `DATABASE_URL`, `JWT_SECRET`, `FEATURE_FLAG_X`). |
-| `source` | TEXT | NOT NULL, CHECK IN (`secret`, `config`, `hardcoded`) | — | Where this variable's value comes from at runtime. |
+| `source` | TEXT | NOT NULL | — | Where this variable's value comes from at runtime (e.g. `secret`, `config`, `hardcoded`). |
 | `description` | TEXT | — | NULL | Human-readable explanation of what this variable controls. |
 
 **Relationships:**
@@ -532,7 +532,7 @@ All child tables are nested inside the `data` object. Every array property is op
       }],
       "vars": [{                           //   → deployment_env_var
         "name": "DATABASE_URL",
-        "source": "secret",               // "secret" | "config" | "hardcoded"
+        "source": "secret",               // e.g. "secret", "config", "hardcoded"
         "description": "PostgreSQL connection string"
       }]
     }],
