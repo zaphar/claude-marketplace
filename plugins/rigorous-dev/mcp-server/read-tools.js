@@ -669,15 +669,13 @@ function traceabilityQuery(args) {
           .all(...reqIds);
         chain.push({ type: "requirements_addressed", data: reqs });
 
-        // Find ADRs referencing these requirements (via decision text heuristic or traceability)
+        // Find ADRs in the same iteration as this component
         const adrs = db
           .prepare(
-            `SELECT DISTINCT a.* FROM adr a
-             JOIN traceability_mapping tm ON tm.iteration_id = a.iteration_id
-             WHERE tm.addressed_by = ? AND tm.addressed_by_type = 'component'` +
-              (iteration_id ? " AND a.iteration_id = ?" : "")
+            "SELECT * FROM adr WHERE iteration_id = ?" +
+              (iteration_id ? " AND iteration_id = ?" : "")
           )
-          .all(comp.id, ...iterParam);
+          .all(comp.iteration_id, ...iterParam);
         if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
       }
 
@@ -734,13 +732,40 @@ function traceabilityQuery(args) {
       if (acceptanceCriteria.length > 0)
         chain.push({ type: "acceptance_criteria", data: acceptanceCriteria });
 
-      // What addresses this requirement
-      const mappings = db
+      // What addresses this requirement — source from traceability_mapping for
+      // non-junction types, and from junction tables for component/flow types
+      const tmRows = db
         .prepare(
-          "SELECT * FROM traceability_mapping WHERE requirement_id = ?" +
+          "SELECT * FROM traceability_mapping WHERE requirement_id = ? AND addressed_by_type NOT IN ('component', 'flow')" +
             (iteration_id ? " AND iteration_id = ?" : "")
         )
         .all(req.id, ...iterParam);
+
+      const crRows = db
+        .prepare(
+          `SELECT NULL as id, c.iteration_id, c.revision_id, cr.requirement_id,
+                  cr.component_id as addressed_by, 'component' as addressed_by_type,
+                  NULL as notes, c.created_at
+           FROM component_requirement cr
+           JOIN component c ON c.id = cr.component_id
+           WHERE cr.requirement_id = ?` +
+            (iteration_id ? " AND c.iteration_id = ?" : "")
+        )
+        .all(req.id, ...iterParam);
+
+      const ufrRows = db
+        .prepare(
+          `SELECT NULL as id, uf.iteration_id, uf.revision_id, ufr.requirement_id,
+                  ufr.flow_id as addressed_by, 'flow' as addressed_by_type,
+                  NULL as notes, uf.created_at
+           FROM user_flow_requirement ufr
+           JOIN user_flow uf ON uf.id = ufr.flow_id
+           WHERE ufr.requirement_id = ?` +
+            (iteration_id ? " AND uf.iteration_id = ?" : "")
+        )
+        .all(req.id, ...iterParam);
+
+      const mappings = [...tmRows, ...crRows, ...ufrRows];
       if (mappings.length > 0) chain.push({ type: "addressed_by", data: mappings });
 
       // Which plan_phase includes it
@@ -787,7 +812,7 @@ function traceabilityQuery(args) {
       const consequences = JSON.parse(adr.consequences || '[]');
       if (consequences.length > 0) chain.push({ type: "consequences", data: consequences });
 
-      // Components affected (traceability_mapping pointing to components with iteration matching this ADR)
+      // Components in the same iteration as this ADR
       const components = db
         .prepare(
           "SELECT * FROM component WHERE iteration_id = ?" +
@@ -834,16 +859,43 @@ function traceabilityQuery(args) {
         }
       }
 
-      // Components via traceability
-      const mappings = reqIds.length > 0
-        ? db
-            .prepare(
-              `SELECT * FROM traceability_mapping WHERE requirement_id IN (${reqIds.map(() => "?").join(",")})` +
-                (iteration_id ? " AND iteration_id = ?" : "")
-            )
-            .all(...reqIds, ...iterParam)
-        : [];
-      if (mappings.length > 0) chain.push({ type: "traceability_mappings", data: mappings });
+      // Related traceability — combine traceability_mapping (non-junction types)
+      // with junction tables for component and flow types
+      if (reqIds.length > 0) {
+        const tmRows = db
+          .prepare(
+            `SELECT * FROM traceability_mapping WHERE requirement_id IN (${reqIds.map(() => "?").join(",")}) AND addressed_by_type NOT IN ('component', 'flow')` +
+              (iteration_id ? " AND iteration_id = ?" : "")
+          )
+          .all(...reqIds, ...iterParam);
+
+        const crRows = db
+          .prepare(
+            `SELECT NULL as id, c.iteration_id, c.revision_id, cr.requirement_id,
+                    cr.component_id as addressed_by, 'component' as addressed_by_type,
+                    NULL as notes, c.created_at
+             FROM component_requirement cr
+             JOIN component c ON c.id = cr.component_id
+             WHERE cr.requirement_id IN (${reqIds.map(() => "?").join(",")})` +
+              (iteration_id ? " AND c.iteration_id = ?" : "")
+          )
+          .all(...reqIds, ...iterParam);
+
+        const ufrRows = db
+          .prepare(
+            `SELECT NULL as id, uf.iteration_id, uf.revision_id, ufr.requirement_id,
+                    ufr.flow_id as addressed_by, 'flow' as addressed_by_type,
+                    NULL as notes, uf.created_at
+             FROM user_flow_requirement ufr
+             JOIN user_flow uf ON uf.id = ufr.flow_id
+             WHERE ufr.requirement_id IN (${reqIds.map(() => "?").join(",")})` +
+              (iteration_id ? " AND uf.iteration_id = ?" : "")
+          )
+          .all(...reqIds, ...iterParam);
+
+        const mappings = [...tmRows, ...crRows, ...ufrRows];
+        if (mappings.length > 0) chain.push({ type: "traceability_mappings", data: mappings });
+      }
       break;
     }
 
