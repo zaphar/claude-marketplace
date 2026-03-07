@@ -7,7 +7,7 @@ PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
   closed_at TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS revision (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   phase_id INTEGER NOT NULL REFERENCES phase(id),
   producer_agent TEXT NOT NULL,
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   status TEXT NOT NULL CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
   critic_agent TEXT,
   critic_feedback TEXT,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS persona (
   technical_level TEXT,
   frequency_of_use TEXT,
   goals TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS requirement (
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
   category TEXT NOT NULL,
   acceptance_criteria TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS adr (
   superseded_by TEXT REFERENCES adr(id),
   consequences TEXT DEFAULT '[]',
   research_sources TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS component (
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   type TEXT NOT NULL,
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS technology_choice (
   rationale TEXT,
   version TEXT,
   config TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Architecture overview
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS architecture_overview (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   description TEXT NOT NULL,
   principles TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS architecture_diagram (
@@ -254,7 +254,7 @@ CREATE TABLE IF NOT EXISTS data_entity (
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   name TEXT NOT NULL,
   description TEXT NOT NULL,
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
 );
 
@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS architecture_config (
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Dependencies manifest
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
   community_adoption TEXT,
   transitive_deps INTEGER,
   single_maintainer_risk INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Traceability: requirement → architecture element
@@ -315,7 +315,7 @@ CREATE TABLE IF NOT EXISTS traceability_mapping (
   addressed_by TEXT NOT NULL,
   addressed_by_type TEXT NOT NULL,
   notes TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- UX: user flows
@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
   entry_point TEXT,
   success_state TEXT,
   data_dependencies TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -372,7 +372,7 @@ CREATE TABLE IF NOT EXISTS screen (
   wireframe_path TEXT,
   mockup_path TEXT,
   components TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
 
@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS ux_config (
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- UX: information architecture
@@ -413,7 +413,7 @@ CREATE TABLE IF NOT EXISTS info_architecture (
   key TEXT NOT NULL,
   value TEXT NOT NULL,
   parent_id INTEGER REFERENCES info_architecture(id),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- UX: personas addressed mapping
@@ -442,7 +442,7 @@ CREATE TABLE IF NOT EXISTS ux_asset (
   type TEXT NOT NULL,
   screen_id TEXT REFERENCES screen(id),
   description TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Implementation plan phases
@@ -461,7 +461,7 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   entry_criteria TEXT DEFAULT '[]',
   exit_criteria TEXT DEFAULT '[]',
   checkpoint_focus TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_requirement (
@@ -535,7 +535,7 @@ CREATE TABLE IF NOT EXISTS plan_overview (
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
   assumptions TEXT DEFAULT '[]',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS plan_overview_risk (
@@ -579,7 +579,7 @@ CREATE TABLE IF NOT EXISTS plan_metadata (
   requirements_version TEXT NOT NULL,
   architecture_version TEXT NOT NULL,
   ux_specification_version TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Implementation manifests (per sub-phase)
@@ -598,7 +598,7 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   architecture_version TEXT,
   language TEXT,
   commit_sha TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS implementation_file (
@@ -694,7 +694,7 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
   phase_id INTEGER REFERENCES phase(id),
   commit_sha TEXT NOT NULL,
   message TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Intermediate assets shared between producer/critic
@@ -706,7 +706,7 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
   asset_type TEXT NOT NULL CHECK(asset_type IN ('work_item', 'plan', 'note', 'commit_ref', 'file_ref')),
   title TEXT NOT NULL,
   content TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Asset deliverables: files committed to VCS
@@ -721,7 +721,7 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
   file_path TEXT NOT NULL,
   description TEXT,
   commit_sha TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- ============================================================
@@ -747,7 +747,7 @@ CREATE TABLE IF NOT EXISTS test_report (
   requirements_version TEXT,
   architecture_version TEXT,
   commit_sha TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS test_requirement_coverage (
@@ -891,7 +891,7 @@ CREATE TABLE IF NOT EXISTS documentation_manifest (
   architecture_version TEXT,
   implementation_version TEXT,
   format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other')),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS documentation_section (
@@ -959,7 +959,7 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
   architecture_version TEXT,
   implementation_version TEXT,
   test_report_version TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS deployment_pipeline (
@@ -1129,7 +1129,7 @@ CREATE TABLE IF NOT EXISTS entity_snapshot (
   entity_id TEXT NOT NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id),
   snapshot JSON NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
