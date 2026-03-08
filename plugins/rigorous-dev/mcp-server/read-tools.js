@@ -135,7 +135,7 @@ const REQUIREMENT_FILTERS = {
   category: { nullable: false },
 };
 
-function queryRequirement(db, { iteration_id, ids, filters = {} }) {
+function queryRequirement(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM requirement";
   const clauses = [];
   const params = [];
@@ -145,7 +145,20 @@ function queryRequirement(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((r) => ({
+    ...r,
+    acceptance_criteria: (() => { try { return JSON.parse(r.acceptance_criteria || '[]'); } catch { return r.acceptance_criteria; } })(),
+    personas: db
+      .prepare("SELECT persona_id FROM requirement_persona WHERE requirement_id = ?")
+      .all(r.id)
+      .map((x) => x.persona_id),
+    depends_on: db
+      .prepare("SELECT depends_on FROM requirement_dependency WHERE requirement_id = ?")
+      .all(r.id)
+      .map((x) => x.depends_on),
+  }));
 }
 
 const ADR_FILTERS = {
@@ -158,7 +171,7 @@ const ADR_FILTERS = {
   superseded_by: { nullable: true },
 };
 
-function queryAdr(db, { iteration_id, ids, filters = {} }) {
+function queryAdr(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM adr";
   const clauses = [];
   const params = [];
@@ -168,7 +181,24 @@ function queryAdr(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((a) => {
+    const alternatives = db
+      .prepare("SELECT * FROM adr_alternative WHERE adr_id = ?")
+      .all(a.id)
+      .map((alt) => ({
+        ...alt,
+        pros: alt.pros ? (() => { try { return JSON.parse(alt.pros); } catch { return alt.pros; } })() : [],
+        cons: alt.cons ? (() => { try { return JSON.parse(alt.cons); } catch { return alt.cons; } })() : [],
+      }));
+    return {
+      ...a,
+      alternatives,
+      consequences: (() => { try { return JSON.parse(a.consequences || '[]'); } catch { return a.consequences; } })(),
+      research_sources: (() => { try { return JSON.parse(a.research_sources || '[]'); } catch { return a.research_sources; } })(),
+    };
+  });
 }
 
 const COMPONENT_FILTERS = {
@@ -177,7 +207,7 @@ const COMPONENT_FILTERS = {
   type: { nullable: false },
 };
 
-function queryComponent(db, { iteration_id, ids, filters = {} }) {
+function queryComponent(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM component";
   const clauses = [];
   const params = [];
@@ -187,7 +217,25 @@ function queryComponent(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((c) => ({
+    ...c,
+    interfaces: db
+      .prepare("SELECT * FROM component_interface WHERE component_id = ?")
+      .all(c.id),
+    dependencies: db
+      .prepare("SELECT depends_on FROM component_dependency WHERE component_id = ?")
+      .all(c.id)
+      .map((x) => x.depends_on),
+    requirements_addressed: db
+      .prepare("SELECT requirement_id FROM component_requirement WHERE component_id = ?")
+      .all(c.id)
+      .map((x) => x.requirement_id),
+    integration_test_boundaries: db
+      .prepare("SELECT * FROM integration_test_boundary WHERE component_id = ?")
+      .all(c.id),
+  }));
 }
 
 const USER_FLOW_FILTERS = {
@@ -198,7 +246,7 @@ const USER_FLOW_FILTERS = {
   success_state: { nullable: true },
 };
 
-function queryUserFlow(db, { iteration_id, ids, filters = {} }) {
+function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM user_flow";
   const clauses = [];
   const params = [];
@@ -208,7 +256,31 @@ function queryUserFlow(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((fl) => {
+    const steps = db
+      .prepare("SELECT * FROM user_flow_step WHERE flow_id = ? ORDER BY step_number")
+      .all(fl.id)
+      .map((s) => ({
+        ...s,
+        branches: db
+          .prepare("SELECT condition, next_step FROM user_flow_step_branch WHERE step_id = ?")
+          .all(s.id),
+      }));
+    return {
+      ...fl,
+      steps,
+      error_states: db
+        .prepare("SELECT condition, recovery FROM user_flow_error_state WHERE flow_id = ?")
+        .all(fl.id),
+      requirements: db
+        .prepare("SELECT requirement_id FROM user_flow_requirement WHERE flow_id = ?")
+        .all(fl.id)
+        .map((x) => x.requirement_id),
+      data_dependencies: (() => { try { return JSON.parse(fl.data_dependencies || '[]'); } catch { return fl.data_dependencies; } })(),
+    };
+  });
 }
 
 const SCREEN_FILTERS = {
@@ -218,7 +290,7 @@ const SCREEN_FILTERS = {
   mockup_path: { nullable: true },
 };
 
-function queryScreen(db, { iteration_id, ids, filters = {} }) {
+function queryScreen(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM screen";
   const clauses = [];
   const params = [];
@@ -228,7 +300,18 @@ function queryScreen(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((s) => ({
+    ...s,
+    components: (() => { try { return JSON.parse(s.components || '[]'); } catch { return s.components; } })(),
+    states: db
+      .prepare("SELECT name, description, wireframe_path FROM screen_state WHERE screen_id = ?")
+      .all(s.id),
+    responsive_variants: db
+      .prepare("SELECT breakpoint, wireframe_path, layout_changes FROM screen_responsive_variant WHERE screen_id = ?")
+      .all(s.id),
+  }));
 }
 
 const PLAN_PHASE_FILTERS = {
@@ -242,7 +325,7 @@ const PLAN_PHASE_FILTERS = {
   notes: { nullable: true },
 };
 
-function queryPlanPhase(db, { iteration_id, ids, filters = {} }) {
+function queryPlanPhase(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM plan_phase";
   const clauses = [];
   const params = [];
@@ -252,7 +335,52 @@ function queryPlanPhase(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((p) => ({
+    ...p,
+    requirements: db
+      .prepare("SELECT requirement_id, priority, notes FROM plan_phase_requirement WHERE plan_phase_id = ?")
+      .all(p.id)
+      .map((x) => x.priority || x.notes
+        ? { requirement_id: x.requirement_id, priority: x.priority, notes: x.notes }
+        : x.requirement_id),
+    components: db
+      .prepare("SELECT component_id FROM plan_phase_component WHERE plan_phase_id = ?")
+      .all(p.id)
+      .map((x) => x.component_id),
+    entry_criteria: (() => { try { return JSON.parse(p.entry_criteria || '[]'); } catch { return p.entry_criteria; } })(),
+    exit_criteria: (() => { try { return JSON.parse(p.exit_criteria || '[]'); } catch { return p.exit_criteria; } })(),
+    api_endpoints: db
+      .prepare("SELECT http_method, route, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
+      .all(p.id),
+    db_changes: db
+      .prepare("SELECT id, migration_name, description, tables FROM plan_phase_db_change WHERE plan_phase_id = ?")
+      .all(p.id)
+      .map((dc) => ({
+        ...dc,
+        tables: (() => { try { return JSON.parse(dc.tables || '[]'); } catch { return dc.tables; } })(),
+      })),
+    risks: db
+      .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
+      .all(p.id),
+    flows: db
+      .prepare("SELECT flow_id FROM plan_phase_flow WHERE plan_phase_id = ?")
+      .all(p.id)
+      .map((x) => x.flow_id),
+    screens: db
+      .prepare("SELECT screen_id FROM plan_phase_screen WHERE plan_phase_id = ?")
+      .all(p.id)
+      .map((x) => x.screen_id),
+    dependencies: db
+      .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'dependency'")
+      .all(p.id),
+    parallel_with: db
+      .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'parallel'")
+      .all(p.id)
+      .map((x) => x.can_parallel_with_id),
+    checkpoint_focus: (() => { try { return JSON.parse(p.checkpoint_focus || '[]'); } catch { return p.checkpoint_focus; } })(),
+  }));
 }
 
 const PLAN_OVERVIEW_FILTERS = {
@@ -1035,10 +1163,11 @@ function changelogQuery(args) {
     let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
 
     // Types whose query functions handle their own enrichment via include_related.
-    // Remaining complex types still use attachRelated until Phase 2b/2c.
+    // Remaining complex types still use attachRelated until Phase 2c.
     const SELF_ENRICHING = new Set([
       "persona", "plan_overview", "architecture_overview",
       "persona_addressed", "info_architecture", "data_entity",
+      "requirement", "adr", "component", "screen", "user_flow", "plan_phase",
     ]);
 
     if (include_related && results.length > 0 && !SELF_ENRICHING.has(entity_type)) {
@@ -1053,148 +1182,12 @@ function changelogQuery(args) {
 
 // ---------------------------------------------------------------------------
 // attachRelated: enrich results with child table rows
-// (Phase 2a absorbed persona, plan_overview, architecture_overview,
-//  persona_addressed, info_architecture, data_entity into query functions.
-//  Remaining 10 complex types handled here until Phase 2b/2c.)
+// (Phases 2a+2b absorbed simple and medium-complexity types into query functions.
+//  Remaining 4 deep-enrichment types handled here until Phase 2c.)
 // ---------------------------------------------------------------------------
 
 function attachRelated(db, entityType, results) {
   switch (entityType) {
-    case "requirement":
-      return results.map((r) => ({
-        ...r,
-        acceptance_criteria: JSON.parse(r.acceptance_criteria || '[]'),
-        personas: db
-          .prepare("SELECT persona_id FROM requirement_persona WHERE requirement_id = ?")
-          .all(r.id)
-          .map((x) => x.persona_id),
-        depends_on: db
-          .prepare("SELECT depends_on FROM requirement_dependency WHERE requirement_id = ?")
-          .all(r.id)
-          .map((x) => x.depends_on),
-      }));
-
-    case "component":
-      return results.map((c) => ({
-        ...c,
-        interfaces: db
-          .prepare("SELECT * FROM component_interface WHERE component_id = ?")
-          .all(c.id),
-        dependencies: db
-          .prepare("SELECT depends_on FROM component_dependency WHERE component_id = ?")
-          .all(c.id)
-          .map((x) => x.depends_on),
-        requirements_addressed: db
-          .prepare("SELECT requirement_id FROM component_requirement WHERE component_id = ?")
-          .all(c.id)
-          .map((x) => x.requirement_id),
-        integration_test_boundaries: db
-          .prepare("SELECT * FROM integration_test_boundary WHERE component_id = ?")
-          .all(c.id),
-      }));
-
-    case "adr": {
-      return results.map((a) => {
-        const alternatives = db
-          .prepare("SELECT * FROM adr_alternative WHERE adr_id = ?")
-          .all(a.id)
-          .map((alt) => ({
-            ...alt,
-            pros: alt.pros ? JSON.parse(alt.pros) : [],
-            cons: alt.cons ? JSON.parse(alt.cons) : [],
-          }));
-        return {
-          ...a,
-          alternatives,
-          consequences: JSON.parse(a.consequences || '[]'),
-          research_sources: JSON.parse(a.research_sources || '[]'),
-        };
-      });
-    }
-
-    case "user_flow":
-      return results.map((f) => {
-        const steps = db
-          .prepare("SELECT * FROM user_flow_step WHERE flow_id = ? ORDER BY step_number")
-          .all(f.id)
-          .map((s) => ({
-            ...s,
-            branches: db
-              .prepare("SELECT condition, next_step FROM user_flow_step_branch WHERE step_id = ?")
-              .all(s.id),
-          }));
-        return {
-          ...f,
-          steps,
-          error_states: db
-            .prepare("SELECT condition, recovery FROM user_flow_error_state WHERE flow_id = ?")
-            .all(f.id),
-          requirements: db
-            .prepare("SELECT requirement_id FROM user_flow_requirement WHERE flow_id = ?")
-            .all(f.id)
-            .map((x) => x.requirement_id),
-          data_dependencies: JSON.parse(f.data_dependencies || '[]'),
-        };
-      });
-
-    case "screen":
-      return results.map((s) => ({
-        ...s,
-        components: JSON.parse(s.components || '[]'),
-        states: db
-          .prepare("SELECT name, description, wireframe_path FROM screen_state WHERE screen_id = ?")
-          .all(s.id),
-        responsive_variants: db
-          .prepare("SELECT breakpoint, wireframe_path, layout_changes FROM screen_responsive_variant WHERE screen_id = ?")
-          .all(s.id),
-      }));
-
-    case "plan_phase":
-      return results.map((p) => ({
-        ...p,
-        requirements: db
-          .prepare("SELECT requirement_id, priority, notes FROM plan_phase_requirement WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.priority || x.notes
-            ? { requirement_id: x.requirement_id, priority: x.priority, notes: x.notes }
-            : x.requirement_id),
-        components: db
-          .prepare("SELECT component_id FROM plan_phase_component WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.component_id),
-        entry_criteria: JSON.parse(p.entry_criteria || '[]'),
-        exit_criteria: JSON.parse(p.exit_criteria || '[]'),
-        api_endpoints: db
-          .prepare("SELECT http_method, route, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
-          .all(p.id),
-        db_changes: db
-          .prepare("SELECT id, migration_name, description, tables FROM plan_phase_db_change WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((dc) => ({
-            ...dc,
-            tables: JSON.parse(dc.tables || '[]'),
-          })),
-        risks: db
-          .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
-          .all(p.id),
-        flows: db
-          .prepare("SELECT flow_id FROM plan_phase_flow WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.flow_id),
-        screens: db
-          .prepare("SELECT screen_id FROM plan_phase_screen WHERE plan_phase_id = ?")
-          .all(p.id)
-          .map((x) => x.screen_id),
-        dependencies: db
-          .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'dependency'")
-          .all(p.id),
-        parallel_with: db
-          .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'parallel'")
-          .all(p.id)
-          .map((x) => x.can_parallel_with_id),
-        checkpoint_focus: JSON.parse(p.checkpoint_focus || '[]'),
-      }));
-
     case "implementation_manifest":
       return results.map((m) => {
         const files = db

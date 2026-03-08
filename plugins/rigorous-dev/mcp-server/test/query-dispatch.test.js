@@ -700,3 +700,493 @@ describe("queryDataEntity enrichment", () => {
     assert.deepStrictEqual(r.results[0].relationships, []);
   });
 });
+
+// ───────────────────────────────────────────────────────────────
+// Phase 2b: Medium-complexity enrichment tests
+// ───────────────────────────────────────────────────────────────
+
+describe("queryComponent enrichment", () => {
+  it("attaches interfaces, dependencies, requirements_addressed, and integration_test_boundaries when include_related is true", () => {
+    // Create prerequisite requirements
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-C1", description: "Auth", priority: "must-have", category: "security" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-C2", description: "Logging", priority: "should-have", category: "ops" },
+    });
+    // Create two components (one depends on the other)
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "COMP-DEP", name: "Logger", purpose: "Logging", type: "library" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        id: "COMP-1",
+        name: "AuthService",
+        purpose: "Handle authentication",
+        type: "service",
+        interfaces: [
+          { name: "login", type: "API", description: "Login endpoint" },
+          { name: "logout", type: "API" },
+        ],
+        dependencies: ["COMP-DEP"],
+        requirements_addressed: ["REQ-C1", "REQ-C2"],
+        integration_test_boundaries: [
+          { target_component_id: "COMP-DEP", boundary_type: "API", correct_behavior: "Returns log ID" },
+        ],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "component",
+      ids: ["COMP-1"],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const comp = r.results[0];
+
+    // Interfaces — SELECT * returns all columns
+    assert.strictEqual(comp.interfaces.length, 2);
+    const loginIface = comp.interfaces.find((i) => i.name === "login");
+    assert.strictEqual(loginIface.type, "API");
+    assert.strictEqual(loginIface.description, "Login endpoint");
+    assert.ok(loginIface.id); // has autoincrement id
+    assert.strictEqual(loginIface.component_id, "COMP-1");
+    const logoutIface = comp.interfaces.find((i) => i.name === "logout");
+    assert.strictEqual(logoutIface.description, null);
+
+    // Dependencies — mapped to depends_on string array
+    assert.deepStrictEqual(comp.dependencies, ["COMP-DEP"]);
+
+    // Requirements addressed — mapped to requirement_id string array
+    assert.deepStrictEqual(comp.requirements_addressed.sort(), ["REQ-C1", "REQ-C2"]);
+
+    // Integration test boundaries — SELECT * returns all columns
+    assert.strictEqual(comp.integration_test_boundaries.length, 1);
+    assert.strictEqual(comp.integration_test_boundaries[0].target_component_id, "COMP-DEP");
+    assert.strictEqual(comp.integration_test_boundaries[0].boundary_type, "API");
+    assert.strictEqual(comp.integration_test_boundaries[0].correct_behavior, "Returns log ID");
+  });
+
+  it("does not attach child data when include_related is false", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        id: "COMP-NOENRICH",
+        name: "Simple",
+        purpose: "Test",
+        type: "library",
+        interfaces: [{ name: "foo", type: "API" }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "component",
+      ids: ["COMP-NOENRICH"],
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].interfaces, undefined);
+    assert.strictEqual(r.results[0].dependencies, undefined);
+    assert.strictEqual(r.results[0].requirements_addressed, undefined);
+    assert.strictEqual(r.results[0].integration_test_boundaries, undefined);
+  });
+
+  it("returns empty arrays for component with no children", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "COMP-EMPTY", name: "Bare", purpose: "Nothing", type: "module" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "component",
+      ids: ["COMP-EMPTY"],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.deepStrictEqual(r.results[0].interfaces, []);
+    assert.deepStrictEqual(r.results[0].dependencies, []);
+    assert.deepStrictEqual(r.results[0].requirements_addressed, []);
+    assert.deepStrictEqual(r.results[0].integration_test_boundaries, []);
+  });
+});
+
+describe("queryUserFlow enrichment", () => {
+  it("attaches steps with branches, error_states, requirements, and parsed data_dependencies when include_related is true", () => {
+    // Prerequisites
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UF1", description: "Login req", priority: "must-have", category: "auth" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UF2", description: "MFA req", priority: "should-have", category: "auth" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        id: "UF-LOGIN",
+        name: "Login Flow",
+        goal: "Authenticate user",
+        entry_point: "Login page",
+        success_state: "Dashboard",
+        data_dependencies: ["user_session", "auth_token"],
+        steps: [
+          { step_number: 1, action: "Enter credentials", surface: "LoginScreen" },
+          {
+            step_number: 2, action: "Submit form", surface: "LoginScreen",
+            is_decision_point: true,
+            branches: [
+              { condition: "Valid credentials", next_step: 3 },
+              { condition: "Invalid credentials", next_step: 1 },
+            ],
+          },
+          { step_number: 3, action: "Redirect to dashboard", surface: "Dashboard" },
+        ],
+        error_states: [
+          { condition: "Network timeout", recovery: "Retry with backoff" },
+          { condition: "Account locked", recovery: "Show unlock instructions" },
+        ],
+        requirements_addressed: ["REQ-UF1", "REQ-UF2"],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "user_flow",
+      ids: ["UF-LOGIN"],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const flow = r.results[0];
+
+    // data_dependencies — parsed JSON array
+    assert.deepStrictEqual(flow.data_dependencies, ["user_session", "auth_token"]);
+
+    // steps — ordered by step_number, SELECT * columns
+    assert.strictEqual(flow.steps.length, 3);
+    assert.strictEqual(flow.steps[0].step_number, 1);
+    assert.strictEqual(flow.steps[0].action, "Enter credentials");
+    assert.ok(flow.steps[0].id); // autoincrement id present
+    assert.strictEqual(flow.steps[0].flow_id, "UF-LOGIN");
+
+    // branches on step 2
+    assert.strictEqual(flow.steps[1].branches.length, 2);
+    assert.strictEqual(flow.steps[1].branches[0].condition, "Valid credentials");
+    assert.strictEqual(flow.steps[1].branches[0].next_step, 3);
+    assert.strictEqual(flow.steps[1].branches[1].condition, "Invalid credentials");
+    assert.strictEqual(flow.steps[1].branches[1].next_step, 1);
+    // step 1 and 3 have no branches
+    assert.deepStrictEqual(flow.steps[0].branches, []);
+    assert.deepStrictEqual(flow.steps[2].branches, []);
+
+    // error_states — condition and recovery only
+    assert.strictEqual(flow.error_states.length, 2);
+    assert.strictEqual(flow.error_states[0].condition, "Network timeout");
+    assert.strictEqual(flow.error_states[0].recovery, "Retry with backoff");
+    // error_states should NOT have id or flow_id (only condition, recovery selected)
+    assert.strictEqual(flow.error_states[0].id, undefined);
+
+    // requirements — mapped to requirement_id string array
+    assert.deepStrictEqual(flow.requirements.sort(), ["REQ-UF1", "REQ-UF2"]);
+  });
+
+  it("does not attach child data when include_related is false", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        id: "UF-NOENRICH",
+        name: "Simple Flow",
+        goal: "Test",
+        data_dependencies: ["some_dep"],
+        steps: [{ step_number: 1, action: "Do thing" }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "user_flow",
+      ids: ["UF-NOENRICH"],
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].steps, undefined);
+    assert.strictEqual(r.results[0].error_states, undefined);
+    assert.strictEqual(r.results[0].requirements, undefined);
+    // data_dependencies should remain raw JSON string
+    assert.strictEqual(typeof r.results[0].data_dependencies, "string");
+  });
+
+  it("returns empty arrays for flow with no children", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "UF-EMPTY", name: "Empty", goal: "Nothing" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "user_flow",
+      ids: ["UF-EMPTY"],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.deepStrictEqual(r.results[0].steps, []);
+    assert.deepStrictEqual(r.results[0].error_states, []);
+    assert.deepStrictEqual(r.results[0].requirements, []);
+    assert.deepStrictEqual(r.results[0].data_dependencies, []);
+  });
+});
+
+describe("queryPlanPhase enrichment", () => {
+  it("attaches all child data and parses JSON when include_related is true", () => {
+    // Prerequisites: requirements, components, user flows, screens
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-PP1", description: "Core feature", priority: "must-have", category: "feature" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-PP2", description: "Nice extra", priority: "nice-to-have", category: "feature" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "COMP-PP1", name: "API", purpose: "REST API", type: "service" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "UF-PP1", name: "Setup", goal: "Init system" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "screen",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "SCR-PP1", name: "SetupScreen", purpose: "Configuration" },
+    });
+
+    // Create phase 1 first (needed as dependency target)
+    const phase1Result = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        phase_number: 1,
+        name: "Foundation",
+        type: "implementation",
+        goal: "Set up foundation",
+      },
+    });
+    const phase1Id = phase1Result.id;
+
+    // Create phase 2 (depends on phase 1, parallel with none yet)
+    const phase2Result = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        phase_number: 2,
+        name: "Core Features",
+        type: "implementation",
+        goal: "Build core features",
+        complexity: "L",
+        review_checkpoint: true,
+        notes: "Critical phase",
+        entry_criteria: ["Foundation complete", "Tests pass"],
+        exit_criteria: ["All REQs met", "Coverage > 80%"],
+        checkpoint_focus: ["API stability", "Performance"],
+        requirements: [
+          "REQ-PP1",
+          { requirement_id: "REQ-PP2", priority: "high", notes: "Stretch goal" },
+        ],
+        components: ["COMP-PP1"],
+        flows: ["UF-PP1"],
+        screens: ["SCR-PP1"],
+        api_endpoints: [
+          { http_method: "GET", route: "/api/users", description: "List users" },
+          { http_method: "POST", route: "/api/users" },
+        ],
+        db_changes: [
+          { migration_name: "001_create_users", description: "Initial schema", tables: ["users", "sessions"] },
+        ],
+        risks: [
+          { risk: "API breaking changes", mitigation: "Versioned endpoints" },
+          { risk: "Performance regression" },
+        ],
+        dependencies: [{ depends_on_phase_id: phase1Id, reason: "Foundation required" }],
+      },
+    });
+    const phase2Id = phase2Result.id;
+
+    // Create phase 3 that can be parallel with phase 2
+    const phase3Result = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        phase_number: 3,
+        name: "Docs",
+        type: "documentation",
+        goal: "Write docs",
+        parallel_with: [phase2Id],
+      },
+    });
+    const phase3Id = phase3Result.id;
+
+    // Query phase 2 with full enrichment
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_phase",
+      ids: [phase2Id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const phase = r.results[0];
+
+    // JSON parsed fields
+    assert.deepStrictEqual(phase.entry_criteria, ["Foundation complete", "Tests pass"]);
+    assert.deepStrictEqual(phase.exit_criteria, ["All REQs met", "Coverage > 80%"]);
+    assert.deepStrictEqual(phase.checkpoint_focus, ["API stability", "Performance"]);
+
+    // Requirements — conditional shaping: string or object
+    assert.strictEqual(phase.requirements.length, 2);
+    // REQ-PP1 inserted as plain string → just requirement_id
+    assert.strictEqual(phase.requirements.find((x) => x === "REQ-PP1" || (x.requirement_id === "REQ-PP1")), "REQ-PP1");
+    // REQ-PP2 inserted with priority/notes → object
+    const reqObj = phase.requirements.find((x) => typeof x === "object" && x.requirement_id === "REQ-PP2");
+    assert.ok(reqObj);
+    assert.strictEqual(reqObj.priority, "high");
+    assert.strictEqual(reqObj.notes, "Stretch goal");
+
+    // Components — mapped to component_id array
+    assert.deepStrictEqual(phase.components, ["COMP-PP1"]);
+
+    // Flows — mapped to flow_id array
+    assert.deepStrictEqual(phase.flows, ["UF-PP1"]);
+
+    // Screens — mapped to screen_id array
+    assert.deepStrictEqual(phase.screens, ["SCR-PP1"]);
+
+    // API endpoints
+    assert.strictEqual(phase.api_endpoints.length, 2);
+    const getEndpoint = phase.api_endpoints.find((e) => e.http_method === "GET");
+    assert.strictEqual(getEndpoint.route, "/api/users");
+    assert.strictEqual(getEndpoint.description, "List users");
+    const postEndpoint = phase.api_endpoints.find((e) => e.http_method === "POST");
+    assert.strictEqual(postEndpoint.description, null);
+
+    // DB changes with parsed tables JSON
+    assert.strictEqual(phase.db_changes.length, 1);
+    assert.strictEqual(phase.db_changes[0].migration_name, "001_create_users");
+    assert.deepStrictEqual(phase.db_changes[0].tables, ["users", "sessions"]);
+    assert.ok(phase.db_changes[0].id); // has autoincrement id
+
+    // Risks
+    assert.strictEqual(phase.risks.length, 2);
+    assert.strictEqual(phase.risks[0].risk, "API breaking changes");
+    assert.strictEqual(phase.risks[0].mitigation, "Versioned endpoints");
+    assert.strictEqual(phase.risks[1].mitigation, null);
+
+    // Dependencies — aliased columns
+    assert.strictEqual(phase.dependencies.length, 1);
+    assert.strictEqual(phase.dependencies[0].depends_on_phase_id, phase1Id);
+    assert.strictEqual(phase.dependencies[0].reason, "Foundation required");
+
+    // Phase 3 query: parallel_with
+    const r3 = handleReadTool("changelog_query", {
+      entity_type: "plan_phase",
+      ids: [phase3Id],
+      include_related: true,
+    });
+    assert.strictEqual(r3.count, 1);
+    assert.deepStrictEqual(r3.results[0].parallel_with, [phase2Id]);
+  });
+
+  it("does not attach child data when include_related is false", () => {
+    const result = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        phase_number: 10,
+        name: "NoEnrich",
+        type: "implementation",
+        goal: "Test no enrichment",
+        entry_criteria: ["foo"],
+        risks: [{ risk: "bar", mitigation: "baz" }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_phase",
+      ids: [result.id],
+    });
+    assert.strictEqual(r.count, 1);
+    const phase = r.results[0];
+    // JSON fields should be raw strings
+    assert.strictEqual(typeof phase.entry_criteria, "string");
+    assert.strictEqual(typeof phase.exit_criteria, "string");
+    assert.strictEqual(typeof phase.checkpoint_focus, "string");
+    // Child data should not be present
+    assert.strictEqual(phase.requirements, undefined);
+    assert.strictEqual(phase.components, undefined);
+    assert.strictEqual(phase.api_endpoints, undefined);
+    assert.strictEqual(phase.db_changes, undefined);
+    assert.strictEqual(phase.risks, undefined);
+    assert.strictEqual(phase.flows, undefined);
+    assert.strictEqual(phase.screens, undefined);
+    assert.strictEqual(phase.dependencies, undefined);
+    assert.strictEqual(phase.parallel_with, undefined);
+  });
+
+  it("returns empty arrays for plan_phase with no children", () => {
+    const result = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        phase_number: 99,
+        name: "Empty Phase",
+        type: "implementation",
+        goal: "Nothing",
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_phase",
+      ids: [result.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const phase = r.results[0];
+    assert.deepStrictEqual(phase.requirements, []);
+    assert.deepStrictEqual(phase.components, []);
+    assert.deepStrictEqual(phase.api_endpoints, []);
+    assert.deepStrictEqual(phase.db_changes, []);
+    assert.deepStrictEqual(phase.risks, []);
+    assert.deepStrictEqual(phase.flows, []);
+    assert.deepStrictEqual(phase.screens, []);
+    assert.deepStrictEqual(phase.dependencies, []);
+    assert.deepStrictEqual(phase.parallel_with, []);
+    assert.deepStrictEqual(phase.entry_criteria, []);
+    assert.deepStrictEqual(phase.exit_criteria, []);
+    assert.deepStrictEqual(phase.checkpoint_focus, []);
+  });
+});
