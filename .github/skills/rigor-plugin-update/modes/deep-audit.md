@@ -19,16 +19,7 @@ sqlite3 .scratch/rigor-plugin-update/audit.db "INSERT INTO audit_run (id, mode) 
 
 ## Step 2: Launch All Critics in Parallel
 
-Launch **6 agents simultaneously** (all `claude-opus-4.6`, all `mode: "background"`):
-
-| # | Agent Type | Focus |
-|---|-----------|-------|
-| 1 | `rigor_consistency_critic` | Full plugin-level audit — cross-reference consistency, structural integrity, ergonomics |
-| 2 | `rigor_schema_critic` (Group A) | Categories 1–4: Table Consolidation, Child Collapse, FK Enforcement, CHECK Constraints |
-| 3 | `rigor_schema_critic` (Group B) | Categories 5, 12–14: Schema Correctness, Nullable Alignment, Transaction Safety, Circular FKs |
-| 4 | `rigor_schema_critic` (Group C) | Categories 6–9: Redundant Tables, Orphaned Tables, Naming Consistency, Column Redundancy |
-| 5 | `rigor_schema_critic` (Group D) | Categories 10–11, 15–20: Indexes, Timestamps, Polymorphic Refs, Scope Leakage, Deletion Patterns, Type Precision, Doc Drift, Unused Enums |
-| 6 | `rigor_mcp_server_critic` | Full 7-dimension MCP audit — Correctness, Data Integrity, Error Handling, Protocol Compliance, Patterns, Test Coverage, INTERNALS.md Accuracy |
+Launch **6 agents simultaneously** (all `claude-opus-4.6`, all `mode: "background"`).
 
 Each critic receives read-only access to `audit.db` so it can query prior decisions and skip already-decided findings:
 
@@ -41,7 +32,59 @@ sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
    ORDER BY d.decided_at DESC;"
 ```
 
-Critics write their raw markdown reports to `.scratch/<critic-name>/<date>/`.
+**Agent prompts:**
+
+```
+Agent 1 — Consistency Critic prompt:
+Perform a full plugin-level audit of the rigorous-dev plugin. Review cross-reference consistency,
+structural integrity, and developer ergonomics per your agent instructions.
+Persist your report to .scratch/rigor-consistency-critic/<date>/<HHMMSS>_consistency-audit.md
+where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MANDATORY.
+
+Agent 2 — Schema Critic Group A prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 1: Table Consolidation
+- Category 2: Child Table Collapse
+- Category 3: Foreign Key Enforcement
+- Category 4: CHECK Constraint Audit
+Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
+
+Agent 3 — Schema Critic Group B prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 5: Schema Correctness
+- Category 12: Nullable vs Required Alignment
+- Category 13: Transaction Safety
+- Category 14: Circular FK Dependencies
+Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
+
+Agent 4 — Schema Critic Group C prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 6: Redundant Tables
+- Category 7: Orphaned Tables
+- Category 8: Naming Consistency
+- Category 9: Column Redundancy
+Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
+
+Agent 5 — Schema Critic Group D prompt:
+Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+- Category 10: Index Coverage
+- Category 11: Timestamp Consistency
+- Category 15: Polymorphic References
+- Category 16: Scope Leakage
+- Category 17: Soft Delete vs Hard Delete
+- Category 18: Data Type Precision
+- Category 19: Documentation-Schema Drift
+- Category 20: Unused Enum Values
+Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performance-hygiene.md
+
+Agent 6 — MCP Server Critic prompt:
+Perform a full 7-dimension MCP server audit of the rigorous-dev plugin: Correctness, Data Integrity,
+Error Handling, Protocol Compliance, Patterns, Test Coverage, INTERNALS.md Accuracy.
+Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
+where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MANDATORY.
+```
+
+**⚠️ The `<HHMMSS>_` filename prefix is mandatory for ALL reports.** It enables multiple runs per day without overwriting. Reports without the timestamp prefix are malformed.
 
 ## Step 3: Wait and Load into SQLite
 

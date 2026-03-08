@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS decision (
   action TEXT,                       -- planned remediation for approved findings (e.g. 'Add UNIQUE constraint')
   reason TEXT,                       -- rationale for rejected/skipped (e.g. 'Loses FK enforcement for marginal gain')
   supersedes INTEGER REFERENCES decision(id), -- prior decision this one supersedes
-  decided_at TEXT NOT NULL DEFAULT (datetime('now'))
+  decided_at TEXT NOT NULL DEFAULT (datetime('now')),
+  implemented_at TEXT                -- set when an approved decision's action has been carried out
 );
 
 CREATE INDEX IF NOT EXISTS idx_finding_run ON finding(audit_run_id);

@@ -61,7 +61,7 @@ Example translations:
 |---|---|
 | "What did we reject last audit?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary, d.reason FROM decision d JOIN finding f ON d.finding_id = f.id WHERE d.decision = 'rejected' ORDER BY d.decided_at DESC;"` |
 | "Show all critical findings" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary FROM finding f WHERE f.severity = 'critical' ORDER BY f.created_at DESC;"` |
-| "What's approved but not implemented?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary, d.action FROM finding f JOIN decision d ON d.finding_id = f.id JOIN audit_run ar ON f.audit_run_id = ar.id WHERE d.decision = 'approved' AND ar.status != 'completed' ORDER BY f.severity;"` |
+| "What's approved but not implemented?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary, d.action FROM finding f JOIN decision d ON d.finding_id = f.id WHERE d.decision = 'approved' AND d.implemented_at IS NULL ORDER BY f.severity;"` |
 | "How many findings per critic?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, COUNT(*) as count FROM finding f WHERE f.audit_run_id = (SELECT id FROM audit_run ORDER BY started_at DESC LIMIT 1) GROUP BY f.critic;"` |
 
 Translate the user's natural language question into an appropriate SQL query and present the results conversationally.
