@@ -144,4 +144,4 @@ sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
 
 The database enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_plugin_critic` lacks.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_consistency_critic` lacks.

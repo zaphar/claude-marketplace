@@ -251,6 +251,6 @@ Every entity carries `iteration_id` and `revision_id` (both NOT NULL) for full p
 - A summary of all files modified and the nature of each change
 - A list of cross-references updated
 
-**Handoff:** Submitted to **Rigor Plugin Critic** for validation.
+**Handoff:** Submitted to **Rigor Consistency Critic** for validation.
 
 **Revision Loop:** Address all blocking issues from the critic. Re-submit with a summary of what was fixed. Escalate after 3 cycles.

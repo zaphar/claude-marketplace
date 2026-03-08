@@ -71,5 +71,5 @@ Modified files:
 - [file path]: [brief description of change]
 
 Critic verdict: approved
-Critic results file: [path reported by critic, e.g. .scratch/rigor-plugin-critic/2026-03-06/141530_critic-review.md]
+Critic results file: [path reported by critic, e.g. .scratch/rigor-consistency-critic/2026-03-06/141530_critic-review.md]
 ```
