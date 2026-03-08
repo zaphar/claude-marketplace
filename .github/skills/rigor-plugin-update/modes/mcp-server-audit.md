@@ -116,4 +116,4 @@ After interactive review completes, the findings-review workflow creates or upda
 - **Action:** [what was done] | **Reason:** [why rejected/skipped]
 ```
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_plugin_critic` for validation.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_auditor` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_plugin_critic` lacks.

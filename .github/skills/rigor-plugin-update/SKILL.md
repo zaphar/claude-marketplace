@@ -33,8 +33,8 @@ These terms have precise meanings throughout all skill files. Each word has exac
 | **Workflow** | The Findings Review & Implementation Workflow. Never refers to plugin orchestration workflows. |
 | **Report** | A persisted audit output document in `.scratch/`. |
 | **Producer** | The `rigor_plugin_producer` agent. Makes changes. Never modifies files outside the plugin. |
-| **Critic** | The `rigor_plugin_critic` agent. Validates changes. Read-only. |
-| **Auditor** | The `rigor_schema_auditor` agent. Analyzes the schema. Read-only. |
+| **Critic** | The agent that validates changes. Read-only. For general plugin changes: `rigor_plugin_critic`. For MCP server changes: `rigor_mcp_server_auditor` (which has specialized MCP/SQL knowledge). |
+| **Auditor** | The `rigor_schema_auditor` or `rigor_mcp_server_auditor` agent. Analyzes schema or MCP server. Read-only. The MCP server auditor also serves as the critic for MCP server changes. |
 | **Verdict** | The critic's output: `approved` or `needs_revision`. |
 | **Revision** | One pass through the Producer-Critic feedback loop. Max 3 before escalation. |
 | **Escalation** | When the critic hasn't approved after 3 revisions — ask the user to intervene. |
@@ -80,7 +80,7 @@ These are referenced by the mode files above:
 | `rigor_plugin_producer` | Producer | Adaptive (sonnet or opus) | Makes changes to plugin files |
 | `rigor_plugin_critic` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
 | `rigor_schema_auditor` | Auditor | Always `claude-opus-4.6` | Schema simplification, correctness, and consistency analysis (20 audit categories) |
-| `rigor_mcp_server_auditor` | Auditor | Always `claude-opus-4.6` | MCP server code quality, correctness, protocol compliance, and documentation accuracy analysis (7 audit dimensions) |
+| `rigor_mcp_server_auditor` | Auditor / Critic | Always `claude-opus-4.6` | MCP server code quality, correctness, protocol compliance, and documentation accuracy analysis (7 audit dimensions). Also serves as the critic in the producer-critic loop for MCP server changes. |
 
 All agents have deep embedded knowledge of the plugin's file structure, cross-reference map, and conventions.
 

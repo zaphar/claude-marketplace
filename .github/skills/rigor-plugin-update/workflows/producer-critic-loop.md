@@ -27,10 +27,12 @@ After the producer(s) complete and the critic reviews, the critic either approve
    - The specific change to make
    - Any context about why the change is needed
 
-2. After the producer (or all N producers in a batch) completes, launch the `rigor_plugin_critic` agent (always `claude-opus-4.6`) with:
+2. After the producer (or all N producers in a batch) completes, launch the critic agent (always `claude-opus-4.6`) with:
    - The producer's summary of changes
    - The list of modified files
    - The revision number (starting at 1)
+   
+   **Which critic agent to use:** For MCP server changes, use `rigor_mcp_server_auditor` as the critic — it has specialized SQL, protocol, and server architecture knowledge. For all other plugin changes, use `rigor_plugin_critic`.
 
 3. Evaluate the critic's verdict:
    - **`approved`** → commit and proceed

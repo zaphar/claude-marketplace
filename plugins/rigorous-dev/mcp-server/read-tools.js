@@ -63,43 +63,880 @@ function pkCol(table) {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: build WHERE clause from ids + filters
+// Helper: validate and apply entity filters
 // ---------------------------------------------------------------------------
 
-function buildWhere(entityType, iterationId, ids, filters) {
-  const table = ENTITY_TABLE[entityType];
+function applyFilters(filters, knownFilters, entityType) {
   const clauses = [];
-  const params = {};
+  const params = [];
+  if (!filters || typeof filters !== "object") return { clauses, params };
 
-  const hasIterationCol = !TEXT_PK_TYPES.has(table)
-    ? true
-    : ["persona", "requirement", "adr", "component", "user_flow", "screen"].includes(table);
-
-  if (iterationId !== undefined && iterationId !== null) {
-    clauses.push("iteration_id = @iteration_id");
-    params.iteration_id = iterationId;
+  // Step 1: Reject any user-provided keys not in the spec
+  for (const userKey of Object.keys(filters)) {
+    if (!(userKey in knownFilters)) {
+      throw new Error(
+        `Unknown filter "${userKey}" for ${entityType}. Valid filters: ${Object.keys(knownFilters).join(", ")}`
+      );
+    }
   }
 
-  if (ids && ids.length > 0) {
-    // Use IN clause — SQLite doesn't support named params in IN, so build positional
-    // We'll handle this specially in the caller
-    params.__ids = ids;
-  }
-
-  if (filters && typeof filters === "object") {
-    for (const [field, value] of Object.entries(filters)) {
-      if (value === null) {
-        clauses.push(`${field} IS NULL`);
-      } else {
-        const key = `f_${field}`;
-        clauses.push(`${field} = @${key}`);
-        params[key] = value;
+  // Step 2: Iterate over SPEC keys only -- no user string ever becomes a SQL identifier
+  for (const [specKey, colDef] of Object.entries(knownFilters)) {
+    if (!(specKey in filters)) continue;
+    const value = filters[specKey];
+    if (value === null) {
+      if (!colDef.nullable) {
+        throw new Error(`Filter "${specKey}" for ${entityType} does not accept null values`);
       }
+      clauses.push(`${specKey} IS NULL`);
+    } else {
+      clauses.push(`${specKey} = ?`);
+      params.push(value);
     }
   }
 
   return { clauses, params };
 }
+
+// ---------------------------------------------------------------------------
+// Per-entity query functions -- complex types (16)
+// Filter-only stubs for Phase 1; enrichment added in Phase 2.
+// ---------------------------------------------------------------------------
+
+const PERSONA_FILTERS = {
+  name: { nullable: false },
+  description: { nullable: false },
+  technical_level: { nullable: true },
+  frequency_of_use: { nullable: true },
+};
+
+function queryPersona(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM persona";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PERSONA_FILTERS, "persona");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const REQUIREMENT_FILTERS = {
+  description: { nullable: false },
+  rationale: { nullable: true },
+  priority: { nullable: false },
+  category: { nullable: false },
+};
+
+function queryRequirement(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM requirement";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, REQUIREMENT_FILTERS, "requirement");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const ADR_FILTERS = {
+  title: { nullable: false },
+  status: { nullable: false },
+  date: { nullable: true },
+  context: { nullable: true },
+  decision: { nullable: false },
+  rationale: { nullable: false },
+  superseded_by: { nullable: true },
+};
+
+function queryAdr(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM adr";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, ADR_FILTERS, "adr");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const COMPONENT_FILTERS = {
+  name: { nullable: false },
+  purpose: { nullable: false },
+  type: { nullable: false },
+};
+
+function queryComponent(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM component";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, COMPONENT_FILTERS, "component");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const USER_FLOW_FILTERS = {
+  name: { nullable: false },
+  goal: { nullable: false },
+  persona_id: { nullable: true },
+  entry_point: { nullable: true },
+  success_state: { nullable: true },
+};
+
+function queryUserFlow(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM user_flow";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, USER_FLOW_FILTERS, "user_flow");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const SCREEN_FILTERS = {
+  name: { nullable: false },
+  purpose: { nullable: false },
+  wireframe_path: { nullable: true },
+  mockup_path: { nullable: true },
+};
+
+function queryScreen(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM screen";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, SCREEN_FILTERS, "screen");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PLAN_PHASE_FILTERS = {
+  phase_number: { nullable: false },
+  name: { nullable: false },
+  type: { nullable: false },
+  goal: { nullable: false },
+  status: { nullable: false },
+  complexity: { nullable: true },
+  review_checkpoint: { nullable: true },
+  notes: { nullable: true },
+};
+
+function queryPlanPhase(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM plan_phase";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PLAN_PHASE_FILTERS, "plan_phase");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PLAN_OVERVIEW_FILTERS = {
+  strategy: { nullable: false },
+  rationale: { nullable: false },
+  phase_one_approach: { nullable: true },
+};
+
+function queryPlanOverview(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM plan_overview";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PLAN_OVERVIEW_FILTERS, "plan_overview");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const DATA_ENTITY_FILTERS = {
+  name: { nullable: false },
+  description: { nullable: false },
+};
+
+function queryDataEntity(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM data_entity";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, DATA_ENTITY_FILTERS, "data_entity");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const ARCHITECTURE_OVERVIEW_FILTERS = {
+  description: { nullable: false },
+};
+
+function queryArchitectureOverview(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM architecture_overview";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, ARCHITECTURE_OVERVIEW_FILTERS, "architecture_overview");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PERSONA_ADDRESSED_FILTERS = {
+  persona_id: { nullable: false },
+  goal: { nullable: false },
+  how_addressed: { nullable: false },
+};
+
+function queryPersonaAddressed(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM persona_addressed";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PERSONA_ADDRESSED_FILTERS, "persona_addressed");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const INFO_ARCHITECTURE_FILTERS = {
+  category: { nullable: false },
+  key: { nullable: false },
+  value: { nullable: false },
+  parent_id: { nullable: true },
+};
+
+function queryInfoArchitecture(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM info_architecture";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, INFO_ARCHITECTURE_FILTERS, "info_architecture");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const IMPLEMENTATION_MANIFEST_FILTERS = {
+  plan_phase_id: { nullable: false },
+  status: { nullable: false },
+  lines_of_code: { nullable: true },
+  warnings: { nullable: true },
+  build_status: { nullable: true },
+  version: { nullable: true },
+  document_date: { nullable: true },
+  requirements_version: { nullable: true },
+  architecture_version: { nullable: true },
+  language: { nullable: true },
+  commit_sha: { nullable: true },
+};
+
+function queryImplementationManifest(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM implementation_manifest";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, IMPLEMENTATION_MANIFEST_FILTERS, "implementation_manifest");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const TEST_REPORT_FILTERS = {
+  total_tests: { nullable: false },
+  passed_count: { nullable: false },
+  failed: { nullable: false },
+  skipped: { nullable: false },
+  coverage_line: { nullable: true },
+  coverage_branch: { nullable: true },
+  coverage_function: { nullable: true },
+  duration_seconds: { nullable: true },
+  status: { nullable: false },
+  version: { nullable: true },
+  document_date: { nullable: true },
+  requirements_version: { nullable: true },
+  architecture_version: { nullable: true },
+  commit_sha: { nullable: true },
+};
+
+function queryTestReport(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM test_report";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, TEST_REPORT_FILTERS, "test_report");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const DOCUMENTATION_MANIFEST_FILTERS = {
+  status: { nullable: false },
+  total_pages: { nullable: true },
+  accessibility_compliant: { nullable: true },
+  version: { nullable: true },
+  document_date: { nullable: true },
+  requirements_version: { nullable: true },
+  architecture_version: { nullable: true },
+  implementation_version: { nullable: true },
+  format: { nullable: true },
+};
+
+function queryDocumentationManifest(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM documentation_manifest";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, DOCUMENTATION_MANIFEST_FILTERS, "documentation_manifest");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const DEPLOYMENT_MANIFEST_FILTERS = {
+  status: { nullable: false },
+  version: { nullable: true },
+  document_date: { nullable: true },
+  requirements_version: { nullable: true },
+  architecture_version: { nullable: true },
+  implementation_version: { nullable: true },
+  test_report_version: { nullable: true },
+};
+
+function queryDeploymentManifest(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM deployment_manifest";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, DEPLOYMENT_MANIFEST_FILTERS, "deployment_manifest");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+// ---------------------------------------------------------------------------
+// Per-entity query functions -- simple types (21)
+// Complete implementations, no enrichment needed.
+// ---------------------------------------------------------------------------
+
+const TECHNOLOGY_CHOICE_FILTERS = {
+  category: { nullable: false },
+  name: { nullable: false },
+  purpose: { nullable: true },
+  rationale: { nullable: true },
+  version: { nullable: true },
+  config: { nullable: true },
+};
+
+function queryTechnologyChoice(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM technology_choice";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, TECHNOLOGY_CHOICE_FILTERS, "technology_choice");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PLAN_EXTERNAL_DEPENDENCY_FILTERS = {
+  name: { nullable: false },
+  description: { nullable: false },
+  plan_phase_number: { nullable: true },
+  risk_level: { nullable: false },
+  mitigation: { nullable: true },
+};
+
+function queryPlanExternalDependency(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM plan_external_dependency";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PLAN_EXTERNAL_DEPENDENCY_FILTERS, "plan_external_dependency");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PLAN_CRITICAL_PATH_FILTERS = {
+  plan_phase_id: { nullable: false },
+  sequence_order: { nullable: false },
+};
+
+function queryPlanCriticalPath(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM plan_critical_path";
+  const clauses = [];
+  const params = [];
+  if (ids?.length) { clauses.push(`plan_phase_id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PLAN_CRITICAL_PATH_FILTERS, "plan_critical_path");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PLAN_METADATA_FILTERS = {
+  title: { nullable: false },
+  version: { nullable: false },
+  document_date: { nullable: false },
+  status: { nullable: false },
+  requirements_version: { nullable: false },
+  architecture_version: { nullable: false },
+  ux_specification_version: { nullable: false },
+  document_updated: { nullable: true },
+};
+
+function queryPlanMetadata(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM plan_metadata";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PLAN_METADATA_FILTERS, "plan_metadata");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const TRACEABILITY_MAPPING_FILTERS = {
+  requirement_id: { nullable: false },
+  addressed_by: { nullable: false },
+  addressed_by_type: { nullable: false },
+  notes: { nullable: true },
+};
+
+function queryTraceabilityMapping(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM traceability_mapping";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, TRACEABILITY_MAPPING_FILTERS, "traceability_mapping");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PROJECT_CONTEXT_FILTERS = {
+  key: { nullable: false },
+  value: { nullable: false },
+  category: { nullable: true },
+};
+
+function queryProjectContext(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM project_context";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PROJECT_CONTEXT_FILTERS, "project_context");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const SYSTEM_IO_FILTERS = {
+  direction: { nullable: false },
+  name: { nullable: false },
+  description: { nullable: false },
+  source: { nullable: true },
+  destination: { nullable: true },
+  data_format: { nullable: true },
+};
+
+function querySystemIo(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM system_io";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, SYSTEM_IO_FILTERS, "system_io");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const DEPLOYMENT_REQUIREMENT_FILTERS = {
+  target: { nullable: true },
+  description: { nullable: false },
+  notes: { nullable: true },
+};
+
+function queryDeploymentRequirement(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM deployment_requirement";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, DEPLOYMENT_REQUIREMENT_FILTERS, "deployment_requirement");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const OPERATIONAL_REQUIREMENT_FILTERS = {
+  item: { nullable: false },
+  category: { nullable: false },
+  notes: { nullable: true },
+};
+
+function queryOperationalRequirement(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM operational_requirement";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, OPERATIONAL_REQUIREMENT_FILTERS, "operational_requirement");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const TECHNOLOGY_CONSTRAINT_FILTERS = {
+  constraint_type: { nullable: false },
+  value: { nullable: false },
+};
+
+function queryTechnologyConstraint(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM technology_constraint";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, TECHNOLOGY_CONSTRAINT_FILTERS, "technology_constraint");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const UX_CONFIG_FILTERS = {
+  config_type: { nullable: false },
+  category: { nullable: false },
+  key: { nullable: false },
+  value: { nullable: false },
+};
+
+function queryUxConfig(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM ux_config";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, UX_CONFIG_FILTERS, "ux_config");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const UX_ASSET_FILTERS = {
+  name: { nullable: false },
+  path: { nullable: false },
+  type: { nullable: false },
+  screen_id: { nullable: true },
+  description: { nullable: true },
+};
+
+function queryUxAsset(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM ux_asset";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, UX_ASSET_FILTERS, "ux_asset");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const ARCHITECTURE_CONFIG_FILTERS = {
+  config_type: { nullable: false },
+  target: { nullable: true },
+  category: { nullable: false },
+  key: { nullable: false },
+  value: { nullable: false },
+};
+
+function queryArchitectureConfig(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM architecture_config";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, ARCHITECTURE_CONFIG_FILTERS, "architecture_config");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const APPROVED_DEPENDENCY_FILTERS = {
+  package: { nullable: false },
+  version_constraint: { nullable: true },
+  purpose: { nullable: false },
+  justification: { nullable: false },
+  adr_id: { nullable: true },
+  license: { nullable: true },
+  maintenance_activity: { nullable: true },
+  community_adoption: { nullable: true },
+  transitive_deps: { nullable: true },
+  single_maintainer_risk: { nullable: true },
+};
+
+function queryApprovedDependency(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM approved_dependency";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, APPROVED_DEPENDENCY_FILTERS, "approved_dependency");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const BLOCKER_FILTERS = {
+  phase_name: { nullable: false },
+  description: { nullable: false },
+  severity: { nullable: false },
+  raised_by: { nullable: false },
+  resolved_at: { nullable: true },
+  resolution_notes: { nullable: true },
+};
+
+function queryBlocker(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM blocker";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, BLOCKER_FILTERS, "blocker");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PROJECT_LESSON_FILTERS = {
+  phase_name: { nullable: false },
+  category: { nullable: false },
+  lesson: { nullable: false },
+  recurring: { nullable: false },
+};
+
+function queryProjectLesson(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM project_lesson";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PROJECT_LESSON_FILTERS, "project_lesson");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const SECURITY_AUDIT_FINDING_FILTERS = {
+  category: { nullable: false },
+  severity: { nullable: false },
+  title: { nullable: false },
+  description: { nullable: false },
+  location: { nullable: true },
+  recommendation: { nullable: false },
+  cve: { nullable: true },
+  status: { nullable: false },
+};
+
+function querySecurityAuditFinding(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM security_audit_finding";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, SECURITY_AUDIT_FINDING_FILTERS, "security_audit_finding");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const PERFORMANCE_AUDIT_FINDING_FILTERS = {
+  category: { nullable: false },
+  severity: { nullable: false },
+  title: { nullable: false },
+  description: { nullable: false },
+  location: { nullable: true },
+  metric_name: { nullable: true },
+  baseline_value: { nullable: true },
+  actual_value: { nullable: true },
+  recommendation: { nullable: false },
+  status: { nullable: false },
+};
+
+function queryPerformanceAuditFinding(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM performance_audit_finding";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, PERFORMANCE_AUDIT_FINDING_FILTERS, "performance_audit_finding");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const INTERMEDIATE_ASSET_FILTERS = {
+  phase_id: { nullable: true },
+  asset_type: { nullable: false },
+  title: { nullable: false },
+  content: { nullable: true },
+};
+
+function queryIntermediateAsset(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM intermediate_asset";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, INTERMEDIATE_ASSET_FILTERS, "intermediate_asset");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const ASSET_DELIVERABLE_FILTERS = {
+  phase_id: { nullable: true },
+  asset_type: { nullable: false },
+  file_path: { nullable: false },
+  description: { nullable: true },
+  commit_sha: { nullable: true },
+};
+
+function queryAssetDeliverable(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM asset_deliverable";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, ASSET_DELIVERABLE_FILTERS, "asset_deliverable");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const VCS_COMMIT_FILTERS = {
+  phase_id: { nullable: true },
+  commit_sha: { nullable: false },
+  message: { nullable: true },
+};
+
+function queryVcsCommit(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM vcs_commit";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, VCS_COMMIT_FILTERS, "vcs_commit");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+// ---------------------------------------------------------------------------
+// Query dispatch map
+// ---------------------------------------------------------------------------
+
+const QUERY_DISPATCH = {
+  persona: queryPersona,
+  requirement: queryRequirement,
+  adr: queryAdr,
+  component: queryComponent,
+  user_flow: queryUserFlow,
+  screen: queryScreen,
+  plan_phase: queryPlanPhase,
+  plan_overview: queryPlanOverview,
+  data_entity: queryDataEntity,
+  architecture_overview: queryArchitectureOverview,
+  persona_addressed: queryPersonaAddressed,
+  info_architecture: queryInfoArchitecture,
+  implementation_manifest: queryImplementationManifest,
+  test_report: queryTestReport,
+  documentation_manifest: queryDocumentationManifest,
+  deployment_manifest: queryDeploymentManifest,
+  technology_choice: queryTechnologyChoice,
+  plan_external_dependency: queryPlanExternalDependency,
+  plan_critical_path: queryPlanCriticalPath,
+  plan_metadata: queryPlanMetadata,
+  traceability_mapping: queryTraceabilityMapping,
+  project_context: queryProjectContext,
+  system_io: querySystemIo,
+  deployment_requirement: queryDeploymentRequirement,
+  operational_requirement: queryOperationalRequirement,
+  technology_constraint: queryTechnologyConstraint,
+  ux_config: queryUxConfig,
+  ux_asset: queryUxAsset,
+  architecture_config: queryArchitectureConfig,
+  approved_dependency: queryApprovedDependency,
+  blocker: queryBlocker,
+  project_lesson: queryProjectLesson,
+  security_audit_finding: querySecurityAuditFinding,
+  performance_audit_finding: queryPerformanceAuditFinding,
+  intermediate_asset: queryIntermediateAsset,
+  asset_deliverable: queryAssetDeliverable,
+  vcs_commit: queryVcsCommit,
+};
 
 // ---------------------------------------------------------------------------
 // Tool 1: changelog_query
@@ -116,9 +953,9 @@ function changelogQuery(args) {
     history = false,
   } = args;
 
-  if (!ENTITY_TABLE[entity_type]) {
+  if (!QUERY_DISPATCH[entity_type]) {
     throw new Error(
-      `Unknown entity_type: "${entity_type}". Valid types: ${Object.keys(ENTITY_TABLE).join(", ")}`
+      `Unknown entity_type: "${entity_type}". Valid types: ${Object.keys(QUERY_DISPATCH).join(", ")}`
     );
   }
 
@@ -140,63 +977,24 @@ function changelogQuery(args) {
     return { entity_type, history: true, results, count: results.length };
   }
 
-  const table = ENTITY_TABLE[entity_type];
-  const { clauses, params } = buildWhere(entity_type, iteration_id, ids, filters);
+  try {
+    let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters });
 
-  // Build query
-  let sql = `SELECT * FROM ${table}`;
-
-  // Handle ids via IN
-  const idsParam = params.__ids;
-  delete params.__ids;
-
-  const allClauses = [...clauses];
-  if (idsParam && idsParam.length > 0) {
-    const placeholders = idsParam.map((_, i) => `?`).join(", ");
-    allClauses.push(`${pkCol(table)} IN (${placeholders})`);
-  }
-
-  if (allClauses.length > 0) {
-    sql += " WHERE " + allClauses.join(" AND ");
-  }
-
-  // Execute
-  let stmt;
-  let results;
-  if (idsParam && idsParam.length > 0) {
-    // Mix named and positional params — use positional for all
-    const positionalParams = [];
-    // Rebuild WHERE without named params for ids case
-    let sqlPositional = `SELECT * FROM ${table}`;
-    const posWhere = [];
-    if (iteration_id !== undefined && iteration_id !== null) {
-      posWhere.push("iteration_id = ?");
-      positionalParams.push(iteration_id);
+    // Attach related data when requested
+    // (Phase 2 will move enrichment into individual query functions)
+    if (include_related && results.length > 0) {
+      results = attachRelated(db, entity_type, results);
     }
-    if (filters && typeof filters === "object") {
-      for (const [field, value] of Object.entries(filters)) {
-        posWhere.push(`${field} = ?`);
-        positionalParams.push(value);
-      }
-    }
-    posWhere.push(`${pkCol(table)} IN (${idsParam.map(() => "?").join(", ")})`);
-    positionalParams.push(...idsParam);
-    sqlPositional += " WHERE " + posWhere.join(" AND ");
-    results = db.prepare(sqlPositional).all(...positionalParams);
-  } else {
-    results = db.prepare(sql).all(params);
-  }
 
-  // Attach related data when requested
-  if (include_related && results.length > 0) {
-    results = attachRelated(db, entity_type, results);
+    return { entity_type, results, count: results.length };
+  } catch (err) {
+    throw new Error(`Failed to query ${entity_type}: ${err.message}`);
   }
-
-  return { entity_type, results, count: results.length };
 }
 
 // ---------------------------------------------------------------------------
 // attachRelated: enrich results with child table rows
+// (Retained for Phase 1 -- Phase 2 will absorb into query functions)
 // ---------------------------------------------------------------------------
 
 function attachRelated(db, entityType, results) {
