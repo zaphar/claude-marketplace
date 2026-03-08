@@ -1,6 +1,6 @@
 # Architecture Domain — Table Reference
 
-This document covers the 10 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
+This document covers the 9 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
 
 **Producer:** `backend_architect`
 **Critic/Validator:** `architecture_critic`
@@ -15,11 +15,10 @@ This document covers the 10 tables that capture the output of the **backend_arch
 3. [component](#3-component)
 4. [component_interface](#4-component_interface)
 5. [component_dependency](#5-component_dependency)
-6. [component_requirement](#6-component_requirement)
-7. [integration_test_boundary](#7-integration_test_boundary)
-8. [technology_choice](#8-technology_choice)
-9. [architecture_overview](#9-architecture_overview)
-10. [architecture_diagram](#10-architecture_diagram)
+6. [integration_test_boundary](#6-integration_test_boundary)
+7. [technology_choice](#7-technology_choice)
+8. [architecture_overview](#8-architecture_overview)
+9. [architecture_diagram](#9-architecture_diagram)
 
 ---
 
@@ -119,7 +118,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 
 ### Context
 
-`component` is the central node in the architecture domain graph. The backend_architect decomposes the system into components during the architecture phase; the implementation_planner then uses `component_dependency` and `component_requirement` to sequence work phases; the senior_developer builds against `component_interface` contracts. Component IDs (`COMP-XXX`) appear in `traceability_mapping`, `integration_test_boundary`, and `implementation_component_status`.
+`component` is the central node in the architecture domain graph. The backend_architect decomposes the system into components during the architecture phase; the implementation_planner then uses `component_dependency` and `requirement_trace` (with `addressed_by_type = 'component'`) to sequence work phases; the senior_developer builds against `component_interface` contracts. Component IDs (`COMP-XXX`) appear in `requirement_trace`, `integration_test_boundary`, and `implementation_component_status`.
 
 ### Column Reference
 
@@ -137,8 +136,8 @@ Represents a deployable or logically distinct unit of the system — an API serv
 ### Relationships
 
 - **Parent:** `iteration`, `revision`
-- **Children:** `component_interface`, `component_dependency` (both sides), `component_requirement`, `integration_test_boundary` (both sides)
-- **Referenced by:** `traceability_mapping.addressed_by_id` (when `addressed_by_type = 'component'`), `implementation_component_status.component_id`
+- **Children:** `component_interface`, `component_dependency` (both sides), `integration_test_boundary` (both sides)
+- **Referenced by:** `requirement_trace.addressed_by` (when `addressed_by_type = 'component'`), `implementation_component_status.component_id`
 
 ### MCP Tool Access
 
@@ -219,41 +218,11 @@ changelog_query  entity_type="component"  ids=["COMP-001"]
 
 ---
 
-## 6. `component_requirement`
-
-### Purpose
-
-Maps components to the requirements they satisfy. This is the primary architecture-level traceability link: for any requirement, you can discover which component(s) implement it; for any component, you can see which requirements justify its existence.
-
-### Context
-
-During architecture review, the architecture_critic verifies that every `must_have` requirement from the requirements domain has at least one component mapped to it. During the implementation phase, `component_requirement` drives `implementation_component_status` — if a component is complete but an attached requirement is not satisfied, there is a gap. The composite PK prevents duplicate mappings.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `component_id` | TEXT | NOT NULL, FK → `component(id)`, part of PK | — | The implementing component. |
-| `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)`, part of PK | — | The requirement being satisfied. Foreign key crosses domain boundary into `requirement`. |
-
-**Composite PK:** `(component_id, requirement_id)` — prevents duplicate mappings.
-
-### Relationships
-
-- **Parent (architecture domain):** `component`
-- **Parent (requirements domain):** `requirement`
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting a component via changelog_insert
-# Queried via traceability_query to answer "which components satisfy REQ-005?"
-traceability_query  from="requirement"  id="REQ-005"
-```
+> **Note:** Component-to-requirement traceability (formerly tracked in a dedicated `component_requirement` table) is now handled by `requirement_trace` with `addressed_by_type = 'component'`. See [cross-cutting.md](cross-cutting.md#requirement_trace) for details.
 
 ---
 
-## 7. `integration_test_boundary`
+## 6. `integration_test_boundary`
 
 ### Purpose
 
@@ -291,7 +260,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 
 ---
 
-## 8. `technology_choice`
+## 7. `technology_choice`
 
 ### Purpose
 
@@ -340,7 +309,7 @@ changelog_query   entity_type="technology_choice"  [filters={category: "database
 
 ---
 
-## 9. `architecture_overview`
+## 8. `architecture_overview`
 
 ### Purpose
 
@@ -382,7 +351,7 @@ changelog_query  entity_type="architecture_overview"  iteration_id=N  include_re
 
 ---
 
-## 10. `architecture_diagram`
+## 9. `architecture_diagram`
 
 ### Purpose
 
@@ -439,7 +408,7 @@ changelog_query  entity_type="component"  ids=["COMP-002"]  include_related=true
 ```sql
 SELECT r.id, r.description
 FROM requirement r
-WHERE r.id NOT IN (SELECT requirement_id FROM component_requirement);
+WHERE r.id NOT IN (SELECT requirement_id FROM requirement_trace WHERE addressed_by_type = 'component');
 ```
 
 ### "Show all accepted ADRs for this iteration"
@@ -467,7 +436,6 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 | `component` | TEXT (COMP-XXX) | `iteration`, `revision` | `type` CHECK 8 values |
 | `component_interface` | INTEGER AUTO | `component` | UNIQUE(component_id, name) |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
-| `component_requirement` | Composite (component_id, requirement_id) | `component`, `requirement` | Composite PK prevents duplicate mappings |
 | `integration_test_boundary` | INTEGER AUTO | `component` × 2 | UNIQUE(component_id, target_component_id, boundary_type); `boundary_type` free-form TEXT |
 | `technology_choice` | INTEGER AUTO | `iteration`, `revision` | — |
 | `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | `principles` JSON column |

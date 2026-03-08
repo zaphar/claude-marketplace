@@ -13,7 +13,7 @@ These tables are written during the architecture phase after components and ADRs
 
 1. [architecture_config](#architecture_config)
 2. [approved_dependency](#approved_dependency)
-3. [traceability_mapping](#traceability_mapping)
+3. [requirement_trace](#requirement_trace)
 4. [blocker](#blocker)
 5. [project_lesson](#project_lesson)
 6. [entity_snapshot](#entity_snapshot)
@@ -60,7 +60,7 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 
 - **`iteration_id` → `iteration(id)`** — Every config entry is anchored to an iteration, enabling architecture to evolve across iterations without overwriting history.
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `traceability_mapping` or by reading upstream requirement tables that share the same `iteration_id`.
+- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `requirement_trace` or by reading upstream requirement tables that share the same `iteration_id`.
 - Security entries are conceptually downstream of `technology_constraint` rows with security implications.
 - Deployment entries are conceptually downstream of `deployment_requirement`.
 - Observability entries are conceptually downstream of `operational_requirement`.
@@ -235,7 +235,7 @@ Fetch all dependencies linked to a specific ADR:
 
 ---
 
-## traceability_mapping
+## requirement_trace
 
 ### Purpose
 
@@ -245,9 +245,9 @@ This table is the primary data source for the `traceability_query` MCP tool, whi
 
 ### Context
 
-Written by `backend_architect` after components, user flows, and screens have been defined. A complete architecture phase should have at least one `traceability_mapping` row per requirement — requirements with no mapping are dark requirements that cannot be verified during QA.
+Written by `backend_architect` after components, user flows, and screens have been defined. A complete architecture phase should have at least one `requirement_trace` row per requirement — requirements with no mapping are dark requirements that cannot be verified during QA.
 
-The `addressed_by` field is a free-text identifier that should match an existing entity ID: `COMP-XXX` for components, an endpoint path/name, a `user_flow.id`, a `screen.id`, or a descriptive label for `other`. The `addressed_by_type` column is open-domain (no CHECK constraint) — conventional values are `component`, `endpoint`, `flow`, `screen`, and `other`, but agents may use additional types as the model evolves.
+The `addressed_by` field is a free-text identifier that should match an existing entity ID: `COMP-XXX` for components, an endpoint path/name, a `user_flow.id`, a `screen.id`, or a descriptive label for `other`. The `addressed_by_type` column has a CHECK constraint — valid values are `component`, `endpoint`, `flow`, `screen`, `adr`, and `technology`.
 
 > **Note:** Screen-level requirement traceability (formerly tracked in a dedicated `ux_requirement_mapping` table in the UX design domain) is now consolidated here. Use `addressed_by_type = 'screen'` and set `addressed_by` to the screen ID (e.g., `screen-payment-confirmation`).
 
@@ -256,21 +256,21 @@ The `addressed_by` field is a free-text identifier that should match an existing
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that produced this mapping. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
 | `requirement_id` | TEXT | NOT NULL | — | FK → `requirement(id)` | The requirement being addressed (e.g., `REQ-007`). |
 | `addressed_by` | TEXT | NOT NULL | — | — | Identifier of the architectural element satisfying the requirement (e.g., `COMP-002`, `POST /api/payments`, `flow-checkout`, `screen-confirmation`). |
-| `addressed_by_type` | TEXT | NOT NULL | — | — | Category of the addressing element. Conventional values: `component`, `endpoint`, `flow`, `screen`, `other`. Open-domain — no CHECK constraint. |
+| `addressed_by_type` | TEXT | NOT NULL | — | CHECK(`component`, `endpoint`, `flow`, `screen`, `adr`, `technology`) | Category of the addressing element. |
 | `notes` | TEXT | NULL | — | — | Optional free-text clarification of how or why this element addresses the requirement (e.g., partial coverage, conditions, caveats). |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
 
-**`addressed_by_type` values:** The column is open-domain (no CHECK constraint). Conventional values are `component`, `endpoint`, `flow`, `screen`, and `other`. Screen-level traceability (`addressed_by_type = 'screen'`) supersedes the former `ux_requirement_mapping` table.
+**`addressed_by_type` values:** Valid values are `component`, `endpoint`, `flow`, `screen`, `adr`, and `technology` (enforced by CHECK constraint). Screen-level traceability (`addressed_by_type = 'screen'`) supersedes the former `ux_requirement_mapping` table.
+
+**Uniqueness:** `UNIQUE(revision_id, requirement_id, addressed_by, addressed_by_type)` — prevents duplicate trace entries within the same revision.
 
 ### Relationships
 
-- **`iteration_id` → `iteration(id)`** — Mappings are iteration-scoped; they can be extended or revised in subsequent iterations without losing prior history.
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- **`requirement_id` → `requirement(id)`** — Hard FK to the requirements table. A mapping row cannot exist without a valid requirement.
+- **`requirement_id` → `requirement(id)`** — Hard FK to the requirements table. A trace row cannot exist without a valid requirement.
 - **`addressed_by` (soft reference)** — The `addressed_by` value conventionally matches a `component.id` (`COMP-XXX`), `user_flow.id`, or `screen.id`, but there is no database-level FK enforcing this. This is intentional: endpoints and other addressable elements do not have their own top-level tables. The `addressed_by_type` field disambiguates which table (if any) to look up.
 - The `traceability_query` tool in `read-tools.js` joins this table with `requirement`, `component`, `adr`, `user_flow`, and `screen` to build the full "why" chain for any query target.
 
@@ -280,13 +280,13 @@ The full traceability chain is assembled by the `traceability_query` tool by com
 
 ```
 requirement (REQ-XXX)
-    └── traceability_mapping.requirement_id → addressed_by (COMP-XXX, flow-XXX, screen-XXX)
-            ├── component_requirement (COMP-XXX → REQ-XXX)   [reverse link]
-            ├── adr (which ADRs reference this component?)    [via adr.consequences JSON / adr text]
-            └── screen / user_flow                            [via addressed_by_type = 'screen' | 'flow']
+    └── requirement_trace.requirement_id → addressed_by (COMP-XXX, flow-XXX, screen-XXX)
+            ├── component (COMP-XXX)                              [via addressed_by_type = 'component']
+            ├── adr (which ADRs reference this component?)        [via adr.consequences JSON / adr text]
+            └── screen / user_flow                                [via addressed_by_type = 'screen' | 'flow']
 ```
 
-Every requirement that is not covered by at least one `traceability_mapping` row is an unaddressed requirement — a QA-phase failure condition.
+Every requirement that is not covered by at least one `requirement_trace` row is an unaddressed requirement — a QA-phase failure condition.
 
 ### MCP Tool Access
 
@@ -310,7 +310,7 @@ Every requirement that is not covered by at least one `traceability_mapping` row
 **Direct read** (`changelog_query`):
 ```json
 {
-  "entity_type": "traceability_mapping",
+  "entity_type": "requirement_trace",
   "iteration_id": 1,
   "filters": { "addressed_by_type": "screen" }
 }
@@ -319,7 +319,7 @@ Every requirement that is not covered by at least one `traceability_mapping` row
 **Write** (`changelog_insert`):
 ```json
 {
-  "entity_type": "traceability_mapping",
+  "entity_type": "requirement_trace",
   "iteration_id": 1,
   "revision_id": 3,
   "data": {
@@ -334,7 +334,7 @@ Every requirement that is not covered by at least one `traceability_mapping` row
 Write a second mapping for the same requirement to a screen:
 ```json
 {
-  "entity_type": "traceability_mapping",
+  "entity_type": "requirement_trace",
   "iteration_id": 1,
   "revision_id": 3,
   "data": {
@@ -562,7 +562,7 @@ All five tables share the `iteration_id` anchor. To get the full cross-cutting p
 ```json
 { "entity_type": "architecture_config",  "iteration_id": 1 }
 { "entity_type": "approved_dependency",  "iteration_id": 1 }
-{ "entity_type": "traceability_mapping", "iteration_id": 1 }
+{ "entity_type": "requirement_trace", "iteration_id": 1 }
 { "entity_type": "blocker",             "iteration_id": 1 }
 { "entity_type": "project_lesson",      "iteration_id": 1 }
 ```
@@ -577,7 +577,7 @@ To query a specific config_type within architecture_config:
 
 ### Detecting unaddressed requirements
 
-Query all `requirement` rows and all `traceability_mapping` rows for an iteration, then find requirements whose `id` does not appear in any `traceability_mapping.requirement_id`. This is a standard QA-phase check.
+Query all `requirement` rows and all `requirement_trace` rows for an iteration, then find requirements whose `id` does not appear in any `requirement_trace.requirement_id`. This is a standard QA-phase check.
 
 ### Dependency audit trail
 

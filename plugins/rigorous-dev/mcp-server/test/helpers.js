@@ -24,7 +24,7 @@ export function seedIteration(db) {
   ).run(now, now);
 
   const iter = db.prepare(
-    `INSERT INTO iteration (status, started_at) VALUES ('active', ?)`
+    `INSERT INTO iteration (status, created_at) VALUES ('active', ?)`
   ).run(now);
   const iteration_id = iter.lastInsertRowid;
 

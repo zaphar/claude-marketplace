@@ -1,4 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   ListToolsRequestSchema,
@@ -7,12 +7,24 @@ import {
 import { WRITE_TOOLS, handleWriteTool } from "./write-tools.js";
 import { READ_TOOLS, handleReadTool } from "./read-tools.js";
 
-const server = new Server(
+// ---------------------------------------------------------------------------
+// McpServer setup
+//
+// We use McpServer (the recommended high-level API) but register tool handlers
+// via its underlying Server instance. This is the documented escape hatch for
+// advanced use cases — our tools define inputSchema as raw JSON Schema objects,
+// which McpServer.registerTool() cannot consume (it expects Zod schemas).
+// See: "For advanced usage (like sending notifications or setting custom
+// request handlers), use the underlying Server instance available via the
+// `server` property."
+// ---------------------------------------------------------------------------
+
+const mcpServer = new McpServer(
   { name: "rigorous-dev-mcp", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+mcpServer.server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     ...WRITE_TOOLS,
     ...READ_TOOLS,
@@ -47,7 +59,7 @@ function errResponse(err) {
   };
 }
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name } = request.params;
   const args = request.params.arguments || {};
 
@@ -83,7 +95,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function main() {
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await mcpServer.connect(transport);
   console.error("rigorous-dev-mcp server running on stdio");
 }
 

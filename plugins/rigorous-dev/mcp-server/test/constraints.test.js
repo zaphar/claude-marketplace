@@ -38,8 +38,8 @@ describe("FK cascade deletes", () => {
     assert.strictEqual(revs.n, 0);
   });
 
-  it("deleting an iteration cascades to entity rows with iteration_id FK", () => {
-    // Insert entities that reference iteration_id
+  it("deleting an iteration cascades to entity rows via revision FK", () => {
+    // Insert entities that reference revision_id (which cascades from iteration → phase → revision)
     handleWriteTool("changelog_insert", {
       entity_type: "persona",
       iteration_id: seed.iteration_id,
@@ -55,9 +55,9 @@ describe("FK cascade deletes", () => {
 
     db.prepare("DELETE FROM iteration WHERE id = ?").run(seed.iteration_id);
 
-    const personas = db.prepare("SELECT COUNT(*) AS n FROM persona WHERE iteration_id = ?").get(seed.iteration_id);
+    const personas = db.prepare("SELECT COUNT(*) AS n FROM persona").get();
     assert.strictEqual(personas.n, 0);
-    const techs = db.prepare("SELECT COUNT(*) AS n FROM technology_choice WHERE iteration_id = ?").get(seed.iteration_id);
+    const techs = db.prepare("SELECT COUNT(*) AS n FROM technology_choice").get();
     assert.strictEqual(techs.n, 0);
   });
 });
@@ -255,10 +255,10 @@ describe("data_entity relationships", () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// traceability_mapping soft-FK for screen
+// requirement_trace soft-FK for screen
 // ───────────────────────────────────────────────────────────────
 
-describe("traceability_mapping screen validation", () => {
+describe("requirement_trace screen validation", () => {
   it("rejects mapping to nonexistent screen", () => {
     handleWriteTool("changelog_insert", {
       entity_type: "requirement",
@@ -269,7 +269,7 @@ describe("traceability_mapping screen validation", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
-          entity_type: "traceability_mapping",
+          entity_type: "requirement_trace",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
           data: {

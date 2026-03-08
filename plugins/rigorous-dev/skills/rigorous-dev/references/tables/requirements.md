@@ -44,7 +44,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 **Purpose:** The central table of this domain. Each row is a single requirement — a statement of something the system must, should, or could do — classified by category and priority. Requirements have a human-readable description, an optional rationale explaining why the requirement exists, and a category that guides which downstream agents care about it most.
 
-**Context:** Produced by the **requirements_analyst**. Validated by the **requirements_critic**, which may reject and request rewriting. Once approved, requirements are referenced by virtually every downstream agent: the **backend_architect** maps them to components and ADRs via `component_requirement` and `traceability_mapping`; the **ux_designer** links them to user flows via `user_flow_requirement`; the **implementation_planner** uses priority to sequence work.
+**Context:** Produced by the **requirements_analyst**. Validated by the **requirements_critic**, which may reject and request rewriting. Once approved, requirements are referenced by virtually every downstream agent: the **backend_architect** maps them to components and ADRs via `requirement_trace`; the **ux_designer** links them to user flows via `requirement_trace` (with `addressed_by_type = 'flow'`); the **implementation_planner** uses priority to sequence work.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -64,9 +64,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `revision` (via `revision_id`)
 - Children: `requirement_persona` (via `requirement_id`)
 - Children: `requirement_dependency` (via `requirement_id` and `depends_on`)
-- Children: `component_requirement` (via `requirement_id`) — architecture domain
-- Children: `traceability_mapping` (via `requirement_id`) — architecture domain
-- Children: `user_flow_requirement` (via `requirement_id`) — UX domain
+- Children: `requirement_trace` (via `requirement_id`) — cross-cutting domain
 
 **Note:** Acceptance criteria are stored inline as a JSON array in the `acceptance_criteria` column. Formerly stored in the `requirement_acceptance_criterion` child table.
 

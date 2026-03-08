@@ -77,7 +77,7 @@ Use your reasoning to extract structured entities from the content — even if t
 
 If the source file already contains IDs in a compatible format, preserve them. If IDs are missing or in an incompatible format, generate new ones.
 
-**Traceability:** When relationships between entities are detectable (e.g., a requirement mentions a persona, an ADR references a requirement), plan to create `traceability_mapping` entries to link them.
+**Traceability:** When relationships between entities are detectable (e.g., a requirement mentions a persona, an ADR references a requirement), plan to create `requirement_trace` entries to link them.
 
 ### 3. Show Import Preview
 
@@ -232,11 +232,11 @@ If a `changelog_insert` call fails:
 - Continue importing remaining entities
 - Report failures in the final summary (do not abort the entire import)
 
-After all entities for this phase are inserted, create `traceability_mapping` entries for any detectable relationships:
+After all entities for this phase are inserted, create `requirement_trace` entries for any detectable relationships:
 
 ```
 changelog_insert({
-  entity_type: "traceability_mapping",
+  entity_type: "requirement_trace",
   iteration_id: <current_iteration_id>,
   revision_id: <import_revision_id>,
   data: {

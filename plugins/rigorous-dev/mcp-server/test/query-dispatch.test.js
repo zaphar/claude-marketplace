@@ -114,60 +114,56 @@ describe("queryTechnologyChoice (INTEGER PK, simple)", () => {
   });
 });
 
-describe("queryPlanCriticalPath (TEXT PK on plan_phase_id, no iteration_id)", () => {
-  it("queries without iteration_id clause", () => {
-    const ppResult = handleWriteTool("changelog_insert", {
+describe("queryPlanPhase filters critical_path_sequence", () => {
+  it("filters by critical_path_sequence", () => {
+    handleWriteTool("changelog_insert", {
       entity_type: "plan_phase",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "setup", type: "feature", goal: "Setup" },
+      data: { phase_number: 1, name: "phase-a", type: "feature", goal: "A", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_critical_path",
+      entity_type: "plan_phase",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { plan_phase_id: ppResult.id, sequence_order: 1 },
+      data: { phase_number: 2, name: "phase-b", type: "feature", goal: "B", critical_path_sequence: 2 },
     });
-    // Query with iteration_id — should be ignored since table has no iteration_id column
-    const r = handleReadTool("changelog_query", {
-      entity_type: "plan_critical_path",
+    handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
       iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 3, name: "phase-c", type: "feature", goal: "C" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      filters: { critical_path_sequence: 2 },
     });
     assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].sequence_order, 1);
+    assert.strictEqual(r.results[0].name, "phase-b");
   });
 
-  it("filters by sequence_order", () => {
-    const pp1 = handleWriteTool("changelog_insert", {
+  it("filters by critical_path_sequence = null to find non-critical-path phases", () => {
+    handleWriteTool("changelog_insert", {
       entity_type: "plan_phase",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "phase-a", type: "feature", goal: "A" },
+      data: { phase_number: 1, name: "critical-phase", type: "feature", goal: "Critical", critical_path_sequence: 1 },
     });
-    const pp2 = handleWriteTool("changelog_insert", {
+    handleWriteTool("changelog_insert", {
       entity_type: "plan_phase",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 2, name: "phase-b", type: "feature", goal: "B" },
-    });
-    handleWriteTool("changelog_insert", {
-      entity_type: "plan_critical_path",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { plan_phase_id: pp1.id, sequence_order: 1 },
-    });
-    handleWriteTool("changelog_insert", {
-      entity_type: "plan_critical_path",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { plan_phase_id: pp2.id, sequence_order: 2 },
+      data: { phase_number: 2, name: "optional-phase", type: "feature", goal: "Optional" },
     });
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_critical_path",
-      filters: { sequence_order: 2 },
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      filters: { critical_path_sequence: null },
     });
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].plan_phase_id, pp2.id);
+    // All phases without critical_path_sequence
+    assert.ok(r.results.every(p => p.critical_path_sequence === null));
+    assert.ok(r.results.some(p => p.name === "optional-phase"));
   });
 });
 
@@ -394,7 +390,7 @@ describe("queryPlanOverview enrichment", () => {
         rationale: "reduce risk",
         assumptions: ["stable API", "team of 3"],
         risks: [
-          { risk: "scope creep", mitigation: "strict backlog", plan_phase_number: 1 },
+          { risk: "scope creep", mitigation: "strict backlog", plan_phase_id: 1 },
           { risk: "tech debt", mitigation: "refactor sprint" },
         ],
       },
@@ -411,9 +407,9 @@ describe("queryPlanOverview enrichment", () => {
     assert.strictEqual(overview.risks.length, 2);
     assert.strictEqual(overview.risks[0].risk, "scope creep");
     assert.strictEqual(overview.risks[0].mitigation, "strict backlog");
-    assert.strictEqual(overview.risks[0].plan_phase_number, 1);
+    assert.strictEqual(overview.risks[0].plan_phase_id, 1);
     assert.strictEqual(overview.risks[1].risk, "tech debt");
-    assert.strictEqual(overview.risks[1].plan_phase_number, null);
+    assert.strictEqual(overview.risks[1].plan_phase_id, null);
   });
 
   it("does not attach total_phases or risks when include_related is false", () => {
@@ -758,7 +754,7 @@ describe("queryComponent enrichment", () => {
     // Interfaces — SELECT * returns all columns
     assert.strictEqual(comp.interfaces.length, 2);
     const loginIface = comp.interfaces.find((i) => i.name === "login");
-    assert.strictEqual(loginIface.type, "API");
+    assert.strictEqual(loginIface.interface_type, "API");
     assert.strictEqual(loginIface.description, "Login endpoint");
     assert.ok(loginIface.id); // has autoincrement id
     assert.strictEqual(loginIface.component_id, "COMP-1");

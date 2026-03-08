@@ -51,7 +51,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `component` | backend_architect | System components (id: `COMP-XXX`). Type, responsibility, tech stack. |
 | `component_interface` | backend_architect | APIs/ports each component exposes. |
 | `component_dependency` | backend_architect | Component-to-component dependency graph (must be a DAG). |
-| `component_requirement` | backend_architect | Which requirements each component satisfies (traceability). |
 | `integration_test_boundary` | backend_architect | Where integration tests are needed between components. |
 | `technology_choice` | backend_architect | Language, framework, DB choices with rationale. |
 | `architecture_overview` | backend_architect | High-level summary, style, communication patterns. Design principles stored as JSON array (`principles` column). |
@@ -77,7 +76,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 |-------|----------|---------|
 | `architecture_config` | backend_architect | Unified config store for security, deployment, and observability architecture (discriminated by `config_type`). |
 | `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
-| `traceability_mapping` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
+| `requirement_trace` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 | `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
 | `project_lesson` | (any critic via orchestrator) | Cross-phase lessons learned — patterns, anti-patterns, conventions, risks, decisions, and process observations recorded by critics for downstream agents. |
 | `entity_snapshot` | (automatic — MCP server internals) | Before-update JSON snapshots of TEXT-PK entities for audit trail. Populated automatically during UPSERT, not written by agents. |
@@ -92,7 +91,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `user_flow_step` | ux_designer | Steps within each flow. |
 | `user_flow_step_branch` | ux_designer | Conditional branches at each step. |
 | `user_flow_error_state` | ux_designer | Error states per flow. |
-| `user_flow_requirement` | ux_designer | Flow-to-requirement mapping. |
 | `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. UI components stored as JSON array (`components` column). |
 | `screen_state` | ux_designer | State variants (loading, empty, error, populated). |
 | `screen_responsive_variant` | ux_designer | Responsive breakpoint behavior. |
@@ -118,7 +116,6 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
 | `plan_overview_risk` | implementation_planner | Plan-level risks. |
 | `plan_external_dependency` | implementation_planner | External blockers. |
-| `plan_critical_path` | implementation_planner | Critical path phases. |
 | `plan_metadata` | implementation_planner | Plan versioning, upstream artifact versions used. |
 
 **Critic:** implementation_plan_critic
@@ -262,7 +259,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 111 tables with links to their detailed design documents.
+All 108 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -277,7 +274,6 @@ All 111 tables with links to their detailed design documents.
 | `component` | [architecture](tables/architecture.md) |
 | `component_dependency` | [architecture](tables/architecture.md) |
 | `component_interface` | [architecture](tables/architecture.md) |
-| `component_requirement` | [architecture](tables/architecture.md) |
 | `data_entity` | [data-model](tables/data-model.md) |
 | `data_entity_attribute` | [data-model](tables/data-model.md) |
 | `data_entity_relationship` | [data-model](tables/data-model.md) |
@@ -329,7 +325,6 @@ All 111 tables with links to their detailed design documents.
 | `persona_addressed` | [ux-design](tables/ux-design.md) |
 | `persona_addressed_flow` | [ux-design](tables/ux-design.md) |
 | `phase` | [core](tables/core.md) |
-| `plan_critical_path` | [planning](tables/planning.md) |
 | `plan_external_dependency` | [planning](tables/planning.md) |
 | `plan_metadata` | [planning](tables/planning.md) |
 | `plan_overview` | [planning](tables/planning.md) |
@@ -368,14 +363,13 @@ All 111 tables with links to their detailed design documents.
 | `test_requirement_coverage` | [qa-test](tables/qa-test.md) |
 | `test_security_finding` | [qa-test](tables/qa-test.md) |
 | `test_suite` | [qa-test](tables/qa-test.md) |
-| `traceability_mapping` | [cross-cutting](tables/cross-cutting.md) |
+| `requirement_trace` | [cross-cutting](tables/cross-cutting.md) |
 | `user_flow` | [ux-design](tables/ux-design.md) |
 | `user_flow_error_state` | [ux-design](tables/ux-design.md) |
-| `user_flow_requirement` | [ux-design](tables/ux-design.md) |
 | `user_flow_step` | [ux-design](tables/ux-design.md) |
 | `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `ux_config` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 111 tables across 12 domains**
+**Total: 108 tables across 12 domains**

@@ -196,7 +196,7 @@ describe("technology_choice", () => {
   });
 });
 
-describe("traceability_mapping", () => {
+describe("requirement_trace", () => {
   it("inserts mapping from requirement to component", () => {
     // Insert requirement + component first
     handleWriteTool("changelog_insert", {
@@ -211,7 +211,7 @@ describe("traceability_mapping", () => {
       revision_id: seed.revision_id,
       data: { id: "auth-svc", name: "Auth", purpose: "Auth", type: "service" },
     });
-    const { readResult } = insertAndQuery("traceability_mapping", {
+    const { readResult } = insertAndQuery("requirement_trace", {
       requirement_id: "REQ-1",
       addressed_by: "auth-svc",
       addressed_by_type: "component",
@@ -398,30 +398,28 @@ describe("plan_external_dependency", () => {
   });
 });
 
-describe("plan_critical_path", () => {
-  it("inserts critical path entry", () => {
-    // Need a plan_phase first
-    const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "setup", type: "feature", goal: "Initial setup" },
+describe("plan_phase with critical_path_sequence", () => {
+  it("inserts plan_phase with critical_path_sequence", () => {
+    const { writeResult, readResult } = insertAndQuery("plan_phase", {
+      phase_number: 1,
+      name: "setup",
+      type: "feature",
+      goal: "Initial setup",
+      critical_path_sequence: 1,
     });
-    const writeResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_critical_path",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { plan_phase_id: ppResult.id, sequence_order: 1 },
-    });
-    assert.strictEqual(writeResult.entity_type, "plan_critical_path");
-
-    // plan_critical_path has no iteration_id column — query by ids
-    const readResult = handleReadTool("changelog_query", {
-      entity_type: "plan_critical_path",
-      ids: [writeResult.id],
-    });
+    assert.strictEqual(writeResult.entity_type, "plan_phase");
     assert.ok(readResult.results.length > 0);
-    assert.strictEqual(readResult.results[0].sequence_order, 1);
+    assert.strictEqual(readResult.results[0].critical_path_sequence, 1);
+  });
+
+  it("inserts plan_phase without critical_path_sequence (defaults to null)", () => {
+    const { readResult } = insertAndQuery("plan_phase", {
+      phase_number: 2,
+      name: "build",
+      type: "feature",
+      goal: "Build things",
+    });
+    assert.strictEqual(readResult.results[0].critical_path_sequence, null);
   });
 });
 

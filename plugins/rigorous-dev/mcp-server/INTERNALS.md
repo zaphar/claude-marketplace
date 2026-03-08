@@ -44,8 +44,8 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 89 | Everything else (88 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
-| Composite `PRIMARY KEY` | 16 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 87 | Everything else (86 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| Composite `PRIMARY KEY` | 15 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `snapshotIfExists` and the upsert write pattern only apply to these types.
 
@@ -59,7 +59,7 @@ Before overwriting a text-PK entity, `snapshotIfExists()` captures the complete 
 
 ### b. Delete-and-Reinsert (child tables)
 
-When upserting a parent entity that already exists, all child rows are deleted first, then re-inserted from the new data. Example: updating a component deletes all `component_interface`, `component_dependency`, `component_requirement`, and `integration_test_boundary` rows, then re-inserts from the incoming data. This is simpler than per-row diffing and safe because `changelogInsert` wraps the handler in a transaction.
+When upserting a parent entity that already exists, all child rows are deleted first, then re-inserted from the new data. Example: updating a component deletes all `component_interface`, `component_dependency`, and `integration_test_boundary` rows, then re-inserts from the incoming data. This is simpler than per-row diffing and safe because `changelogInsert` wraps the handler in a transaction.
 
 ### c. Append-Only (INTEGER PK entities)
 
@@ -120,13 +120,13 @@ Arrays that don't need relational querying are stored as JSON-serialized TEXT co
 
 ## 8. Index Strategy
 
-143 indexes with a clear rationale (documented in `schema.sql` comments):
+107 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."
 - **`requirement_id`** indexes on junction/mapping tables — requirements are the most cross-referenced entity.
 - **`manifest_id`** / **`report_id`** / **`plan_phase_id`** on child tables — parent→child joins.
-- **Composite indexes** on `traceability_mapping(iteration_id, requirement_id)` and `(iteration_id, addressed_by_type)`.
+- **Single-column indexes** on `requirement_trace(requirement_id)`, `(revision_id)`, and `(addressed_by_type)`.
 - **Explicit skip comments** where a column is already leftmost in a PK or UNIQUE constraint that SQLite auto-indexes (e.g., `component_dependency.component_id` is leftmost in its composite PK, so no separate index is needed).
 
 ## 9. Adding a New Entity Type (Checklist)

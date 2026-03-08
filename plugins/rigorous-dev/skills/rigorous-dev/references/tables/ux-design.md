@@ -1,6 +1,6 @@
 # UX Design Domain — Table Reference
 
-This document covers the 13 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
+This document covers the 12 database tables that capture all output produced by the `ux_designer` agent during the `ux_design` phase. The `ux_critic` validates this data. Downstream consumers are `backend_architect` (flows and screens drive API surface decisions) and `implementation_planner` (flows and screens scope UI work phases).
 
 **Database:** `.claude/rigorous-dev.db`  
 **Phase:** `ux_design`  
@@ -16,7 +16,7 @@ The UX design domain is organised into five sub-areas:
 
 | Sub-area | Tables |
 |---|---|
-| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state`, `user_flow_requirement` |
+| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state` |
 | **Screens** | `screen`, `screen_state`, `screen_responsive_variant` |
 | **UX Configuration** | `ux_config` (discriminated by `config_type`: `design_system`, `accessibility`, `responsive`, `feedback_pattern`), `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
@@ -52,11 +52,10 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 **Relationships:**
 - Has many `user_flow_step` (ordered steps)
 - Has many `user_flow_error_state` (error recovery paths)
-- Has many `user_flow_requirement` (requirements this flow satisfies)
 - JSON array: `data_dependencies` (inline on this table)
 - Referenced by `persona_addressed_flow` (persona coverage tracking)
 - Referenced by `plan_phase_flow` (implementation planning)
-- Referenced by `traceability_mapping` via `addressed_by_type = 'flow'`
+- Referenced by `requirement_trace` via `addressed_by_type = 'flow'`
 
 **MCP tool access:**
 - **Write:** `changelog_insert` with `entity_type: "user_flow"`. Pass `steps`, `error_states`, `requirements_addressed`, and `data_dependencies` arrays in the `data` object — child rows are inserted atomically.
@@ -146,27 +145,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 ---
 
-### `user_flow_requirement`
-
-**Purpose:** Many-to-many join table linking a user flow to the requirements it addresses. Enables bidirectional traceability: "which requirements does this flow cover?" and "which flows cover this requirement?"
-
-**Context:** The `ux_critic` validates that every requirement of category `usability` or `functional` is covered by at least one flow. The `implementation_planner` reads this join to ensure each plan phase covers the flows that satisfy its requirements.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)` | — | The flow. |
-| `requirement_id` | TEXT | NOT NULL, FK → `requirement(id)` | — | The requirement it addresses. |
-| — | — | PRIMARY KEY (`flow_id`, `requirement_id`) | — | Prevents duplicate mappings. |
-
-**Relationships:**
-- Belongs to `user_flow`
-- References `requirement`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `user_flow` via the `requirements_addressed` array. Uses `INSERT OR IGNORE` — duplicates are silently skipped.
-- **Read:** Returned as the `requirements` array when querying `user_flow` with `include_related: true`.
+> **Note:** Flow-to-requirement traceability (formerly tracked in a dedicated `user_flow_requirement` table) is now handled by `requirement_trace` with `addressed_by_type = 'flow'`. See [cross-cutting.md](cross-cutting.md#requirement_trace) for details.
 
 ---
 
@@ -200,13 +179,13 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - Referenced by `user_flow_step.surface` (by name, not by FK)
 - Referenced by `ux_asset.screen_id`
 - Referenced by `plan_phase_screen`
-- Referenced by `traceability_mapping` via `addressed_by_type = 'screen'`
+- Referenced by `requirement_trace` via `addressed_by_type = 'screen'`
 
 **Indexes:**
 
 | Index | Columns | Purpose |
 |-------|---------|---------|
-| `idx_screen_name` | `(name)` | Supports lookup queries matching `user_flow_step.surface` and `traceability_mapping.addressed_by` to screen names. |
+| `idx_screen_name` | `(name)` | Supports lookup queries matching `user_flow_step.surface` and `requirement_trace.addressed_by` to screen names. |
 
 **MCP tool access:**
 - **Write:** `changelog_insert` with `entity_type: "screen"`. Pass `components`, `states`, and `responsive_variants` arrays in `data` — all child rows inserted atomically.
@@ -420,7 +399,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 ---
 
-> **Note:** UX screen-level requirement traceability (formerly tracked in a dedicated `ux_requirement_mapping` table) is now handled via `traceability_mapping` with `addressed_by_type = 'screen'`. See [cross-cutting.md](cross-cutting.md#traceability_mapping) for details.
+> **Note:** UX screen-level requirement traceability (formerly tracked in a dedicated `ux_requirement_mapping` table) is now handled via `requirement_trace` with `addressed_by_type = 'screen'`. See [cross-cutting.md](cross-cutting.md#requirement_trace) for details.
 
 ---
 
@@ -432,7 +411,6 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `user_flow_step` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_step_branch` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_error_state` | via `user_flow` | via `user_flow` | Not directly addressable |
-| `user_flow_requirement` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `screen` | ✅ `entity_type: "screen"` | ✅ `entity_type: "screen"` | `include_related: true` expands states, responsive variants; `components` is a JSON column |
 | `screen_state` | via `screen` | via `screen` | Not directly addressable |
 | `screen_responsive_variant` | via `screen` | via `screen` | Not directly addressable |
@@ -441,14 +419,14 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `persona_addressed` | ✅ `entity_type: "persona_addressed"` | ✅ `entity_type: "persona_addressed"` | `include_related: true` expands `flows`; pass `flows` array in data for atomic child insert |
 | `persona_addressed_flow` | via `persona_addressed` | via `persona_addressed` | Not directly addressable |
 | `ux_asset` | ✅ `entity_type: "ux_asset"` | ✅ `entity_type: "ux_asset"` | Accepts single or array; filter by `type` or `screen_id` |
-| _(screen traceability)_ | — | — | Now via `traceability_mapping` with `addressed_by_type = 'screen'` (see [cross-cutting.md](cross-cutting.md#traceability_mapping)) |
+| _(screen traceability)_ | — | — | Now via `requirement_trace` with `addressed_by_type = 'screen'` (see [cross-cutting.md](cross-cutting.md#requirement_trace)) |
 
 ### `traceability_query` integration
 
 The `traceability_query` tool supports `target_type: "flow"` and `target_type: "screen"`. When called with a flow or screen ID it walks the full chain:
 
-- **flow chain:** requirement → `user_flow_requirement` → `user_flow` → `user_flow_step` → referenced `surface` names → matched `screen` rows
-- **screen chain:** `screen` → `user_flow_step` (by `surface` name) → `user_flow` → `user_flow_requirement` → `requirement`
+- **flow chain:** requirement → `requirement_trace` (where `addressed_by_type = 'flow'`) → `user_flow` → `user_flow_step` → referenced `surface` names → matched `screen` rows
+- **screen chain:** `screen` → `user_flow_step` (by `surface` name) → `user_flow` → `requirement_trace` (where `addressed_by_type = 'flow'`) → `requirement`
 
 ---
 
@@ -462,4 +440,4 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 4. **Flat key-value for config.** `ux_config` and `info_architecture` use a `category / key / value` pattern rather than typed columns. This makes them extensible without schema changes — new token categories can be added freely. `ux_config` adds a `config_type` discriminator to distinguish design system, accessibility, responsive, and feedback pattern entries in a single table. The `info_architecture` table adds `parent_id` to support a tree structure within this flat scheme.
 
-5. **Screen traceability via `traceability_mapping`.** UX screen-level requirement coverage was previously tracked in a dedicated `ux_requirement_mapping` table. This is now consolidated into the cross-cutting `traceability_mapping` table using `addressed_by_type = 'screen'`, giving a single unified traceability chain across all artifact types. `user_flow_requirement` remains the precise FK join (flow → requirement) used for automated coverage checks within the UX domain.
+5. **Screen and flow traceability via `requirement_trace`.** UX requirement coverage — both screen-level and flow-level — is now consolidated into the cross-cutting `requirement_trace` table using `addressed_by_type = 'screen'` or `addressed_by_type = 'flow'`, giving a single unified traceability chain across all artifact types. See [cross-cutting.md](cross-cutting.md#requirement_trace) for details.

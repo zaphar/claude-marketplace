@@ -15,10 +15,9 @@ const ENTITY_TABLE = {
   plan_phase: "plan_phase",
   plan_overview: "plan_overview",
   plan_external_dependency: "plan_external_dependency",
-  plan_critical_path: "plan_critical_path",
   plan_metadata: "plan_metadata",
   implementation_manifest: "implementation_manifest",
-  traceability_mapping: "traceability_mapping",
+  requirement_trace: "requirement_trace",
   project_context: "project_context",
   system_io: "system_io",
   deployment_requirement: "deployment_requirement",
@@ -100,7 +99,7 @@ function queryPersona(db, { iteration_id, ids, filters = {}, include_related = f
   let sql = "SELECT * FROM persona";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PERSONA_FILTERS, "persona");
   clauses.push(...f.clauses);
@@ -125,7 +124,7 @@ function queryRequirement(db, { iteration_id, ids, filters = {}, include_related
   let sql = "SELECT * FROM requirement";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, REQUIREMENT_FILTERS, "requirement");
   clauses.push(...f.clauses);
@@ -161,7 +160,7 @@ function queryAdr(db, { iteration_id, ids, filters = {}, include_related = false
   let sql = "SELECT * FROM adr";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, ADR_FILTERS, "adr");
   clauses.push(...f.clauses);
@@ -190,14 +189,14 @@ function queryAdr(db, { iteration_id, ids, filters = {}, include_related = false
 const COMPONENT_FILTERS = {
   name: { nullable: false },
   purpose: { nullable: false },
-  type: { nullable: false },
+  component_type: { nullable: false },
 };
 
 function queryComponent(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM component";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, COMPONENT_FILTERS, "component");
   clauses.push(...f.clauses);
@@ -215,7 +214,7 @@ function queryComponent(db, { iteration_id, ids, filters = {}, include_related =
       .all(c.id)
       .map((x) => x.depends_on),
     requirements_addressed: db
-      .prepare("SELECT requirement_id FROM component_requirement WHERE component_id = ?")
+      .prepare("SELECT requirement_id FROM requirement_trace WHERE addressed_by = ? AND addressed_by_type = 'component'")
       .all(c.id)
       .map((x) => x.requirement_id),
     integration_test_boundaries: db
@@ -236,7 +235,7 @@ function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = 
   let sql = "SELECT * FROM user_flow";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, USER_FLOW_FILTERS, "user_flow");
   clauses.push(...f.clauses);
@@ -261,7 +260,7 @@ function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = 
         .prepare("SELECT condition, recovery FROM user_flow_error_state WHERE flow_id = ?")
         .all(fl.id),
       requirements: db
-        .prepare("SELECT requirement_id FROM user_flow_requirement WHERE flow_id = ?")
+        .prepare("SELECT requirement_id FROM requirement_trace WHERE addressed_by = ? AND addressed_by_type = 'flow'")
         .all(fl.id)
         .map((x) => x.requirement_id),
       data_dependencies: (() => { try { return JSON.parse(fl.data_dependencies || '[]'); } catch { return fl.data_dependencies; } })(),
@@ -280,7 +279,7 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
   let sql = "SELECT * FROM screen";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, SCREEN_FILTERS, "screen");
   clauses.push(...f.clauses);
@@ -303,19 +302,20 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
 const PLAN_PHASE_FILTERS = {
   phase_number: { nullable: false },
   name: { nullable: false },
-  type: { nullable: false },
+  phase_type: { nullable: false },
   goal: { nullable: false },
   status: { nullable: false },
   complexity: { nullable: true },
   review_checkpoint: { nullable: true },
   notes: { nullable: true },
+  critical_path_sequence: { nullable: true },
 };
 
 function queryPlanPhase(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM plan_phase";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PLAN_PHASE_FILTERS, "plan_phase");
   clauses.push(...f.clauses);
@@ -379,7 +379,7 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
   let sql = "SELECT * FROM plan_overview";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PLAN_OVERVIEW_FILTERS, "plan_overview");
   clauses.push(...f.clauses);
@@ -389,11 +389,15 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
   if (!include_related) return results;
   return results.map((o) => ({
     ...o,
-    total_phases: db
-      .prepare("SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?")
-      .get(o.iteration_id).cnt,
+    total_phases: (() => {
+        const ctx = db.prepare("SELECT iteration_id FROM entity_context WHERE revision_id = ?").get(o.revision_id);
+        if (!ctx) return 0;
+        return db.prepare(
+          "SELECT COUNT(*) AS cnt FROM plan_phase WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
+        ).get(ctx.iteration_id).cnt;
+      })(),
     risks: db
-      .prepare("SELECT risk, mitigation, plan_phase_number FROM plan_overview_risk WHERE plan_overview_id = ?")
+      .prepare("SELECT risk, mitigation, plan_phase_id FROM plan_overview_risk WHERE plan_overview_id = ?")
       .all(o.id),
     assumptions: (() => { try { return JSON.parse(o.assumptions || '[]'); } catch { return o.assumptions; } })(),
   }));
@@ -408,7 +412,7 @@ function queryDataEntity(db, { iteration_id, ids, filters = {}, include_related 
   let sql = "SELECT * FROM data_entity";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, DATA_ENTITY_FILTERS, "data_entity");
   clauses.push(...f.clauses);
@@ -440,7 +444,7 @@ function queryArchitectureOverview(db, { iteration_id, ids, filters = {}, includ
   let sql = "SELECT * FROM architecture_overview";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, ARCHITECTURE_OVERVIEW_FILTERS, "architecture_overview");
   clauses.push(...f.clauses);
@@ -467,7 +471,7 @@ function queryPersonaAddressed(db, { iteration_id, ids, filters = {}, include_re
   let sql = "SELECT * FROM persona_addressed";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PERSONA_ADDRESSED_FILTERS, "persona_addressed");
   clauses.push(...f.clauses);
@@ -495,7 +499,7 @@ function queryInfoArchitecture(db, { iteration_id, ids, filters = {}, include_re
   let sql = "SELECT * FROM info_architecture";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, INFO_ARCHITECTURE_FILTERS, "info_architecture");
   clauses.push(...f.clauses);
@@ -529,7 +533,7 @@ function queryImplementationManifest(db, { iteration_id, ids, filters = {}, incl
   let sql = "SELECT * FROM implementation_manifest";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, IMPLEMENTATION_MANIFEST_FILTERS, "implementation_manifest");
   clauses.push(...f.clauses);
@@ -616,7 +620,7 @@ function queryTestReport(db, { iteration_id, ids, filters = {}, include_related 
   let sql = "SELECT * FROM test_report";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, TEST_REPORT_FILTERS, "test_report");
   clauses.push(...f.clauses);
@@ -701,7 +705,7 @@ function queryDocumentationManifest(db, { iteration_id, ids, filters = {}, inclu
   let sql = "SELECT * FROM documentation_manifest";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, DOCUMENTATION_MANIFEST_FILTERS, "documentation_manifest");
   clauses.push(...f.clauses);
@@ -762,7 +766,7 @@ function queryDeploymentManifest(db, { iteration_id, ids, filters = {}, include_
   let sql = "SELECT * FROM deployment_manifest";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, DEPLOYMENT_MANIFEST_FILTERS, "deployment_manifest");
   clauses.push(...f.clauses);
@@ -880,7 +884,7 @@ function queryTechnologyChoice(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM technology_choice";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, TECHNOLOGY_CHOICE_FILTERS, "technology_choice");
   clauses.push(...f.clauses);
@@ -892,7 +896,7 @@ function queryTechnologyChoice(db, { iteration_id, ids, filters = {} }) {
 const PLAN_EXTERNAL_DEPENDENCY_FILTERS = {
   name: { nullable: false },
   description: { nullable: false },
-  plan_phase_number: { nullable: true },
+  plan_phase_id: { nullable: true },
   risk_level: { nullable: false },
   mitigation: { nullable: true },
 };
@@ -904,23 +908,6 @@ function queryPlanExternalDependency(db, { iteration_id, ids, filters = {} }) {
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PLAN_EXTERNAL_DEPENDENCY_FILTERS, "plan_external_dependency");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
-const PLAN_CRITICAL_PATH_FILTERS = {
-  plan_phase_id: { nullable: false },
-  sequence_order: { nullable: false },
-};
-
-function queryPlanCriticalPath(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM plan_critical_path";
-  const clauses = [];
-  const params = [];
-  if (ids?.length) { clauses.push(`plan_phase_id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, PLAN_CRITICAL_PATH_FILTERS, "plan_critical_path");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -942,7 +929,7 @@ function queryPlanMetadata(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM plan_metadata";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PLAN_METADATA_FILTERS, "plan_metadata");
   clauses.push(...f.clauses);
@@ -951,20 +938,20 @@ function queryPlanMetadata(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const TRACEABILITY_MAPPING_FILTERS = {
+const REQUIREMENT_TRACE_FILTERS = {
   requirement_id: { nullable: false },
   addressed_by: { nullable: false },
   addressed_by_type: { nullable: false },
   notes: { nullable: true },
 };
 
-function queryTraceabilityMapping(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM traceability_mapping";
+function queryRequirementTrace(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM requirement_trace";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, TRACEABILITY_MAPPING_FILTERS, "traceability_mapping");
+  const f = applyFilters(filters, REQUIREMENT_TRACE_FILTERS, "requirement_trace");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -1079,7 +1066,7 @@ function queryUxConfig(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM ux_config";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, UX_CONFIG_FILTERS, "ux_config");
   clauses.push(...f.clauses);
@@ -1091,7 +1078,7 @@ function queryUxConfig(db, { iteration_id, ids, filters = {} }) {
 const UX_ASSET_FILTERS = {
   name: { nullable: false },
   path: { nullable: false },
-  type: { nullable: false },
+  asset_type: { nullable: false },
   screen_id: { nullable: true },
   description: { nullable: true },
 };
@@ -1100,7 +1087,7 @@ function queryUxAsset(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM ux_asset";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, UX_ASSET_FILTERS, "ux_asset");
   clauses.push(...f.clauses);
@@ -1121,7 +1108,7 @@ function queryArchitectureConfig(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM architecture_config";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, ARCHITECTURE_CONFIG_FILTERS, "architecture_config");
   clauses.push(...f.clauses);
@@ -1147,7 +1134,7 @@ function queryApprovedDependency(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM approved_dependency";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, APPROVED_DEPENDENCY_FILTERS, "approved_dependency");
   clauses.push(...f.clauses);
@@ -1213,7 +1200,7 @@ function querySecurityAuditFinding(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM security_audit_finding";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, SECURITY_AUDIT_FINDING_FILTERS, "security_audit_finding");
   clauses.push(...f.clauses);
@@ -1239,7 +1226,7 @@ function queryPerformanceAuditFinding(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM performance_audit_finding";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PERFORMANCE_AUDIT_FINDING_FILTERS, "performance_audit_finding");
   clauses.push(...f.clauses);
@@ -1259,7 +1246,7 @@ function queryIntermediateAsset(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM intermediate_asset";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, INTERMEDIATE_ASSET_FILTERS, "intermediate_asset");
   clauses.push(...f.clauses);
@@ -1331,9 +1318,8 @@ const QUERY_DISPATCH = {
   deployment_manifest: queryDeploymentManifest,
   technology_choice: queryTechnologyChoice,
   plan_external_dependency: queryPlanExternalDependency,
-  plan_critical_path: queryPlanCriticalPath,
   plan_metadata: queryPlanMetadata,
-  traceability_mapping: queryTraceabilityMapping,
+  requirement_trace: queryRequirementTrace,
   project_context: queryProjectContext,
   system_io: querySystemIo,
   deployment_requirement: queryDeploymentRequirement,
@@ -1408,9 +1394,6 @@ function traceabilityQuery(args) {
   const db = getDb();
   const { target, target_type, iteration_id } = args;
 
-  const iterFilter = iteration_id
-    ? " AND iteration_id = ?"
-    : "";
   const iterParam = iteration_id ? [iteration_id] : [];
 
   const chain = [];
@@ -1418,15 +1401,17 @@ function traceabilityQuery(args) {
   switch (target_type) {
     case "component": {
       const comp = db
-        .prepare("SELECT * FROM component WHERE id = ?" + (iteration_id ? " AND iteration_id = ?" : ""))
+        .prepare("SELECT * FROM component WHERE id = ?" + (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : ""))
         .get(target, ...iterParam);
       if (!comp) break;
       chain.push({ type: "component", data: comp });
 
       const reqIds = db
-        .prepare("SELECT requirement_id FROM component_requirement WHERE component_id = ?")
+        .prepare("SELECT requirement_id FROM requirement_trace WHERE addressed_by = ? AND addressed_by_type = 'component'")
         .all(comp.id)
         .map((x) => x.requirement_id);
+
+      const compCtx = db.prepare("SELECT iteration_id FROM entity_context WHERE revision_id = ?").get(comp.revision_id);
 
       if (reqIds.length > 0) {
         const reqs = db
@@ -1435,19 +1420,20 @@ function traceabilityQuery(args) {
         chain.push({ type: "requirements_addressed", data: reqs });
 
         // Find ADRs in the same iteration as this component
-        const adrs = db
-          .prepare(
-            "SELECT * FROM adr WHERE iteration_id = ?" +
-              (iteration_id ? " AND iteration_id = ?" : "")
-          )
-          .all(comp.iteration_id, ...iterParam);
-        if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
+        if (compCtx) {
+          const adrs = db
+            .prepare(
+              "SELECT * FROM adr WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
+            )
+            .all(compCtx.iteration_id);
+          if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
+        }
       }
 
-      const iterMeta = comp.iteration_id
+      const iterMeta = compCtx
         ? db
             .prepare("SELECT key, value, category FROM project_context WHERE iteration_id = ?")
-            .all(comp.iteration_id)
+            .all(compCtx.iteration_id)
         : [];
       if (iterMeta.length > 0) chain.push({ type: "project_context", data: iterMeta });
       break;
@@ -1457,7 +1443,7 @@ function traceabilityQuery(args) {
       const techRows = db
         .prepare(
           "SELECT * FROM technology_choice WHERE name = ?" +
-            (iteration_id ? " AND iteration_id = ?" : "")
+            (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
         .all(target, ...iterParam);
       if (!techRows.length) break;
@@ -1467,7 +1453,7 @@ function traceabilityQuery(args) {
       const adrs = db
         .prepare(
           "SELECT * FROM adr WHERE (decision LIKE ? OR rationale LIKE ?)" +
-            (iteration_id ? " AND iteration_id = ?" : "")
+            (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
         .all(`%${target}%`, `%${target}%`, ...iterParam);
       if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
@@ -1478,7 +1464,7 @@ function traceabilityQuery(args) {
         const approved = db
           .prepare(
             `SELECT * FROM approved_dependency WHERE adr_id IN (${adrIds.map(() => "?").join(",")})` +
-              (iteration_id ? " AND iteration_id = ?" : "")
+              (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
           )
           .all(...adrIds, ...iterParam);
         if (approved.length > 0) chain.push({ type: "approved_dependencies", data: approved });
@@ -1488,7 +1474,7 @@ function traceabilityQuery(args) {
 
     case "requirement": {
       const req = db
-        .prepare("SELECT * FROM requirement WHERE id = ?" + (iteration_id ? " AND iteration_id = ?" : ""))
+        .prepare("SELECT * FROM requirement WHERE id = ?" + (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : ""))
         .get(target, ...iterParam);
       if (!req) break;
       chain.push({ type: "requirement", data: req });
@@ -1497,40 +1483,13 @@ function traceabilityQuery(args) {
       if (acceptanceCriteria.length > 0)
         chain.push({ type: "acceptance_criteria", data: acceptanceCriteria });
 
-      // What addresses this requirement — source from traceability_mapping for
-      // non-junction types, and from junction tables for component/flow types
-      const tmRows = db
+      // What addresses this requirement — single query from requirement_trace
+      const mappings = db
         .prepare(
-          "SELECT * FROM traceability_mapping WHERE requirement_id = ? AND addressed_by_type NOT IN ('component', 'flow')" +
-            (iteration_id ? " AND iteration_id = ?" : "")
+          "SELECT * FROM requirement_trace WHERE requirement_id = ?" +
+            (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
         .all(req.id, ...iterParam);
-
-      const crRows = db
-        .prepare(
-          `SELECT NULL as id, c.iteration_id, c.revision_id, cr.requirement_id,
-                  cr.component_id as addressed_by, 'component' as addressed_by_type,
-                  NULL as notes, c.created_at
-           FROM component_requirement cr
-           JOIN component c ON c.id = cr.component_id
-           WHERE cr.requirement_id = ?` +
-            (iteration_id ? " AND c.iteration_id = ?" : "")
-        )
-        .all(req.id, ...iterParam);
-
-      const ufrRows = db
-        .prepare(
-          `SELECT NULL as id, uf.iteration_id, uf.revision_id, ufr.requirement_id,
-                  ufr.flow_id as addressed_by, 'flow' as addressed_by_type,
-                  NULL as notes, uf.created_at
-           FROM user_flow_requirement ufr
-           JOIN user_flow uf ON uf.id = ufr.flow_id
-           WHERE ufr.requirement_id = ?` +
-            (iteration_id ? " AND uf.iteration_id = ?" : "")
-        )
-        .all(req.id, ...iterParam);
-
-      const mappings = [...tmRows, ...crRows, ...ufrRows];
       if (mappings.length > 0) chain.push({ type: "addressed_by", data: mappings });
 
       // Which plan_phase includes it
@@ -1539,7 +1498,7 @@ function traceabilityQuery(args) {
           `SELECT pp.* FROM plan_phase pp
            JOIN plan_phase_requirement ppr ON ppr.plan_phase_id = pp.id
            WHERE ppr.requirement_id = ?` +
-            (iteration_id ? " AND pp.iteration_id = ?" : "")
+            (iteration_id ? " AND pp.revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
         .all(req.id, ...iterParam);
       if (phases.length > 0) chain.push({ type: "plan_phases", data: phases });
@@ -1548,9 +1507,9 @@ function traceabilityQuery(args) {
       const components = db
         .prepare(
           `SELECT c.* FROM component c
-           JOIN component_requirement cr ON cr.component_id = c.id
-           WHERE cr.requirement_id = ?` +
-            (iteration_id ? " AND c.iteration_id = ?" : "")
+           JOIN requirement_trace rt ON rt.addressed_by = c.id AND rt.addressed_by_type = 'component'
+           WHERE rt.requirement_id = ?` +
+            (iteration_id ? " AND c.revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
         .all(req.id, ...iterParam);
       if (components.length > 0) chain.push({ type: "implementing_components", data: components });
@@ -1559,7 +1518,7 @@ function traceabilityQuery(args) {
 
     case "adr": {
       const adr = db
-        .prepare("SELECT * FROM adr WHERE id = ?" + (iteration_id ? " AND iteration_id = ?" : ""))
+        .prepare("SELECT * FROM adr WHERE id = ?" + (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : ""))
         .get(target, ...iterParam);
       if (!adr) break;
       chain.push({ type: "adr", data: adr });
@@ -1578,25 +1537,25 @@ function traceabilityQuery(args) {
       if (consequences.length > 0) chain.push({ type: "consequences", data: consequences });
 
       // Components in the same iteration as this ADR
-      const components = db
+      const adrCtx = db.prepare("SELECT iteration_id FROM entity_context WHERE revision_id = ?").get(adr.revision_id);
+      const components = adrCtx ? db
         .prepare(
-          "SELECT * FROM component WHERE iteration_id = ?" +
-            (iteration_id ? " AND iteration_id = ?" : "")
+          "SELECT * FROM component WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
         )
-        .all(adr.iteration_id, ...(iteration_id ? [iteration_id] : []));
+        .all(adrCtx.iteration_id) : [];
       if (components.length > 0) chain.push({ type: "components_in_same_iteration", data: components });
       break;
     }
 
     case "flow": {
       const flow = db
-        .prepare("SELECT * FROM user_flow WHERE id = ?" + (iteration_id ? " AND iteration_id = ?" : ""))
+        .prepare("SELECT * FROM user_flow WHERE id = ?" + (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : ""))
         .get(target, ...iterParam);
       if (!flow) break;
       chain.push({ type: "user_flow", data: flow });
 
       const reqIds = db
-        .prepare("SELECT requirement_id FROM user_flow_requirement WHERE flow_id = ?")
+        .prepare("SELECT requirement_id FROM requirement_trace WHERE addressed_by = ? AND addressed_by_type = 'flow'")
         .all(flow.id)
         .map((x) => x.requirement_id);
       if (reqIds.length > 0) {
@@ -1617,56 +1576,29 @@ function traceabilityQuery(args) {
           const screens = db
             .prepare(
               `SELECT * FROM screen WHERE name IN (${screenNames.map(() => "?").join(",")})` +
-                (iteration_id ? " AND iteration_id = ?" : "")
+                (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
             )
             .all(...screenNames, ...iterParam);
           if (screens.length > 0) chain.push({ type: "referenced_screens", data: screens });
         }
       }
 
-      // Related traceability — combine traceability_mapping (non-junction types)
-      // with junction tables for component and flow types
+      // Related traceability — single query from requirement_trace
       if (reqIds.length > 0) {
-        const tmRows = db
+        const mappings = db
           .prepare(
-            `SELECT * FROM traceability_mapping WHERE requirement_id IN (${reqIds.map(() => "?").join(",")}) AND addressed_by_type NOT IN ('component', 'flow')` +
-              (iteration_id ? " AND iteration_id = ?" : "")
+            `SELECT * FROM requirement_trace WHERE requirement_id IN (${reqIds.map(() => "?").join(",")})` +
+              (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
           )
           .all(...reqIds, ...iterParam);
-
-        const crRows = db
-          .prepare(
-            `SELECT NULL as id, c.iteration_id, c.revision_id, cr.requirement_id,
-                    cr.component_id as addressed_by, 'component' as addressed_by_type,
-                    NULL as notes, c.created_at
-             FROM component_requirement cr
-             JOIN component c ON c.id = cr.component_id
-             WHERE cr.requirement_id IN (${reqIds.map(() => "?").join(",")})` +
-              (iteration_id ? " AND c.iteration_id = ?" : "")
-          )
-          .all(...reqIds, ...iterParam);
-
-        const ufrRows = db
-          .prepare(
-            `SELECT NULL as id, uf.iteration_id, uf.revision_id, ufr.requirement_id,
-                    ufr.flow_id as addressed_by, 'flow' as addressed_by_type,
-                    NULL as notes, uf.created_at
-             FROM user_flow_requirement ufr
-             JOIN user_flow uf ON uf.id = ufr.flow_id
-             WHERE ufr.requirement_id IN (${reqIds.map(() => "?").join(",")})` +
-              (iteration_id ? " AND uf.iteration_id = ?" : "")
-          )
-          .all(...reqIds, ...iterParam);
-
-        const mappings = [...tmRows, ...crRows, ...ufrRows];
-        if (mappings.length > 0) chain.push({ type: "traceability_mappings", data: mappings });
+        if (mappings.length > 0) chain.push({ type: "requirement_traces", data: mappings });
       }
       break;
     }
 
     case "screen": {
       const scr = db
-        .prepare("SELECT * FROM screen WHERE id = ?" + (iteration_id ? " AND iteration_id = ?" : ""))
+        .prepare("SELECT * FROM screen WHERE id = ?" + (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : ""))
         .get(target, ...iterParam);
       if (!scr) break;
       chain.push({ type: "screen", data: scr });
@@ -1680,7 +1612,7 @@ function traceabilityQuery(args) {
         const flows = db
           .prepare(
             `SELECT * FROM user_flow WHERE id IN (${flowIds.map(() => "?").join(",")})` +
-              (iteration_id ? " AND iteration_id = ?" : "")
+              (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
           )
           .all(...flowIds, ...iterParam);
         chain.push({ type: "flows_referencing_screen", data: flows });
@@ -1688,8 +1620,8 @@ function traceabilityQuery(args) {
         // Trace to requirements via those flows
         const reqIds = db
           .prepare(
-            `SELECT DISTINCT ufr.requirement_id FROM user_flow_requirement ufr
-             WHERE ufr.flow_id IN (${flowIds.map(() => "?").join(",")})`
+            `SELECT DISTINCT rt.requirement_id FROM requirement_trace rt
+             WHERE rt.addressed_by_type = 'flow' AND rt.addressed_by IN (${flowIds.map(() => "?").join(",")})`
           )
           .all(...flowIds)
           .map((x) => x.requirement_id);
@@ -1783,7 +1715,7 @@ function iterationSummary(args) {
   // Decision counts
   const countFor = (table) =>
     db
-      .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE iteration_id = ?`)
+      .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)`)
       .get(iteration_id).n;
 
   const decisions = {
@@ -1795,7 +1727,7 @@ function iterationSummary(args) {
     screens: countFor("screen"),
     plan_phases: countFor("plan_phase"),
     approved_dependencies: countFor("approved_dependency"),
-    traceability_mappings: countFor("traceability_mapping"),
+    requirement_traces: countFor("requirement_trace"),
     security_audit_findings: countFor("security_audit_finding"),
     performance_audit_findings: countFor("performance_audit_finding"),
   };

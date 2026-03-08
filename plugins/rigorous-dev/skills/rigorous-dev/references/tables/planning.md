@@ -30,7 +30,6 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_overview`](#plan_overview) | High-level strategy and rationale for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
-| [`plan_critical_path`](#plan_critical_path) | Ordered sequence of phases on the critical path |
 | [`plan_metadata`](#plan_metadata) | Plan versioning and source document references |
 
 ---
@@ -39,7 +38,7 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 
 ### Purpose
 
-Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field provides the human-readable sequential ordering; child and related tables reference the phase by its `id` primary key (e.g., `plan_phase_relationship.related_phase_id`, `plan_critical_path.plan_phase_id`).
+Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field provides the human-readable sequential ordering; child and related tables reference the phase by its `id` primary key (e.g., `plan_phase_relationship.related_phase_id`). The `critical_path_sequence` column (nullable INTEGER) indicates whether this phase is on the critical path and its position in the sequence; NULL means not on the critical path.
 
 ### Context
 
@@ -55,7 +54,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables as `plan_phase_id`. |
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this phase belongs to. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The planning revision that produced this phase. |
-| `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Human-readable ordering identifier. Dependency and critical-path tables reference phases by surrogate `id` rather than this field. Must be unique within an iteration (enforced by application logic). |
+| `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Human-readable ordering identifier. Dependency tables reference phases by surrogate `id` rather than this field. Must be unique within an iteration (enforced by application logic). |
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
 | `type` | TEXT | NOT NULL | — | Free-form label describing the kind of work (e.g., `feature`, `infrastructure`). |
 | `goal` | TEXT | NOT NULL | — | One-paragraph statement of what this phase achieves and why. |
@@ -66,6 +65,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `exit_criteria` | TEXT | NOT NULL | `'[]'` | JSON array of strings. Each string is a done-condition that must be met before the phase is considered complete (e.g., `"All unit tests pass with ≥80% coverage"`). Replaces the former `plan_phase_exit_criterion` child table. |
 | `checkpoint_focus` | TEXT | NOT NULL | `'[]'` | JSON array of strings drawn from a fixed vocabulary (`requirements`, `architecture`, `ux`). Only populated when `review_checkpoint = 1`. Indicates which domains to examine during the checkpoint. Replaces the former `plan_checkpoint_focus` child table. |
 | `notes` | TEXT | nullable | — | Free-form notes from the planner (caveats, open questions, reminders). |
+| `critical_path_sequence` | INTEGER | nullable | NULL | Position of this phase in the critical path sequence (1 = first, 2 = second, …). NULL means this phase is not on the critical path. Replaces the former `plan_critical_path` child table. |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
@@ -73,7 +73,7 @@ Central record for one implementation work chunk. A phase groups related develop
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
 - **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_relationship`, `plan_phase_risk`
 - **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
-- **Referenced by FK in:** `plan_phase_relationship.related_phase_id`, `plan_critical_path.plan_phase_id`, `implementation_manifest.plan_phase_id`
+- **Referenced by FK in:** `plan_phase_relationship.related_phase_id`, `implementation_manifest.plan_phase_id`
 
 ### MCP tool access
 
@@ -310,7 +310,7 @@ Records inter-phase relationships: ordering constraints (`dependency`) and concu
 - **parallel** rows record pairs of phases that can be worked concurrently — they have no blocking dependency and touch independent parts of the system.
 - `implementation_planner` populates both relationship types to ensure correct sequencing and to surface safe parallelism.
 - `senior_developer` reads dependencies to decide which phases to start/queue, and reads parallel relationships to maximize throughput.
-- `plan_critical_path` is derived from the dependency subset — the longest chain through dependency rows.
+- The critical path is derived from the dependency subset — the longest chain through dependency rows. Critical path membership is tracked on `plan_phase.critical_path_sequence`.
 - `implementation_plan_critic` verifies claimed parallelism by checking for hidden conflicts in `plan_phase_db_change.tables` and `plan_phase_component`.
 
 ### Columns
@@ -493,36 +493,7 @@ Records external systems, services, or teams that the implementation plan depend
 
 ---
 
-## `plan_critical_path`
-
-### Purpose
-
-Records the ordered sequence of phases that form the critical path — the chain of dependent phases whose total duration determines the minimum possible delivery time. Each row is one phase in the sequence, ordered by `sequence_order`.
-
-### Context
-
-- One row per phase on the critical path. Derived by `implementation_planner` from the dependency graph in `plan_phase_relationship` (rows with `dependency_type = 'dependency'`).
-- The critical path is the longest dependency chain. Phases not on the critical path have float (can slip without delaying the final delivery).
-- `senior_developer` uses this to decide where to concentrate resources and attention.
-- `implementation_plan_critic` verifies the critical path is consistent with the dependency graph.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `plan_phase_id` | INTEGER | PRIMARY KEY, FK → `plan_phase(id)` | — | The `id` of a phase on the critical path. Primary key — each phase appears at most once. Iteration is derived via `plan_phase.iteration_id`. |
-| `sequence_order` | INTEGER | NOT NULL | — | The position of this phase within the critical path sequence (1 = first, 2 = second, …). Rows should be read in ascending `sequence_order` to traverse the path. |
-
-### Relationships
-
-- **References:** `plan_phase` via `plan_phase_id` (iteration derived through `plan_phase`)
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "plan_critical_path"` |
-| Query | `changelog_query` | `entity_type: "plan_critical_path"` — returns rows ordered by `sequence_order` |
+> **Note:** Critical path tracking (formerly in a dedicated `plan_critical_path` table) is now handled by the `plan_phase.critical_path_sequence` column — a nullable INTEGER where NULL means not on the critical path and a non-NULL value indicates the phase's position in the critical path sequence.
 
 ---
 
@@ -593,7 +564,6 @@ iteration ───────────────────────�
 │   └─ plan_phase_risk         (1:N)                                │
 │                                                                    │
 ├─ plan_external_dependency  (1:N)                                  │
-├─ plan_critical_path        (ordered plan_phase FKs)                │
 └─ plan_metadata             (version + status)                     │
 ```
 

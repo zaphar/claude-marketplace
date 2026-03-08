@@ -92,6 +92,17 @@ describe("phase_transition", () => {
     ).get(seed.iteration_id);
     assert.ok(phase.completed_at);
   });
+
+  it("throws when phase_name does not exist", () => {
+    assert.throws(
+      () => handleWriteTool("phase_transition", {
+        iteration_id: seed.iteration_id,
+        phase_name: "nonexistent_phase",
+        status: "in_progress",
+      }),
+      /Phase "nonexistent_phase" not found in iteration/
+    );
+  });
 });
 
 // ───────────────────────────────────────────────────────────────
@@ -112,7 +123,9 @@ describe("plan_phase_transition", () => {
         goal: "Implement authentication",
       },
     });
-    const phases = db.prepare("SELECT id FROM plan_phase WHERE iteration_id = ?").all(seed.iteration_id);
+    const phases = db.prepare(
+      "SELECT id FROM plan_phase WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
+    ).all(seed.iteration_id);
     const ppId = phases[0].id;
 
     const result = handleWriteTool("plan_phase_transition", {
@@ -124,6 +137,16 @@ describe("plan_phase_transition", () => {
     // Read back
     const row = db.prepare("SELECT status FROM plan_phase WHERE id = ?").get(ppId);
     assert.strictEqual(row.status, "implementing");
+  });
+
+  it("throws when plan_phase_id does not exist", () => {
+    assert.throws(
+      () => handleWriteTool("plan_phase_transition", {
+        plan_phase_id: 99999,
+        status: "implementing",
+      }),
+      /Plan phase 99999 not found/
+    );
   });
 });
 
