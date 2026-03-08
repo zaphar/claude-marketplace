@@ -83,7 +83,7 @@ deployment_manifest
 
 **MCP tool access:**
 - **Write:** `changelog_insert` with `entity_type: "deployment_manifest"`. The `data` object includes `status` (required), `targets` (JSON array of strings), `blockers` (JSON array of strings), metadata fields as flat properties (`version`, `document_date`, `requirements_version`, `architecture_version`, `implementation_version`, `test_report_version`) or via a backward-compatible `metadata` object, and all child records as nested arrays (`pipelines`, `quality_gates`, `environments`, `artifacts`, `signing`, `local_executables`, `secrets`, `health_checks`, `alerting`, `runbooks`, `review_checklist`). All tables are inserted in a single transactional call.
-- **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Returns manifest rows with all children attached via `attachRelated`.
+- **Read:** `changelog_query` with `entity_type: "deployment_manifest"`, optionally filtered by `iteration_id`. Returns manifest rows with all children attached when `include_related: true`.
 
 ---
 
@@ -467,7 +467,7 @@ deployment_manifest
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert deployment manifest + all children | `changelog_insert` with `entity_type: "deployment_manifest"` | All child tables are inserted in a single transactional call via nested `data` properties. `targets` and `blockers` are JSON arrays on the manifest row itself. |
-| Query manifest by iteration | `changelog_query` with `entity_type: "deployment_manifest"`, `iteration_id: N` | Returns `deployment_manifest` rows with all children attached via `attachRelated` |
+| Query manifest by iteration | `changelog_query` with `entity_type: "deployment_manifest"`, `iteration_id: N` | Returns `deployment_manifest` rows with all children attached when `include_related: true` |
 | Query with filters | `changelog_query` with `entity_type: "deployment_manifest"`, `filters: { status: "blocked" }` | Returns blocked manifests for a given iteration |
 
 ### Write — `changelog_insert` data shape

@@ -48,20 +48,6 @@ const ENTITY_TABLE = {
 // Imported by write-tools.js for input validation.
 export const VALID_ENTITY_TYPES = Object.keys(ENTITY_TABLE);
 
-// Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
-const TEXT_PK_TYPES = new Set([
-  "persona", "requirement", "adr", "component", "user_flow", "screen",
-]);
-
-// Tables whose primary key column is NOT 'id'. Default is 'id' for all others.
-const PK_COLUMN = {
-  plan_critical_path: "plan_phase_id",
-};
-
-function pkCol(table) {
-  return PK_COLUMN[table] || "id";
-}
-
 // ---------------------------------------------------------------------------
 // Helper: validate and apply entity filters
 // ---------------------------------------------------------------------------
@@ -1406,37 +1392,11 @@ function changelogQuery(args) {
   }
 
   try {
-    let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
-
-    // All 16 complex types now handle their own enrichment via include_related.
-    const SELF_ENRICHING = new Set([
-      "persona", "plan_overview", "architecture_overview",
-      "persona_addressed", "info_architecture", "data_entity",
-      "requirement", "adr", "component", "screen", "user_flow", "plan_phase",
-      "implementation_manifest", "test_report", "documentation_manifest", "deployment_manifest",
-    ]);
-
-    if (include_related && results.length > 0 && !SELF_ENRICHING.has(entity_type)) {
-      results = attachRelated(db, entity_type, results);
-    }
+    const results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
 
     return { entity_type, results, count: results.length };
   } catch (err) {
     throw new Error(`Failed to query ${entity_type}: ${err.message}`);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// attachRelated: enrich results with child table rows
-// (All 16 complex types now self-enrich via include_related in their query
-//  functions. This stub remains as a no-op fallback until Phase 2-final
-//  removes it entirely.)
-// ---------------------------------------------------------------------------
-
-function attachRelated(db, entityType, results) {
-  switch (entityType) {
-    default:
-      return results;
   }
 }
 

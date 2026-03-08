@@ -18,7 +18,7 @@ Persistence layer mechanics for the rigorous-dev MCP server.
 
 **Return values.** `.run()` returns `{ changes, lastInsertRowid }`. The codebase chains parent→child inserts via `lastInsertRowid` — for example, `iterationCreate` captures the iteration ID from the insert result and uses it for all subsequent phase inserts.
 
-**Named parameters.** `@param` syntax, bound via an object. The codebase mixes named (`@param`) and positional (`?`) parameters across different functions. `changelogQuery` in `read-tools.js` has to work around the fact that SQLite does not allow mixing both in one statement — when `ids` are present, it falls back to a fully-positional query rebuild (see the `idsParam` branching in `changelogQuery`).
+**Named parameters.** `@param` syntax, bound via an object. The codebase uses positional (`?`) parameters throughout — individual `queryXxx` functions in `read-tools.js` build their own queries with positional placeholders to avoid mixing named and positional params (which SQLite does not allow in a single statement).
 
 ## 2. Database Initialization (db.js)
 
@@ -47,7 +47,7 @@ Three PK strategies coexist, each serving a different purpose:
 | `INTEGER PRIMARY KEY AUTOINCREMENT` | 89 | Everything else (88 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
 | Composite `PRIMARY KEY` | 16 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
-The `TEXT_PK_TYPES` set in `read-tools.js` tracks the 6 text-PK entities. This matters because `snapshotIfExists` and the upsert write pattern only apply to these types, and `buildWhere` adjusts query construction based on membership.
+The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `snapshotIfExists` and the upsert write pattern only apply to these types.
 
 ## 4. Write Patterns (write-tools.js)
 
@@ -55,7 +55,7 @@ The `TEXT_PK_TYPES` set in `read-tools.js` tracks the 6 text-PK entities. This m
 
 ### a. Upsert + Snapshot (TEXT PK entities only)
 
-Before overwriting a text-PK entity, `snapshotIfExists()` captures the complete old row as JSON into the `entity_snapshot` table. Then `INSERT ... ON CONFLICT(id) DO UPDATE SET ...` performs the upsert. This provides a full audit trail queryable via `changelog_query` with `history: true`. Only the 6 `TEXT_PK_TYPES` entities use this pattern.
+Before overwriting a text-PK entity, `snapshotIfExists()` captures the complete old row as JSON into the `entity_snapshot` table. Then `INSERT ... ON CONFLICT(id) DO UPDATE SET ...` performs the upsert. This provides a full audit trail queryable via `changelog_query` with `history: true`. Only the 6 text-PK entities use this pattern.
 
 ### b. Delete-and-Reinsert (child tables)
 
@@ -77,13 +77,15 @@ Ten insert functions accept arrays via the `Array.isArray(data) ? data : [data]`
 
 ## 5. Read Patterns (read-tools.js)
 
-### a. Dynamic Query Building (`buildWhere` + `changelogQuery`)
+### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-Builds WHERE clauses from `iteration_id`, `ids`, and `filters`. Has a notable complexity around mixing named (`@param`) and positional (`?`) parameters: when `ids` are present, `changelogQuery` abandons named params entirely and rebuilds the query with all-positional parameters to avoid SQLite's parameter mixing limitation. See the `idsParam` branching block starting at line ~137.
+`changelogQuery` dispatches to one of 37 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
-### b. N+1 Query Pattern (`attachRelated`)
+**Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to column metadata (column name, table alias, nullable flag). When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
-When `include_related: true`, flat result rows are enriched with child table data via per-row queries. For complex entities like `implementation_manifest`, this means 11+ additional queries per result row (files, per-file requirements, requirement status, component status, API endpoints, per-endpoint requirements, blockers, per-blocker requirements, dependencies added, DB migrations, review checklist). This is an intentional design choice — acceptable because datasets are small (typically <100 entities per iteration) and SQLite is in-process with zero network overhead.
+### b. Co-located Enrichment (`include_related`)
+
+When `include_related: true`, each `queryXxx` function enriches its own results with child table data via per-row queries. The N+1 pattern is still used (each parent row triggers child queries), but enrichment logic is co-located in the same function that builds the base query — not in a separate monolithic switch. For complex entities like `implementation_manifest`, this means 11+ additional queries per result row. This is an intentional design choice — acceptable because datasets are small (typically <100 entities per iteration) and SQLite is in-process with zero network overhead.
 
 ### c. Traceability Graph Traversal (`traceabilityQuery`)
 
@@ -133,13 +135,13 @@ Adding a new entity type requires synchronized changes in 4+ files:
 
 1. **`schema.sql`** — `CREATE TABLE` with FKs to `iteration(id)` and `revision(id)` + `CREATE INDEX` for `iteration_id` and `revision_id` + any child/junction tables + their indexes.
 2. **`write-tools.js`** — Write an `insertXxx()` function + add the case to the `changelogInsert` dispatch `handlers` object.
-3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping (this automatically populates `VALID_ENTITY_TYPES`, which is derived as `Object.keys(ENTITY_TABLE)`) + optionally add to `TEXT_PK_TYPES` if using text PKs + optionally add a case in `attachRelated` for child data enrichment.
+3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping (this automatically populates `VALID_ENTITY_TYPES`, which is derived as `Object.keys(ENTITY_TABLE)`) + write a `queryXxx` function with a hardcoded `FILTERS` spec and optional `include_related` enrichment + register it in `QUERY_DISPATCH`.
 4. **Table documentation** — Add or update the relevant `skills/rigorous-dev/references/tables/<domain>.md`.
 5. **`schemas-overview.md`** — Add the table to the domain listing.
 
 ## 10. Performance Considerations
 
 - **Synchronous execution** means expensive queries block the MCP server (the agent's tool call hangs until it returns). Not a problem at current scale.
-- **The N+1 pattern** in `attachRelated` would need batching if result sets grow beyond hundreds of rows.
+- **The N+1 enrichment pattern** (per-row child queries in each `queryXxx` function) would need batching if result sets grow beyond hundreds of rows.
 - **No explicit WAL checkpointing** — relies on SQLite's auto-checkpoint at the default threshold (~1000 pages).
 - **Prepared statements** are created inline (not cached across calls) in most functions. `better-sqlite3` handles this efficiently with its internal statement cache, so this is not a performance issue in practice.
