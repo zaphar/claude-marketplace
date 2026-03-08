@@ -1356,9 +1356,9 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       sf.category,
       sf.tool ?? null,
       sf.severity ?? null,
-      sf.description ?? null,
+      sf.description,
       sf.location ?? null,
-      sf.recommendation ?? null,
+      sf.recommendation,
       sf.package ?? null,
       sf.advisory ?? null
     );

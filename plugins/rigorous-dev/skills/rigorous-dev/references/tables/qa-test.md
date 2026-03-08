@@ -254,10 +254,10 @@ The `qa_engineer` runs security tooling (e.g., SAST scanners, `npm audit`, `pip-
 | `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this finding belongs to |
 | `category` | TEXT | NOT NULL | — | Whether this came from a code scan or a dependency audit (e.g. `vulnerability_scan`, `dependency_audit`). Free text — no enum constraint. |
 | `tool` | TEXT | — | NULL | Name of the tool that found this issue (e.g., `"snyk"`, `"npm audit"`) |
-| `severity` | TEXT | CHECK(`critical`, `high`, `medium`, `low`, `info`) | NULL | Severity level of the finding |
-| `description` | TEXT | — | NULL | Human-readable description of the vulnerability or issue |
+| `severity` | TEXT | CHECK(`critical`, `high`, `medium`, `low`, `informational`) | NULL | Severity level of the finding |
+| `description` | TEXT | NOT NULL | — | Human-readable description of the vulnerability or issue |
 | `location` | TEXT | — | NULL | File path or code location where the issue was found (for `vulnerability_scan`) |
-| `recommendation` | TEXT | — | NULL | Suggested remediation |
+| `recommendation` | TEXT | NOT NULL | — | Suggested remediation |
 | `package` | TEXT | — | NULL | Affected package name (for `dependency_audit`) |
 | `advisory` | TEXT | — | NULL | CVE or advisory identifier (e.g., `"CVE-2024-12345"`) |
 

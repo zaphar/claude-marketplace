@@ -802,10 +802,10 @@ CREATE TABLE IF NOT EXISTS test_security_finding (
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   tool TEXT,
-  severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'info')),
-  description TEXT,
+  severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  description TEXT NOT NULL,
   location TEXT,
-  recommendation TEXT,
+  recommendation TEXT NOT NULL,
   package TEXT,
   advisory TEXT
 );
