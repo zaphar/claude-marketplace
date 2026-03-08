@@ -321,6 +321,12 @@ Records each language, framework, runtime, database engine, cloud service, or to
 - **Parent:** `iteration`, `revision`
 - **Referenced by:** `approved_dependency` (approved third-party deps may be backed by a technology_choice category)
 
+### Indexes
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_technology_choice_name` | `(name)` | Supports lookup queries filtering by technology name (e.g., `WHERE name = 'TypeScript'`). |
+
 ### MCP Tool Access
 
 ```

@@ -44,6 +44,10 @@ const ENTITY_TABLE = {
   vcs_commit: "vcs_commit",
 };
 
+// Canonical list of valid entity type names, derived from ENTITY_TABLE.
+// Imported by write-tools.js for input validation.
+export const VALID_ENTITY_TYPES = Object.keys(ENTITY_TABLE);
+
 // Primary key column per table (most use 'id', but some are INTEGER AUTOINCREMENT)
 const TEXT_PK_TYPES = new Set([
   "persona", "requirement", "adr", "component", "user_flow", "screen",

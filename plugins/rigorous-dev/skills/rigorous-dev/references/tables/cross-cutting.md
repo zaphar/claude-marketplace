@@ -503,14 +503,14 @@ Unlike most entity tables, `entity_snapshot` is never written directly by agents
 
 Populated automatically by the `snapshotIfExists()` helper in `write-tools.js` whenever a TEXT-PK entity is re-inserted during a new revision. The helper runs a `SELECT *` on the existing row, serialises it to JSON, and inserts it into `entity_snapshot` before the `ON CONFLICT ... DO UPDATE` overwrites the current state.
 
-The `entity_type` column must match a table name in the schema — see the `ENTITY_TABLE` map in `read-tools.js` for the full set and the DDL comment on `entity_snapshot.entity_type` in `schema.sql`.
+The `entity_type` column is a **polymorphic discriminator**: its value must match a key in the `ENTITY_TABLE` map in `read-tools.js` (which maps entity type names to their database table names). This is enforced at the application level, not via a SQL CHECK constraint, because the set of valid entity types is defined in code and may evolve. See the DDL comment on `entity_snapshot.entity_type` in `schema.sql` and the `VALID_ENTITY_TYPES` export in `read-tools.js` for the canonical set.
 
 ### Column Reference
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `entity_type` | TEXT | NOT NULL | — | — | The table name of the snapshotted entity (e.g., `'requirement'`, `'adr'`, `'component'`, `'screen'`). Must match a table name in the schema. |
+| `entity_type` | TEXT | NOT NULL | — | — | Polymorphic discriminator: the table name of the snapshotted entity (e.g., `'requirement'`, `'adr'`, `'component'`, `'screen'`). Must match a key in `ENTITY_TABLE` (read-tools.js) — see DDL comment in `schema.sql`. |
 | `source_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). Polymorphic reference — the target table is determined by `entity_type`. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` ON DELETE CASCADE | The new revision that triggered the snapshot — i.e., the revision whose UPSERT overwrote this entity's previous state. |
 | `snapshot` | JSON | NOT NULL | — | — | Complete JSON serialization of the entity row as it existed immediately before the update. |

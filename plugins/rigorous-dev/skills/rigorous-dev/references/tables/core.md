@@ -52,6 +52,12 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 - Parent: `project` (implicitly the single project; no FK needed)
 - Children: `phase` (via `iteration_id`), all changelog entity tables (via `iteration_id`)
 
+**Indexes:**
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_iteration_status` | `(status)` | Supports status-based queries (e.g., `WHERE status = 'active'` to find the current iteration). |
+
 **Produced by:** `iteration_create`
 **Queried by:** `project_status`, `iteration_summary`
 **Updated by:** `iteration_close`

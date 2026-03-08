@@ -86,6 +86,12 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - Belongs to `user_flow`
 - Has many `user_flow_step_branch` (conditional paths when `is_decision_point = 1`)
 
+**Indexes:**
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_user_flow_step_surface` | `(surface)` | Supports soft-FK lookups joining `user_flow_step.surface` to `screen.name`. |
+
 **MCP tool access:**
 - **Write:** Inserted automatically as part of `changelog_insert` for `user_flow`. Not directly addressable.
 - **Read:** Returned as the `steps` array when querying `user_flow` with `include_related: true`.
@@ -195,6 +201,12 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 - Referenced by `ux_asset.screen_id`
 - Referenced by `plan_phase_screen`
 - Referenced by `traceability_mapping` via `addressed_by_type = 'screen'`
+
+**Indexes:**
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_screen_name` | `(name)` | Supports lookup queries matching `user_flow_step.surface` and `traceability_mapping.addressed_by` to screen names. |
 
 **MCP tool access:**
 - **Write:** `changelog_insert` with `entity_type: "screen"`. Pass `components`, `states`, and `responsive_variants` arrays in `data` — all child rows inserted atomically.

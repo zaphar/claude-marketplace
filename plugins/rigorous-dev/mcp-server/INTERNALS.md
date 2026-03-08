@@ -132,8 +132,8 @@ Arrays that don't need relational querying are stored as JSON-serialized TEXT co
 Adding a new entity type requires synchronized changes in 4+ files:
 
 1. **`schema.sql`** — `CREATE TABLE` with FKs to `iteration(id)` and `revision(id)` + `CREATE INDEX` for `iteration_id` and `revision_id` + any child/junction tables + their indexes.
-2. **`write-tools.js`** — Add to `VALID_ENTITY_TYPES` array + write an `insertXxx()` function + add the case to the `changelogInsert` dispatch `handlers` object.
-3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping + optionally add to `TEXT_PK_TYPES` if using text PKs + optionally add a case in `attachRelated` for child data enrichment.
+2. **`write-tools.js`** — Write an `insertXxx()` function + add the case to the `changelogInsert` dispatch `handlers` object.
+3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping (this automatically populates `VALID_ENTITY_TYPES`, which is derived as `Object.keys(ENTITY_TABLE)`) + optionally add to `TEXT_PK_TYPES` if using text PKs + optionally add a case in `attachRelated` for child data enrichment.
 4. **Table documentation** — Add or update the relevant `skills/rigorous-dev/references/tables/<domain>.md`.
 5. **`schemas-overview.md`** — Add the table to the domain listing.
 

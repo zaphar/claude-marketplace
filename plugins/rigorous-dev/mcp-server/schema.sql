@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS iteration (
   notes TEXT DEFAULT ''
 );
 
+CREATE INDEX IF NOT EXISTS idx_iteration_status ON iteration(status);
+
 -- Phases within an iteration
 CREATE TABLE IF NOT EXISTS phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,6 +239,8 @@ CREATE TABLE IF NOT EXISTS technology_choice (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_technology_choice_name ON technology_choice(name);
+
 -- Architecture overview
 CREATE TABLE IF NOT EXISTS architecture_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -352,6 +356,8 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
   is_decision_point INTEGER DEFAULT 0
 );
 
+CREATE INDEX IF NOT EXISTS idx_user_flow_step_surface ON user_flow_step(surface);
+
 CREATE TABLE IF NOT EXISTS user_flow_step_branch (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   step_id INTEGER NOT NULL REFERENCES user_flow_step(id) ON DELETE CASCADE,
@@ -385,6 +391,8 @@ CREATE TABLE IF NOT EXISTS screen (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_screen_name ON screen(name);
 
 CREATE TABLE IF NOT EXISTS screen_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1135,7 +1143,8 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 
 CREATE TABLE IF NOT EXISTS entity_snapshot (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_type TEXT NOT NULL, -- must match a table name in the schema (e.g. 'requirement', 'adr', 'component', 'screen', 'user_flow', 'plan_phase', etc.) — see ENTITY_TABLE in read-tools.js for the full set
+  -- soft FK: entity_type must match a key in ENTITY_TABLE (read-tools.js)
+  entity_type TEXT NOT NULL, -- e.g. 'requirement', 'adr', 'component', 'screen', 'user_flow', 'plan_phase', etc.
   source_id TEXT NOT NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   snapshot JSON NOT NULL,

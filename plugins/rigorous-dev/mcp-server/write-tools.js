@@ -1,4 +1,5 @@
 import { getDb } from "./db.js";
+import { VALID_ENTITY_TYPES } from "./read-tools.js";
 
 const PHASES = [
   "requirements",
@@ -10,47 +11,6 @@ const PHASES = [
   "qa",
   "audit",
   "release",
-];
-
-// Canonical set of entity type names (must match ENTITY_TABLE keys in read-tools.js)
-const VALID_ENTITY_TYPES = [
-  "persona",
-  "requirement",
-  "adr",
-  "component",
-  "technology_choice",
-  "architecture_overview",
-  "data_entity",
-  "architecture_config",
-  "approved_dependency",
-  "traceability_mapping",
-  "user_flow",
-  "screen",
-  "ux_config",
-  "info_architecture",
-  "persona_addressed",
-  "ux_asset",
-  "plan_phase",
-  "plan_overview",
-  "plan_external_dependency",
-  "plan_critical_path",
-  "plan_metadata",
-  "implementation_manifest",
-  "test_report",
-  "documentation_manifest",
-  "deployment_manifest",
-  "vcs_commit",
-  "intermediate_asset",
-  "asset_deliverable",
-  "project_context",
-  "system_io",
-  "deployment_requirement",
-  "operational_requirement",
-  "technology_constraint",
-  "blocker",
-  "project_lesson",
-  "security_audit_finding",
-  "performance_audit_finding",
 ];
 
 // ---------------------------------------------------------------------------
