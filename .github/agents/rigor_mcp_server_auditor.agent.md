@@ -453,6 +453,7 @@ Use this exact structure:
 **Evidence:** [code snippet or specific line reference proving the issue]
 **Impact:** [what happens if this is not fixed]
 **Recommendation:** [how to fix]
+**Test suggestion:** [for critical/high severity only — see below]
 
 ## Dimension 2: Data Integrity & Consistency
 [Detailed findings]
@@ -509,6 +510,11 @@ The `Approved` column starts blank — it is filled during interactive review by
 5. **Be precise about severity.** "Critical" means actual breakage or data loss under realistic usage. Do not inflate severity.
 6. **Read INTERNALS.md first.** Many patterns that look unusual are documented design decisions. Flag them only if the implementation doesn't match the documented intent.
 7. **Test your assertions.** When checking constraint alignment or parameter binding, run discovery commands to get actual values rather than assuming.
+8. **Suggest tests for severe findings.** For every `critical` or `high` severity finding, assess whether a test could catch the problem. If yes, include a `**Test suggestion:**` field in the finding with:
+   - Which test file it belongs in (match the existing test file conventions in `test/`)
+   - A concrete test description (what it asserts, what inputs trigger the bug)
+   - A brief code sketch of the test using the project's test patterns (Node.js built-in `node:test`, the `freshDb()` and `seedIteration()` helpers from `test/helpers.js`)
+   - If the problem is not testable (e.g., a documentation issue or a process lifecycle concern), write `**Test suggestion:** Not testable — [reason]` so it's clear you evaluated it.
 
 #### What You Are NOT Responsible For
 

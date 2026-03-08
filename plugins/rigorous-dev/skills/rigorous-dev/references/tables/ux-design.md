@@ -214,8 +214,8 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `screen_id` | TEXT | NOT NULL, FK → `screen(id)` | — | Parent screen. |
-| `name` | TEXT | NOT NULL, CHECK(`name` IN allowed list) | — | State name. Allowed values: `default`, `loading`, `empty`, `error`, `success`, `session_expired`, `forced`, `editing`, `reviewing`, `search_results`, `complete`. |
+| `screen_id` | TEXT | NOT NULL, FK → `screen(id)`, part of UNIQUE(screen_id, name) | — | Parent screen. |
+| `name` | TEXT | NOT NULL, part of UNIQUE(screen_id, name) | — | State name. Allowed values: `default`, `loading`, `empty`, `error`, `success`, `session_expired`, `forced`, `editing`, `reviewing`, `search_results`, `complete`. |
 | `description` | TEXT | — | NULL | What this state looks like and when it appears. |
 | `wireframe_path` | TEXT | — | NULL | Path to a wireframe specific to this state. |
 
@@ -239,8 +239,8 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `screen_id` | TEXT | NOT NULL, FK → `screen(id)` | — | Parent screen. |
-| `breakpoint` | TEXT | NOT NULL | — | Breakpoint label, e.g. `mobile`, `tablet`, `desktop`. Should match a breakpoint defined in `ux_config` (config_type `responsive`). |
+| `screen_id` | TEXT | NOT NULL, FK → `screen(id)`, part of UNIQUE(screen_id, breakpoint) | — | Parent screen. |
+| `breakpoint` | TEXT | NOT NULL, part of UNIQUE(screen_id, breakpoint) | — | Breakpoint label, e.g. `mobile`, `tablet`, `desktop`. Should match a breakpoint defined in `ux_config` (config_type `responsive`). |
 | `wireframe_path` | TEXT | — | NULL | Path to a wireframe for this breakpoint. |
 | `layout_changes` | TEXT | — | NULL | Prose description of what changes at this breakpoint. |
 
@@ -365,8 +365,8 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `persona_addressed_id` | INTEGER | NOT NULL, FK → `persona_addressed(id)` | — | Parent persona-addressed record. |
-| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)` | — | A flow that delivers the addressed goal. |
+| `persona_addressed_id` | INTEGER | NOT NULL, FK → `persona_addressed(id)`, part of UNIQUE(persona_addressed_id, flow_id) | — | Parent persona-addressed record. |
+| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)`, part of UNIQUE(persona_addressed_id, flow_id) | — | A flow that delivers the addressed goal. |
 
 **Relationships:**
 - Belongs to `persona_addressed`

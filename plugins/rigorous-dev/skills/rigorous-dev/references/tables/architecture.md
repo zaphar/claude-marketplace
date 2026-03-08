@@ -168,8 +168,8 @@ Describes each interface — HTTP endpoint group, gRPC service definition, messa
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The component that exposes this interface. |
-| `name` | TEXT | NOT NULL | — | Short identifier for the interface (e.g., `POST /auth/token`, `UserCreated event`, `orders.csv export`). |
+| `component_id` | TEXT | NOT NULL, FK → `component(id)`, part of UNIQUE(component_id, name) | — | The component that exposes this interface. |
+| `name` | TEXT | NOT NULL, part of UNIQUE(component_id, name) | — | Short identifier for the interface (e.g., `POST /auth/token`, `UserCreated event`, `orders.csv export`). |
 | `type` | TEXT | NOT NULL | — | Interface style: typically one of `rest`, `grpc`, `graphql`, `event`, `cli`, `file`, `library`. Free-text — no CHECK constraint. |
 | `description` | TEXT | — | NULL | Longer description of the interface's contract, expected inputs/outputs, or SLA. |
 
@@ -268,9 +268,9 @@ Integration test boundaries are a direct output of architectural decomposition: 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The initiating component (the one that crosses the boundary). |
-| `target_component_id` | TEXT | NOT NULL, FK → `component(id)` | — | The receiving component (the one being called or accessed). |
-| `boundary_type` | TEXT | NOT NULL | — | Mechanism of interaction. Free-form text; canonical values: `api_call` (HTTP/RPC call), `database_access` (direct DB read/write), `message_event` (message broker publish/subscribe), `file_system` (shared file I/O). Custom values are accepted for project-specific boundary types. |
+| `component_id` | TEXT | NOT NULL, FK → `component(id)`, part of UNIQUE(component_id, target_component_id, boundary_type) | — | The initiating component (the one that crosses the boundary). |
+| `target_component_id` | TEXT | NOT NULL, FK → `component(id)`, part of UNIQUE(component_id, target_component_id, boundary_type) | — | The receiving component (the one being called or accessed). |
+| `boundary_type` | TEXT | NOT NULL, part of UNIQUE(component_id, target_component_id, boundary_type) | — | Mechanism of interaction. Free-form text; canonical values: `api_call` (HTTP/RPC call), `database_access` (direct DB read/write), `message_event` (message broker publish/subscribe), `file_system` (shared file I/O). Custom values are accepted for project-specific boundary types. |
 | `correct_behavior` | TEXT | NOT NULL | — | Human-readable description of what a passing integration test must assert (e.g., "When the Auth Service returns 401, the API Gateway must return 403 to the caller and log the event"). |
 
 ### Relationships
@@ -391,8 +391,8 @@ Diagrams are referenced assets rather than inline content — the `path` column 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `overview_id` | INTEGER | NOT NULL, FK → `architecture_overview(id)` | — | The overview this diagram illustrates. |
-| `name` | TEXT | NOT NULL | — | Descriptive name identifying the diagram's type and scope (e.g., `System Context Diagram`, `Component Interaction Diagram`, `Auth Sequence Diagram`). |
+| `overview_id` | INTEGER | NOT NULL, FK → `architecture_overview(id)`, part of UNIQUE(overview_id, name) | — | The overview this diagram illustrates. |
+| `name` | TEXT | NOT NULL, part of UNIQUE(overview_id, name) | — | Descriptive name identifying the diagram's type and scope (e.g., `System Context Diagram`, `Component Interaction Diagram`, `Auth Sequence Diagram`). |
 | `path` | TEXT | NOT NULL | — | Repository-relative path to the diagram file (e.g., `docs/architecture/system-context.mmd`). |
 | `description` | TEXT | — | NULL | Brief explanation of what the diagram depicts, what audience it is intended for, and any notable conventions used. |
 
@@ -459,10 +459,10 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 | `adr` | TEXT (ADR-XXX) | `iteration`, `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
 | `adr_alternative` | INTEGER AUTO | `adr` | `pros` and `cons` nullable TEXT (JSON arrays) |
 | `component` | TEXT (COMP-XXX) | `iteration`, `revision` | `type` CHECK 8 values |
-| `component_interface` | INTEGER AUTO | `component` | — |
+| `component_interface` | INTEGER AUTO | `component` | UNIQUE(component_id, name) |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
 | `component_requirement` | Composite (component_id, requirement_id) | `component`, `requirement` | Composite PK prevents duplicate mappings |
-| `integration_test_boundary` | INTEGER AUTO | `component` × 2 | `boundary_type` free-form TEXT |
+| `integration_test_boundary` | INTEGER AUTO | `component` × 2 | UNIQUE(component_id, target_component_id, boundary_type); `boundary_type` free-form TEXT |
 | `technology_choice` | INTEGER AUTO | `iteration`, `revision` | — |
 | `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | `principles` JSON column |
-| `architecture_diagram` | INTEGER AUTO | `architecture_overview` | — |
+| `architecture_diagram` | INTEGER AUTO | `architecture_overview` | UNIQUE(overview_id, name) |

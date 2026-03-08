@@ -198,7 +198,8 @@ CREATE TABLE IF NOT EXISTS component_interface (
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
-  description TEXT
+  description TEXT,
+  UNIQUE(component_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS component_dependency (
@@ -218,7 +219,8 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   target_component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   boundary_type TEXT NOT NULL,
-  correct_behavior TEXT NOT NULL
+  correct_behavior TEXT NOT NULL,
+  UNIQUE(component_id, target_component_id, boundary_type)
 );
 
 -- Architecture: technology choices
@@ -250,7 +252,8 @@ CREATE TABLE IF NOT EXISTS architecture_diagram (
   overview_id INTEGER NOT NULL REFERENCES architecture_overview(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   path TEXT NOT NULL,
-  description TEXT
+  description TEXT,
+  UNIQUE(overview_id, name)
 );
 
 -- Data model entities
@@ -388,7 +391,8 @@ CREATE TABLE IF NOT EXISTS screen_state (
   screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
-  wireframe_path TEXT
+  wireframe_path TEXT,
+  UNIQUE(screen_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS screen_responsive_variant (
@@ -396,7 +400,8 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
   screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   breakpoint TEXT NOT NULL,
   wireframe_path TEXT,
-  layout_changes TEXT
+  layout_changes TEXT,
+  UNIQUE(screen_id, breakpoint)
 );
 
 -- UX: unified config (design system, accessibility, responsive, feedback patterns)
@@ -437,7 +442,8 @@ CREATE TABLE IF NOT EXISTS persona_addressed (
 CREATE TABLE IF NOT EXISTS persona_addressed_flow (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   persona_addressed_id INTEGER NOT NULL REFERENCES persona_addressed(id) ON DELETE CASCADE,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE
+  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
+  UNIQUE(persona_addressed_id, flow_id)
 );
 
 -- UX: assets
@@ -1105,7 +1111,7 @@ CREATE TABLE IF NOT EXISTS blocker (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
   description TEXT NOT NULL,
-  severity TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
   raised_by TEXT NOT NULL,
   resolved_at TEXT,
   resolution_notes TEXT,
@@ -1486,12 +1492,10 @@ CREATE INDEX IF NOT EXISTS idx_persona_addressed_persona_id
 -- component_id — FK to component(id)
 -- Skipped: component_dependency, component_requirement
 --   (component_id is leftmost in their composite PKs)
+-- Skipped: component_interface, integration_test_boundary
+--   (component_id is leftmost in their UNIQUE constraints)
 -- ------------------------------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_component_interface_component_id
-  ON component_interface(component_id);
-CREATE INDEX IF NOT EXISTS idx_integration_test_boundary_component_id
-  ON integration_test_boundary(component_id);
 CREATE INDEX IF NOT EXISTS idx_plan_phase_component_component_id
   ON plan_phase_component(component_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_file_component_id
@@ -1501,12 +1505,10 @@ CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
 
 -- ------------------------------------------------------------
 -- screen_id — FK to screen(id)
+-- Skipped: screen_state, screen_responsive_variant
+--   (screen_id is leftmost in their UNIQUE constraints)
 -- ------------------------------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_screen_state_screen_id
-  ON screen_state(screen_id);
-CREATE INDEX IF NOT EXISTS idx_screen_responsive_variant_screen_id
-  ON screen_responsive_variant(screen_id);
 CREATE INDEX IF NOT EXISTS idx_ux_asset_screen_id
   ON ux_asset(screen_id);
 CREATE INDEX IF NOT EXISTS idx_plan_phase_screen_screen_id
@@ -1556,8 +1558,8 @@ CREATE INDEX IF NOT EXISTS idx_adr_superseded_by
   ON adr(superseded_by);
 
 -- architecture_diagram.overview_id → architecture_overview(id)
-CREATE INDEX IF NOT EXISTS idx_architecture_diagram_overview_id
-  ON architecture_diagram(overview_id);
+-- Skipped: architecture_diagram
+--   (overview_id is leftmost in UNIQUE(overview_id, name))
 
 -- Skipped: data_entity_attribute (entity_id is leftmost in UNIQUE(entity_id, name))
 
@@ -1574,8 +1576,8 @@ CREATE INDEX IF NOT EXISTS idx_info_architecture_parent_id
   ON info_architecture(parent_id);
 
 -- persona_addressed_flow.persona_addressed_id → persona_addressed(id)
-CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_persona_addressed_id
-  ON persona_addressed_flow(persona_addressed_id);
+-- Skipped: persona_addressed_flow
+--   (persona_addressed_id is leftmost in UNIQUE(persona_addressed_id, flow_id))
 
 -- user_flow_step_branch.step_id → user_flow_step(id)
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_branch_step_id

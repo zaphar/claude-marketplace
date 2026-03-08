@@ -215,7 +215,7 @@ When a critic or producer agent requests that a blocker be recorded (via the esc
 changelog_insert(entity_type: "blocker", iteration_id: <current>, data: {
   phase_name: "<current_phase>",
   description: "<description of the blocking issue>",
-  severity: "critical" | "high" | "medium",
+  severity: "critical" | "major" | "minor",
   raised_by: "<agent_name>"
 })
 ```

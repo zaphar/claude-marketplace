@@ -370,7 +370,7 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this blocker was raised. |
 | `phase_name` | TEXT | NOT NULL | — | FK (composite) → `phase(iteration_id, name)` | The phase during which the blocker was raised (e.g., `requirements`, `architecture`, `implementation`). |
 | `description` | TEXT | NOT NULL | — | — | Human-readable description of the blocking issue. |
-| `severity` | TEXT | NOT NULL | — | — | Severity of the blocker (e.g. `'critical'`, `'high'`, `'medium'`). |
+| `severity` | TEXT | NOT NULL | — | CHECK(severity IN ('critical', 'major', 'minor')) | Severity of the blocker. |
 | `raised_by` | TEXT | NOT NULL | — | — | The agent that raised the blocker (e.g., `requirements_critic`, `backend_architect`). |
 | `resolved_at` | TEXT | NULL | — | — | ISO 8601 timestamp when the blocker was resolved. NULL means still active. |
 | `resolution_notes` | TEXT | NULL | — | — | Optional notes describing how the blocker was resolved. |
