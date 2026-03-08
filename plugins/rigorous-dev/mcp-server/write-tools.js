@@ -165,18 +165,22 @@ function revisionCreate(args) {
   const { phase_id, producer_agent } = args;
   const now = new Date().toISOString();
 
-  const result = db
-    .prepare(
-      `INSERT INTO revision (phase_id, producer_agent, created_at, status)
-       VALUES (?, ?, ?, 'draft')`
-    )
-    .run(phase_id, producer_agent, now);
+  const run = db.transaction(() => {
+    const result = db
+      .prepare(
+        `INSERT INTO revision (phase_id, producer_agent, created_at, status)
+         VALUES (?, ?, ?, 'draft')`
+      )
+      .run(phase_id, producer_agent, now);
 
-  const revision_count = db
-    .prepare("SELECT COUNT(*) AS n FROM revision WHERE phase_id = ?")
-    .get(phase_id).n;
+    const revision_count = db
+      .prepare("SELECT COUNT(*) AS n FROM revision WHERE phase_id = ?")
+      .get(phase_id).n;
 
-  return { revision_id: result.lastInsertRowid, revision_count, phase_id };
+    return { revision_id: result.lastInsertRowid, revision_count, phase_id };
+  });
+
+  return run();
 }
 
 function revisionUpdate(args) {
@@ -1984,26 +1988,30 @@ function iterationClose(args) {
   const db = getDb();
   const { iteration_id, notes } = args;
 
-  const row = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
-  if (!row) throw new Error(`Iteration with id=${iteration_id} not found`);
-  if (row.status !== "active") {
-    throw new Error(`Iteration ${iteration_id} is not active (current status: ${row.status})`);
-  }
+  const run = db.transaction(() => {
+    const sets = ["status = 'closed'", "closed_at = datetime('now')"];
+    const params = { iteration_id };
 
-  const sets = ["status = 'closed'", "closed_at = datetime('now')"];
-  const params = { iteration_id };
+    if (notes !== undefined) {
+      sets.push("notes = @notes");
+      params.notes = notes;
+    }
 
-  if (notes !== undefined) {
-    sets.push("notes = @notes");
-    params.notes = notes;
-  }
+    const info = db.prepare(
+      `UPDATE iteration SET ${sets.join(", ")} WHERE id = @iteration_id AND status = 'active'`
+    ).run(params);
 
-  db.prepare(
-    `UPDATE iteration SET ${sets.join(", ")} WHERE id = @iteration_id`
-  ).run(params);
+    if (info.changes === 0) {
+      const row = db.prepare("SELECT status FROM iteration WHERE id = @iteration_id").get({ iteration_id });
+      if (!row) throw new Error(`Iteration with id=${iteration_id} not found`);
+      throw new Error(`Iteration ${iteration_id} is not active (current status: ${row.status})`);
+    }
 
-  const updated = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
-  return { iteration_id, status: updated.status, closed_at: updated.closed_at };
+    const updated = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
+    return { iteration_id, status: updated.status, closed_at: updated.closed_at };
+  });
+
+  return run();
 }
 
 // ---------------------------------------------------------------------------

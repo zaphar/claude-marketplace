@@ -235,7 +235,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 |------|---------|
 | `changelog_query` | Query entities by type, iteration, IDs, or field filters. |
 
-> **Note:** 3 entity types are write-only with respect to `changelog_query` — they can be inserted via `changelog_insert` but are not in the `ENTITY_TABLE` map: `vcs_commit`, `intermediate_asset`, `asset_deliverable`. Of these, `vcs_commit` and `asset_deliverable` are readable via `iteration_summary`. The remaining one (`intermediate_asset`) is stored in a dedicated table and can be queried directly via SQL.
+> **Note:** All entity types in the `ENTITY_TABLE` map are fully queryable via `changelog_query`, including `vcs_commit`, `intermediate_asset`, and `asset_deliverable`.
 >
 | `traceability_query` | Trace decisions across entity types — "why are we using X?" |
 | `revision_history` | Full revision chain for any entity. |

@@ -428,6 +428,7 @@ function attachRelated(db, entityType, results) {
           ...m,
           files_created: files.filter((f) => f.file_operation === "created").length,
           files_modified: files.filter((f) => f.file_operation === "modified").length,
+          files_deleted: files.filter((f) => f.file_operation === "deleted").length,
           files,
           requirement_status: db
             .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
