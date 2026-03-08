@@ -124,20 +124,24 @@ The shared workflow handles: interactive approve/reject/skip review → dependen
 
 When the user approves a test addition, include it as part of the work-unit for that finding during implementation. The producer should add the test to the appropriate existing test file (never create new test files unless no suitable one exists).
 
-**Decisions ledger path:** `.scratch/rigor-mcp-server-critic/audit-decisions.md`
+**Recording decisions to the audit database:**
 
-After interactive review completes, the findings-review workflow creates or updates the decisions ledger at this path. Each decision gets a ledger entry with: date, dimension, file(s), summary, decision, and action/reason. The ledger enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.
+After interactive review completes, INSERT each finding and its decision into the audit database. For each reviewed finding:
 
-**Ledger entry format for this mode:**
-
-```markdown
-### D[N]
-- **Date:** [date]
-- **Dimension:** [N] ([name])
-- **File(s):** [affected files]
-- **Summary:** [one-line finding]
-- **Decision:** approved | rejected | skipped
-- **Action:** [what was done] | **Reason:** [why rejected/skipped]
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "INSERT INTO finding (audit_run_id, critic, category, severity, summary, affected_entities, fingerprint, report_path)
+   VALUES ('<run_id>', 'mcp_server', '<category>', '<severity>', '<summary>', '<affected_entities_json>', '<fingerprint>', '<report_path>');"
 ```
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_consistency_critic` lacks.
+Then record the user's decision on that finding:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "INSERT INTO decision (finding_id, decision, action, reason)
+   VALUES (last_insert_rowid(), '<approved|rejected|skipped>', '<action_or_null>', '<reason_or_null>');"
+```
+
+The database enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.
+
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_plugin_critic` lacks.
