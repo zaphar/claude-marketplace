@@ -153,7 +153,9 @@ Load the appropriate agent for the target phase:
 - `ux_design` → `rigorous-dev:ux_designer`
 - `architecture` → `rigorous-dev:backend_architect`
 - `planning` → `rigorous-dev:implementation_planner`
-- `implementation` → `rigorous-dev:senior_developer`
+- `implementation` → Query `plan_phase` for first row with `status != 'completed'` ordered by `phase_number`:
+  - If that row's `status` is `"test_writing"` or `"pending"` → `rigorous-dev:test_writer`
+  - If that row's `status` is `"implementing"` → `rigorous-dev:senior_developer`
 - `documentation` → `rigorous-dev:documentation_master`
 
 ### 9. Inform User

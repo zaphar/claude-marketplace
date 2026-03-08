@@ -128,6 +128,8 @@ For each phase, follow this pattern:
 | Audit (Performance) | `rigorous-dev:performance_auditor` | `rigorous-dev:performance_audit_critic` |
 | Release | `rigorous-dev:release_engineer` | `rigorous-dev:release_critic` |
 
+> **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
+
 **When loading agents:**
 - Load the agent by its namespaced name (e.g., `rigorous-dev:requirements_analyst`)
 - Follow the instructions and adopt the personality
@@ -686,7 +688,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `system_input`, `system_output`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `system_io`, `deployment_requirement`, `operational_requirement`, `technology_constraint`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
   - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)

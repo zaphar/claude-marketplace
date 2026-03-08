@@ -68,6 +68,8 @@ The development workflow runs fast iteration loops. When ready to ship, the rele
 - **Performance Auditor**: Deep code-level performance audit
 - **Performance Audit Critic**: Validates performance audit thoroughness
 
+> **Note:** Auditor agents are read-only producers — they analyze code using Read, Grep, Glob, and Bash but do not edit files. They submit findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`).
+
 #### Release Phase
 - **Release Engineer**: Prepares deployment and release
 - **Release Critic**: Validates release readiness
@@ -376,7 +378,7 @@ The plugin maintains all state in a SQLite database at `.claude/rigorous-dev.db`
 
 The database is structured as an append-only changelog with normalized tables:
 
-- **`workflow`** — top-level workflow identity and status
+- **`project`** — top-level project identity and status
 - **`iteration`** — each request to change the system (closed → new-iteration creates a new one)
 - **`phase`** — phase status within an iteration (requirements, architecture, etc.)
 - **`revision`** — producer-critic loop records within each phase

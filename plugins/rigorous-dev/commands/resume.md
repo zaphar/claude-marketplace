@@ -91,8 +91,8 @@ Based on the current phase and its status, load the appropriate agent:
 - `architecture` → `rigorous-dev:backend_architect`
 - `planning` → `rigorous-dev:implementation_planner`
 - `implementation` → Query `plan_phase` for first row with `status != 'completed'` ordered by `phase_number`:
-  - If that row's `status` is `"test_writing"` → `rigorous-dev:test_writer`
-  - If that row's `status` is `"implementing"` or `"pending"` → `rigorous-dev:senior_developer`
+  - If that row's `status` is `"test_writing"` or `"pending"` → `rigorous-dev:test_writer`
+  - If that row's `status` is `"implementing"` → `rigorous-dev:senior_developer`
 - `documentation` → `rigorous-dev:documentation_master`
 
 **If phase status is "completed":**
