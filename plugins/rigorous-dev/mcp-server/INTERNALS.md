@@ -14,11 +14,11 @@ Persistence layer mechanics for the rigorous-dev MCP server.
 
 **Prepared statements.** `db.prepare(sql)` compiles SQL once. Reusing a prepared statement via `stmt.run(...)` in a loop is the fast path. This codebase follows this pattern consistently — see any `insertXxx()` function in `write-tools.js` for examples (e.g., `insertComponent` prepares once, then loops over interfaces, dependencies, requirements, and test boundaries).
 
-**Transactions.** `db.transaction(() => { ... })` creates an implicit `BEGIN IMMEDIATE ... COMMIT` block with automatic rollback on throw. Used in `iterationCreate` (wraps project + iteration + 9 phase inserts) and by `changelogInsert` (wraps each entity handler call).
+**Transactions.** `db.transaction(() => { ... })` creates an implicit `BEGIN ... COMMIT` block (equivalent to `BEGIN DEFERRED` in SQLite) with automatic rollback on throw. Used in `iterationCreate` (wraps project + iteration + 9 phase inserts) and by `changelogInsert` (wraps each entity handler call).
 
 **Return values.** `.run()` returns `{ changes, lastInsertRowid }`. The codebase chains parent→child inserts via `lastInsertRowid` — for example, `iterationCreate` captures the iteration ID from the insert result and uses it for all subsequent phase inserts.
 
-**Named parameters.** `@param` syntax, bound via an object. The codebase mixes named (`@param`) and positional (`?`) parameters across different functions. `buildWhere` in `read-tools.js` has to work around the fact that SQLite does not allow mixing both in one statement — when `ids` are present, it falls back to a fully-positional query rebuild (see the `idsParam` branching at line ~141 of `read-tools.js`).
+**Named parameters.** `@param` syntax, bound via an object. The codebase mixes named (`@param`) and positional (`?`) parameters across different functions. `changelogQuery` in `read-tools.js` has to work around the fact that SQLite does not allow mixing both in one statement — when `ids` are present, it falls back to a fully-positional query rebuild (see the `idsParam` branching in `changelogQuery`).
 
 ## 2. Database Initialization (db.js)
 
