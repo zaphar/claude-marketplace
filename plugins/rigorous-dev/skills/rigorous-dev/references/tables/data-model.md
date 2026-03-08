@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 
 ### Notes
 
-- `type` is a free-form string. The `backend_architect` may use abstract types (`String`, `Date`, `Decimal`) or engine-specific types (`BIGSERIAL`, `TIMESTAMPTZ`) depending on the level of specificity chosen. The `senior_developer` should interpret these in the context of the chosen database from `technology_choice`.
+- `data_type` is a free-form string. The `backend_architect` may use abstract types (`String`, `Date`, `Decimal`) or engine-specific types (`BIGSERIAL`, `TIMESTAMPTZ`) depending on the level of specificity chosen. The `senior_developer` should interpret these in the context of the chosen database from `technology_choice`.
 - `is_required = 1` signals NOT NULL in SQL or a required field in a document store. `is_required = 0` (default) means the attribute is optional/nullable.
 - `UNIQUE(entity_id, name)` ensures no duplicate attribute names within the same entity.
 
@@ -188,8 +188,8 @@ With `include_related: true`, each result object has the shape:
   "description": "Represents a customer purchase order.",
   "created_at": "2024-11-01T14:32:00Z",
   "attributes": [
-    { "name": "id", "type": "UUID", "is_required": 1, "description": "Primary key" },
-    { "name": "placed_at", "type": "TIMESTAMP", "is_required": 1, "description": null }
+    { "name": "id", "data_type": "UUID", "is_required": 1, "description": "Primary key" },
+    { "name": "placed_at", "data_type": "TIMESTAMP", "is_required": 1, "description": null }
   ],
   "relationships": [
     { "target_entity": "User", "target_entity_id": 5, "relationship_type": "one-to-many", "description": "Each order belongs to one user" }
@@ -216,10 +216,10 @@ Use `changelog_insert` with `entity_type: "data_entity"` to write entities. The 
       "name": "Order",
       "description": "Represents a customer purchase order.",
       "attributes": [
-        { "name": "id", "type": "UUID", "is_required": 1, "description": "Primary key" },
-        { "name": "user_id", "type": "UUID", "is_required": 1, "description": "FK to User" },
-        { "name": "placed_at", "type": "TIMESTAMP", "is_required": 1, "description": null },
-        { "name": "total_cents", "type": "INTEGER", "is_required": 1, "description": "Total in minor currency units" }
+        { "name": "id", "data_type": "UUID", "is_required": 1, "description": "Primary key" },
+        { "name": "user_id", "data_type": "UUID", "is_required": 1, "description": "FK to User" },
+        { "name": "placed_at", "data_type": "TIMESTAMP", "is_required": 1, "description": null },
+        { "name": "total_cents", "data_type": "INTEGER", "is_required": 1, "description": "Total in minor currency units" }
       ],
       "relationships": [
         {
