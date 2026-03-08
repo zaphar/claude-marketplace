@@ -9,7 +9,7 @@ description: >
 
 # Rigor Plugin Update
 
-You are orchestrating changes to the rigorous-dev plugin located at `plugins/rigorous-dev/`. This skill manages four modes of interaction: making changes, auditing the plugin, auditing the schema, and answering questions.
+You are orchestrating changes to the rigorous-dev plugin located at `plugins/rigorous-dev/`. This skill manages five modes of interaction: making changes, auditing the plugin, auditing the schema, auditing the MCP server code, and answering questions.
 
 **Before any mode:** Read `plugins/rigorous-dev/README.md` to understand the plugin's purpose, workflows, agents, and design conventions.
 
@@ -21,7 +21,7 @@ These terms have precise meanings throughout all skill files. Each word has exac
 
 | Term | Definition |
 |------|-----------|
-| **Mode** | One of 4 interaction types: Update, Deep Audit, Schema Audit, Q&A. Determined at session start from the user's request. |
+| **Mode** | One of 5 interaction types: Update, Deep Audit, Schema Audit, MCP Server Audit, Q&A. Determined at session start from the user's request. |
 | **Finding** | A raw result from an agent. Findings become issues once numbered in the Findings Index. |
 | **Issue** | A numbered entry in the Findings Index, identified by a monotonically increasing `#`. |
 | **Findings Index** | The numbered table of issues at the top of every audit report. Columns: `#`, `Group`/`Category`, `Severity`, `Approved`, `Finding`. **This is the most important output of any audit.** |
@@ -57,6 +57,7 @@ Determine which mode to use based on the user's request:
 | **Update** | User asks to make a specific change | `modes/update.md` |
 | **Deep Audit** | User asks to audit/review the plugin broadly | `modes/deep-audit.md` |
 | **Schema Audit** | User asks to audit/simplify the database schema | `modes/schema-audit.md` |
+| **MCP Server Audit** | User asks to audit/review the MCP server code | `modes/mcp-server-audit.md` |
 | **Q&A** | User asks a question or is exploring | `modes/qa.md` |
 
 If the mode is ambiguous, ask the user which mode they want.
@@ -79,6 +80,7 @@ These are referenced by the mode files above:
 | `rigor_plugin_producer` | Producer | Adaptive (sonnet or opus) | Makes changes to plugin files |
 | `rigor_plugin_critic` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
 | `rigor_schema_auditor` | Auditor | Always `claude-opus-4.6` | Schema simplification, correctness, and consistency analysis (20 audit categories) |
+| `rigor_mcp_server_auditor` | Auditor | Always `claude-opus-4.6` | MCP server code quality, correctness, protocol compliance, and documentation accuracy analysis (7 audit dimensions) |
 
 All agents have deep embedded knowledge of the plugin's file structure, cross-reference map, and conventions.
 
@@ -86,7 +88,8 @@ All agents have deep embedded knowledge of the plugin's file structure, cross-re
 
 1. **Critic always uses Opus** — Catching subtle cross-reference bugs requires the strongest model.
 2. **Schema auditor always uses Opus** — All 4 audit groups must use `model: "claude-opus-4.6"` — no exceptions.
-3. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
+3. **MCP server auditor always uses Opus** — Correctness auditing requires the strongest model — no exceptions.
+4. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
 4. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
 5. **Critic and auditor are read-only** — They never modify files.
 6. **Changes always go through the loop** — No direct edits bypass critique.
@@ -97,4 +100,5 @@ All agents have deep embedded knowledge of the plugin's file structure, cross-re
 11. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
 12. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
 13. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
-14. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
+14. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
+15. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
