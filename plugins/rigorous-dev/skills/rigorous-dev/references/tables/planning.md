@@ -25,8 +25,7 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_phase_screen`](#plan_phase_screen) | UI screens delivered by a phase (M:N) |
 | [`plan_phase_api_endpoint`](#plan_phase_api_endpoint) | API endpoints to build in a phase |
 | [`plan_phase_db_change`](#plan_phase_db_change) | Database migrations required by a phase |
-| [`plan_phase_dependency`](#plan_phase_dependency) | Ordering constraints between phases |
-| [`plan_phase_parallel`](#plan_phase_parallel) | Phases that can be worked concurrently |
+| [`plan_phase_relationship`](#plan_phase_relationship) | Phase ordering and parallelism (merged dependency + parallel) |
 | [`plan_phase_risk`](#plan_phase_risk) | Phase-level risks and mitigations |
 | [`plan_overview`](#plan_overview) | High-level strategy and rationale for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
@@ -40,7 +39,7 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 
 ### Purpose
 
-Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field provides the human-readable sequential ordering; child and related tables reference the phase by its `id` primary key (e.g., `plan_phase_dependency.depends_on_phase_id`, `plan_critical_path.plan_phase_id`).
+Central record for one implementation work chunk. A phase groups related development work that can be handed to a developer as a coherent unit. The `phase_number` field provides the human-readable sequential ordering; child and related tables reference the phase by its `id` primary key (e.g., `plan_phase_relationship.related_phase_id`, `plan_critical_path.plan_phase_id`).
 
 ### Context
 
@@ -72,9 +71,9 @@ Central record for one implementation work chunk. A phase groups related develop
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`; `revision` via `revision_id`
-- **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_dependency`, `plan_phase_parallel`, `plan_phase_risk`
+- **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_relationship`, `plan_phase_risk`
 - **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
-- **Referenced by FK in:** `plan_phase_dependency.depends_on_phase_id`, `plan_phase_parallel.can_parallel_with_id`, `plan_critical_path.plan_phase_id`, `implementation_manifest.plan_phase_id`
+- **Referenced by FK in:** `plan_phase_relationship.related_phase_id`, `plan_critical_path.plan_phase_id`, `implementation_manifest.plan_phase_id`
 
 ### MCP tool access
 
@@ -299,75 +298,44 @@ Represents one database migration required within a phase. Each row is a named m
 
 ---
 
-## `plan_phase_dependency`
+## `plan_phase_relationship`
 
 ### Purpose
 
-Records an ordering constraint between two phases: `plan_phase_id` cannot begin until `depends_on_phase_id` is complete. This table defines the DAG of phase execution order.
+Records inter-phase relationships: ordering constraints (`dependency`) and concurrency pairs (`parallel`). A single table with a `relationship_type` discriminator replaces the former `plan_phase_dependency` and `plan_phase_parallel` tables.
 
 ### Context
 
-- Self-referential dependency graph using `plan_phase(id)` foreign keys for full referential integrity.
-- `implementation_planner` populates this to ensure phases with shared data structures or API contracts are sequenced correctly.
-- `senior_developer` reads this to decide which phases to start and which to queue.
-- `plan_critical_path` is derived from this table — the critical path is the longest chain through these dependencies.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The phase that has the dependency (the "downstream" phase). |
-| `depends_on_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the phase that must complete first. Foreign key to `plan_phase(id)`. |
-| `reason` | TEXT | nullable | — | Explains why this ordering is required (e.g., "Auth tokens must exist before user profile endpoints can be tested"). |
-
-**Primary key:** `(plan_phase_id, depends_on_phase_id)` — one dependency row per pair.
-
-### Relationships
-
-- **Parent:** `plan_phase` via `plan_phase_id`
-- **References:** `plan_phase` via `depends_on_phase_id`
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Pass `dependencies: [{depends_on_phase_id: 2, reason: "..."}]` in the `plan_phase` payload |
-| Query | `changelog_query` | Retrieved as the `dependencies` array when querying a `plan_phase` |
-
----
-
-## `plan_phase_parallel`
-
-### Purpose
-
-Records pairs of phases that can be worked concurrently — i.e., they have no blocking dependency on each other and touch independent parts of the system. This is the positive counterpart to `plan_phase_dependency`.
-
-### Context
-
-- Allows `senior_developer` to maximize team throughput by starting independent phases simultaneously.
-- `implementation_planner` populates this only when phases are confirmed to have no shared mutable state, DB tables, or API contracts.
+- **dependency** rows define a DAG of phase execution order: `plan_phase_id` cannot begin until `related_phase_id` is complete.
+- **parallel** rows record pairs of phases that can be worked concurrently — they have no blocking dependency and touch independent parts of the system.
+- `implementation_planner` populates both relationship types to ensure correct sequencing and to surface safe parallelism.
+- `senior_developer` reads dependencies to decide which phases to start/queue, and reads parallel relationships to maximize throughput.
+- `plan_critical_path` is derived from the dependency subset — the longest chain through dependency rows.
 - `implementation_plan_critic` verifies claimed parallelism by checking for hidden conflicts in `plan_phase_db_change.tables` and `plan_phase_component`.
 
 ### Columns
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | One of the two parallel phases. |
-| `can_parallel_with_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the other phase that can run concurrently. Foreign key to `plan_phase(id)`. |
+| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The phase that has the relationship (the "downstream" phase for dependencies, one side for parallel). |
+| `related_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the related phase. For dependencies: the phase that must complete first. For parallel: the phase that can run concurrently. |
+| `relationship_type` | TEXT | NOT NULL, CHECK(`dependency` \| `parallel`), part of PK | — | Discriminator. `dependency` = ordering constraint; `parallel` = safe concurrency pair. |
+| `reason` | TEXT | nullable | — | Only populated for `relationship_type = 'dependency'`. Explains why this ordering is required (e.g., "Auth tokens must exist before user profile endpoints can be tested"). |
 
-**Primary key:** `(plan_phase_id, can_parallel_with_id)` — one row per parallel pair direction.
+**Primary key:** `(plan_phase_id, related_phase_id, relationship_type)` — allows the same pair to have both a dependency and parallel relationship (unusual but not logically impossible for different sub-aspects).
 
 ### Relationships
 
 - **Parent:** `plan_phase` via `plan_phase_id`
-- **References:** `plan_phase` via `can_parallel_with_id`
+- **References:** `plan_phase` via `related_phase_id`
 
 ### MCP tool access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `parallel_with: [3, 4]` in the `plan_phase` payload |
-| Query | `changelog_query` | Retrieved as the `parallel_with` array when querying a `plan_phase` |
+| Insert dependency | `changelog_insert` | Pass `dependencies: [{depends_on_phase_id: 2, reason: "..."}]` in the `plan_phase` payload |
+| Insert parallel | `changelog_insert` | Pass `parallel_with: [3, 4]` in the `plan_phase` payload |
+| Query | `changelog_query` | Dependencies returned as `dependencies` array (objects with `depends_on_phase_id` + `reason`); parallel returned as `parallel_with` array (ids) |
 
 ---
 
@@ -532,7 +500,7 @@ Records the ordered sequence of phases that form the critical path — the chain
 
 ### Context
 
-- One row per phase on the critical path. Derived by `implementation_planner` from the dependency graph in `plan_phase_dependency`.
+- One row per phase on the critical path. Derived by `implementation_planner` from the dependency graph in `plan_phase_relationship` (rows with `relationship_type = 'dependency'`).
 - The critical path is the longest dependency chain. Phases not on the critical path have float (can slip without delaying the final delivery).
 - `senior_developer` uses this to decide where to concentrate resources and attention.
 - `implementation_plan_critic` verifies the critical path is consistent with the dependency graph.
@@ -621,8 +589,7 @@ iteration ───────────────────────�
 │   ├─ plan_phase_api_endpoint     (1:N)                            │
 │   ├─ plan_phase_db_change        (1:N)                            │
 │   │   └─ tables              (JSON array, inline)                 │
-│   ├─ plan_phase_dependency  (FK → plan_phase(id))                  │
-│   ├─ plan_phase_parallel    (FK → plan_phase(id))                  │
+│   ├─ plan_phase_relationship (FK → plan_phase(id), discriminated)   │
 │   └─ plan_phase_risk         (1:N)                                │
 │                                                                    │
 ├─ plan_external_dependency  (1:N)                                  │

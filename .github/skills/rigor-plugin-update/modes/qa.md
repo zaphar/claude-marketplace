@@ -23,6 +23,7 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 | Table relationships | `grep 'REFERENCES' plugins/rigorous-dev/mcp-server/schema.sql` |
 | MCP tool parameters | Read the relevant tool handler in `write-tools.js` or `read-tools.js` |
 | Table documentation | Read `plugins/rigorous-dev/skills/rigorous-dev/references/tables/<domain>.md` |
+| MCP server internals | Read `plugins/rigorous-dev/mcp-server/INTERNALS.md` |
 
 **Key reference files for data model questions:**
 - `plugins/rigorous-dev/mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, and foreign keys. When in doubt, this file wins.
@@ -31,6 +32,7 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 - `plugins/rigorous-dev/mcp-server/write-tools.js` — Write tool handlers (shows what parameters each tool accepts and what it does)
 - `plugins/rigorous-dev/mcp-server/read-tools.js` — Read tool handlers (shows query logic, entity type mappings, TEXT-PK types)
 - `plugins/rigorous-dev/mcp-server/db.js` — Database initialization (WAL mode, foreign keys)
+- `plugins/rigorous-dev/mcp-server/INTERNALS.md` — Persistence layer mechanics: better-sqlite3 patterns, PK strategies, write/read patterns, index strategy, and the entity type addition checklist. **Read this** before modifying handler code.
 
 **Capabilities:**
 - Trace cross-references: "What agents reference tool X?" → grep agent files for the tool name

@@ -508,17 +508,12 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   tables TEXT NOT NULL DEFAULT '[]'
 );
 
-CREATE TABLE IF NOT EXISTS plan_phase_dependency (
+CREATE TABLE IF NOT EXISTS plan_phase_relationship (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  depends_on_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  reason TEXT,
-  PRIMARY KEY (plan_phase_id, depends_on_phase_id)
-);
-
-CREATE TABLE IF NOT EXISTS plan_phase_parallel (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  can_parallel_with_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  PRIMARY KEY (plan_phase_id, can_parallel_with_id)
+  related_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  relationship_type TEXT NOT NULL CHECK(relationship_type IN ('dependency', 'parallel')),
+  reason TEXT, -- only populated for relationship_type = 'dependency'
+  PRIMARY KEY (plan_phase_id, related_phase_id, relationship_type)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_risk (
@@ -1312,7 +1307,7 @@ CREATE INDEX IF NOT EXISTS idx_test_recommendation_report_id
 -- ------------------------------------------------------------
 -- plan_phase_id — child tables of plan_phase
 -- Skipped: plan_phase_requirement, plan_phase_component, plan_phase_flow,
---   plan_phase_screen, plan_phase_dependency, plan_phase_parallel
+--   plan_phase_screen, plan_phase_relationship
 --   (plan_phase_id is leftmost in their composite PKs)
 -- ------------------------------------------------------------
 
@@ -1578,13 +1573,9 @@ CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_persona_addressed_id
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_branch_step_id
   ON user_flow_step_branch(step_id);
 
--- plan_phase_dependency.depends_on_phase_id → plan_phase(id)
-CREATE INDEX IF NOT EXISTS idx_plan_phase_dependency_depends_on_phase_id
-  ON plan_phase_dependency(depends_on_phase_id);
-
--- plan_phase_parallel.can_parallel_with_id → plan_phase(id)
-CREATE INDEX IF NOT EXISTS idx_plan_phase_parallel_can_parallel_with_id
-  ON plan_phase_parallel(can_parallel_with_id);
+-- plan_phase_relationship.related_phase_id → plan_phase(id)
+CREATE INDEX IF NOT EXISTS idx_plan_phase_relationship_related_phase_id
+  ON plan_phase_relationship(related_phase_id);
 
 -- test_acceptance_criterion_result.coverage_id → test_requirement_coverage(id)
 CREATE INDEX IF NOT EXISTS idx_test_acceptance_criterion_result_coverage_id

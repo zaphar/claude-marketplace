@@ -808,7 +808,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertDep = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_dependency (plan_phase_id, depends_on_phase_id, reason) VALUES (?, ?, ?)"
+    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, relationship_type, reason) VALUES (?, ?, 'dependency', ?)"
   );
   for (const dep of data.dependencies ?? []) {
     const depPhase = typeof dep === "object" ? dep.depends_on_phase_id ?? dep.phase : dep;
@@ -824,7 +824,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertParallel = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_parallel (plan_phase_id, can_parallel_with_id) VALUES (?, ?)"
+    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, relationship_type) VALUES (?, ?, 'parallel')"
   );
   for (const parallel_id of data.parallel_with ?? []) {
     insertParallel.run(plan_phase_id, parallel_id);

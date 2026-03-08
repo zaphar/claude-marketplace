@@ -314,10 +314,10 @@ function attachRelated(db, entityType, results) {
           .all(p.id)
           .map((x) => x.screen_id),
         dependencies: db
-          .prepare("SELECT depends_on_phase_id, reason FROM plan_phase_dependency WHERE plan_phase_id = ?")
+          .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND relationship_type = 'dependency'")
           .all(p.id),
         parallel_with: db
-          .prepare("SELECT can_parallel_with_id FROM plan_phase_parallel WHERE plan_phase_id = ?")
+          .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND relationship_type = 'parallel'")
           .all(p.id)
           .map((x) => x.can_parallel_with_id),
         checkpoint_focus: JSON.parse(p.checkpoint_focus || '[]'),

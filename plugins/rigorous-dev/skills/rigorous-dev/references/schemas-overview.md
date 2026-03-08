@@ -113,7 +113,8 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `plan_phase_requirement` / `_component` / `_flow` / `_screen` | implementation_planner | What each plan phase covers. |
 | `plan_phase_api_endpoint` | implementation_planner | APIs built in each phase. |
 | `plan_phase_db_change` | implementation_planner | Database migrations per phase. Affected tables stored as JSON array (`tables` column). |
-| `plan_phase_dependency` / `_parallel` / `_risk` | implementation_planner | Phase ordering, parallelism, risks. |
+| `plan_phase_relationship` | implementation_planner | Phase ordering and parallelism (dependency/parallel via `relationship_type` discriminator). |
+| `plan_phase_risk` | implementation_planner | Phase-level risks and mitigations. |
 | `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
 | `plan_overview_risk` | implementation_planner | Plan-level risks. |
 | `plan_external_dependency` | implementation_planner | External blockers. |
@@ -259,7 +260,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 112 tables with links to their detailed design documents.
+All 111 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -335,9 +336,8 @@ All 112 tables with links to their detailed design documents.
 | `plan_phase_api_endpoint` | [planning](tables/planning.md) |
 | `plan_phase_component` | [planning](tables/planning.md) |
 | `plan_phase_db_change` | [planning](tables/planning.md) |
-| `plan_phase_dependency` | [planning](tables/planning.md) |
 | `plan_phase_flow` | [planning](tables/planning.md) |
-| `plan_phase_parallel` | [planning](tables/planning.md) |
+| `plan_phase_relationship` | [planning](tables/planning.md) |
 | `plan_phase_requirement` | [planning](tables/planning.md) |
 | `plan_phase_risk` | [planning](tables/planning.md) |
 | `plan_phase_screen` | [planning](tables/planning.md) |
@@ -376,4 +376,4 @@ All 112 tables with links to their detailed design documents.
 | `ux_config` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 112 tables across 12 domains**
+**Total: 111 tables across 12 domains**
