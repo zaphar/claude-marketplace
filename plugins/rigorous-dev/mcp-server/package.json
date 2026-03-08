@@ -5,6 +5,9 @@
   "type": "module",
   "description": "MCP server for rigorous-dev changelog database",
   "main": "server.js",
+  "scripts": {
+    "test": "node --test test/"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "better-sqlite3": "^11.7.0"
