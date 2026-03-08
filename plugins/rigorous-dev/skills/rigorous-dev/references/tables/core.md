@@ -54,6 +54,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Produced by:** `iteration_create`
 **Queried by:** `project_status`, `iteration_summary`
+**Updated by:** `iteration_close`
 
 ---
 

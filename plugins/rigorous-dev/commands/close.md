@@ -91,7 +91,16 @@ Use /rigorous-dev:resume to continue working.
 
 ### 5. Update Workflow in DB
 
-Call `project_update` to mark the project as closed:
+First, call `iteration_close` to close the current iteration:
+
+```
+iteration_close({
+  iteration_id: <iteration_id>,
+  notes: "<closing_notes_if_provided>"
+})
+```
+
+Then, call `project_update` to mark the project as closed:
 
 ```
 project_update({

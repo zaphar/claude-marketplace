@@ -393,6 +393,8 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `commit_link` — associate a VCS commit with a phase/revision
 - `blocker_resolve` — mark a blocker as resolved with optional resolution notes
 - `project_update` — update project-level metadata
+- `iteration_close` — close an active iteration (sets status to closed, records closed_at)
+- `changelog_update` — update mutable fields on existing changelog entities (e.g. status transitions for audit findings and ADRs)
 
 **Read tools** (agents call these to query state):
 - `changelog_query` — query the changelog with optional filters. Set `history: true` to view how entities evolved across revisions via `entity_snapshot`

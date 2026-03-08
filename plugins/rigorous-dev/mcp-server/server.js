@@ -59,8 +59,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "revision_create":
       case "revision_update":
       case "changelog_insert":
+      case "changelog_update":
       case "commit_link":
       case "project_update":
+      case "blocker_resolve":
+      case "iteration_close":
         return okResponse(handleWriteTool(name, args));
 
       case "changelog_query":

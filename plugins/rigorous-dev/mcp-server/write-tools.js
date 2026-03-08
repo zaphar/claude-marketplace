@@ -1887,6 +1887,10 @@ function changelogUpdate(args) {
       table: "performance_audit_finding",
       statuses: ["open", "resolved", "accepted", "deferred"],
     },
+    adr: {
+      table: "adr",
+      statuses: ["proposed", "accepted", "deprecated", "superseded"],
+    },
   };
 
   const config = ALLOWED_TYPES[entity_type];
@@ -1974,6 +1978,32 @@ function blockerResolve(args) {
   }
 
   return { blocker_id, resolved_at: now };
+}
+
+function iterationClose(args) {
+  const db = getDb();
+  const { iteration_id, notes } = args;
+
+  const row = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
+  if (!row) throw new Error(`Iteration with id=${iteration_id} not found`);
+  if (row.status !== "active") {
+    throw new Error(`Iteration ${iteration_id} is not active (current status: ${row.status})`);
+  }
+
+  const sets = ["status = 'closed'", "closed_at = datetime('now')"];
+  const params = { iteration_id };
+
+  if (notes !== undefined) {
+    sets.push("notes = @notes");
+    params.notes = notes;
+  }
+
+  db.prepare(
+    `UPDATE iteration SET ${sets.join(", ")} WHERE id = @iteration_id`
+  ).run(params);
+
+  const updated = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
+  return { iteration_id, status: updated.status, closed_at: updated.closed_at };
 }
 
 // ---------------------------------------------------------------------------
@@ -2071,17 +2101,17 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding and performance_audit_finding records through their lifecycle (e.g. open → resolved).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, and adr records through their lifecycle (e.g. open → resolved, proposed → accepted).",
     inputSchema: {
       type: "object",
       properties: {
         entity_type: {
           type: "string",
-          enum: ["security_audit_finding", "performance_audit_finding"],
+          enum: ["security_audit_finding", "performance_audit_finding", "adr"],
         },
         entity_id: {
-          type: "integer",
-          description: "The row ID of the entity to update",
+          type: ["integer", "string"],
+          description: "The row ID of the entity to update (integer for audit findings, text for ADRs)",
         },
         updates: {
           type: "object",
@@ -2090,7 +2120,7 @@ export const WRITE_TOOLS = [
             status: {
               type: "string",
               description:
-                "New status. security_audit_finding: open|resolved|accepted|false-positive. performance_audit_finding: open|resolved|accepted|deferred.",
+                "New status. security_audit_finding: open|resolved|accepted|false-positive. performance_audit_finding: open|resolved|accepted|deferred. adr: proposed|accepted|deprecated|superseded.",
             },
           },
         },
@@ -2137,6 +2167,18 @@ export const WRITE_TOOLS = [
       required: ["blocker_id"],
     },
   },
+  {
+    name: "iteration_close",
+    description: "Closes an active iteration. Sets status to 'closed' and closed_at to now. Validates the iteration exists and is currently active. Optionally updates notes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        iteration_id: { type: "integer", description: "The iteration ID to close" },
+        notes: { type: "string", description: "Optional closing notes for this iteration" },
+      },
+      required: ["iteration_id"],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -2165,6 +2207,8 @@ export function handleWriteTool(name, args) {
       return projectUpdate(args);
     case "blocker_resolve":
       return blockerResolve(args);
+    case "iteration_close":
+      return iterationClose(args);
     default:
       throw new Error(`Unknown write tool: ${name}`);
   }

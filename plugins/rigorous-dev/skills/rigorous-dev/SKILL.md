@@ -61,6 +61,7 @@ Use these MCP tools for state management:
 - `phase_transition` — Update phase status (pending → in_progress → completed)
 - `iteration_create` — Create a new iteration with all phases initialized
 - `project_update` — Update project-level fields (status, notes, critic_model)
+- `iteration_close` — Close an active iteration (sets status to closed, records closed_at)
 - `revision_create` — Start a new producer-critic revision for a phase
 - `revision_update` — Record critic decision (approved/rejected) and feedback
 
@@ -148,6 +149,7 @@ Each entry is linked to an iteration and optionally a revision (producer-critic 
 
 Use these tools for artifact management:
 - `changelog_insert` — Record any decision or specification (requirements, ADRs, components, specs, etc.)
+- `changelog_update` — Update mutable fields on existing changelog entities (e.g. status transitions for audit findings and ADRs)
 - `changelog_query` — Retrieve decisions by type, iteration, ID, phase, or filters
 - `traceability_query` — Trace why a decision was made (links ADRs → requirements → components)
 - `revision_history` — Check how many revisions have occurred for a given phase
@@ -461,8 +463,8 @@ active → close → closed → new-iteration → active (iteration N+1)
 ```
 
 **State Fields (DB equivalents):**
-- `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update`
-- `closed_at`: Tracked in the DB iteration record
+- `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update` (project-level) and `iteration_close` (iteration-level)
+- `closed_at`: Tracked in the DB iteration record, set by `iteration_close`
 
 **Backward Compatibility:**
 - Missing `status` → treat as `"active"`
@@ -692,6 +694,8 @@ You have access to:
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with an iteration
 - **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
+- **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr), `entity_id`, and `updates` object with `status` field. Validates status against allowed values per entity type
+- **iteration_close** (MCP tool) - Close an active iteration. Takes `iteration_id` (integer) and optional `notes` (string). Sets `status` to `closed` and `closed_at` to current timestamp. Validates the iteration exists and is currently active
 
 Use these tools to manage the workflow effectively.
 

@@ -226,6 +226,8 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `project_update` | Update project status (e.g., close it). |
 | `plan_phase_transition` | Update a plan_phase row's status (pending → test_writing → implementing → completed). |
 | `blocker_resolve` | Mark a blocker as resolved with optional resolution notes. |
+| `iteration_close` | Close an active iteration (sets status to closed, records closed_at). |
+| `changelog_update` | Update mutable fields on an existing changelog entity (e.g. status transitions for audit findings and ADRs). |
 
 ### Read Tools
 

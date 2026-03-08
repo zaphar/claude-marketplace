@@ -66,6 +66,9 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 # Write
 changelog_insert  entity_type="adr"  { id, iteration_id, revision_id, title, status, date, context, decision, rationale, superseded_by }
 
+# Update (status transitions without full re-insert)
+changelog_update  entity_type="adr"  entity_id="ADR-001"  updates={ "status": "accepted" }
+
 # Read
 changelog_query   entity_type="adr"  [iteration_id=N] [ids=["ADR-001"]]
 traceability_query  from="adr"  id="ADR-001"   # follows superseded_by chain, surfaces research sources
