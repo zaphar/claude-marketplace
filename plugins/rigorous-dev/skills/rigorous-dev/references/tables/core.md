@@ -73,6 +73,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 | `completed_at` | TEXT | — | ISO-8601 timestamp when the phase reached `completed` or `skipped`. NULL while in progress. |
 | `approved_by` | TEXT | — | Agent identifier that approved this phase's output (set by critic on final approval). NULL until approved. |
 | `notes` | TEXT | DEFAULT `''` | Free-text notes about this phase. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Unique constraint:** `(iteration_id, name)` — each phase name appears exactly once per iteration.
 

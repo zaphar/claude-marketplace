@@ -477,6 +477,7 @@ Records external systems, services, or teams that the implementation plan depend
 | `plan_phase_number` | INTEGER | nullable | — | The `phase_number` at which this dependency becomes blocking, if known. |
 | `risk_level` | TEXT | NOT NULL, CHECK(`low` \| `medium` \| `high` \| `critical`) | — | How much risk this dependency poses to the plan if not resolved. |
 | `mitigation` | TEXT | nullable | — | How the team plans to manage or reduce the dependency risk (e.g., "Use mock server for Phase 1–2; real credentials required for Phase 3"). |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 

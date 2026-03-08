@@ -130,6 +130,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `key` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The context key (e.g. `"assumption"`, `"problem_statement"`). |
 | `value` | TEXT | NOT NULL, part of UNIQUE(iteration_id, key, value) | The context value. |
 | `category` | TEXT | — | Optional grouping label (e.g. `"assumption"`, `"constraint"`, `"context"`). |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Constraints:**
 - `UNIQUE(iteration_id, key, value)` — prevents exact duplicate entries for the same key-value pair within an iteration.
@@ -159,6 +160,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `source` | TEXT | — | Optional. Where this input originates (e.g. `"upstream ERP system"`, `"user file upload"`). Typically populated for `direction = 'input'`. |
 | `destination` | TEXT | — | Optional. Where this output is sent or stored (e.g. `"S3 bucket"`, `"webhook endpoint"`). Typically populated for `direction = 'output'`. |
 | `data_format` | TEXT | — | Optional. The expected data format (e.g. `"JSON"`, `"CSV"`, `"PDF"`, `"Parquet"`). |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
@@ -182,6 +184,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `target` | TEXT | — | The deployment target classification (e.g. `"private-cloud"`, `"local-executable"`, `"both"`). NULL is permitted when the target is not yet determined. |
 | `description` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
 | `notes` | TEXT | — | Optional free-text notes elaborating on the deployment target choice or constraints. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
@@ -205,6 +208,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `item` | TEXT | NOT NULL | Description of the operational item (e.g. `"99.9% uptime"`, `"Track p99 API response latency"`, `"Retain application logs for 90 days"`). |
 | `category` | TEXT | NOT NULL, CHECK IN (`'uptime'`, `'monitoring'`, `'logging'`, `'observability'`) | Classifies the item to route it to the appropriate design decisions during architecture. |
 | `notes` | TEXT | — | Optional free-text notes providing additional context for the requirement. |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
@@ -227,6 +231,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this constraint belongs to. |
 | `constraint_type` | TEXT | NOT NULL, CHECK IN (`'allowed_language'`, `'forbidden_dependency'`, `'required_framework'`) | The type of constraint. `allowed_language` whitelists a language; `forbidden_dependency` blacklists a package or library; `required_framework` mandates use of a specific framework. |
 | `value` | TEXT | NOT NULL | The constraint value (e.g. `"Python"`, `"log4j"`, `"Django"`). |
+| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)

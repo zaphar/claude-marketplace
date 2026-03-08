@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS phase (
   completed_at TEXT,
   approved_by TEXT,
   notes TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
 );
 
@@ -103,6 +104,7 @@ CREATE TABLE IF NOT EXISTS project_context (
   key TEXT NOT NULL,
   value TEXT NOT NULL,
   category TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, key, value)
 );
 
@@ -117,7 +119,8 @@ CREATE TABLE IF NOT EXISTS system_io (
   description TEXT NOT NULL,
   source TEXT,
   destination TEXT,
-  data_format TEXT
+  data_format TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Deployment requirements (per iteration)
@@ -127,7 +130,8 @@ CREATE TABLE IF NOT EXISTS deployment_requirement (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   target TEXT,
   description TEXT NOT NULL,
-  notes TEXT
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Operational requirements (per iteration)
@@ -138,7 +142,8 @@ CREATE TABLE IF NOT EXISTS operational_requirement (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   item TEXT NOT NULL,
   category TEXT NOT NULL,
-  notes TEXT
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Technology constraints
@@ -146,7 +151,8 @@ CREATE TABLE IF NOT EXISTS technology_constraint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   constraint_type TEXT NOT NULL,
-  value TEXT NOT NULL
+  value TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Architecture Decision Records
@@ -424,7 +430,8 @@ CREATE TABLE IF NOT EXISTS persona_addressed (
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   persona_id TEXT NOT NULL REFERENCES persona(id) ON DELETE CASCADE,
   goal TEXT NOT NULL,
-  how_addressed TEXT NOT NULL
+  how_addressed TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS persona_addressed_flow (
@@ -551,7 +558,8 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
   description TEXT NOT NULL,
   plan_phase_number INTEGER,
   risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
-  mitigation TEXT
+  mitigation TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Implementation plan: critical path

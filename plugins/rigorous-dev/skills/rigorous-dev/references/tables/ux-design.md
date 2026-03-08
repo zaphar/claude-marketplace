@@ -341,6 +341,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `persona_id` | TEXT | NOT NULL, FK → `persona(id)` | — | The persona being addressed. |
 | `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the persona's goals JSON array). |
 | `how_addressed` | TEXT | NOT NULL | — | How the UX design meets this goal. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Belongs to `iteration` / `revision`
