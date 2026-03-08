@@ -34,7 +34,28 @@ After the producer(s) complete and the critic reviews, the critic either approve
 
 3. Evaluate the critic's verdict:
    - **`approved`** → commit and proceed
-   - **`needs_revision`** → enter revision 2
+   - **`needs_revision`** → check if the blocking issues include **test failures** (see below), otherwise enter revision 2
+
+**Test failure escalation:**
+
+If the critic reports MCP test failures as blocking issues, these CANNOT be fed back to the producer — the producer is forbidden from modifying test files. Instead, immediately escalate to the user:
+```
+🧪 MCP Test Failures Detected
+
+The critic ran `npm test` and [N] test(s) failed after the producer's changes:
+
+[test failure details from critic]
+
+The test harness is a user-controlled correctness contract. The producer cannot modify tests.
+
+How would you like to proceed?
+1. Direct the producer to fix its code changes (describe what's wrong)
+2. Update the tests yourself to reflect intended behavior changes
+3. Override the test failures and accept current changes
+4. Abandon the change
+```
+
+Use the ask_user tool to get the user's decision. If the user chooses option 1, re-enter the revision loop with the user's guidance added to the producer prompt. If the user chooses option 2, pause the loop while the user modifies the test files, then re-run the critic.
 
 **Revisions 2-3 (if needed):**
 

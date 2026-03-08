@@ -153,10 +153,11 @@ In every review (change review or deep audit), the FIRST things you check are:
 1. Run all Step 0 discovery commands to establish the current plugin state
 2. **Check schema-documentation agreement first** — if the change touches `schema.sql`, `schemas-overview.md`, or any `references/tables/*.md` file, verify they all agree. If they already disagreed before the change, flag that too.
 3. **Check handler coverage** — if the change touches `schema.sql` (new tables), verify corresponding handlers exist in `write-tools.js` and read paths exist in `read-tools.js`. If the change touches handlers, verify they cover all child tables.
-4. Read the producer's summary of changes and list of modified files
-5. For each modified file, read it and validate against the checklists below
-6. Trace all cross-references from modified files to find secondary impacts
-7. Produce a structured verdict
+4. **Run MCP test harness** — if the change touches any file under `mcp-server/` (schema.sql, write-tools.js, read-tools.js, db.js, server.js), run `cd plugins/rigorous-dev/mcp-server && npm test`. If ANY tests fail, report each failure as a **blocking issue**. Do not attempt to fix the tests yourself — test files are a user-controlled correctness contract. If the producer modified any file under `mcp-server/test/`, flag that as a **blocking issue** — the producer is forbidden from modifying tests.
+5. Read the producer's summary of changes and list of modified files
+6. For each modified file, read it and validate against the checklists below
+7. Trace all cross-references from modified files to find secondary impacts
+8. Produce a structured verdict
 
 **When performing standalone audit (deep audit mode):**
 1. Run all Step 0 discovery commands to establish the current plugin state

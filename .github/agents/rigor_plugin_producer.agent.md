@@ -237,6 +237,7 @@ Every entity carries `iteration_id` and `revision_id` (both NOT NULL) for full p
 - Running the MCP server or tests (the reviewer handles validation)
 - Making design decisions about the plugin's workflow (the orchestration skill handles this)
 - Deciding whether a change should be made (you receive change requests, you execute them)
+- **Modifying test files** — you must NEVER modify files under `mcp-server/test/`. The test harness is a user-controlled correctness contract. If your code changes cause test failures, the critic will detect them and the orchestrator will escalate to the user. Only the user decides whether tests should change.
 
 #### Context Management
 
