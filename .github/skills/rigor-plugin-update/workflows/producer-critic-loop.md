@@ -6,41 +6,64 @@ This is the shared execution mechanism used by all modes when making changes. Ev
 
 When executing work from the Findings Review & Implementation Workflow (see `workflows/findings-review.md`), break issues down at the planning stage (Step D: Implementation Phasing), not at the producer level. If an issue is large, decompose it into multiple work-units in the implementation plan — each work-unit is then a small, focused unit.
 
-There are **two kinds of iteration** in this loop. They are orthogonal:
+There are **three phases** to each iteration of this loop: produce, classify & validate, and commit (or revise).
 
-## Loop 1: Producer Batching (how many producers before a critic)
+## Phase 1: Produce
 
-This controls how many producer calls run before the critic reviews:
+This controls how many producer calls run before critics review:
 
-- **1:1** (default) — 1 producer → 1 critic → commit. Use for standalone changes.
-- **N:1** (batching) — N sequential producers → 1 critic → commit. Use when multiple small chunks are parts of one logical change or when a single work-unit spans multiple producer tasks. The critic reviews the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
+- **1:1** (default) — 1 producer → critics → commit. Use for standalone changes.
+- **N:1** (batching) — N sequential producers → critics → commit. Use when multiple small chunks are parts of one logical change or when a single work-unit spans multiple producer tasks. The critics review the aggregate result. Never run producers in parallel — sequential only to avoid rate limiting.
 
 Use your judgment on which pattern fits. The goal is always: smallest producer tasks, fewest wasted critic calls.
 
-## Loop 2: Revision (what happens when the critic rejects)
+Launch the `rigor_plugin_producer` agent (using the assessed model) with the change request as the prompt. Include:
+- The specific change to make
+- Any context about why the change is needed
 
-After the producer(s) complete and the critic reviews, the critic either approves or requests revisions. This is the feedback loop:
+## Phase 2: Classify & Validate (Multi-Critic)
 
-**Revision 1 (initial):**
+After the producer (or all N producers in a batch) completes, it reports its summary and the list of modified files. Use that file list to determine which critic domains are affected:
 
-1. Launch the `rigor_plugin_producer` agent (using the assessed model) with the change request as the prompt. Include:
-   - The specific change to make
-   - Any context about why the change is needed
+| Files Modified | Critic Agent |
+|---|---|
+| Agent files, SKILL.md, README, commands, plugin.json | `rigor_consistency_critic` |
+| schema.sql, references/tables/*.md, schemas-overview.md | `rigor_schema_critic` |
+| mcp-server/*.js, mcp-server/test/*, INTERNALS.md | `rigor_mcp_server_critic` |
 
-2. After the producer (or all N producers in a batch) completes, launch the critic agent (always `claude-opus-4.6`) with:
-   - The producer's summary of changes
-   - The list of modified files
-   - The revision number (starting at 1)
-   
-   **Which critic agent to use:** For MCP server changes, use `rigor_mcp_server_auditor` as the critic — it has specialized SQL, protocol, and server architecture knowledge. For all other plugin changes, use `rigor_plugin_critic`.
+A single change can touch one, two, or all three domains. Select **every** critic whose file patterns match at least one modified file.
 
-3. Evaluate the critic's verdict:
-   - **`approved`** → commit and proceed
-   - **`needs_revision`** → check if the blocking issues include **test failures** (see below), otherwise enter revision 2
+**Launch all relevant critics in parallel** (always `claude-opus-4.6`). Provide each critic with:
+- The producer's summary of changes
+- The list of modified files (full set, not filtered per-critic)
+- The revision number (starting at 1)
 
-**Test failure escalation:**
+**Change review scope vs audit scope:** During change reviews (this loop), each critic runs as a **single agent** with a targeted prompt scoped to the specific files and tables that changed. Critics do not fan out into sub-agent groups here — that parallelism is reserved for standalone audit modes and is defined in each mode's own workflow file, not this loop.
 
-If the critic reports MCP test failures as blocking issues, these CANNOT be fed back to the producer — the producer is forbidden from modifying test files. Instead, immediately escalate to the user:
+### Evaluating Verdicts
+
+**All critics must approve** for the change to pass. Collect every critic's verdict:
+
+- Every critic returned **`approved`** → commit and proceed (Phase 3).
+- Any critic returned **`needs_revision`** → check for test failures first (see below), then enter a revision cycle.
+
+When multiple critics reject, **merge their feedback** into a single combined prompt for the producer. Group the issues by critic so the producer can see which domain each issue came from:
+
+```
+Fix the following issues identified by critics in revision [N]:
+
+## rigor_consistency_critic
+[blocking issues and recommended changes]
+
+## rigor_mcp_server_critic
+[blocking issues and recommended changes]
+
+Original change request: [original request]
+```
+
+### Test Failure Escalation
+
+If any critic reports MCP test failures as blocking issues, these CANNOT be fed back to the producer — the producer is forbidden from modifying test files. Instead, immediately escalate to the user:
 ```
 🧪 MCP Test Failures Detected
 
@@ -57,43 +80,34 @@ How would you like to proceed?
 4. Abandon the change
 ```
 
-Use the ask_user tool to get the user's decision. If the user chooses option 1, re-enter the revision loop with the user's guidance added to the producer prompt. If the user chooses option 2, pause the loop while the user modifies the test files, then re-run the critic.
+Use the ask_user tool to get the user's decision. If the user chooses option 1, re-enter the revision loop with the user's guidance added to the producer prompt. If the user chooses option 2, pause the loop while the user modifies the test files, then re-run the critics.
 
-**Revisions 2-3 (if needed):**
+### Revision Cycles (max 3)
 
-Feed the critic's blocking issues back to the producer agent as the change request:
-```
-Fix the following issues identified by the critic in revision [N]:
-
-[critic's blocking issues and recommended changes]
-
-Original change request: [original request]
-```
-
-After the producer fixes, run the critic again. Repeat up to 3 total revisions.
+Feed the merged blocking issues from all rejecting critics back to the producer agent as the change request. After the producer fixes, re-run **all originally selected critics** again (not just the ones that rejected — a fix for one domain can break another). Repeat up to 3 total revisions.
 
 **Escalation (revision > 3):**
 
-If the critic has not approved after 3 revisions, stop the loop and escalate to the user:
+If the critics have not all approved after 3 revisions, stop the loop and escalate to the user:
 ```
 ⚠️ Escalation Required
 
-The plugin update has gone through 3 producer-critic revisions without approval.
+The plugin update has gone through 3 producer-critic revisions without full approval.
 
-Remaining issues from critic:
-[list of blocking issues still present]
+Remaining issues from critics:
+[list of blocking issues still present, grouped by critic]
 
 How would you like to proceed?
 1. Provide guidance on the remaining issues and retry
-2. Override the reviewer and accept current changes
+2. Override the critics and accept current changes
 3. Abandon the change
 ```
 
 Use the ask_user tool to get the user's decision.
 
-## Commit
+## Phase 3: Commit
 
-After the critic approves, **immediately commit the changes to git** before moving to the next work-unit. Every approved change must be committed before any subsequent work begins.
+After all critics approve, **immediately commit the changes to git** before moving to the next work-unit. Every approved change must be committed before any subsequent work begins.
 
 **Commit frequently and minimally** — commit as fine-grained as possible, at minimum after each issue completes but preferably after each coherent sub-change. Each commit should be independently understandable and revertable.
 
