@@ -99,6 +99,22 @@ These patterns have already been successfully applied to this schema. Use them a
 **Design Principle — CHECK constraints are for closed domains only:**
 CHECK constraints should only be applied to columns with genuinely closed, finite value sets — status enums (pass/fail), binary discriminators (input/output), lifecycle states (draft/submitted/approved/rejected), or values that drive handler branching logic. Never apply CHECK constraints to open-ended domains where values naturally grow over time (types, categories, kinds, formats) — use free-form TEXT instead and let agents provide contextually appropriate values.
 
+**Design Principle — Column names must be semantically unique across tables:**
+If a column name appears in multiple tables, it must mean the same thing everywhere. Different meanings require different names. Use compound qualification (`http_method`, `signing_method`) or semantic precision (`data_type`, `measured_value`) to disambiguate. See Category 8 for the full audit methodology.
+
+**Column Name Disambiguation (14 columns renamed):**
+- `plan_overview_risk.phase` / `plan_external_dependency.phase` → `plan_phase_number` (collided with `phase` TABLE)
+- `entity_snapshot.entity_id` → `source_id` (polymorphic TEXT ref, not FK to `data_entity`)
+- `plan_phase_api_endpoint.method` / `implementation_api_endpoint.method` → `http_method` (HTTP verb)
+- `deployment_signing.method` → `signing_method` (crypto approach)
+- `plan_phase_api_endpoint.path` / `implementation_api_endpoint.path` → `route` (HTTP route, not filesystem)
+- `test_report.passed` → `passed_count` (integer count, not boolean flag)
+- `implementation_file.action` → `file_operation` (closed enum, not UX prose)
+- `data_entity_attribute.type` → `data_type` (data type, not entity kind)
+- `test_performance_benchmark.value` → `measured_value` (REAL measurement, not TEXT KVP)
+- `deployment_env_var.source` → `value_source` (config injection, not data flow origin)
+- `system_io.format` → `data_format` (data interchange, not publishing format)
+
 ---
 
 #### Audit Categories
@@ -231,9 +247,35 @@ Identify inconsistent naming conventions across tables that could cause confusio
 Look for:
 - Inconsistent suffixes for similar concepts
 - Inconsistent primary key strategies (TEXT IDs vs INTEGER AUTOINCREMENT) without clear rationale
-- Column names that mean different things in different tables
+- **Column name semantic collisions** — the same column name appearing in multiple tables where it means different things (see Column Name Uniqueness Principle below)
 
 **Exclusion rule:** Do NOT propose renames unless the inconsistency causes actual confusion in agent instructions, handler code, or documentation. Note cosmetic issues but don't prioritize them.
+
+**Column Name Uniqueness Principle:**
+
+A column name that appears in multiple tables MUST mean the same thing everywhere. It is not acceptable for a column name to carry different semantics in different tables — this forces humans and LLMs to rely on contextual clues (table name, sibling columns) to determine meaning, which is error-prone and ambiguity-inducing.
+
+To audit for violations:
+1. Extract every column name that appears in 2+ tables
+2. For each, read every CREATE TABLE definition where it appears
+3. Classify as **same-meaning** (acceptable) or **different-meaning** (needs rename)
+4. For different-meaning columns, propose compound-qualified renames
+
+**Disambiguation strategies (in preference order):**
+- **Compound qualification** — prefix/suffix with domain context (e.g., `method` → `http_method` / `signing_method`, `path` → `route` for HTTP routes)
+- **Semantic precision** — replace the vague term with a specific one (e.g., `type` → `data_type` when it stores a data type, `value` → `measured_value` when it's a numeric measurement)
+- **Both sides rename** — when neither table "owns" the generic name, both get qualified (e.g., `phase` → `plan_phase_number` when it collides with a `phase` TABLE)
+- **Avoid stutter** — don't create `implementation_file.file_action`; prefer `implementation_file.file_operation`
+
+**Columns that are ACCEPTABLE to share across tables:**
+- Standard metadata: `id`, `created_at`, `updated_at`
+- FK columns referencing the same parent: `iteration_id`, `requirement_id`, `component_id`, etc.
+- Columns with genuinely identical abstract meaning everywhere: `name` (entity display name), `description` (prose description), `status` (current entity state), `notes` (free-text annotation), `severity` (issue severity level), `category` (entity categorization)
+
+**Severity guidelines for column name collisions:**
+- **critical** — column name collides with a TABLE name (e.g., `phase` column vs `phase` table), or typed FK vs polymorphic reference sharing a name (e.g., `entity_id` as INTEGER FK in one table, TEXT polymorphic ref in another)
+- **medium** — completely unrelated concepts sharing a name (e.g., boolean flag vs integer count, UX prose vs closed enum)
+- **low** — same general concept but in clearly different domains where table context disambiguates (e.g., data format vs publishing format)
 
 ---
 
