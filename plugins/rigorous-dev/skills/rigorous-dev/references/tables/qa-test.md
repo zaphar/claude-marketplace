@@ -381,7 +381,7 @@ The `qa_engineer` and `qa_critic` identify weaknesses in the test suite (gaps in
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
 | `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this recommendation belongs to |
-| `category` | TEXT | NOT NULL, CHECK(`coverage`, `reliability`, `performance`, `security`, `maintainability`) | — | Area of improvement |
+| `category` | TEXT | NOT NULL | — | Free-form area of improvement (e.g., `coverage`, `reliability`, `performance`, `security`, `maintainability`). |
 | `description` | TEXT | NOT NULL | — | Clear description of the recommended improvement |
 | `priority` | TEXT | NOT NULL, CHECK(`high`, `medium`, `low`) | — | Priority level for addressing this recommendation |
 

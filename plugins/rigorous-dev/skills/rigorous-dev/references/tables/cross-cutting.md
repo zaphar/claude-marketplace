@@ -421,7 +421,7 @@ Unlike most entity tables, `blocker` does not carry a `revision_id` column — b
 
 ### Purpose
 
-Records cross-phase lessons learned — patterns, anti-patterns, conventions, risks, decisions, and process observations — so that downstream agents benefit from accumulated project knowledge. Unlike file-based project memory, lessons are stored in the database with structured categories, enabling targeted queries (e.g., "show me all anti-patterns from architecture").
+Records cross-phase lessons learned — categorised by type (e.g., patterns, anti-patterns, conventions, risks, decisions, process observations) — so that downstream agents benefit from accumulated project knowledge. Unlike file-based project memory, lessons are stored in the database with structured categories, enabling targeted queries (e.g., "show me all anti-patterns from architecture").
 
 ### Context
 
@@ -436,7 +436,7 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration in which this lesson was recorded. |
 | `phase_name` | TEXT | NOT NULL | — | FK (composite) → `phase(iteration_id, name)` | The phase during which the lesson was recorded (e.g., `requirements`, `architecture`, `implementation`). |
-| `category` | TEXT | NOT NULL | — | CHECK(`category` IN (`'pattern'`, `'anti-pattern'`, `'convention'`, `'risk'`, `'decision'`, `'process'`)) | Classification of the lesson for targeted querying. |
+| `category` | TEXT | NOT NULL | — | — | Free-form classification of the lesson for targeted querying (e.g., `pattern`, `anti-pattern`, `convention`, `risk`, `decision`, `process`). |
 | `lesson` | TEXT | NOT NULL | — | — | Human-readable description of the lesson learned. |
 | `recurring` | INTEGER | NOT NULL | `0` | — | Set to `1` if this pattern has been observed before. Helps surface systemic issues. |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |

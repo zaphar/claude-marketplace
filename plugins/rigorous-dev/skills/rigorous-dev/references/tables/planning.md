@@ -44,7 +44,7 @@ Central record for one implementation work chunk. A phase groups related develop
 ### Context
 
 - Created by `implementation_planner` once per logical work grouping within an iteration.
-- Each phase has a `type` of either `feature` (user-facing functionality) or `infrastructure` (tooling, setup, CI/CD, data migrations with no direct user value).
+- Each phase has a `type` describing whether it delivers user-facing features, internal infrastructure, or another category of work.
 - `review_checkpoint = 1` flags phases where the critic or architect should conduct a mid-implementation review before proceeding.
 - `complexity` is a t-shirt size estimate used by the `senior_developer` to gauge effort before starting.
 
@@ -57,7 +57,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The planning revision that produced this phase. |
 | `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Human-readable ordering identifier. Dependency and critical-path tables reference phases by surrogate `id` rather than this field. Must be unique within an iteration (enforced by application logic). |
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
-| `type` | TEXT | NOT NULL, CHECK(`feature` \| `infrastructure`) | — | Whether this phase delivers user-facing features or internal infrastructure. |
+| `type` | TEXT | NOT NULL | — | Free-form label describing the kind of work (e.g., `feature`, `infrastructure`). |
 | `goal` | TEXT | NOT NULL | — | One-paragraph statement of what this phase achieves and why. |
 | `status` | TEXT | NOT NULL, DEFAULT `'pending'`, CHECK(`pending` \| `test_writing` \| `implementing` \| `completed`) | `'pending'` | Tracks sub-phase progress during implementation. `test_writing` while tests are being written; `implementing` while implementation is in progress; `completed` when the sub-phase is fully approved. |
 | `complexity` | TEXT | CHECK(`XS` \| `S` \| `M` \| `L` \| `XL`), nullable | — | T-shirt size effort estimate. NULL means unestimated. |

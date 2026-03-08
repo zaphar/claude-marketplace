@@ -91,6 +91,15 @@ After building the Findings Index, enter the **Findings Review & Implementation 
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the report only if 3+ fixes are approved) → execution with progress reporting.
 
+**Test suggestions during interactive review:** When presenting a `critical` or `high` severity finding that includes a `**Test suggestion:**` field, highlight it to the user after showing the finding context. Use ask_user with choices:
+- **Approve fix + add suggested test** — The implementation will include both the code fix and the new test
+- **Approve fix only** — Fix the code but skip the test
+- **Reject**
+- **Skip**
+- **Expand (tell me more)**
+
+When the user approves a test addition, include it as part of the work-unit for that finding during implementation. The producer should add the test to the appropriate existing test file (never create new test files unless no suitable one exists).
+
 **Decisions ledger path:** `.scratch/rigor-mcp-server-auditor/audit-decisions.md`
 
 After interactive review completes, the findings-review workflow creates or updates the decisions ledger at this path. Each decision gets a ledger entry with: date, dimension, file(s), summary, decision, and action/reason. The ledger enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.

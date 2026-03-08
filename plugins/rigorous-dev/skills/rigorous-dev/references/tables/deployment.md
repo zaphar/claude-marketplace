@@ -259,7 +259,7 @@ deployment_manifest
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `name` | TEXT | NOT NULL | — | Artifact name (e.g., `api-server`, `cli-binary`, `installer.pkg`). |
-| `type` | TEXT | NOT NULL, CHECK IN (`container-image`, `binary`, `archive`, `package`, `installer`) | — | Artifact type. Determines expected registry and signing approach. |
+| `type` | TEXT | NOT NULL | — | Free-form artifact type (e.g., `container-image`, `binary`, `archive`, `package`, `installer`). Determines expected registry and signing approach. |
 | `registry` | TEXT | — | NULL | Where the artifact is stored (e.g., `ghcr.io/org/api-server`, `s3://releases-bucket`, `pypi.org`). NULL for local builds only. |
 | `versioning` | TEXT | CHECK IN (`semantic`, `git-sha`, `timestamp`, `custom`) | NULL | Versioning strategy. NULL means no policy specified (unusual; critic should flag). |
 | `platforms` | TEXT | NOT NULL | `'[]'` | JSON array of platform target strings (e.g., `["linux/amd64", "darwin/arm64"]`). Replaces the former `deployment_artifact_platform` child table. |
@@ -538,7 +538,7 @@ All child tables are nested inside the `data` object. Every array property is op
     }],
     "artifacts": [{                        // → deployment_artifact
       "name": "myapp",
-      "type": "container-image",           // "container-image" | "binary" | "archive" | "package" | "installer"
+      "type": "container-image",           // free-form, e.g. "container-image", "binary", "archive", "package", "installer"
       "registry": "ghcr.io/org/myapp",
       "versioning": "semantic",            // "semantic" | "git-sha" | "timestamp" | "custom"
       "platforms": [                       //   → JSON array on artifact

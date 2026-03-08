@@ -466,7 +466,7 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   phase_number INTEGER NOT NULL,
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('feature', 'infrastructure')),
+  type TEXT NOT NULL,
   goal TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'test_writing', 'implementing', 'completed')),
   complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')),
@@ -715,7 +715,7 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  asset_type TEXT NOT NULL CHECK(asset_type IN ('work_item', 'plan', 'note', 'commit_ref', 'file_ref')),
+  asset_type TEXT NOT NULL,
   title TEXT NOT NULL,
   content TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -726,10 +726,7 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
-  asset_type TEXT NOT NULL CHECK(asset_type IN (
-    'architecture_diagram', 'data_model', 'interface', 'ux_design_system',
-    'source_code', 'toolchain', 'test', 'documentation'
-  )),
+  asset_type TEXT NOT NULL,
   file_path TEXT NOT NULL,
   description TEXT,
   commit_sha TEXT,
@@ -847,7 +844,7 @@ CREATE TABLE IF NOT EXISTS test_blocker_requirement (
 CREATE TABLE IF NOT EXISTS test_recommendation (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  category TEXT NOT NULL CHECK(category IN ('coverage', 'reliability', 'performance', 'security', 'maintainability')),
+  category TEXT NOT NULL,
   description TEXT NOT NULL,
   priority TEXT NOT NULL CHECK(priority IN ('high', 'medium', 'low'))
 );
@@ -1035,7 +1032,7 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('container-image', 'binary', 'archive', 'package', 'installer')),
+  type TEXT NOT NULL,
   registry TEXT,
   versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')),
   platforms TEXT NOT NULL DEFAULT '[]'
@@ -1127,7 +1124,7 @@ CREATE TABLE IF NOT EXISTS project_lesson (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
-  category TEXT NOT NULL CHECK (category IN ('pattern', 'anti-pattern', 'convention', 'risk', 'decision', 'process')),
+  category TEXT NOT NULL,
   lesson TEXT NOT NULL,
   recurring INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

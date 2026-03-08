@@ -482,7 +482,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ### Context
 
-`asset_type` determines what `content` contains. `commit_ref` and `file_ref` store identifiers rather than full content. `work_item` captures task notes; `plan` captures sub-phase planning text; `note` captures free-form observations.
+`asset_type` determines what `content` contains. For example, `commit_ref` and `file_ref` typically store identifiers rather than full content, `work_item` captures task notes, `plan` captures sub-phase planning text, and `note` captures free-form observations. The field is free-form — agents may use any descriptive type string.
 
 ### Columns
 
@@ -492,7 +492,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Iteration this asset belongs to. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase in which it was created. |
 | `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Revision attempt that produced it. |
-| `asset_type` | TEXT | NO | — | CHECK IN ('work_item','plan','note','commit_ref','file_ref') | Semantic type of the asset. |
+| `asset_type` | TEXT | NO | — | — | Free-form semantic type of the asset (e.g., `work_item`, `plan`, `note`, `commit_ref`, `file_ref`). |
 | `title` | TEXT | NO | — | — | Short descriptive title. |
 | `content` | TEXT | YES | NULL | — | Full content; may be NULL for `commit_ref`/`file_ref` where the identifier is in `title`. |
 | `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
@@ -518,7 +518,7 @@ Records files that have been committed to VCS as finished deliverables. Where `i
 
 ### Context
 
-The `asset_type` enum mirrors the major deliverable categories expected at the end of an iteration. `file_path` is the repository-relative path. `commit_sha` ties the deliverable to the specific commit that introduced it, enabling the `iteration_summary` tool to surface "what was shipped" without querying VCS directly.
+The `asset_type` field categorises the deliverable (e.g., source code, tests, documentation). `file_path` is the repository-relative path. `commit_sha` ties the deliverable to the specific commit that introduced it, enabling the `iteration_summary` tool to surface "what was shipped" without querying VCS directly.
 
 ### Columns
 
@@ -527,7 +527,7 @@ The `asset_type` enum mirrors the major deliverable categories expected at the e
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Iteration this deliverable was produced in. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase that produced the deliverable. |
-| `asset_type` | TEXT | NO | — | CHECK IN ('architecture_diagram','data_model','interface','ux_design_system','source_code','toolchain','test','documentation') | Category of deliverable. |
+| `asset_type` | TEXT | NO | — | — | Free-form category of deliverable (e.g., `architecture_diagram`, `data_model`, `interface`, `ux_design_system`, `source_code`, `toolchain`, `test`, `documentation`). |
 | `file_path` | TEXT | NO | — | — | Repository-relative path to the committed file (e.g. `src/api/users.ts`). |
 | `description` | TEXT | YES | NULL | — | Brief explanation of what this file contains. |
 | `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA that introduced this file; cross-reference with `vcs_commit`. |
