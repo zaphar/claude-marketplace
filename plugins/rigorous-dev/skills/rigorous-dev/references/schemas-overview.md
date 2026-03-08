@@ -113,7 +113,7 @@ Every changelog entity below carries `iteration_id` and `revision_id` (both NOT 
 | `plan_phase_requirement` / `_component` / `_flow` / `_screen` | implementation_planner | What each plan phase covers. |
 | `plan_phase_api_endpoint` | implementation_planner | APIs built in each phase. |
 | `plan_phase_db_change` | implementation_planner | Database migrations per phase. Affected tables stored as JSON array (`tables` column). |
-| `plan_phase_relationship` | implementation_planner | Phase ordering and parallelism (dependency/parallel via `relationship_type` discriminator). |
+| `plan_phase_relationship` | implementation_planner | Phase ordering and parallelism (dependency/parallel via `dependency_type` discriminator). |
 | `plan_phase_risk` | implementation_planner | Phase-level risks and mitigations. |
 | `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
 | `plan_overview_risk` | implementation_planner | Plan-level risks. |

@@ -302,7 +302,7 @@ Represents one database migration required within a phase. Each row is a named m
 
 ### Purpose
 
-Records inter-phase relationships: ordering constraints (`dependency`) and concurrency pairs (`parallel`). A single table with a `relationship_type` discriminator replaces the former `plan_phase_dependency` and `plan_phase_parallel` tables.
+Records inter-phase relationships: ordering constraints (`dependency`) and concurrency pairs (`parallel`). A single table with a `dependency_type` discriminator replaces the former `plan_phase_dependency` and `plan_phase_parallel` tables.
 
 ### Context
 
@@ -319,10 +319,10 @@ Records inter-phase relationships: ordering constraints (`dependency`) and concu
 |--------|------|-------------|---------|-------------|
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The phase that has the relationship (the "downstream" phase for dependencies, one side for parallel). |
 | `related_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of PK | — | The `id` of the related phase. For dependencies: the phase that must complete first. For parallel: the phase that can run concurrently. |
-| `relationship_type` | TEXT | NOT NULL, CHECK(`dependency` \| `parallel`), part of PK | — | Discriminator. `dependency` = ordering constraint; `parallel` = safe concurrency pair. |
-| `reason` | TEXT | nullable | — | Only populated for `relationship_type = 'dependency'`. Explains why this ordering is required (e.g., "Auth tokens must exist before user profile endpoints can be tested"). |
+| `dependency_type` | TEXT | NOT NULL, CHECK(`dependency` \| `parallel`), part of PK | — | Discriminator. `dependency` = ordering constraint; `parallel` = safe concurrency pair. |
+| `reason` | TEXT | nullable | — | Only populated for `dependency_type = 'dependency'`. Explains why this ordering is required (e.g., "Auth tokens must exist before user profile endpoints can be tested"). |
 
-**Primary key:** `(plan_phase_id, related_phase_id, relationship_type)` — allows the same pair to have both a dependency and parallel relationship (unusual but not logically impossible for different sub-aspects).
+**Primary key:** `(plan_phase_id, related_phase_id, dependency_type)` — allows the same pair to have both a dependency and parallel relationship (unusual but not logically impossible for different sub-aspects).
 
 ### Relationships
 
@@ -501,7 +501,7 @@ Records the ordered sequence of phases that form the critical path — the chain
 
 ### Context
 
-- One row per phase on the critical path. Derived by `implementation_planner` from the dependency graph in `plan_phase_relationship` (rows with `relationship_type = 'dependency'`).
+- One row per phase on the critical path. Derived by `implementation_planner` from the dependency graph in `plan_phase_relationship` (rows with `dependency_type = 'dependency'`).
 - The critical path is the longest dependency chain. Phases not on the critical path have float (can slip without delaying the final delivery).
 - `senior_developer` uses this to decide where to concentrate resources and attention.
 - `implementation_plan_critic` verifies the critical path is consistent with the dependency graph.

@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   target_entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
-  relationship_type TEXT CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')), -- NULL when cardinality not yet determined
+  cardinality TEXT CHECK(cardinality IN ('one-to-one', 'one-to-many', 'many-to-many')), -- NULL when cardinality not yet determined
   description TEXT
 );
 
@@ -524,9 +524,9 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change (
 CREATE TABLE IF NOT EXISTS plan_phase_relationship (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   related_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  relationship_type TEXT NOT NULL CHECK(relationship_type IN ('dependency', 'parallel')),
-  reason TEXT, -- only populated for relationship_type = 'dependency'
-  PRIMARY KEY (plan_phase_id, related_phase_id, relationship_type)
+  dependency_type TEXT NOT NULL CHECK(dependency_type IN ('dependency', 'parallel')),
+  reason TEXT, -- only populated for dependency_type = 'dependency'
+  PRIMARY KEY (plan_phase_id, related_phase_id, dependency_type)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_risk (

@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id         INTEGER NOT NULL REFERENCES data_entity(id),
   target_entity_id  INTEGER NOT NULL REFERENCES data_entity(id),
-  relationship_type TEXT    CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')),
+  cardinality TEXT    CHECK(cardinality IN ('one-to-one', 'one-to-many', 'many-to-many')),
   description       TEXT
 );
 ```
@@ -135,14 +135,14 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `entity_id` | INTEGER | NOT NULL, FK → `data_entity(id)` | — | The source entity of this relationship. |
 | `target_entity_id` | INTEGER | NOT NULL, FK → `data_entity(id)` | — | The target entity of this relationship. Foreign key enforcing that the target must exist as a `data_entity` row. |
-| `relationship_type` | TEXT | CHECK IN (`'one-to-one'`, `'one-to-many'`, `'many-to-many'`) | NULL | Cardinality of the relationship. NULL is permitted if the architect has not yet specified cardinality. |
+| `cardinality` | TEXT | CHECK IN (`'one-to-one'`, `'one-to-many'`, `'many-to-many'`) | NULL | Cardinality of the relationship. NULL is permitted if the architect has not yet specified cardinality. |
 | `description` | TEXT | nullable | NULL | Plain-language description of the relationship (e.g., "A User has many Orders, cascades on delete"). |
 
 ### Constraints
 
 | Constraint | Details |
 |------------|---------|
-| CHECK on `relationship_type` | Value must be one of `'one-to-one'`, `'one-to-many'`, `'many-to-many'`, or NULL. Any other value will be rejected by SQLite at insert time. |
+| CHECK on `cardinality` | Value must be one of `'one-to-one'`, `'one-to-many'`, `'many-to-many'`, or NULL. Any other value will be rejected by SQLite at insert time. |
 | FK on `target_entity_id` | References `data_entity(id)`. The target entity must exist before the relationship can be inserted. |
 
 ### Relationships
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
 
 - `target_entity_id` is a proper foreign key referencing `data_entity(id)`. The target entity must be inserted before any relationship referencing it. When inserting via `changelog_insert`, the handler resolves the `target_entity` name (provided by the agent) to the corresponding `data_entity.id` within the same iteration.
 - Because target entities must exist before relationships referencing them can be inserted, the agent should insert entities without outbound relationships first, then insert entities that reference them. Alternatively, insert all entities without `relationships` arrays first, then re-insert entities with their relationships.
-- `relationship_type` is nullable — if the architect records a relationship without knowing the cardinality yet, the row is still valid.
+- `cardinality` is nullable — if the architect records a relationship without knowing the cardinality yet, the row is still valid.
 - For **many-to-many** relationships, the `senior_developer` should infer the need for a junction table unless `description` says otherwise.
 - Relationships are **directional**: a row on entity A pointing to entity B does not automatically create the reverse. The architect may add both directions if bidirectional navigation is required, or only one if the association is unidirectional.
 
@@ -192,7 +192,7 @@ With `include_related: true`, each result object has the shape:
     { "name": "placed_at", "data_type": "TIMESTAMP", "is_required": 1, "description": null }
   ],
   "relationships": [
-    { "target_entity": "User", "target_entity_id": 5, "relationship_type": "one-to-many", "description": "Each order belongs to one user" }
+    { "target_entity": "User", "target_entity_id": 5, "cardinality": "one-to-many", "description": "Each order belongs to one user" }
   ]
 }
 ```
@@ -224,12 +224,12 @@ Use `changelog_insert` with `entity_type: "data_entity"` to write entities. The 
       "relationships": [
         {
           "target_entity": "User",
-          "relationship_type": "one-to-many",
+          "cardinality": "one-to-many",
           "description": "Each order belongs to one user; cascades on delete"
         },
         {
           "target_entity": "OrderLine",
-          "relationship_type": "one-to-many",
+          "cardinality": "one-to-many",
           "description": "An order contains one or more order lines"
         }
       ]

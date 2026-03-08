@@ -323,10 +323,10 @@ function attachRelated(db, entityType, results) {
           .all(p.id)
           .map((x) => x.screen_id),
         dependencies: db
-          .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND relationship_type = 'dependency'")
+          .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'dependency'")
           .all(p.id),
         parallel_with: db
-          .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND relationship_type = 'parallel'")
+          .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'parallel'")
           .all(p.id)
           .map((x) => x.can_parallel_with_id),
         checkpoint_focus: JSON.parse(p.checkpoint_focus || '[]'),
@@ -358,7 +358,7 @@ function attachRelated(db, entityType, results) {
           .all(e.id),
         relationships: db
           .prepare(
-            `SELECT t.name AS target_entity, r.target_entity_id, r.relationship_type, r.description
+            `SELECT t.name AS target_entity, r.target_entity_id, r.cardinality, r.description
              FROM data_entity_relationship r
              JOIN data_entity t ON t.id = r.target_entity_id
              WHERE r.entity_id = ?`

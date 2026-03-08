@@ -479,7 +479,7 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
   // Resolve and insert relationships.
   // target_entity (name string) is looked up in data_entity within the same iteration.
   const insertRel = db.prepare(
-    "INSERT INTO data_entity_relationship (entity_id, target_entity_id, relationship_type, description) VALUES (?, ?, ?, ?)"
+    "INSERT INTO data_entity_relationship (entity_id, target_entity_id, cardinality, description) VALUES (?, ?, ?, ?)"
   );
   const lookupTarget = db.prepare(
     "SELECT id FROM data_entity WHERE name = ? AND iteration_id = ? ORDER BY id DESC LIMIT 1"
@@ -491,7 +491,7 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
         `Cannot resolve target_entity "${r.target_entity}" — no data_entity with that name exists in iteration ${iteration_id}. Insert the target entity first, then insert this entity's relationships.`
       );
     }
-    insertRel.run(entityId, targetRow.id, r.relationship_type ?? null, r.description ?? null);
+    insertRel.run(entityId, targetRow.id, r.cardinality ?? r.relationship_type ?? null, r.description ?? null);
   }
 
   return { entity_type: "data_entity", id: entityId };
@@ -812,7 +812,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertDep = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, relationship_type, reason) VALUES (?, ?, 'dependency', ?)"
+    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, dependency_type, reason) VALUES (?, ?, 'dependency', ?)"
   );
   for (const dep of data.dependencies ?? []) {
     const depPhase = typeof dep === "object" ? dep.depends_on_phase_id ?? dep.phase : dep;
@@ -828,7 +828,7 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertParallel = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, relationship_type) VALUES (?, ?, 'parallel')"
+    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, dependency_type) VALUES (?, ?, 'parallel')"
   );
   for (const parallel_id of data.parallel_with ?? []) {
     insertParallel.run(plan_phase_id, parallel_id);
