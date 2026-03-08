@@ -1,42 +1,90 @@
 # Mode 2: Deep Audit Mode
 
-Triggered when the user asks for a full audit or analysis of the plugin's current state.
+Triggered when the user asks for a full audit or analysis of the plugin's current state. This mode launches **all three** specialized critics in parallel, loads their findings into SQLite, deduplicates against prior decisions, and enters interactive review.
 
-## Step 1: Launch Critic
+## Step 1: Bootstrap Audit Database
 
-Run the `rigor_plugin_critic` agent (always `claude-opus-4.6`) in deep audit mode. Prompt:
+Initialize the audit database and create an audit run:
 
-```
-Perform a deep audit of the rigorous-dev plugin at plugins/rigorous-dev/.
-
-Run your complete review checklist — correctness, internal consistency, and developer ergonomics — against the full plugin codebase. This is a standalone audit, not a change review.
-
-For each checklist category, report every item as PASS or FAIL with specific details.
-Produce a comprehensive audit report in your standard verdict format with mode: deep_audit.
+```bash
+mkdir -p .scratch/rigor-plugin-update
+sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
 ```
 
-## Step 2: Build Findings Index
+Create the run record:
 
-After the critic completes, read its report and build a **Findings Index** from all FAIL items:
-
-1. **Deduplication**: Check for a prior decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md`. Match each FAIL item against prior decisions using category + affected files (structural fingerprint) or summary (fuzzy text match). Pre-fill the `Approved` column for matches and mark with `(prior)`.
-2. Each FAIL item gets a monotonically increasing `#` (starting at 1)
-3. Add the Findings Index table to the critic's existing `.scratch/` report (this is an addition to the report the critic already creates — not a new file)
-4. Present the report to the user with the Findings Index highlighted at the top
-
-The Findings Index follows the format defined in `workflows/findings-review.md` (see **Canonical Persisted Report Structure**):
-
-```
-| # | Category | Severity | Approved | Finding |
-|---|----------|----------|----------|---------|
-| 1 | Correctness | blocking | | [FAIL item one-line summary] |
-| 2 | Consistency | recommended | ✅ (prior) | [FAIL item one-line summary] |
+```bash
+sqlite3 .scratch/rigor-plugin-update/audit.db "INSERT INTO audit_run (id, mode) VALUES ('$(date +%Y%m%dT%H%M%S)_deep_audit', 'deep_audit');"
 ```
 
-## Step 3: Enter Findings Review & Implementation Workflow
+## Step 2: Launch All Critics in Parallel
 
-Enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index was already built in Step 2).
+Launch **6 agents simultaneously** (all `claude-opus-4.6`, all `mode: "background"`):
 
-The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the critic's report only if 3+ fixes are approved) → execution with progress reporting. After review, the decisions ledger at `.scratch/rigor-plugin-critic/audit-decisions.md` is created or updated.
+| # | Agent Type | Focus |
+|---|-----------|-------|
+| 1 | `rigor_consistency_critic` | Full plugin-level audit — cross-reference consistency, structural integrity, ergonomics |
+| 2 | `rigor_schema_critic` (Group A) | Categories 1–4: Table Consolidation, Child Collapse, FK Enforcement, CHECK Constraints |
+| 3 | `rigor_schema_critic` (Group B) | Categories 5, 12–14: Schema Correctness, Nullable Alignment, Transaction Safety, Circular FKs |
+| 4 | `rigor_schema_critic` (Group C) | Categories 6–9: Redundant Tables, Orphaned Tables, Naming Consistency, Column Redundancy |
+| 5 | `rigor_schema_critic` (Group D) | Categories 10–11, 15–20: Indexes, Timestamps, Polymorphic Refs, Scope Leakage, Deletion Patterns, Type Precision, Doc Drift, Unused Enums |
+| 6 | `rigor_mcp_server_critic` | Full 7-dimension MCP audit — Correctness, Data Integrity, Error Handling, Protocol Compliance, Patterns, Test Coverage, INTERNALS.md Accuracy |
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). The complexity assessment should account for the scope of fixes needed.
+Each critic receives read-only access to `audit.db` so it can query prior decisions and skip already-decided findings:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "SELECT f.category, f.summary, d.decision, d.action, d.reason
+   FROM finding f
+   JOIN decision d ON d.finding_id = f.id
+   WHERE f.critic = '<critic-name>'
+   ORDER BY d.decided_at DESC;"
+```
+
+Critics write their raw markdown reports to `.scratch/<critic-name>/<date>/`.
+
+## Step 3: Wait and Load into SQLite
+
+Wait for all 6 agents to complete using `read_agent` with `wait: true`.
+
+Read each critic's **full persisted report** from its `.scratch/` directory — do NOT rely on agent result summaries returned by `read_agent`; you must read the actual files. Parse all findings and INSERT them into the `finding` table with the current audit run ID. The database is the consolidated view — no separate consolidated markdown report is needed.
+
+Present the loaded findings to the user:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "SELECT f.id, f.critic, f.category, f.severity, f.summary
+   FROM finding f
+   WHERE f.audit_run_id = '<run-id>'
+   ORDER BY f.severity, f.critic;"
+```
+
+## Step 4: Deduplication
+
+Query for prior decisions on the same fingerprints and auto-carry-forward:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "SELECT f.id, f.critic, f.category, f.summary, d.decision, d.reason
+   FROM finding f
+   JOIN finding prior ON f.fingerprint = prior.fingerprint AND prior.id != f.id
+   JOIN decision d ON d.finding_id = prior.id
+   WHERE f.audit_run_id = '<run-id>'
+   ORDER BY d.decided_at DESC;"
+```
+
+For each match, INSERT a new decision row that carries forward the prior decision and links via `supersedes`:
+
+- Prior `approved` → auto-approve with `supersedes` pointing at the prior decision
+- Prior `rejected` → auto-reject with `supersedes` pointing at the prior decision
+- Prior `skipped` → auto-skip with `supersedes` pointing at the prior decision
+
+Present the deduplication summary to the user so they can see which findings were auto-resolved and override if needed.
+
+## Step 5: Enter Findings Review
+
+Enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review**. The findings are queried from `audit.db` rather than read from a markdown table — use the `finding` table as the source of truth.
+
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan → execution with progress reporting. Decisions are INSERTed into the `decision` table in `audit.db`.
+
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the appropriate critic for validation — `rigor_schema_critic` for schema findings, `rigor_mcp_server_critic` for MCP server findings, and `rigor_consistency_critic` for consistency findings.
