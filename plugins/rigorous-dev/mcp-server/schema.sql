@@ -874,8 +874,8 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
   description TEXT NOT NULL,
   location TEXT,
   metric_name TEXT,
-  baseline_value TEXT,
-  actual_value TEXT,
+  baseline_value REAL,
+  actual_value REAL,
   recommendation TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'deferred')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))

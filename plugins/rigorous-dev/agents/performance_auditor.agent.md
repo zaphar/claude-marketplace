@@ -96,8 +96,8 @@ changelog_insert(entity_type: "performance_audit_finding", iteration_id: <curren
   description: "<what the performance issue is, impact estimate, evidence>",
   location: "<FILE:LINE>",
   metric_name: "<metric identifier if measurable>",
-  baseline_value: "<expected/threshold value>",
-  actual_value: "<measured/observed value>",
+  baseline_value: <expected/threshold number or null>,
+  actual_value: <measured/observed number or null>,
   recommendation: "<specific fix with code example>",
   status: "open"
 })
@@ -106,7 +106,7 @@ changelog_insert(entity_type: "performance_audit_finding", iteration_id: <curren
 - Record findings **incrementally** as you complete each performance area. Do not accumulate all findings before inserting.
 - Each finding must include: category, severity, title, description (with impact estimate and evidence), and recommendation (with specific remediation steps).
 - Include `location` (file:line) for every finding where the issue has a specific code location.
-- Include `metric_name`, `baseline_value`, and `actual_value` when quantifiable metrics are available (e.g., query time, memory usage, complexity).
+- Include `metric_name`, `baseline_value`, and `actual_value` when quantifiable metrics are available (e.g., query count, latency in ms, memory in MB). Values must be numeric (REAL) — encode units in `metric_name` (e.g., `"p95_latency_ms"`, `"memory_growth_mb"`).
 - If no findings exist for a category, you do not need to insert a row — the absence of findings for that category is itself the signal.
 
 **Produces:**

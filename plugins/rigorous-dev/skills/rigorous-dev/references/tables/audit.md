@@ -86,8 +86,8 @@ The `performance_audit_critic` queries all findings for the current iteration to
 | `description` | TEXT | NOT NULL | — | Full description including impact estimate and evidence (code snippets, complexity analysis, benchmark data) |
 | `location` | TEXT | — | NULL | File path and line number where the issue exists (e.g., `"src/api/tasks.js:87"`) |
 | `metric_name` | TEXT | — | NULL | Metric identifier when quantifiable (e.g., `"query_count_per_request"`, `"p95_latency_ms"`, `"memory_growth_mb"`) |
-| `baseline_value` | TEXT | — | NULL | Expected or threshold value for the metric (e.g., `"1"`, `"100ms"`, `"< 50MB"`) |
-| `actual_value` | TEXT | — | NULL | Measured or observed value (e.g., `"N+1"`, `"850ms"`, `"120MB"`) |
+| `baseline_value` | REAL | — | NULL | Expected or threshold value for the metric (e.g., `1`, `100`, `50`) |
+| `actual_value` | REAL | — | NULL | Measured or observed value (e.g., `15`, `850`, `120`) |
 | `recommendation` | TEXT | NOT NULL | — | Specific remediation steps with code examples |
 | `status` | TEXT | NOT NULL, CHECK(`open`, `resolved`, `accepted`, `deferred`) | `'open'` | Current status: `open` (needs fix), `resolved` (fixed), `accepted` (risk accepted), `deferred` (postponed to future iteration) |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO 8601 timestamp when the finding was recorded |
