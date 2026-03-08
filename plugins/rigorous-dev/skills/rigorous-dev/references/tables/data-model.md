@@ -74,11 +74,12 @@ Represents a single attribute (column, field) on a `data_entity`. Captures the n
 ```sql
 CREATE TABLE IF NOT EXISTS data_entity_attribute (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_id   INTEGER NOT NULL REFERENCES data_entity(id),
+  entity_id   INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   name        TEXT    NOT NULL,
   data_type   TEXT    NOT NULL,
   is_required INTEGER DEFAULT 0,
-  description TEXT
+  description TEXT,
+  UNIQUE(entity_id, name)
 );
 ```
 
@@ -87,8 +88,8 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `entity_id` | INTEGER | NOT NULL, FK → `data_entity(id)` | — | The entity this attribute belongs to. |
-| `name` | TEXT | NOT NULL | — | Attribute name (e.g., `email`, `created_at`, `user_id`). |
+| `entity_id` | INTEGER | NOT NULL, FK → `data_entity(id)`, part of UNIQUE(entity_id, name) | — | The entity this attribute belongs to. |
+| `name` | TEXT | NOT NULL, part of UNIQUE(entity_id, name) | — | Attribute name (e.g., `email`, `created_at`, `user_id`). |
 | `data_type` | TEXT | NOT NULL | — | Data type as the architect specifies it (e.g., `UUID`, `VARCHAR(255)`, `TIMESTAMP`, `JSONB`, `INTEGER`). Intentionally free-form to be database-agnostic unless the architect ties it to a specific engine. |
 | `is_required` | INTEGER | — | `0` | Boolean flag (SQLite convention): `1` = attribute is required / NOT NULL; `0` = nullable / optional. |
 | `description` | TEXT | nullable | NULL | Optional clarification — e.g., "ISO 8601 UTC timestamp of last login", "FK to users.id". |
@@ -101,7 +102,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 
 - `type` is a free-form string. The `backend_architect` may use abstract types (`String`, `Date`, `Decimal`) or engine-specific types (`BIGSERIAL`, `TIMESTAMPTZ`) depending on the level of specificity chosen. The `senior_developer` should interpret these in the context of the chosen database from `technology_choice`.
 - `is_required = 1` signals NOT NULL in SQL or a required field in a document store. `is_required = 0` (default) means the attribute is optional/nullable.
-- There is no UNIQUE constraint on `name` within an entity — use `entity_id + name` together to identify a specific attribute.
+- `UNIQUE(entity_id, name)` ensures no duplicate attribute names within the same entity.
 
 ---
 

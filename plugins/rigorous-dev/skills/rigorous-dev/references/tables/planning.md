@@ -244,9 +244,9 @@ Lists the HTTP API endpoints that must be implemented during a phase. This is th
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that implements this endpoint. |
-| `http_method` | TEXT | NOT NULL | — | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). |
-| `route` | TEXT | NOT NULL | — | URL path, e.g., `/api/v1/users/{id}`. |
+| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, part of UNIQUE(plan_phase_id, route, http_method) | — | The phase that implements this endpoint. |
+| `http_method` | TEXT | NOT NULL, part of UNIQUE(plan_phase_id, route, http_method) | — | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). |
+| `route` | TEXT | NOT NULL, part of UNIQUE(plan_phase_id, route, http_method) | — | URL path, e.g., `/api/v1/users/{id}`. |
 | `description` | TEXT | nullable | — | What this endpoint does and what it returns. |
 
 ### Relationships

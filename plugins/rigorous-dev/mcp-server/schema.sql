@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS adr (
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
-  date TEXT,
+  date TEXT, -- ISO 8601 date, e.g. "2026-03-08"
   context TEXT,
   decision TEXT NOT NULL,
   rationale TEXT NOT NULL,
@@ -264,7 +264,8 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
   name TEXT NOT NULL,
   data_type TEXT NOT NULL,
   is_required INTEGER DEFAULT 0,
-  description TEXT
+  description TEXT,
+  UNIQUE(entity_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS data_entity_relationship (
@@ -495,7 +496,8 @@ CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   http_method TEXT NOT NULL,
   route TEXT NOT NULL,
-  description TEXT
+  description TEXT,
+  UNIQUE(plan_phase_id, route, http_method)
 );
 
 CREATE TABLE IF NOT EXISTS plan_phase_db_change (
@@ -1314,8 +1316,7 @@ CREATE INDEX IF NOT EXISTS idx_test_recommendation_report_id
 --   (plan_phase_id is leftmost in their composite PKs)
 -- ------------------------------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_plan_phase_api_endpoint_plan_phase_id
-  ON plan_phase_api_endpoint(plan_phase_id);
+-- Skipped: plan_phase_api_endpoint (plan_phase_id is leftmost in UNIQUE(plan_phase_id, route, http_method))
 CREATE INDEX IF NOT EXISTS idx_plan_phase_db_change_plan_phase_id
   ON plan_phase_db_change(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
@@ -1555,9 +1556,7 @@ CREATE INDEX IF NOT EXISTS idx_adr_superseded_by
 CREATE INDEX IF NOT EXISTS idx_architecture_diagram_overview_id
   ON architecture_diagram(overview_id);
 
--- data_entity_attribute.entity_id → data_entity(id)
-CREATE INDEX IF NOT EXISTS idx_data_entity_attribute_entity_id
-  ON data_entity_attribute(entity_id);
+-- Skipped: data_entity_attribute (entity_id is leftmost in UNIQUE(entity_id, name))
 
 -- data_entity_relationship.entity_id → data_entity(id)
 CREATE INDEX IF NOT EXISTS idx_data_entity_relationship_entity_id
