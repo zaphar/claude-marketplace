@@ -1190,3 +1190,465 @@ describe("queryPlanPhase enrichment", () => {
     assert.deepStrictEqual(phase.checkpoint_focus, []);
   });
 });
+
+// ───────────────────────────────────────────────────────────────
+// Phase 2c: Deep-complexity enrichment tests
+// ───────────────────────────────────────────────────────────────
+
+describe("queryImplementationManifest enrichment", () => {
+  it("attaches all child data with nested requirements when include_related is true", () => {
+    // Prerequisites: plan_phase, requirements, component
+    const ppResult = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "impl-phase", type: "implementation", goal: "Build it" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-IM1", description: "Core feature", priority: "must-have", category: "feature" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-IM2", description: "API feature", priority: "should-have", category: "api" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "COMP-IM1", name: "Core", purpose: "Core logic", type: "library" },
+    });
+
+    // Insert implementation_manifest with all child data
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "implementation_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        plan_phase_id: ppResult.id,
+        status: "complete",
+        lines_of_code: 500,
+        warnings: 2,
+        build_status: "success",
+        files: [
+          { path: "src/main.js", file_operation: "created", purpose: "Entry point", requirements: ["REQ-IM1"] },
+          { path: "src/utils.js", file_operation: "created", purpose: "Utilities" },
+          { path: "src/old.js", file_operation: "modified", purpose: "Refactored", requirements: ["REQ-IM1", "REQ-IM2"] },
+        ],
+        requirement_status: [
+          { requirement_id: "REQ-IM1", status: "implemented", notes: "Done" },
+          { requirement_id: "REQ-IM2", status: "partial" },
+        ],
+        component_status: [
+          { component_id: "COMP-IM1", status: "complete", notes: "All tests pass" },
+        ],
+        api_endpoints: [
+          { route: "/api/items", http_method: "GET", status: "complete", requirements: ["REQ-IM2"] },
+          { route: "/api/items", http_method: "POST", status: "stubbed" },
+        ],
+        dependencies_added: [
+          { name: "express", version: "4.18.0", purpose: "HTTP server", license: "MIT" },
+        ],
+        db_migrations: [
+          { name: "001_init", description: "Initial tables", status: "applied" },
+        ],
+        blockers: [
+          { description: "Missing API key", severity: "major", recommendation: "Get from admin", requirements: ["REQ-IM2"] },
+        ],
+        review_checklist: [
+          { check_name: "Tests pass", passed: true },
+          { check_name: "Linter clean", passed: false },
+        ],
+      },
+    });
+
+    // Query with include_related
+    const r = handleReadTool("changelog_query", {
+      entity_type: "implementation_manifest",
+      ids: [mResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+
+    // Computed counts
+    assert.strictEqual(m.files_created, 2);
+    assert.strictEqual(m.files_modified, 1);
+    assert.strictEqual(m.files_deleted, 0);
+
+    // Files with nested requirements
+    assert.strictEqual(m.files.length, 3);
+    const mainFile = m.files.find((f) => f.path === "src/main.js");
+    assert.ok(mainFile);
+    assert.deepStrictEqual(mainFile.requirements, ["REQ-IM1"]);
+    assert.strictEqual(mainFile.file_operation, "created");
+    assert.ok(mainFile.id); // autoincrement id
+    const oldFile = m.files.find((f) => f.path === "src/old.js");
+    assert.deepStrictEqual(oldFile.requirements.sort(), ["REQ-IM1", "REQ-IM2"]);
+    const utilsFile = m.files.find((f) => f.path === "src/utils.js");
+    assert.deepStrictEqual(utilsFile.requirements, []);
+
+    // Requirement status
+    assert.strictEqual(m.requirement_status.length, 2);
+    const rs1 = m.requirement_status.find((rs) => rs.requirement_id === "REQ-IM1");
+    assert.strictEqual(rs1.status, "implemented");
+    assert.strictEqual(rs1.notes, "Done");
+
+    // Component status
+    assert.strictEqual(m.component_status.length, 1);
+    assert.strictEqual(m.component_status[0].component_id, "COMP-IM1");
+    assert.strictEqual(m.component_status[0].status, "complete");
+
+    // API endpoints with nested requirements
+    assert.strictEqual(m.api_endpoints.length, 2);
+    const getEp = m.api_endpoints.find((ep) => ep.http_method === "GET");
+    assert.deepStrictEqual(getEp.requirements, ["REQ-IM2"]);
+    const postEp = m.api_endpoints.find((ep) => ep.http_method === "POST");
+    assert.deepStrictEqual(postEp.requirements, []);
+
+    // Dependencies added
+    assert.strictEqual(m.dependencies_added.length, 1);
+    assert.strictEqual(m.dependencies_added[0].name, "express");
+    assert.strictEqual(m.dependencies_added[0].license, "MIT");
+
+    // DB migrations
+    assert.strictEqual(m.db_migrations.length, 1);
+    assert.strictEqual(m.db_migrations[0].name, "001_init");
+    assert.strictEqual(m.db_migrations[0].status, "applied");
+
+    // Blockers with nested requirements
+    assert.strictEqual(m.blockers.length, 1);
+    assert.strictEqual(m.blockers[0].description, "Missing API key");
+    assert.deepStrictEqual(m.blockers[0].requirements, ["REQ-IM2"]);
+
+    // Review checklist
+    assert.strictEqual(m.review_checklist.length, 2);
+    const testsCheck = m.review_checklist.find((c) => c.check_name === "Tests pass");
+    assert.strictEqual(testsCheck.passed, 1);
+    const lintCheck = m.review_checklist.find((c) => c.check_name === "Linter clean");
+    assert.strictEqual(lintCheck.passed, 0);
+  });
+
+  it("does not attach child data when include_related is false", () => {
+    const ppResult = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 2, name: "impl-no-enrich", type: "implementation", goal: "Test" },
+    });
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "implementation_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        plan_phase_id: ppResult.id,
+        status: "partial",
+        files: [{ path: "a.js", file_operation: "created" }],
+        review_checklist: [{ check_name: "Smoke test", passed: true }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "implementation_manifest",
+      ids: [mResult.id],
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+    assert.strictEqual(m.files, undefined);
+    assert.strictEqual(m.files_created, undefined);
+    assert.strictEqual(m.files_modified, undefined);
+    assert.strictEqual(m.files_deleted, undefined);
+    assert.strictEqual(m.requirement_status, undefined);
+    assert.strictEqual(m.component_status, undefined);
+    assert.strictEqual(m.api_endpoints, undefined);
+    assert.strictEqual(m.dependencies_added, undefined);
+    assert.strictEqual(m.db_migrations, undefined);
+    assert.strictEqual(m.blockers, undefined);
+    assert.strictEqual(m.review_checklist, undefined);
+  });
+
+  it("returns empty arrays for manifest with no children", () => {
+    const ppResult = handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 3, name: "impl-empty", type: "implementation", goal: "Empty" },
+    });
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "implementation_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { plan_phase_id: ppResult.id, status: "complete" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "implementation_manifest",
+      ids: [mResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+    assert.strictEqual(m.files_created, 0);
+    assert.strictEqual(m.files_modified, 0);
+    assert.strictEqual(m.files_deleted, 0);
+    assert.deepStrictEqual(m.files, []);
+    assert.deepStrictEqual(m.requirement_status, []);
+    assert.deepStrictEqual(m.component_status, []);
+    assert.deepStrictEqual(m.api_endpoints, []);
+    assert.deepStrictEqual(m.dependencies_added, []);
+    assert.deepStrictEqual(m.db_migrations, []);
+    assert.deepStrictEqual(m.blockers, []);
+    assert.deepStrictEqual(m.review_checklist, []);
+  });
+});
+
+describe("queryDeploymentManifest enrichment", () => {
+  it("attaches all child data with deep nesting and JSON parsing when include_related is true", () => {
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "deployment_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        status: "ready",
+        targets: ["production", "staging"],
+        blockers: ["DNS not configured"],
+        pipelines: [
+          {
+            platform: "GitHub Actions",
+            config_files: [".github/workflows/ci.yml"],
+            stages: [
+              {
+                name: "build",
+                purpose: "Compile and test",
+                triggers: ["push to main"],
+                steps: ["npm install", "npm test"],
+                quality_gates: [
+                  { name: "tests-pass", condition: "exit code 0", failure_action: "block" },
+                ],
+              },
+              {
+                name: "deploy",
+                purpose: "Ship to production",
+                triggers: ["manual"],
+                steps: ["deploy.sh"],
+              },
+            ],
+          },
+        ],
+        quality_gates: [
+          { category: "testing", key: "coverage", value: "80%" },
+        ],
+        environments: [
+          {
+            name: "production",
+            deployment_method: "kubernetes",
+            url: "https://app.example.com",
+            rollback_procedure: "kubectl rollback",
+            infra: [
+              { provider: "AWS", resource: "EKS cluster" },
+            ],
+            vars: [
+              { name: "DATABASE_URL", value_source: "secrets-manager", description: "DB connection" },
+            ],
+          },
+        ],
+        artifacts: [
+          { name: "api-image", type: "docker", registry: "ghcr.io", versioning: "semantic", platforms: ["linux/amd64", "linux/arm64"] },
+        ],
+        signing: [
+          { enabled: true, signing_method: "cosign" },
+        ],
+        local_executables: [
+          { installation_method: "npm install -g", update_mechanism: "npm update", platforms: ["macos", "linux"], channels: ["stable", "beta"] },
+        ],
+        secrets: [
+          { provider: "AWS Secrets Manager", name: "DB_PASSWORD", purpose: "Database auth", rotation_policy: "90 days" },
+        ],
+        health_checks: [
+          { name: "api-health", endpoint: "/healthz", interval: "30s" },
+        ],
+        alerting: [
+          { provider: "PagerDuty", channel: "#ops-alerts" },
+        ],
+        runbooks: [
+          {
+            name: "Rollback Procedure",
+            scenario: "Failed deployment",
+            steps: [
+              { step: "Check dashboard", is_rollback: false },
+              { step: "Run kubectl rollback", is_rollback: true },
+            ],
+          },
+        ],
+        review_checklist: [
+          { check_name: "Secrets rotated", passed: true },
+          { check_name: "Rollback tested", passed: false },
+        ],
+      },
+    });
+
+    // Query with include_related
+    const r = handleReadTool("changelog_query", {
+      entity_type: "deployment_manifest",
+      ids: [mResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+
+    // JSON-parsed top-level fields
+    assert.deepStrictEqual(m.targets, ["production", "staging"]);
+    assert.deepStrictEqual(m.blockers, ["DNS not configured"]);
+
+    // Pipelines with nested stages and quality gates
+    assert.strictEqual(m.pipelines.length, 1);
+    const pipeline = m.pipelines[0];
+    assert.strictEqual(pipeline.platform, "GitHub Actions");
+    assert.deepStrictEqual(pipeline.config_files, [".github/workflows/ci.yml"]);
+    assert.ok(pipeline.id); // autoincrement id
+    assert.strictEqual(pipeline.stages.length, 2);
+
+    const buildStage = pipeline.stages.find((s) => s.name === "build");
+    assert.strictEqual(buildStage.purpose, "Compile and test");
+    assert.deepStrictEqual(buildStage.triggers, ["push to main"]);
+    assert.deepStrictEqual(buildStage.steps, ["npm install", "npm test"]);
+    assert.strictEqual(buildStage.quality_gates.length, 1);
+    assert.strictEqual(buildStage.quality_gates[0].name, "tests-pass");
+    assert.strictEqual(buildStage.quality_gates[0].condition, "exit code 0");
+    assert.strictEqual(buildStage.quality_gates[0].failure_action, "block");
+
+    const deployStage = pipeline.stages.find((s) => s.name === "deploy");
+    assert.deepStrictEqual(deployStage.triggers, ["manual"]);
+    assert.deepStrictEqual(deployStage.quality_gates, []);
+
+    // Quality gates (top-level)
+    assert.strictEqual(m.quality_gates.length, 1);
+    assert.strictEqual(m.quality_gates[0].category, "testing");
+    assert.strictEqual(m.quality_gates[0].key, "coverage");
+
+    // Environments with nested infra and vars
+    assert.strictEqual(m.environments.length, 1);
+    const env = m.environments[0];
+    assert.strictEqual(env.name, "production");
+    assert.strictEqual(env.deployment_method, "kubernetes");
+    assert.strictEqual(env.url, "https://app.example.com");
+    assert.strictEqual(env.infra.length, 1);
+    assert.strictEqual(env.infra[0].provider, "AWS");
+    assert.strictEqual(env.infra[0].resource, "EKS cluster");
+    assert.strictEqual(env.vars.length, 1);
+    assert.strictEqual(env.vars[0].name, "DATABASE_URL");
+    assert.strictEqual(env.vars[0].value_source, "secrets-manager");
+
+    // Artifacts with parsed platforms
+    assert.strictEqual(m.artifacts.length, 1);
+    assert.strictEqual(m.artifacts[0].name, "api-image");
+    assert.deepStrictEqual(m.artifacts[0].platforms, ["linux/amd64", "linux/arm64"]);
+    assert.strictEqual(m.artifacts[0].versioning, "semantic");
+
+    // Signing
+    assert.strictEqual(m.signing.length, 1);
+    assert.strictEqual(m.signing[0].enabled, 1);
+    assert.strictEqual(m.signing[0].signing_method, "cosign");
+
+    // Local executables with parsed platforms and channels
+    assert.strictEqual(m.local_executables.length, 1);
+    assert.deepStrictEqual(m.local_executables[0].platforms, ["macos", "linux"]);
+    assert.deepStrictEqual(m.local_executables[0].channels, ["stable", "beta"]);
+
+    // Secrets
+    assert.strictEqual(m.secrets.length, 1);
+    assert.strictEqual(m.secrets[0].name, "DB_PASSWORD");
+    assert.strictEqual(m.secrets[0].rotation_policy, "90 days");
+
+    // Health checks
+    assert.strictEqual(m.health_checks.length, 1);
+    assert.strictEqual(m.health_checks[0].name, "api-health");
+    assert.strictEqual(m.health_checks[0].endpoint, "/healthz");
+
+    // Alerting
+    assert.strictEqual(m.alerting.length, 1);
+    assert.strictEqual(m.alerting[0].provider, "PagerDuty");
+    assert.strictEqual(m.alerting[0].channel, "#ops-alerts");
+
+    // Runbooks with nested steps
+    assert.strictEqual(m.runbooks.length, 1);
+    assert.strictEqual(m.runbooks[0].name, "Rollback Procedure");
+    assert.strictEqual(m.runbooks[0].scenario, "Failed deployment");
+    assert.strictEqual(m.runbooks[0].steps.length, 2);
+    assert.strictEqual(m.runbooks[0].steps[0].step, "Check dashboard");
+    assert.strictEqual(m.runbooks[0].steps[0].is_rollback, 0);
+    assert.strictEqual(m.runbooks[0].steps[1].step, "Run kubectl rollback");
+    assert.strictEqual(m.runbooks[0].steps[1].is_rollback, 1);
+
+    // Review checklist
+    assert.strictEqual(m.review_checklist.length, 2);
+    const secretsCheck = m.review_checklist.find((c) => c.check_name === "Secrets rotated");
+    assert.strictEqual(secretsCheck.passed, 1);
+  });
+
+  it("does not attach child data when include_related is false", () => {
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "deployment_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        status: "not_ready",
+        targets: ["staging"],
+        pipelines: [{ platform: "CircleCI" }],
+        review_checklist: [{ check_name: "Check", passed: false }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "deployment_manifest",
+      ids: [mResult.id],
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+    // targets and blockers should be raw JSON strings (not parsed)
+    assert.strictEqual(typeof m.targets, "string");
+    assert.strictEqual(typeof m.blockers, "string");
+    // No child data attached
+    assert.strictEqual(m.pipelines, undefined);
+    assert.strictEqual(m.quality_gates, undefined);
+    assert.strictEqual(m.environments, undefined);
+    assert.strictEqual(m.artifacts, undefined);
+    assert.strictEqual(m.signing, undefined);
+    assert.strictEqual(m.local_executables, undefined);
+    assert.strictEqual(m.secrets, undefined);
+    assert.strictEqual(m.health_checks, undefined);
+    assert.strictEqual(m.alerting, undefined);
+    assert.strictEqual(m.runbooks, undefined);
+    assert.strictEqual(m.review_checklist, undefined);
+  });
+
+  it("returns empty arrays for manifest with no children", () => {
+    const mResult = handleWriteTool("changelog_insert", {
+      entity_type: "deployment_manifest",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { status: "not_ready" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "deployment_manifest",
+      ids: [mResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const m = r.results[0];
+    assert.deepStrictEqual(m.targets, []);
+    assert.deepStrictEqual(m.blockers, []);
+    assert.deepStrictEqual(m.pipelines, []);
+    assert.deepStrictEqual(m.quality_gates, []);
+    assert.deepStrictEqual(m.environments, []);
+    assert.deepStrictEqual(m.artifacts, []);
+    assert.deepStrictEqual(m.signing, []);
+    assert.deepStrictEqual(m.local_executables, []);
+    assert.deepStrictEqual(m.secrets, []);
+    assert.deepStrictEqual(m.health_checks, []);
+    assert.deepStrictEqual(m.alerting, []);
+    assert.deepStrictEqual(m.runbooks, []);
+    assert.deepStrictEqual(m.review_checklist, []);
+  });
+});

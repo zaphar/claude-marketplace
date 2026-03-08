@@ -539,7 +539,7 @@ const IMPLEMENTATION_MANIFEST_FILTERS = {
   commit_sha: { nullable: true },
 };
 
-function queryImplementationManifest(db, { iteration_id, ids, filters = {} }) {
+function queryImplementationManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM implementation_manifest";
   const clauses = [];
   const params = [];
@@ -549,7 +549,64 @@ function queryImplementationManifest(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((m) => {
+    const files = db
+      .prepare("SELECT * FROM implementation_file WHERE manifest_id = ?")
+      .all(m.id)
+      .map((fi) => ({
+        ...fi,
+        requirements: db
+          .prepare("SELECT requirement_id FROM implementation_file_requirement WHERE file_id = ?")
+          .all(fi.id)
+          .map((x) => x.requirement_id),
+      }));
+    const api_endpoints = db
+      .prepare("SELECT * FROM implementation_api_endpoint WHERE manifest_id = ?")
+      .all(m.id)
+      .map((ep) => ({
+        ...ep,
+        requirements: db
+          .prepare("SELECT requirement_id FROM implementation_api_endpoint_requirement WHERE endpoint_id = ?")
+          .all(ep.id)
+          .map((x) => x.requirement_id),
+      }));
+    const blockers = db
+      .prepare("SELECT * FROM implementation_blocker WHERE manifest_id = ?")
+      .all(m.id)
+      .map((b) => ({
+        ...b,
+        requirements: db
+          .prepare("SELECT requirement_id FROM implementation_blocker_requirement WHERE blocker_id = ?")
+          .all(b.id)
+          .map((x) => x.requirement_id),
+      }));
+    return {
+      ...m,
+      files_created: files.filter((fi) => fi.file_operation === "created").length,
+      files_modified: files.filter((fi) => fi.file_operation === "modified").length,
+      files_deleted: files.filter((fi) => fi.file_operation === "deleted").length,
+      files,
+      requirement_status: db
+        .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
+        .all(m.id),
+      component_status: db
+        .prepare("SELECT * FROM implementation_component_status WHERE manifest_id = ?")
+        .all(m.id),
+      api_endpoints,
+      dependencies_added: db
+        .prepare("SELECT * FROM implementation_dependency_added WHERE manifest_id = ?")
+        .all(m.id),
+      db_migrations: db
+        .prepare("SELECT * FROM implementation_db_migration WHERE manifest_id = ?")
+        .all(m.id),
+      blockers,
+      review_checklist: db
+        .prepare("SELECT * FROM implementation_review_checklist WHERE manifest_id = ?")
+        .all(m.id),
+    };
+  });
 }
 
 const TEST_REPORT_FILTERS = {
@@ -569,7 +626,7 @@ const TEST_REPORT_FILTERS = {
   commit_sha: { nullable: true },
 };
 
-function queryTestReport(db, { iteration_id, ids, filters = {} }) {
+function queryTestReport(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM test_report";
   const clauses = [];
   const params = [];
@@ -579,7 +636,67 @@ function queryTestReport(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((r) => {
+    // test_requirement_coverage → criterion_results → test_ids
+    const coverage = db
+      .prepare("SELECT * FROM test_requirement_coverage WHERE report_id = ?")
+      .all(r.id)
+      .map((cov) => {
+        const criteria = db
+          .prepare("SELECT * FROM test_acceptance_criterion_result WHERE coverage_id = ?")
+          .all(cov.id)
+          .map((cr) => ({
+            ...cr,
+            test_ids: (() => { try { return JSON.parse(cr.test_ids || '[]'); } catch { return cr.test_ids; } })(),
+          }));
+        return { ...cov, criteria };
+      });
+    // test_suite → test_case → test_case_requirement
+    const suites = db
+      .prepare("SELECT * FROM test_suite WHERE report_id = ?")
+      .all(r.id)
+      .map((s) => ({
+        ...s,
+        cases: db
+          .prepare("SELECT * FROM test_case WHERE suite_id = ?")
+          .all(s.id)
+          .map((tc) => ({
+            ...tc,
+            requirements: db
+              .prepare("SELECT requirement_id FROM test_case_requirement WHERE test_case_id = ?")
+              .all(tc.id)
+              .map((x) => x.requirement_id),
+          })),
+      }));
+    // test_blocker → test_blocker_requirement
+    const blockers = db
+      .prepare("SELECT * FROM test_blocker WHERE report_id = ?")
+      .all(r.id)
+      .map((b) => ({
+        ...b,
+        requirements: db
+          .prepare("SELECT requirement_id FROM test_blocker_requirement WHERE blocker_id = ?")
+          .all(b.id)
+          .map((x) => x.requirement_id),
+      }));
+    return {
+      ...r,
+      coverage,
+      suites,
+      security_findings: db
+        .prepare("SELECT * FROM test_security_finding WHERE report_id = ?")
+        .all(r.id),
+      performance_benchmarks: db
+        .prepare("SELECT * FROM test_performance_benchmark WHERE report_id = ?")
+        .all(r.id),
+      blockers,
+      recommendations: db
+        .prepare("SELECT * FROM test_recommendation WHERE report_id = ?")
+        .all(r.id),
+    };
+  });
 }
 
 const DOCUMENTATION_MANIFEST_FILTERS = {
@@ -594,7 +711,7 @@ const DOCUMENTATION_MANIFEST_FILTERS = {
   format: { nullable: true },
 };
 
-function queryDocumentationManifest(db, { iteration_id, ids, filters = {} }) {
+function queryDocumentationManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM documentation_manifest";
   const clauses = [];
   const params = [];
@@ -604,7 +721,45 @@ function queryDocumentationManifest(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((m) => {
+    // documentation_feature → documentation_feature_requirement
+    const features = db
+      .prepare("SELECT * FROM documentation_feature WHERE manifest_id = ?")
+      .all(m.id)
+      .map((feat) => ({
+        ...feat,
+        requirements: db
+          .prepare("SELECT requirement_id FROM documentation_feature_requirement WHERE feature_id = ?")
+          .all(feat.id)
+          .map((x) => x.requirement_id),
+      }));
+    // documentation_requirement_coverage (with inline paths)
+    const coverage = db
+      .prepare("SELECT * FROM documentation_requirement_coverage WHERE manifest_id = ?")
+      .all(m.id)
+      .map((cov) => ({
+        ...cov,
+        paths: (() => { try { return JSON.parse(cov.paths || '[]'); } catch { return cov.paths; } })(),
+      }));
+    const sections = db
+      .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
+      .all(m.id);
+    return {
+      ...m,
+      documents_created: sections.length,
+      sections,
+      features,
+      coverage,
+      assets: db
+        .prepare("SELECT * FROM documentation_asset WHERE manifest_id = ?")
+        .all(m.id),
+      verification: db
+        .prepare("SELECT * FROM documentation_review_checklist WHERE manifest_id = ?")
+        .all(m.id),
+    };
+  });
 }
 
 const DEPLOYMENT_MANIFEST_FILTERS = {
@@ -617,7 +772,7 @@ const DEPLOYMENT_MANIFEST_FILTERS = {
   test_report_version: { nullable: true },
 };
 
-function queryDeploymentManifest(db, { iteration_id, ids, filters = {} }) {
+function queryDeploymentManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM deployment_manifest";
   const clauses = [];
   const params = [];
@@ -627,7 +782,98 @@ function queryDeploymentManifest(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((m) => {
+    // deployment_pipeline → config_files, stages
+    //   deployment_pipeline_stage → triggers, steps, quality_gates
+    const pipelines = db
+      .prepare("SELECT * FROM deployment_pipeline WHERE manifest_id = ?")
+      .all(m.id)
+      .map((p) => ({
+        ...p,
+        config_files: (() => { try { return JSON.parse(p.config_files || '[]'); } catch { return p.config_files; } })(),
+        stages: db
+          .prepare("SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?")
+          .all(p.id)
+          .map((s) => ({
+            ...s,
+            triggers: (() => { try { return JSON.parse(s.triggers || '[]'); } catch { return s.triggers; } })(),
+            steps: (() => { try { return JSON.parse(s.steps || '[]'); } catch { return s.steps; } })(),
+            quality_gates: db
+              .prepare("SELECT * FROM deployment_stage_quality_gate WHERE stage_id = ?")
+              .all(s.id),
+          })),
+      }));
+    // deployment_environment → infra, vars
+    const environments = db
+      .prepare("SELECT * FROM deployment_environment WHERE manifest_id = ?")
+      .all(m.id)
+      .map((e) => ({
+        ...e,
+        infra: db
+          .prepare("SELECT * FROM deployment_env_infra WHERE environment_id = ?")
+          .all(e.id),
+        vars: db
+          .prepare("SELECT * FROM deployment_env_var WHERE environment_id = ?")
+          .all(e.id),
+      }));
+    // deployment_artifact → platforms
+    const artifacts = db
+      .prepare("SELECT * FROM deployment_artifact WHERE manifest_id = ?")
+      .all(m.id)
+      .map((a) => ({
+        ...a,
+        platforms: (() => { try { return JSON.parse(a.platforms || '[]'); } catch { return a.platforms; } })(),
+      }));
+    // deployment_local_executable → platforms, channels
+    const local_executables = db
+      .prepare("SELECT * FROM deployment_local_executable WHERE manifest_id = ?")
+      .all(m.id)
+      .map((le) => ({
+        ...le,
+        platforms: (() => { try { return JSON.parse(le.platforms || '[]'); } catch { return le.platforms; } })(),
+        channels: (() => { try { return JSON.parse(le.channels || '[]'); } catch { return le.channels; } })(),
+      }));
+    // deployment_runbook → steps
+    const runbooks = db
+      .prepare("SELECT * FROM deployment_runbook WHERE manifest_id = ?")
+      .all(m.id)
+      .map((rb) => ({
+        ...rb,
+        steps: db
+          .prepare("SELECT * FROM deployment_runbook_step WHERE runbook_id = ?")
+          .all(rb.id),
+      }));
+    return {
+      ...m,
+      targets: (() => { try { return JSON.parse(m.targets || '[]'); } catch { return m.targets; } })(),
+      blockers: (() => { try { return JSON.parse(m.blockers || '[]'); } catch { return m.blockers; } })(),
+      pipelines,
+      quality_gates: db
+        .prepare("SELECT * FROM deployment_quality_gate WHERE manifest_id = ?")
+        .all(m.id),
+      environments,
+      artifacts,
+      signing: db
+        .prepare("SELECT * FROM deployment_signing WHERE manifest_id = ?")
+        .all(m.id),
+      local_executables,
+      secrets: db
+        .prepare("SELECT * FROM deployment_secret WHERE manifest_id = ?")
+        .all(m.id),
+      health_checks: db
+        .prepare("SELECT * FROM deployment_health_check WHERE manifest_id = ?")
+        .all(m.id),
+      alerting: db
+        .prepare("SELECT * FROM deployment_alerting WHERE manifest_id = ?")
+        .all(m.id),
+      runbooks,
+      review_checklist: db
+        .prepare("SELECT * FROM deployment_review_checklist WHERE manifest_id = ?")
+        .all(m.id),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1162,12 +1408,12 @@ function changelogQuery(args) {
   try {
     let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
 
-    // Types whose query functions handle their own enrichment via include_related.
-    // Remaining complex types still use attachRelated until Phase 2c.
+    // All 16 complex types now handle their own enrichment via include_related.
     const SELF_ENRICHING = new Set([
       "persona", "plan_overview", "architecture_overview",
       "persona_addressed", "info_architecture", "data_entity",
       "requirement", "adr", "component", "screen", "user_flow", "plan_phase",
+      "implementation_manifest", "test_report", "documentation_manifest", "deployment_manifest",
     ]);
 
     if (include_related && results.length > 0 && !SELF_ENRICHING.has(entity_type)) {
@@ -1182,262 +1428,13 @@ function changelogQuery(args) {
 
 // ---------------------------------------------------------------------------
 // attachRelated: enrich results with child table rows
-// (Phases 2a+2b absorbed simple and medium-complexity types into query functions.
-//  Remaining 4 deep-enrichment types handled here until Phase 2c.)
+// (All 16 complex types now self-enrich via include_related in their query
+//  functions. This stub remains as a no-op fallback until Phase 2-final
+//  removes it entirely.)
 // ---------------------------------------------------------------------------
 
 function attachRelated(db, entityType, results) {
   switch (entityType) {
-    case "implementation_manifest":
-      return results.map((m) => {
-        const files = db
-          .prepare("SELECT * FROM implementation_file WHERE manifest_id = ?")
-          .all(m.id)
-          .map((f) => ({
-            ...f,
-            requirements: db
-              .prepare("SELECT requirement_id FROM implementation_file_requirement WHERE file_id = ?")
-              .all(f.id)
-              .map((x) => x.requirement_id),
-          }));
-        const api_endpoints = db
-          .prepare("SELECT * FROM implementation_api_endpoint WHERE manifest_id = ?")
-          .all(m.id)
-          .map((ep) => ({
-            ...ep,
-            requirements: db
-              .prepare("SELECT requirement_id FROM implementation_api_endpoint_requirement WHERE endpoint_id = ?")
-              .all(ep.id)
-              .map((x) => x.requirement_id),
-          }));
-        const blockers = db
-          .prepare("SELECT * FROM implementation_blocker WHERE manifest_id = ?")
-          .all(m.id)
-          .map((b) => ({
-            ...b,
-            requirements: db
-              .prepare("SELECT requirement_id FROM implementation_blocker_requirement WHERE blocker_id = ?")
-              .all(b.id)
-              .map((x) => x.requirement_id),
-          }));
-        return {
-          ...m,
-          files_created: files.filter((f) => f.file_operation === "created").length,
-          files_modified: files.filter((f) => f.file_operation === "modified").length,
-          files_deleted: files.filter((f) => f.file_operation === "deleted").length,
-          files,
-          requirement_status: db
-            .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
-            .all(m.id),
-          component_status: db
-            .prepare("SELECT * FROM implementation_component_status WHERE manifest_id = ?")
-            .all(m.id),
-          api_endpoints,
-          dependencies_added: db
-            .prepare("SELECT * FROM implementation_dependency_added WHERE manifest_id = ?")
-            .all(m.id),
-          db_migrations: db
-            .prepare("SELECT * FROM implementation_db_migration WHERE manifest_id = ?")
-            .all(m.id),
-          blockers,
-          review_checklist: db
-            .prepare("SELECT * FROM implementation_review_checklist WHERE manifest_id = ?")
-            .all(m.id),
-        };
-      });
-
-    case "test_report":
-      return results.map((r) => {
-        // test_requirement_coverage → criterion_results → test_ids
-        const coverage = db
-          .prepare("SELECT * FROM test_requirement_coverage WHERE report_id = ?")
-          .all(r.id)
-          .map((cov) => {
-            const criteria = db
-              .prepare("SELECT * FROM test_acceptance_criterion_result WHERE coverage_id = ?")
-              .all(cov.id)
-              .map((cr) => ({
-                ...cr,
-                test_ids: JSON.parse(cr.test_ids || '[]'),
-              }));
-            return { ...cov, criteria };
-          });
-        // test_suite → test_case → test_case_requirement
-        const suites = db
-          .prepare("SELECT * FROM test_suite WHERE report_id = ?")
-          .all(r.id)
-          .map((s) => ({
-            ...s,
-            cases: db
-              .prepare("SELECT * FROM test_case WHERE suite_id = ?")
-              .all(s.id)
-              .map((tc) => ({
-                ...tc,
-                requirements: db
-                  .prepare("SELECT requirement_id FROM test_case_requirement WHERE test_case_id = ?")
-                  .all(tc.id)
-                  .map((x) => x.requirement_id),
-              })),
-          }));
-        // test_blocker → test_blocker_requirement
-        const blockers = db
-          .prepare("SELECT * FROM test_blocker WHERE report_id = ?")
-          .all(r.id)
-          .map((b) => ({
-            ...b,
-            requirements: db
-              .prepare("SELECT requirement_id FROM test_blocker_requirement WHERE blocker_id = ?")
-              .all(b.id)
-              .map((x) => x.requirement_id),
-          }));
-        return {
-          ...r,
-          coverage,
-          suites,
-          security_findings: db
-            .prepare("SELECT * FROM test_security_finding WHERE report_id = ?")
-            .all(r.id),
-          performance_benchmarks: db
-            .prepare("SELECT * FROM test_performance_benchmark WHERE report_id = ?")
-            .all(r.id),
-          blockers,
-          recommendations: db
-            .prepare("SELECT * FROM test_recommendation WHERE report_id = ?")
-            .all(r.id),
-        };
-      });
-
-    case "documentation_manifest":
-      return results.map((m) => {
-        // documentation_feature → documentation_feature_requirement
-        const features = db
-          .prepare("SELECT * FROM documentation_feature WHERE manifest_id = ?")
-          .all(m.id)
-          .map((f) => ({
-            ...f,
-            requirements: db
-              .prepare("SELECT requirement_id FROM documentation_feature_requirement WHERE feature_id = ?")
-              .all(f.id)
-              .map((x) => x.requirement_id),
-          }));
-        // documentation_requirement_coverage (with inline paths)
-        const coverage = db
-          .prepare("SELECT * FROM documentation_requirement_coverage WHERE manifest_id = ?")
-          .all(m.id)
-          .map((cov) => ({
-            ...cov,
-            paths: JSON.parse(cov.paths || '[]'),
-          }));
-        const sections = db
-          .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
-          .all(m.id);
-        return {
-          ...m,
-          documents_created: sections.length,
-          sections,
-          features,
-          coverage,
-          assets: db
-            .prepare("SELECT * FROM documentation_asset WHERE manifest_id = ?")
-            .all(m.id),
-          verification: db
-            .prepare("SELECT * FROM documentation_review_checklist WHERE manifest_id = ?")
-            .all(m.id),
-        };
-      });
-
-    case "deployment_manifest":
-      return results.map((m) => {
-        // deployment_pipeline → config_files, stages
-        //   deployment_pipeline_stage → triggers, steps, quality_gates
-        const pipelines = db
-          .prepare("SELECT * FROM deployment_pipeline WHERE manifest_id = ?")
-          .all(m.id)
-          .map((p) => ({
-            ...p,
-            config_files: JSON.parse(p.config_files || '[]'),
-            stages: db
-              .prepare("SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?")
-              .all(p.id)
-              .map((s) => ({
-                ...s,
-                triggers: JSON.parse(s.triggers || '[]'),
-                steps: JSON.parse(s.steps || '[]'),
-                quality_gates: db
-                  .prepare("SELECT * FROM deployment_stage_quality_gate WHERE stage_id = ?")
-                  .all(s.id),
-              })),
-          }));
-        // deployment_environment → infra, vars
-        const environments = db
-          .prepare("SELECT * FROM deployment_environment WHERE manifest_id = ?")
-          .all(m.id)
-          .map((e) => ({
-            ...e,
-            infra: db
-              .prepare("SELECT * FROM deployment_env_infra WHERE environment_id = ?")
-              .all(e.id),
-            vars: db
-              .prepare("SELECT * FROM deployment_env_var WHERE environment_id = ?")
-              .all(e.id),
-          }));
-        // deployment_artifact → platforms
-        const artifacts = db
-          .prepare("SELECT * FROM deployment_artifact WHERE manifest_id = ?")
-          .all(m.id)
-          .map((a) => ({
-            ...a,
-            platforms: JSON.parse(a.platforms || '[]'),
-          }));
-        // deployment_local_executable → platforms, channels
-        const local_executables = db
-          .prepare("SELECT * FROM deployment_local_executable WHERE manifest_id = ?")
-          .all(m.id)
-          .map((le) => ({
-            ...le,
-            platforms: JSON.parse(le.platforms || '[]'),
-            channels: JSON.parse(le.channels || '[]'),
-          }));
-        // deployment_runbook → steps
-        const runbooks = db
-          .prepare("SELECT * FROM deployment_runbook WHERE manifest_id = ?")
-          .all(m.id)
-          .map((rb) => ({
-            ...rb,
-            steps: db
-              .prepare("SELECT * FROM deployment_runbook_step WHERE runbook_id = ?")
-              .all(rb.id),
-          }));
-        return {
-          ...m,
-          targets: JSON.parse(m.targets || '[]'),
-          blockers: JSON.parse(m.blockers || '[]'),
-          pipelines,
-          quality_gates: db
-            .prepare("SELECT * FROM deployment_quality_gate WHERE manifest_id = ?")
-            .all(m.id),
-          environments,
-          artifacts,
-          signing: db
-            .prepare("SELECT * FROM deployment_signing WHERE manifest_id = ?")
-            .all(m.id),
-          local_executables,
-          secrets: db
-            .prepare("SELECT * FROM deployment_secret WHERE manifest_id = ?")
-            .all(m.id),
-          health_checks: db
-            .prepare("SELECT * FROM deployment_health_check WHERE manifest_id = ?")
-            .all(m.id),
-          alerting: db
-            .prepare("SELECT * FROM deployment_alerting WHERE manifest_id = ?")
-            .all(m.id),
-          runbooks,
-          review_checklist: db
-            .prepare("SELECT * FROM deployment_review_checklist WHERE manifest_id = ?")
-            .all(m.id),
-        };
-      });
-
     default:
       return results;
   }
