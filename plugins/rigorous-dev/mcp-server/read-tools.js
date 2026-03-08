@@ -110,7 +110,7 @@ const PERSONA_FILTERS = {
   frequency_of_use: { nullable: true },
 };
 
-function queryPersona(db, { iteration_id, ids, filters = {} }) {
+function queryPersona(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM persona";
   const clauses = [];
   const params = [];
@@ -120,7 +120,12 @@ function queryPersona(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((p) => ({
+    ...p,
+    goals: (() => { try { return JSON.parse(p.goals || '[]'); } catch { return p.goals; } })(),
+  }));
 }
 
 const REQUIREMENT_FILTERS = {
@@ -256,7 +261,7 @@ const PLAN_OVERVIEW_FILTERS = {
   phase_one_approach: { nullable: true },
 };
 
-function queryPlanOverview(db, { iteration_id, ids, filters = {} }) {
+function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM plan_overview";
   const clauses = [];
   const params = [];
@@ -266,7 +271,18 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((o) => ({
+    ...o,
+    total_phases: db
+      .prepare("SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?")
+      .get(o.iteration_id).cnt,
+    risks: db
+      .prepare("SELECT risk, mitigation, plan_phase_number FROM plan_overview_risk WHERE plan_overview_id = ?")
+      .all(o.id),
+    assumptions: (() => { try { return JSON.parse(o.assumptions || '[]'); } catch { return o.assumptions; } })(),
+  }));
 }
 
 const DATA_ENTITY_FILTERS = {
@@ -274,7 +290,7 @@ const DATA_ENTITY_FILTERS = {
   description: { nullable: false },
 };
 
-function queryDataEntity(db, { iteration_id, ids, filters = {} }) {
+function queryDataEntity(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM data_entity";
   const clauses = [];
   const params = [];
@@ -284,14 +300,29 @@ function queryDataEntity(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((e) => ({
+    ...e,
+    attributes: db
+      .prepare("SELECT name, data_type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
+      .all(e.id),
+    relationships: db
+      .prepare(
+        `SELECT t.name AS target_entity, r.target_entity_id, r.cardinality, r.description
+         FROM data_entity_relationship r
+         JOIN data_entity t ON t.id = r.target_entity_id
+         WHERE r.entity_id = ?`
+      )
+      .all(e.id),
+  }));
 }
 
 const ARCHITECTURE_OVERVIEW_FILTERS = {
   description: { nullable: false },
 };
 
-function queryArchitectureOverview(db, { iteration_id, ids, filters = {} }) {
+function queryArchitectureOverview(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM architecture_overview";
   const clauses = [];
   const params = [];
@@ -301,7 +332,15 @@ function queryArchitectureOverview(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((o) => ({
+    ...o,
+    principles: (() => { try { return JSON.parse(o.principles || '[]'); } catch { return o.principles; } })(),
+    diagrams: db
+      .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
+      .all(o.id),
+  }));
 }
 
 const PERSONA_ADDRESSED_FILTERS = {
@@ -310,7 +349,7 @@ const PERSONA_ADDRESSED_FILTERS = {
   how_addressed: { nullable: false },
 };
 
-function queryPersonaAddressed(db, { iteration_id, ids, filters = {} }) {
+function queryPersonaAddressed(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM persona_addressed";
   const clauses = [];
   const params = [];
@@ -320,7 +359,15 @@ function queryPersonaAddressed(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((pa) => ({
+    ...pa,
+    flows: db
+      .prepare("SELECT flow_id FROM persona_addressed_flow WHERE persona_addressed_id = ?")
+      .all(pa.id)
+      .map((x) => x.flow_id),
+  }));
 }
 
 const INFO_ARCHITECTURE_FILTERS = {
@@ -330,7 +377,7 @@ const INFO_ARCHITECTURE_FILTERS = {
   parent_id: { nullable: true },
 };
 
-function queryInfoArchitecture(db, { iteration_id, ids, filters = {} }) {
+function queryInfoArchitecture(db, { iteration_id, ids, filters = {}, include_related = false }) {
   let sql = "SELECT * FROM info_architecture";
   const clauses = [];
   const params = [];
@@ -340,7 +387,14 @@ function queryInfoArchitecture(db, { iteration_id, ids, filters = {} }) {
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
+  const results = db.prepare(sql).all(...params);
+  if (!include_related) return results;
+  return results.map((ia) => ({
+    ...ia,
+    children: db
+      .prepare("SELECT id, category, key, value FROM info_architecture WHERE parent_id = ?")
+      .all(ia.id),
+  }));
 }
 
 const IMPLEMENTATION_MANIFEST_FILTERS = {
@@ -978,11 +1032,16 @@ function changelogQuery(args) {
   }
 
   try {
-    let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters });
+    let results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
 
-    // Attach related data when requested
-    // (Phase 2 will move enrichment into individual query functions)
-    if (include_related && results.length > 0) {
+    // Types whose query functions handle their own enrichment via include_related.
+    // Remaining complex types still use attachRelated until Phase 2b/2c.
+    const SELF_ENRICHING = new Set([
+      "persona", "plan_overview", "architecture_overview",
+      "persona_addressed", "info_architecture", "data_entity",
+    ]);
+
+    if (include_related && results.length > 0 && !SELF_ENRICHING.has(entity_type)) {
       results = attachRelated(db, entity_type, results);
     }
 
@@ -994,7 +1053,9 @@ function changelogQuery(args) {
 
 // ---------------------------------------------------------------------------
 // attachRelated: enrich results with child table rows
-// (Retained for Phase 1 -- Phase 2 will absorb into query functions)
+// (Phase 2a absorbed persona, plan_overview, architecture_overview,
+//  persona_addressed, info_architecture, data_entity into query functions.
+//  Remaining 10 complex types handled here until Phase 2b/2c.)
 // ---------------------------------------------------------------------------
 
 function attachRelated(db, entityType, results) {
@@ -1132,66 +1193,6 @@ function attachRelated(db, entityType, results) {
           .all(p.id)
           .map((x) => x.can_parallel_with_id),
         checkpoint_focus: JSON.parse(p.checkpoint_focus || '[]'),
-      }));
-
-    case "plan_overview":
-      return results.map((o) => ({
-        ...o,
-        total_phases: db
-          .prepare("SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?")
-          .get(o.iteration_id).cnt,
-        risks: db
-          .prepare("SELECT risk, mitigation, plan_phase_number FROM plan_overview_risk WHERE plan_overview_id = ?")
-          .all(o.id),
-        assumptions: JSON.parse(o.assumptions || '[]'),
-      }));
-
-    case "persona":
-      return results.map((p) => ({
-        ...p,
-        goals: JSON.parse(p.goals || '[]'),
-      }));
-
-    case "data_entity":
-      return results.map((e) => ({
-        ...e,
-        attributes: db
-          .prepare("SELECT name, data_type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
-          .all(e.id),
-        relationships: db
-          .prepare(
-            `SELECT t.name AS target_entity, r.target_entity_id, r.cardinality, r.description
-             FROM data_entity_relationship r
-             JOIN data_entity t ON t.id = r.target_entity_id
-             WHERE r.entity_id = ?`
-          )
-          .all(e.id),
-      }));
-
-    case "architecture_overview":
-      return results.map((o) => ({
-        ...o,
-        principles: JSON.parse(o.principles || '[]'),
-        diagrams: db
-          .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
-          .all(o.id),
-      }));
-
-    case "persona_addressed":
-      return results.map((pa) => ({
-        ...pa,
-        flows: db
-          .prepare("SELECT flow_id FROM persona_addressed_flow WHERE persona_addressed_id = ?")
-          .all(pa.id)
-          .map((x) => x.flow_id),
-      }));
-
-    case "info_architecture":
-      return results.map((ia) => ({
-        ...ia,
-        children: db
-          .prepare("SELECT id, category, key, value FROM info_architecture WHERE parent_id = ?")
-          .all(ia.id),
       }));
 
     case "implementation_manifest":

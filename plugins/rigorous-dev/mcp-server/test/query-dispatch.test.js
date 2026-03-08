@@ -314,3 +314,389 @@ describe("ids + filters combination", () => {
     assert.strictEqual(r.results[0].id, "ADR-1");
   });
 });
+
+// ───────────────────────────────────────────────────────────────
+// Phase 2a: include_related enrichment tests (6 simple complex types)
+// ───────────────────────────────────────────────────────────────
+
+describe("queryPersona enrichment", () => {
+  it("parses goals JSON when include_related is true", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "persona",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "P-1", name: "Dev", description: "Developer", goals: ["ship fast", "low bugs"] },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "persona",
+      ids: ["P-1"],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.deepStrictEqual(r.results[0].goals, ["ship fast", "low bugs"]);
+  });
+
+  it("returns raw goals string when include_related is false", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "persona",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "P-2", name: "QA", description: "QA engineer", goals: ["coverage"] },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "persona",
+      ids: ["P-2"],
+      include_related: false,
+    });
+    assert.strictEqual(r.count, 1);
+    // Without include_related, goals should be the raw JSON string
+    assert.strictEqual(typeof r.results[0].goals, "string");
+    assert.deepStrictEqual(JSON.parse(r.results[0].goals), ["coverage"]);
+  });
+
+  it("handles empty goals array gracefully", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "persona",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "P-3", name: "Admin", description: "Admin user" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "persona",
+      ids: ["P-3"],
+      include_related: true,
+    });
+    assert.deepStrictEqual(r.results[0].goals, []);
+  });
+});
+
+describe("queryPlanOverview enrichment", () => {
+  it("attaches total_phases, risks, and parsed assumptions when include_related is true", () => {
+    // Insert plan phases first so COUNT works
+    handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "setup", type: "feature", goal: "Setup project" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "plan_phase",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 2, name: "core", type: "feature", goal: "Build core" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "plan_overview",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        strategy: "incremental",
+        rationale: "reduce risk",
+        assumptions: ["stable API", "team of 3"],
+        risks: [
+          { risk: "scope creep", mitigation: "strict backlog", plan_phase_number: 1 },
+          { risk: "tech debt", mitigation: "refactor sprint" },
+        ],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_overview",
+      iteration_id: seed.iteration_id,
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const overview = r.results[0];
+    assert.strictEqual(overview.total_phases, 2);
+    assert.deepStrictEqual(overview.assumptions, ["stable API", "team of 3"]);
+    assert.strictEqual(overview.risks.length, 2);
+    assert.strictEqual(overview.risks[0].risk, "scope creep");
+    assert.strictEqual(overview.risks[0].mitigation, "strict backlog");
+    assert.strictEqual(overview.risks[0].plan_phase_number, 1);
+    assert.strictEqual(overview.risks[1].risk, "tech debt");
+    assert.strictEqual(overview.risks[1].plan_phase_number, null);
+  });
+
+  it("does not attach total_phases or risks when include_related is false", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "plan_overview",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        strategy: "big bang",
+        rationale: "fast",
+        risks: [{ risk: "failure", mitigation: "hope" }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "plan_overview",
+      iteration_id: seed.iteration_id,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].total_phases, undefined);
+    assert.strictEqual(r.results[0].risks, undefined);
+    // assumptions should be raw JSON string
+    assert.strictEqual(typeof r.results[0].assumptions, "string");
+  });
+});
+
+describe("queryArchitectureOverview enrichment", () => {
+  it("parses principles and attaches diagrams when include_related is true", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "architecture_overview",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        description: "Microservices architecture",
+        principles: ["loose coupling", "high cohesion"],
+        diagrams: [
+          { name: "system-context", path: "/docs/system.svg", description: "System context diagram" },
+          { name: "container", path: "/docs/container.svg" },
+        ],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "architecture_overview",
+      iteration_id: seed.iteration_id,
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const ao = r.results[0];
+    assert.deepStrictEqual(ao.principles, ["loose coupling", "high cohesion"]);
+    assert.strictEqual(ao.diagrams.length, 2);
+    const byName = Object.fromEntries(ao.diagrams.map((d) => [d.name, d]));
+    assert.strictEqual(byName["system-context"].path, "/docs/system.svg");
+    assert.strictEqual(byName["system-context"].description, "System context diagram");
+    assert.ok(byName["system-context"].id); // id column should be present
+    assert.strictEqual(byName["container"].name, "container");
+    assert.strictEqual(byName["container"].description, null);
+  });
+
+  it("does not parse principles or attach diagrams when include_related is false", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "architecture_overview",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        description: "Monolith",
+        principles: ["simplicity"],
+        diagrams: [{ name: "overview", path: "/d.svg" }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "architecture_overview",
+      iteration_id: seed.iteration_id,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(typeof r.results[0].principles, "string");
+    assert.strictEqual(r.results[0].diagrams, undefined);
+  });
+});
+
+describe("queryPersonaAddressed enrichment", () => {
+  it("attaches flows when include_related is true", () => {
+    // Need a persona and user_flow first
+    handleWriteTool("changelog_insert", {
+      entity_type: "persona",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "P-1", name: "Dev", description: "Developer" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "UF-1", name: "Login", goal: "Authenticate user" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "user_flow",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "UF-2", name: "Signup", goal: "Register user" },
+    });
+    const paResult = handleWriteTool("changelog_insert", {
+      entity_type: "persona_addressed",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        persona_id: "P-1",
+        goal: "Quick access",
+        how_addressed: "SSO login",
+        flows: ["UF-1", "UF-2"],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "persona_addressed",
+      ids: [paResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.deepStrictEqual(r.results[0].flows.sort(), ["UF-1", "UF-2"]);
+  });
+
+  it("does not attach flows when include_related is omitted", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "persona",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "P-2", name: "QA", description: "QA" },
+    });
+    const paResult = handleWriteTool("changelog_insert", {
+      entity_type: "persona_addressed",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { persona_id: "P-2", goal: "Test", how_addressed: "Automation" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "persona_addressed",
+      ids: [paResult.id],
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].flows, undefined);
+  });
+});
+
+describe("queryInfoArchitecture enrichment", () => {
+  it("attaches children when include_related is true", () => {
+    const parentResult = handleWriteTool("changelog_insert", {
+      entity_type: "info_architecture",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { category: "navigation", key: "main-menu", value: "Top nav bar" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "info_architecture",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { category: "navigation", key: "sub-item-1", value: "Dashboard", parent_id: parentResult.id },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "info_architecture",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { category: "navigation", key: "sub-item-2", value: "Settings", parent_id: parentResult.id },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "info_architecture",
+      ids: [parentResult.id],
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].children.length, 2);
+    const keys = r.results[0].children.map((c) => c.key).sort();
+    assert.deepStrictEqual(keys, ["sub-item-1", "sub-item-2"]);
+    // Each child should have id, category, key, value
+    assert.ok(r.results[0].children[0].id);
+    assert.strictEqual(r.results[0].children[0].category, "navigation");
+  });
+
+  it("does not attach children when include_related is false", () => {
+    const parentResult = handleWriteTool("changelog_insert", {
+      entity_type: "info_architecture",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { category: "nav", key: "top", value: "TopNav" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "info_architecture",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { category: "nav", key: "child", value: "ChildNav", parent_id: parentResult.id },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "info_architecture",
+      ids: [parentResult.id],
+      include_related: false,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].children, undefined);
+  });
+});
+
+describe("queryDataEntity enrichment", () => {
+  it("attaches attributes and relationships when include_related is true", () => {
+    // Insert target entity first (for relationship)
+    handleWriteTool("changelog_insert", {
+      entity_type: "data_entity",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { name: "Address", description: "Physical address" },
+    });
+    // Insert main entity with attributes and relationship
+    handleWriteTool("changelog_insert", {
+      entity_type: "data_entity",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        name: "User",
+        description: "Application user",
+        attributes: [
+          { name: "email", data_type: "TEXT", is_required: 1, description: "User email" },
+          { name: "age", data_type: "INTEGER", is_required: 0 },
+        ],
+        relationships: [
+          { target_entity: "Address", cardinality: "one-to-many", description: "User addresses" },
+        ],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "data_entity",
+      filters: { name: "User" },
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    const entity = r.results[0];
+
+    // Check attributes
+    assert.strictEqual(entity.attributes.length, 2);
+    const emailAttr = entity.attributes.find((a) => a.name === "email");
+    assert.strictEqual(emailAttr.data_type, "TEXT");
+    assert.strictEqual(emailAttr.is_required, 1);
+    assert.strictEqual(emailAttr.description, "User email");
+    const ageAttr = entity.attributes.find((a) => a.name === "age");
+    assert.strictEqual(ageAttr.is_required, 0);
+
+    // Check relationships
+    assert.strictEqual(entity.relationships.length, 1);
+    assert.strictEqual(entity.relationships[0].target_entity, "Address");
+    assert.strictEqual(entity.relationships[0].cardinality, "one-to-many");
+    assert.strictEqual(entity.relationships[0].description, "User addresses");
+    assert.ok(entity.relationships[0].target_entity_id);
+  });
+
+  it("does not attach attributes or relationships when include_related is omitted", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "data_entity",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: {
+        name: "Product",
+        description: "A product",
+        attributes: [{ name: "sku", data_type: "TEXT", is_required: 1 }],
+      },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "data_entity",
+      filters: { name: "Product" },
+    });
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.results[0].attributes, undefined);
+    assert.strictEqual(r.results[0].relationships, undefined);
+  });
+
+  it("returns empty arrays for entity with no attributes or relationships", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "data_entity",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { name: "Empty", description: "No attrs" },
+    });
+    const r = handleReadTool("changelog_query", {
+      entity_type: "data_entity",
+      filters: { name: "Empty" },
+      include_related: true,
+    });
+    assert.strictEqual(r.count, 1);
+    assert.deepStrictEqual(r.results[0].attributes, []);
+    assert.deepStrictEqual(r.results[0].relationships, []);
+  });
+});
