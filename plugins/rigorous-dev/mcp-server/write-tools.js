@@ -879,7 +879,7 @@ function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
 }
 
 function insertPlanCriticalPath(db, _iteration_id, _revision_id, data) {
-  const result = db
+  db
     .prepare(
       `INSERT INTO plan_critical_path (plan_phase_id, sequence_order)
        VALUES (?, ?)`
@@ -888,7 +888,7 @@ function insertPlanCriticalPath(db, _iteration_id, _revision_id, data) {
       data.plan_phase_id,
       data.sequence_order
     );
-  return { entity_type: "plan_critical_path", id: result.lastInsertRowid };
+  return { entity_type: "plan_critical_path", id: data.plan_phase_id };
 }
 
 function insertPlanMetadata(db, iteration_id, revision_id, data) {

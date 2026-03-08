@@ -49,6 +49,15 @@ const TEXT_PK_TYPES = new Set([
   "persona", "requirement", "adr", "component", "user_flow", "screen",
 ]);
 
+// Tables whose primary key column is NOT 'id'. Default is 'id' for all others.
+const PK_COLUMN = {
+  plan_critical_path: "plan_phase_id",
+};
+
+function pkCol(table) {
+  return PK_COLUMN[table] || "id";
+}
+
 // ---------------------------------------------------------------------------
 // Helper: build WHERE clause from ids + filters
 // ---------------------------------------------------------------------------
@@ -140,7 +149,7 @@ function changelogQuery(args) {
   const allClauses = [...clauses];
   if (idsParam && idsParam.length > 0) {
     const placeholders = idsParam.map((_, i) => `?`).join(", ");
-    allClauses.push(`id IN (${placeholders})`);
+    allClauses.push(`${pkCol(table)} IN (${placeholders})`);
   }
 
   if (allClauses.length > 0) {
@@ -166,7 +175,7 @@ function changelogQuery(args) {
         positionalParams.push(value);
       }
     }
-    posWhere.push(`id IN (${idsParam.map(() => "?").join(", ")})`);
+    posWhere.push(`${pkCol(table)} IN (${idsParam.map(() => "?").join(", ")})`);
     positionalParams.push(...idsParam);
     sqlPositional += " WHERE " + posWhere.join(" AND ");
     results = db.prepare(sqlPositional).all(...positionalParams);

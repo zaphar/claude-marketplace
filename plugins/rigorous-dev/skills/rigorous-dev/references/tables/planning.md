@@ -510,8 +510,7 @@ Records the ordered sequence of phases that form the critical path — the chain
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)`, UNIQUE | — | The `id` of a phase on the critical path. Unique — each phase appears at most once. Iteration is derived via `plan_phase.iteration_id`. |
+| `plan_phase_id` | INTEGER | PRIMARY KEY, FK → `plan_phase(id)` | — | The `id` of a phase on the critical path. Primary key — each phase appears at most once. Iteration is derived via `plan_phase.iteration_id`. |
 | `sequence_order` | INTEGER | NOT NULL | — | The position of this phase within the critical path sequence (1 = first, 2 = second, …). Rows should be read in ascending `sequence_order` to traverse the path. |
 
 ### Relationships

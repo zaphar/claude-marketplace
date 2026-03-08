@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   target_entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
-  relationship_type TEXT CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')),
+  relationship_type TEXT CHECK(relationship_type IN ('one-to-one', 'one-to-many', 'many-to-many')), -- NULL when cardinality not yet determined
   description TEXT
 );
 
@@ -469,7 +469,7 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   type TEXT NOT NULL,
   goal TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'test_writing', 'implementing', 'completed')),
-  complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')),
+  complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')), -- NULL when estimation not yet done
   review_checkpoint INTEGER DEFAULT 0,
   notes TEXT,
   entry_criteria TEXT NOT NULL DEFAULT '[]',
@@ -570,10 +570,8 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 
 -- Implementation plan: critical path
 CREATE TABLE IF NOT EXISTS plan_critical_path (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  sequence_order INTEGER NOT NULL,
-  UNIQUE(plan_phase_id)
+  plan_phase_id INTEGER PRIMARY KEY REFERENCES plan_phase(id) ON DELETE CASCADE,
+  sequence_order INTEGER NOT NULL
 );
 
 -- Implementation plan: metadata
@@ -601,7 +599,7 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   lines_of_code INTEGER,
   warnings INTEGER DEFAULT 0,
-  build_status TEXT CHECK(build_status IN ('success', 'failure')),
+  build_status TEXT CHECK(build_status IN ('success', 'failure')), -- NULL when build not yet run
   version TEXT,
   document_date TEXT,
   requirements_version TEXT,
@@ -808,7 +806,7 @@ CREATE TABLE IF NOT EXISTS test_security_finding (
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   tool TEXT,
-  severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'informational')), -- NULL when severity not yet triaged
   description TEXT NOT NULL,
   location TEXT,
   recommendation TEXT NOT NULL,
@@ -824,7 +822,7 @@ CREATE TABLE IF NOT EXISTS test_performance_benchmark (
   measured_value REAL NOT NULL,
   unit TEXT NOT NULL,
   threshold REAL,
-  status TEXT CHECK(status IN ('pass', 'fail'))
+  status TEXT CHECK(status IN ('pass', 'fail')) -- NULL when benchmark not yet evaluated
 );
 
 CREATE TABLE IF NOT EXISTS test_blocker (
@@ -900,7 +898,7 @@ CREATE TABLE IF NOT EXISTS documentation_manifest (
   requirements_version TEXT,
   architecture_version TEXT,
   implementation_version TEXT,
-  format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other')),
+  format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other')), -- NULL when format not yet decided
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -1034,7 +1032,7 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   registry TEXT,
-  versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')),
+  versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')), -- NULL when versioning strategy not yet chosen
   platforms TEXT NOT NULL DEFAULT '[]'
 );
 
@@ -1327,7 +1325,7 @@ CREATE INDEX IF NOT EXISTS idx_plan_phase_db_change_plan_phase_id
   ON plan_phase_db_change(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
   ON plan_phase_risk(plan_phase_id);
--- Skipped: plan_critical_path (plan_phase_id is in UNIQUE(plan_phase_id))
+-- Skipped: plan_critical_path (plan_phase_id is the PRIMARY KEY)
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
   ON implementation_manifest(plan_phase_id);
 
