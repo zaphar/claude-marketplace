@@ -12,7 +12,7 @@ Determine audit scope based on the user's request:
 If scope is ambiguous, ask the user:
 
 ```
-The MCP server auditor has 7 audit dimensions. Would you like me to run all of them, or focus on specific areas?
+The MCP server critic has 7 audit dimensions. Would you like me to run all of them, or focus on specific areas?
 ```
 
 Offer choices via ask_user:
@@ -24,9 +24,9 @@ Offer choices via ask_user:
 - **INTERNALS.md Accuracy only (Dimension 7)** — Verify every claim in INTERNALS.md against actual source code, surface conflicts with fix recommendations
 - **Let me specify** — User picks individual dimensions
 
-## Step 2: Launch MCP Server Auditor
+## Step 2: Launch MCP Server Critic
 
-Launch the `rigor_mcp_server_auditor` agent (always `claude-opus-4.6`) with a scoped prompt.
+Launch the `rigor_mcp_server_critic` agent (always `claude-opus-4.6`) with a scoped prompt.
 
 **For a full audit:**
 
@@ -38,7 +38,7 @@ MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage Gaps, and INTER
 Accuracy — against the complete server codebase.
 
 Start by reading INTERNALS.md, then run all discovery commands, then work through each dimension
-systematically. Persist your report to .scratch/rigor-mcp-server-auditor/<date>/<HHMMSS>_mcp-server-audit.md
+systematically. Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 ```
 
 **For a focused audit:**
@@ -51,29 +51,53 @@ Run ONLY these audit dimensions:
 - Dimension M: [name]
 
 Start by reading INTERNALS.md, then run all discovery commands, then work through the specified
-dimensions systematically. Persist your report to .scratch/rigor-mcp-server-auditor/<date>/<HHMMSS>_mcp-server-audit.md
+dimensions systematically. Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 ```
 
 Always use `model: "claude-opus-4.6"` — no exceptions. Correctness auditing requires the strongest model.
 
 ## Step 3: Build Findings Index with Deduplication
 
-After the auditor completes, read its **full persisted report** from `.scratch/rigor-mcp-server-auditor/<date>/` — do NOT rely on the agent result summary returned by `read_agent`; you must read the actual file.
+**Bootstrap the audit database (if not already initialized):**
+
+```bash
+mkdir -p .scratch/rigor-plugin-update
+sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
+```
+
+**Create an audit run for this session:**
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "INSERT INTO audit_run (id, mode) VALUES ('<timestamp>_mcp_server_audit', 'mcp_server_audit');"
+```
+
+After the critic completes, read its **full persisted report** from `.scratch/rigor-mcp-server-critic/<date>/` — do NOT rely on the agent result summary returned by `read_agent`; you must read the actual file.
 
 **Deduplication against prior decisions:**
 
-1. Check for a prior decisions ledger at `.scratch/rigor-mcp-server-auditor/audit-decisions.md`
-2. If it exists, match each finding against prior decisions using:
-   - **Structural fingerprint**: `dimension` + `file(s)` — same dimension and same affected files = likely same finding
-   - **Fuzzy text match**: `summary` — similar one-line description = likely same finding
-3. Pre-fill the `Approved` column for matches and mark with `(prior)`:
-   - Prior `approved` → `✅ (prior)`
-   - Prior `rejected` → `❌ (prior)`
-   - Prior `skipped` → `⏭️ (prior)`
+Query the audit database for prior decisions on MCP server findings:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "SELECT f.category, f.summary, d.decision, d.action, d.reason
+   FROM finding f JOIN decision d ON d.finding_id = f.id
+   WHERE f.critic = 'mcp_server'
+   ORDER BY d.decided_at DESC;"
+```
+
+Match each new finding against prior decisions using:
+- **Fingerprint match**: compare `critic || '::' || category || '::' || sorted(affected_entities)` against the `fingerprint` column in the `finding` table
+- **Fuzzy text match**: `summary` — similar one-line description = likely same finding
+
+Pre-fill the `Approved` column for matches and mark with `(prior)`:
+- Prior `approved` → `✅ (prior)`
+- Prior `rejected` → `❌ (prior)`
+- Prior `skipped` → `⏭️ (prior)`
 
 **Build the Findings Index:**
 
-If the auditor's report does not already contain a properly formatted Findings Index (unlikely but possible), build one from the dimension detail sections:
+If the critic's report does not already contain a properly formatted Findings Index (unlikely but possible), build one from the dimension detail sections:
 
 1. Each finding gets a monotonically increasing `#` (starting at 1)
 2. Order by impact: critical severity first, then high, then medium, then low, then info
@@ -100,7 +124,7 @@ The shared workflow handles: interactive approve/reject/skip review → dependen
 
 When the user approves a test addition, include it as part of the work-unit for that finding during implementation. The producer should add the test to the appropriate existing test file (never create new test files unless no suitable one exists).
 
-**Decisions ledger path:** `.scratch/rigor-mcp-server-auditor/audit-decisions.md`
+**Decisions ledger path:** `.scratch/rigor-mcp-server-critic/audit-decisions.md`
 
 After interactive review completes, the findings-review workflow creates or updates the decisions ledger at this path. Each decision gets a ledger entry with: date, dimension, file(s), summary, decision, and action/reason. The ledger enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.
 
@@ -116,4 +140,4 @@ After interactive review completes, the findings-review workflow creates or upda
 - **Action:** [what was done] | **Reason:** [why rejected/skipped]
 ```
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_auditor` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_plugin_critic` lacks.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_consistency_critic` lacks.

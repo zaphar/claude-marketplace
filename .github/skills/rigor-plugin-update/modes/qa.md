@@ -44,6 +44,28 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 - Tool behavior: "What does changelog_insert do?" → read the handler in write-tools.js
 - Entity relationships: "How do iterations relate to plugin-phases?" → read core.md and grep schema.sql for REFERENCES
 
+#### Audit History Queries
+
+When the user asks about audit history, findings, or decisions, query the SQLite database at `.scratch/rigor-plugin-update/audit.db`.
+
+**Database schema:**
+- `audit_run` — one row per audit session (id, mode, status, started_at, completed_at)
+- `finding` — one row per finding (id, audit_run_id, critic, category, severity, summary, affected_entities, fingerprint)
+- `decision` — one row per user decision (id, finding_id, decision, action, reason, supersedes, decided_at)
+
+**All queries MUST use `sqlite3 -header -markdown` for clean output:**
+
+Example translations:
+
+| User Question | Query |
+|---|---|
+| "What did we reject last audit?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary, d.reason FROM decision d JOIN finding f ON d.finding_id = f.id WHERE d.decision = 'rejected' ORDER BY d.decided_at DESC;"` |
+| "Show all critical findings" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary FROM finding f WHERE f.severity = 'critical' ORDER BY f.created_at DESC;"` |
+| "What's approved but not implemented?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, f.category, f.summary, d.action FROM finding f JOIN decision d ON d.finding_id = f.id JOIN audit_run ar ON f.audit_run_id = ar.id WHERE d.decision = 'approved' AND ar.status != 'completed' ORDER BY f.severity;"` |
+| "How many findings per critic?" | `sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.critic, COUNT(*) as count FROM finding f WHERE f.audit_run_id = (SELECT id FROM audit_run ORDER BY started_at DESC LIMIT 1) GROUP BY f.critic;"` |
+
+Translate the user's natural language question into an appropriate SQL query and present the results conversationally.
+
 ## Change Detection
 
 While answering questions, track whether the investigation reveals issues that would benefit from changes:

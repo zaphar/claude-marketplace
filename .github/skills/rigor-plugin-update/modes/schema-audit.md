@@ -12,7 +12,7 @@ Determine audit scope based on the user's request:
 If scope is ambiguous, ask the user:
 
 ```
-The schema auditor has 20 audit categories across 4 agent groups. Would you like me to run all of them, or focus on specific areas?
+The schema critic has 20 audit categories across 4 agent groups. Would you like me to run all of them, or focus on specific areas?
 ```
 
 Offer choices via ask_user:
@@ -23,9 +23,22 @@ Offer choices via ask_user:
 - **Performance & Hygiene (Group D: categories 10-11, 15-20)** — Indexes, timestamps, polymorphic refs, scope leakage, deletion patterns, type precision, doc drift, unused enums
 - **Let me specify** — User picks individual categories
 
-## Step 2: Launch Schema Auditor Agents in Parallel
+## Step 2: Bootstrap Database & Launch Schema Critic Agents in Parallel
 
-The 20 audit categories are split across 4 agent groups that run in parallel. Each agent group uses the `rigor_schema_auditor` agent (always `claude-opus-4.6`) with a scoped prompt.
+Before launching agents, ensure the audit database exists:
+
+```bash
+mkdir -p .scratch/rigor-plugin-update
+sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
+```
+
+Create an audit run for this session:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "INSERT INTO audit_run (id, mode, status) VALUES ('<date>T<HHMMSS>_schema_audit', 'schema_audit', 'running');"
+```
+
+The 20 audit categories are split across 4 agent groups that run in parallel. Each agent group uses the `rigor_schema_critic` agent (always `claude-opus-4.6`) with a scoped prompt.
 
 **Agent Group Assignments:**
 
@@ -45,7 +58,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 - Category 2: Child Table Collapse
 - Category 3: Foreign Key Enforcement
 - Category 4: CHECK Constraint Audit
-Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-a-simplification.md
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
 
 Agent B prompt:
 Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
@@ -53,7 +66,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 - Category 12: Nullable vs Required Alignment
 - Category 13: Transaction Safety
 - Category 14: Circular FK Dependencies
-Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-b-correctness.md
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
 
 Agent C prompt:
 Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
@@ -61,7 +74,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 - Category 7: Orphaned Tables
 - Category 8: Naming Consistency
 - Category 9: Column Redundancy
-Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-c-waste-consistency.md
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
 
 Agent D prompt:
 Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
@@ -73,7 +86,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 - Category 18: Data Type Precision
 - Category 19: Documentation-Schema Drift
 - Category 20: Unused Enum Values
-Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
+Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performance-hygiene.md
 ```
 
 **For a focused audit**, launch only the relevant agent group(s).
@@ -86,10 +99,18 @@ Wait for all launched agents to complete using `read_agent` with `wait: true`.
 
 Once ALL agents have completed, **you (the skill orchestrator) create the consolidated report** by:
 
-1. Reading each agent group's **full persisted report** from `.scratch/rigor-schema-auditor/<date>/` — do NOT rely on the agent result summaries returned by `read_agent`; you must read the actual files
-2. Reading the prior decisions ledger at `.scratch/rigor-schema-auditor/audit-decisions.md` (if it exists) for deduplication
-3. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
-4. Writing the consolidated report to `.scratch/rigor-schema-auditor/<date>/<HHMMSS>_consolidated-audit.md`
+1. Reading each agent group's **full persisted report** from `.scratch/rigor-schema-critic/<date>/` — do NOT rely on the agent result summaries returned by `read_agent`; you must read the actual files
+2. **Deduplication via SQLite**: Query the audit database for prior decisions on schema findings:
+   ```bash
+   sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.category, f.summary, d.decision, d.action, d.reason FROM finding f JOIN decision d ON d.finding_id = f.id WHERE f.critic = 'schema' ORDER BY d.decided_at DESC;"
+   ```
+   Match each new finding against prior decisions using `fingerprint` (structural match) or `summary` (fuzzy text match). Findings that match a prior decision should be pre-filled with that decision in the `Approved` column and marked with `(prior)`.
+3. **Insert findings into the database**: For each finding in the consolidated report, insert a row:
+   ```bash
+   sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "INSERT INTO finding (audit_run_id, critic, category, severity, summary, affected_entities, fingerprint, report_path) VALUES ('<run_id>', 'schema', '<category>', '<severity>', '<summary>', '<affected_json>', 'schema::<category>::<sorted_entities>', '<report_path>');"
+   ```
+4. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
+5. Writing the consolidated report to `.scratch/rigor-schema-critic/<date>/<HHMMSS>_consolidated-audit.md`
 
 **⚠️ MANDATORY: The consolidated report MUST use the exact Canonical Persisted Report Structure defined in `workflows/findings-review.md`. Do NOT invent your own format. The Findings Index table (with `#`, `Group`, `Severity`, `Approved`, `Finding` columns) MUST be the first content section after the header. If you find yourself writing a report without this table, STOP — you are doing it wrong.**
 
@@ -128,10 +149,10 @@ The consolidated report format:
 
 ---
 **Individual reports preserved at:**
-- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-a-simplification.md
-- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-b-correctness.md
-- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-c-waste-consistency.md
-- .scratch/rigor-schema-auditor/<date>/<HHMMSS>_group-d-performance-hygiene.md
+- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
+- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
+- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
+- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performance-hygiene.md
 ```
 
 Note: The `Approved` column starts blank. The `Implementation Phasing` section is NOT included in the initial report — it is appended later during the shared workflow (Step D).
@@ -144,4 +165,4 @@ After creating the consolidated report, enter the **Findings Review & Implementa
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report) → execution with progress reporting.
 
-If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). The schema auditor identifies findings; the producer-critic loop implements fixes.
+If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). The schema critic identifies findings; the producer-critic loop implements fixes.
