@@ -511,7 +511,7 @@ The `entity_type` column must match a table name in the schema — see the `ENTI
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
 | `entity_type` | TEXT | NOT NULL | — | — | The table name of the snapshotted entity (e.g., `'requirement'`, `'adr'`, `'component'`, `'screen'`). Must match a table name in the schema. |
-| `entity_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). |
+| `source_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). Polymorphic reference — the target table is determined by `entity_type`. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` ON DELETE CASCADE | The new revision that triggered the snapshot — i.e., the revision whose UPSERT overwrote this entity's previous state. |
 | `snapshot` | JSON | NOT NULL | — | — | Complete JSON serialization of the entity row as it existed immediately before the update. |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of snapshot creation. |
@@ -519,14 +519,14 @@ The `entity_type` column must match a table name in the schema — see the `ENTI
 ### Relationships
 
 - **`revision_id` → `revision(id)`** — Links the snapshot to the revision whose UPSERT triggered it. ON DELETE CASCADE ensures snapshots are cleaned up if the revision is deleted.
-- **`(entity_type, entity_id)`** — Composite lookup (indexed via `idx_entity_snapshot_lookup`) but not a formal FK, since entity types span multiple tables with different PK types.
+- **`(entity_type, source_id)`** — Composite lookup (indexed via `idx_entity_snapshot_lookup`) but not a formal FK, since entity types span multiple tables with different PK types.
 - No `iteration_id` column — the iteration can be derived by joining through `revision.phase_id → phase.iteration_id`.
 
 ### Indexes
 
 | Index | Columns | Purpose |
 |-------|---------|---------|
-| `idx_entity_snapshot_lookup` | `(entity_type, entity_id)` | Fast lookup of all snapshots for a given entity across revisions. |
+| `idx_entity_snapshot_lookup` | `(entity_type, source_id)` | Fast lookup of all snapshots for a given entity across revisions. |
 
 ### MCP Tool Access
 

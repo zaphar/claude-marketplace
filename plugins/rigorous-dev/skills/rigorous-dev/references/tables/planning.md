@@ -229,7 +229,7 @@ Links a `plan_phase` to the `screen` IDs it will build or modify. Records which 
 
 ### Purpose
 
-Lists the HTTP API endpoints that must be implemented during a phase. This is the developer's build spec for the API surface of a phase — method, path, and purpose for each endpoint.
+Lists the HTTP API endpoints that must be implemented during a phase. This is the developer's build spec for the API surface of a phase — HTTP method, route, and purpose for each endpoint.
 
 ### Context
 
@@ -245,8 +245,8 @@ Lists the HTTP API endpoints that must be implemented during a phase. This is th
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `plan_phase_id` | INTEGER | NOT NULL, FK → `plan_phase(id)` | — | The phase that implements this endpoint. |
-| `method` | TEXT | NOT NULL | — | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). |
-| `path` | TEXT | NOT NULL | — | URL path, e.g., `/api/v1/users/{id}`. |
+| `http_method` | TEXT | NOT NULL | — | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). |
+| `route` | TEXT | NOT NULL | — | URL path, e.g., `/api/v1/users/{id}`. |
 | `description` | TEXT | nullable | — | What this endpoint does and what it returns. |
 
 ### Relationships
@@ -257,7 +257,7 @@ Lists the HTTP API endpoints that must be implemented during a phase. This is th
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `api_endpoints: [{method, path, description}, ...]` in the `plan_phase` payload |
+| Insert | `changelog_insert` | Pass `api_endpoints: [{http_method, route, description}, ...]` in the `plan_phase` payload |
 | Query | `changelog_query` | Retrieved as the `api_endpoints` array when querying a `plan_phase` |
 
 ---
@@ -458,7 +458,7 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 
 - One-to-many child of `plan_overview`. A plan typically has 2–5 overview risks.
 - Examples: "Architecture depends on unproven library X", "Team lacks experience with streaming databases", "Regulatory approval may delay Phase 3".
-- The optional `phase` field indicates if the risk materialises at a specific phase (for scheduling mitigation work).
+- The optional `plan_phase_number` field indicates if the risk materialises at a specific phase (for scheduling mitigation work).
 - `implementation_plan_critic` verifies that mitigations are actionable and not generic.
 
 ### Columns
@@ -469,7 +469,7 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 | `plan_overview_id` | INTEGER | NOT NULL, FK → `plan_overview(id)` | — | The plan overview this risk belongs to. |
 | `risk` | TEXT | NOT NULL | — | Description of the risk. |
 | `mitigation` | TEXT | nullable | — | How this risk will be managed or reduced. |
-| `phase` | INTEGER | nullable | — | The `phase_number` at which this risk is most acute or must be mitigated, if applicable. |
+| `plan_phase_number` | INTEGER | nullable | — | The `phase_number` at which this risk is most acute or must be mitigated, if applicable. |
 
 ### Relationships
 
@@ -479,7 +479,7 @@ Records plan-wide risks that apply across multiple phases or to the overall deli
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `risks: [{risk, mitigation, phase}]` in the `plan_overview` payload |
+| Insert | `changelog_insert` | Pass `risks: [{risk, mitigation, plan_phase_number}]` in the `plan_overview` payload |
 | Query | `changelog_query` | Retrieved as the `risks` array when querying a `plan_overview` |
 
 ---
@@ -494,7 +494,7 @@ Records external systems, services, or teams that the implementation plan depend
 
 - One-to-many child of the iteration (not a specific phase — external dependencies are plan-wide).
 - Examples: "Auth0 tenant provisioning", "Payment gateway sandbox credentials", "Mobile team delivering SDK v2", "Legal approval for GDPR data flows".
-- The optional `phase` field marks when the dependency becomes blocking.
+- The optional `plan_phase_number` field marks when the dependency becomes blocking.
 - `implementation_plan_critic` verifies that high/critical external dependencies have concrete mitigations.
 - `senior_developer` tracks these as pre-conditions to flag blockers early.
 
@@ -506,14 +506,14 @@ Records external systems, services, or teams that the implementation plan depend
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this external dependency belongs to. |
 | `name` | TEXT | NOT NULL | — | Short name of the external dependency (e.g., "Stripe Sandbox Credentials"). |
 | `description` | TEXT | NOT NULL | — | What this dependency is and why the plan needs it. |
-| `phase` | INTEGER | nullable | — | The `phase_number` at which this dependency becomes blocking, if known. |
+| `plan_phase_number` | INTEGER | nullable | — | The `phase_number` at which this dependency becomes blocking, if known. |
 | `risk_level` | TEXT | NOT NULL, CHECK(`low` \| `medium` \| `high` \| `critical`) | — | How much risk this dependency poses to the plan if not resolved. |
 | `mitigation` | TEXT | nullable | — | How the team plans to manage or reduce the dependency risk (e.g., "Use mock server for Phase 1–2; real credentials required for Phase 3"). |
 
 ### Relationships
 
 - **Parent:** `iteration` via `iteration_id`
-- **References by value:** `plan_phase.phase_number` via `phase`
+- **References by value:** `plan_phase.phase_number` via `plan_phase_number`
 
 ### MCP tool access
 

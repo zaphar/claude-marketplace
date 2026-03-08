@@ -217,7 +217,7 @@ function snapshotIfExists(db, table, entityType, entityId, newRevisionId) {
   if (existing) {
     const now = new Date().toISOString();
     db.prepare(
-      `INSERT INTO entity_snapshot (entity_type, entity_id, revision_id, snapshot, created_at)
+      `INSERT INTO entity_snapshot (entity_type, source_id, revision_id, snapshot, created_at)
        VALUES (?, ?, ?, ?, ?)`
     ).run(entityType, entityId, newRevisionId, JSON.stringify(existing), now);
   }
@@ -466,10 +466,10 @@ function insertDataEntity(db, iteration_id, revision_id, data) {
   const entityId = result.lastInsertRowid;
 
   const insertAttr = db.prepare(
-    "INSERT INTO data_entity_attribute (entity_id, name, type, is_required, description) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO data_entity_attribute (entity_id, name, data_type, is_required, description) VALUES (?, ?, ?, ?, ?)"
   );
   for (const a of data.attributes ?? []) {
-    insertAttr.run(entityId, a.name, a.type, a.is_required ?? 0, a.description ?? null);
+    insertAttr.run(entityId, a.name, a.data_type, a.is_required ?? 0, a.description ?? null);
   }
 
   // Resolve and insert relationships.
@@ -794,10 +794,10 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   }
 
   const insertEndpoint = db.prepare(
-    "INSERT INTO plan_phase_api_endpoint (plan_phase_id, method, path, description) VALUES (?, ?, ?, ?)"
+    "INSERT INTO plan_phase_api_endpoint (plan_phase_id, http_method, route, description) VALUES (?, ?, ?, ?)"
   );
   for (const ep of data.api_endpoints ?? []) {
-    insertEndpoint.run(plan_phase_id, ep.method, ep.path, ep.description ?? null);
+    insertEndpoint.run(plan_phase_id, ep.http_method, ep.route, ep.description ?? null);
   }
 
   const insertDbChange = db.prepare(
@@ -852,10 +852,10 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const plan_overview_id = result.lastInsertRowid;
 
   const insertRisk = db.prepare(
-    "INSERT INTO plan_overview_risk (plan_overview_id, risk, mitigation, phase) VALUES (?, ?, ?, ?)"
+    "INSERT INTO plan_overview_risk (plan_overview_id, risk, mitigation, plan_phase_number) VALUES (?, ?, ?, ?)"
   );
   for (const risk of data.risks ?? []) {
-    insertRisk.run(plan_overview_id, risk.risk, risk.mitigation ?? null, risk.phase ?? null);
+    insertRisk.run(plan_overview_id, risk.risk, risk.mitigation ?? null, risk.plan_phase_number ?? null);
   }
 
   return { entity_type: "plan_overview", id: plan_overview_id };
@@ -864,14 +864,14 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
 function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
   const result = db
     .prepare(
-      `INSERT INTO plan_external_dependency (iteration_id, name, description, phase, risk_level, mitigation)
+      `INSERT INTO plan_external_dependency (iteration_id, name, description, plan_phase_number, risk_level, mitigation)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
     .run(
       iteration_id,
       data.name,
       data.description,
-      data.phase ?? null,
+      data.plan_phase_number ?? null,
       data.risk_level,
       data.mitigation ?? null
     );
@@ -944,7 +944,7 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const manifest_id = result.lastInsertRowid;
 
   const insertFile = db.prepare(
-    "INSERT INTO implementation_file (manifest_id, path, action, purpose, component_id) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO implementation_file (manifest_id, path, file_operation, purpose, component_id) VALUES (?, ?, ?, ?, ?)"
   );
   const insertFileReq = db.prepare(
     "INSERT OR IGNORE INTO implementation_file_requirement (file_id, requirement_id) VALUES (?, ?)"
@@ -953,7 +953,7 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
     const fileResult = insertFile.run(
       manifest_id,
       f.path,
-      f.action,
+      f.file_operation,
       f.purpose ?? null,
       f.component_id ?? null
     );
@@ -977,13 +977,13 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   }
 
   const insertEndpoint = db.prepare(
-    "INSERT INTO implementation_api_endpoint (manifest_id, path, method, status) VALUES (?, ?, ?, ?)"
+    "INSERT INTO implementation_api_endpoint (manifest_id, route, http_method, status) VALUES (?, ?, ?, ?)"
   );
   const insertEndpointReq = db.prepare(
     "INSERT OR IGNORE INTO implementation_api_endpoint_requirement (endpoint_id, requirement_id) VALUES (?, ?)"
   );
   for (const ep of data.api_endpoints ?? []) {
-    const epResult = insertEndpoint.run(manifest_id, ep.path, ep.method, ep.status);
+    const epResult = insertEndpoint.run(manifest_id, ep.route, ep.http_method, ep.status);
     for (const req_id of ep.requirements ?? []) {
       insertEndpointReq.run(epResult.lastInsertRowid, req_id);
     }
@@ -1055,7 +1055,7 @@ function insertSystemIo(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO system_io (iteration_id, direction, name, description, source, destination, format) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO system_io (iteration_id, direction, name, description, source, destination, data_format) VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   for (const entry of entries) {
     const result = insert.run(
@@ -1065,7 +1065,7 @@ function insertSystemIo(db, iteration_id, _revision_id, data) {
       entry.description,
       entry.source ?? null,
       entry.destination ?? null,
-      entry.format ?? null
+      entry.data_format ?? null
     );
     lastId = result.lastInsertRowid;
   }
@@ -1256,7 +1256,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO test_report
-         (iteration_id, revision_id, total_tests, passed, failed, skipped,
+         (iteration_id, revision_id, total_tests, passed_count, failed, skipped,
           coverage_line, coverage_branch, coverage_function,
           duration_seconds, status,
           version, document_date, requirements_version, architecture_version, commit_sha,
@@ -1267,7 +1267,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       iteration_id,
       revision_id,
       data.total_tests ?? 0,
-      data.passed ?? 0,
+      data.passed_count ?? 0,
       data.failed ?? 0,
       data.skipped ?? 0,
       data.coverage_line ?? null,
@@ -1367,7 +1367,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   // -- test_performance_benchmark (1:N) --
   const insertBenchmark = db.prepare(
     `INSERT INTO test_performance_benchmark
-       (report_id, name, metric, value, unit, threshold, status)
+       (report_id, name, metric, measured_value, unit, threshold, status)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   for (const pb of data.performance_benchmarks ?? []) {
@@ -1375,7 +1375,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       report_id,
       pb.name,
       pb.metric,
-      pb.value,
+      pb.measured_value,
       pb.unit,
       pb.threshold ?? null,
       pb.status ?? null
@@ -1606,7 +1606,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   );
   const insertEnvVar = db.prepare(
     `INSERT INTO deployment_env_var
-       (environment_id, name, source, description)
+       (environment_id, name, value_source, description)
      VALUES (?, ?, ?, ?)`
   );
   for (const env of data.environments ?? []) {
@@ -1622,7 +1622,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
       insertEnvInfra.run(environment_id, infra.provider ?? null, infra.resource);
     }
     for (const v of env.vars ?? []) {
-      insertEnvVar.run(environment_id, v.name, v.source, v.description ?? null);
+      insertEnvVar.run(environment_id, v.name, v.value_source, v.description ?? null);
     }
   }
 
@@ -1645,10 +1645,10 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
 
   // -- deployment_signing (1:N) --
   const insertSigning = db.prepare(
-    "INSERT INTO deployment_signing (manifest_id, enabled, method) VALUES (?, ?, ?)"
+    "INSERT INTO deployment_signing (manifest_id, enabled, signing_method) VALUES (?, ?, ?)"
   );
   for (const s of data.signing ?? []) {
-    insertSigning.run(manifest_id, s.enabled ? 1 : 0, s.method ?? null);
+    insertSigning.run(manifest_id, s.enabled ? 1 : 0, s.signing_method ?? null);
   }
 
   // -- deployment_local_executable (1:N) --

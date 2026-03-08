@@ -134,7 +134,7 @@ SELECT * FROM requirement WHERE iteration_id = ?;
 To query change history for a specific entity:
 ```sql
 SELECT * FROM entity_snapshot
-WHERE entity_type = 'requirement' AND entity_id = 'req-auth-001'
+WHERE entity_type = 'requirement' AND source_id = 'req-auth-001'
 ORDER BY id ASC;
 ```
 

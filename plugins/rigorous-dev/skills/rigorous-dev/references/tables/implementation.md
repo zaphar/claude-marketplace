@@ -90,7 +90,7 @@ Written as children of `implementation_manifest`. One row per file path per mani
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
 | `path` | TEXT | NO | — | — | Repository-relative file path (e.g. `src/api/users.ts`). |
-| `action` | TEXT | NO | — | CHECK IN ('created','modified','deleted') | What happened to this file. |
+| `file_operation` | TEXT | NO | — | CHECK IN ('created','modified','deleted') | What happened to this file. |
 | `purpose` | TEXT | YES | NULL | — | Human-readable explanation of why this file was touched. |
 | `component_id` | TEXT | YES | NULL | FK → `component(id)` | Architecture component this file belongs to (e.g. `COMP-001`). |
 
@@ -104,7 +104,7 @@ Written as children of `implementation_manifest`. One row per file path per mani
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.files[]` in the `implementation_manifest` call. Each element includes `path`, `action`, `purpose`, `component_id`, and `requirements[]`. |
+| Insert | `changelog_insert` | Nested under `data.files[]` in the `implementation_manifest` call. Each element includes `path`, `file_operation`, `purpose`, `component_id`, and `requirements[]`. |
 | Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; file rows are returned as nested children, each with a `requirements` array. |
 
 ---
@@ -225,12 +225,12 @@ The QA engineer uses this table to know which endpoints exist and which are only
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
-| `path` | TEXT | NO | — | UNIQUE with (`manifest_id`, `method`) | URL path pattern (e.g. `/api/v1/users/:id`). |
-| `method` | TEXT | NO | — | UNIQUE with (`manifest_id`, `path`) | HTTP verb: GET, POST, PUT, PATCH, DELETE, etc. |
+| `route` | TEXT | NO | — | UNIQUE with (`manifest_id`, `http_method`) | URL path pattern (e.g. `/api/v1/users/:id`). |
+| `http_method` | TEXT | NO | — | UNIQUE with (`manifest_id`, `route`) | HTTP verb: GET, POST, PUT, PATCH, DELETE, etc. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','stubbed','not_started') | Implementation state of this endpoint. |
 
 **Constraints:**
-- `UNIQUE(manifest_id, path, method)` — prevents recording the same endpoint (path + method combination) twice within a manifest.
+- `UNIQUE(manifest_id, route, http_method)` — prevents recording the same endpoint (route + HTTP method combination) twice within a manifest.
 
 ### Relationships
 
@@ -241,7 +241,7 @@ The QA engineer uses this table to know which endpoints exist and which are only
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.api_endpoints[]` in the `implementation_manifest` call. Each element: `{ path, method, status, requirements[] }`. |
+| Insert | `changelog_insert` | Nested under `data.api_endpoints[]` in the `implementation_manifest` call. Each element: `{ route, http_method, status, requirements[] }`. |
 | Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; endpoints are returned as the `api_endpoints` array, each with a nested `requirements` array. |
 
 ---

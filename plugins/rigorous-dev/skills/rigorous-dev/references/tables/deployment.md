@@ -29,12 +29,12 @@ deployment_manifest
 │
 ├── deployment_environment              (development | staging | production)
 │   ├── deployment_env_infra            (cloud resources per environment)
-│   └── deployment_env_var              (environment variables + source classification)
+│   └── deployment_env_var              (environment variables + value_source classification)
 │
 ├── deployment_artifact                 (container-image | binary | archive | …)
 │                                        platforms → JSON array on artifact
 │
-├── deployment_signing                  (code signing on/off + method)
+├── deployment_signing                  (code signing on/off + signing_method)
 │
 ├── deployment_local_executable         (local distribution metadata)
 │                                        platforms → JSON array on local_executable
@@ -227,24 +227,24 @@ deployment_manifest
 
 ### `deployment_env_var`
 
-**Purpose:** Inventories the environment variables used by the application in a specific environment, along with their source classification. Does NOT store values.
+**Purpose:** Inventories the environment variables used by the application in a specific environment, along with their value-source classification. Does NOT store values.
 
-**Context:** Common env-var source values include `secret`, `config`, and `hardcoded`. `secret` vars are expected to be sourced from a secrets manager (cross-referenced with `deployment_secret`). `config` vars come from CI/CD config files or infrastructure config maps. `hardcoded` vars are baked into the image or binary — flagged for review if they contain sensitive data.
+**Context:** Common `value_source` values include `secret`, `config`, and `hardcoded`. `secret` vars are expected to be sourced from a secrets manager (cross-referenced with `deployment_secret`). `config` vars come from CI/CD config files or infrastructure config maps. `hardcoded` vars are baked into the image or binary — flagged for review if they contain sensitive data.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `environment_id` | INTEGER | NOT NULL, FK → `deployment_environment(id)` | — | Parent environment. |
 | `name` | TEXT | NOT NULL | — | Environment variable name (e.g., `DATABASE_URL`, `JWT_SECRET`, `FEATURE_FLAG_X`). |
-| `source` | TEXT | NOT NULL | — | Where this variable's value comes from at runtime (e.g. `secret`, `config`, `hardcoded`). |
+| `value_source` | TEXT | NOT NULL | — | Where this variable's value comes from at runtime (e.g. `secret`, `config`, `hardcoded`). |
 | `description` | TEXT | — | NULL | Human-readable explanation of what this variable controls. |
 
 **Relationships:**
 - Parent: `deployment_environment` (via `environment_id`)
-- Cross-reference: `deployment_secret` (vars with `source = 'secret'` should correspond to a row in `deployment_secret`)
+- Cross-reference: `deployment_secret` (vars with `value_source = 'secret'` should correspond to a row in `deployment_secret`)
 
 **MCP tool access:**
-- **Read:** Direct SQL — `SELECT name, source, description FROM deployment_env_var WHERE environment_id = ?`.
+- **Read:** Direct SQL — `SELECT name, value_source, description FROM deployment_env_var WHERE environment_id = ?`.
 
 ---
 
@@ -285,14 +285,14 @@ deployment_manifest
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `enabled` | INTEGER | — | `0` | Boolean flag. `1` = signing is active; `0` = signing is disabled or not applicable. |
-| `method` | TEXT | — | NULL | Signing method or tool (e.g., `apple-developer-id`, `windows-ev-cert`, `sigstore-cosign`, `gpg`). NULL when `enabled = 0`. |
+| `signing_method` | TEXT | — | NULL | Signing method or tool (e.g., `apple-developer-id`, `windows-ev-cert`, `sigstore-cosign`, `gpg`). NULL when `enabled = 0`. |
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
 - Cross-reference: `deployment_artifact` (signing applies to artifacts of type `binary` or `installer`)
 
 **MCP tool access:**
-- **Read:** Direct SQL — `SELECT enabled, method FROM deployment_signing WHERE manifest_id = ?`.
+- **Read:** Direct SQL — `SELECT enabled, signing_method FROM deployment_signing WHERE manifest_id = ?`.
 
 ---
 
@@ -324,7 +324,7 @@ deployment_manifest
 
 **Purpose:** Inventories the secrets required by the deployment — their names, purposes, managing provider, and rotation policy. Values are NEVER stored.
 
-**Context:** This table is the deployment domain's secrets ledger. It enables the release critic to verify that every environment variable with `source = 'secret'` has a corresponding secret record. The `provider` points to the secrets management system (e.g., `AWS Secrets Manager`, `HashiCorp Vault`, `GitHub Actions secrets`). The `rotation_policy` drives operational runbook requirements.
+**Context:** This table is the deployment domain's secrets ledger. It enables the release critic to verify that every environment variable with `value_source = 'secret'` has a corresponding secret record. The `provider` points to the secrets management system (e.g., `AWS Secrets Manager`, `HashiCorp Vault`, `GitHub Actions secrets`). The `rotation_policy` drives operational runbook requirements.
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
@@ -337,7 +337,7 @@ deployment_manifest
 
 **Relationships:**
 - Parent: `deployment_manifest` (via `manifest_id`)
-- Cross-reference: `deployment_env_var` (vars with `source = 'secret'` should match a `name` here)
+- Cross-reference: `deployment_env_var` (vars with `value_source = 'secret'` should match a `name` here)
 
 **MCP tool access:**
 - **Read:** Direct SQL — `SELECT name, purpose, provider, rotation_policy FROM deployment_secret WHERE manifest_id = ?`.
@@ -459,7 +459,7 @@ deployment_manifest
 | `deployment_manifest` | `iteration` | `iteration_id` |
 | `deployment_manifest` | `revision` | `revision_id` |
 | `deployment_manifest` | `implementation_manifest` (conceptually) | `implementation_version` string |
-| `deployment_env_var` (source=secret) | `deployment_secret` | `name` match (logical, not FK) |
+| `deployment_env_var` (value_source=secret) | `deployment_secret` | `name` match (logical, not FK) |
 | `deployment_local_executable.platforms` | `deployment_artifact.platforms` | platform string match (logical, not FK) |
 
 ## MCP Tool Summary
@@ -532,7 +532,7 @@ All child tables are nested inside the `data` object. Every array property is op
       }],
       "vars": [{                           //   → deployment_env_var
         "name": "DATABASE_URL",
-        "source": "secret",               // e.g. "secret", "config", "hardcoded"
+        "value_source": "secret",          // e.g. "secret", "config", "hardcoded"
         "description": "PostgreSQL connection string"
       }]
     }],
@@ -547,7 +547,7 @@ All child tables are nested inside the `data` object. Every array property is op
     }],
     "signing": [{                          // → deployment_signing
       "enabled": true,
-      "method": "cosign"
+      "signing_method": "cosign"
     }],
     "local_executables": [{                // → deployment_local_executable
       "installation_method": "go install",
@@ -638,7 +638,7 @@ JOIN deployment_pipeline p ON s.pipeline_id = p.id
 WHERE p.manifest_id = ?;
 
 -- Environment + vars
-SELECT e.name, e.deployment_method, v.name AS var_name, v.source
+SELECT e.name, e.deployment_method, v.name AS var_name, v.value_source
 FROM deployment_environment e
 JOIN deployment_env_var v ON v.environment_id = e.id
 WHERE e.manifest_id = ?

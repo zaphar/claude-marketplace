@@ -46,7 +46,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 | `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this report belongs to |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this report. |
 | `total_tests` | INTEGER | NOT NULL | `0` | Total number of tests executed |
-| `passed` | INTEGER | NOT NULL | `0` | Count of tests that passed |
+| `passed_count` | INTEGER | NOT NULL | `0` | Count of tests that passed |
 | `failed` | INTEGER | NOT NULL | `0` | Count of tests that failed |
 | `skipped` | INTEGER | NOT NULL | `0` | Count of tests that were skipped |
 | `coverage_line` | REAL | — | NULL | Line coverage percentage (0.0–100.0) |
@@ -289,7 +289,7 @@ The `qa_engineer` runs benchmarks defined by performance requirements (from the 
 | `report_id` | INTEGER | NOT NULL, FK → `test_report(id)` | — | The report this benchmark belongs to |
 | `name` | TEXT | NOT NULL | — | Benchmark name (e.g., `"API p95 response time"`) |
 | `metric` | TEXT | NOT NULL | — | Metric identifier (e.g., `"p95_latency_ms"`, `"throughput_rps"`) |
-| `value` | REAL | NOT NULL | — | Measured value |
+| `measured_value` | REAL | NOT NULL | — | Measured value |
 | `unit` | TEXT | NOT NULL | — | Unit of measurement (e.g., `"ms"`, `"rps"`, `"MB"`) |
 | `threshold` | REAL | — | NULL | Target threshold value from the performance requirement |
 | `status` | TEXT | CHECK(`pass`, `fail`) | NULL | Whether the measured value met the threshold |

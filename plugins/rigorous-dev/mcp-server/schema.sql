@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS system_io (
   description TEXT NOT NULL,
   source TEXT,
   destination TEXT,
-  format TEXT
+  data_format TEXT
 );
 
 -- Deployment requirements (per iteration)
@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  type TEXT NOT NULL,
+  data_type TEXT NOT NULL,
   is_required INTEGER DEFAULT 0,
   description TEXT
 );
@@ -493,8 +493,8 @@ CREATE TABLE IF NOT EXISTS plan_phase_screen (
 CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  method TEXT NOT NULL,
-  path TEXT NOT NULL,
+  http_method TEXT NOT NULL,
+  route TEXT NOT NULL,
   description TEXT
 );
 
@@ -543,7 +543,7 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
   plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id) ON DELETE CASCADE,
   risk TEXT NOT NULL,
   mitigation TEXT,
-  phase INTEGER
+  plan_phase_number INTEGER
 );
 
 -- Implementation plan: external dependencies
@@ -552,7 +552,7 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
-  phase INTEGER,
+  plan_phase_number INTEGER,
   risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
   mitigation TEXT
 );
@@ -604,7 +604,7 @@ CREATE TABLE IF NOT EXISTS implementation_file (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
   path TEXT NOT NULL,
-  action TEXT NOT NULL CHECK(action IN ('created', 'modified', 'deleted')),
+  file_operation TEXT NOT NULL CHECK(file_operation IN ('created', 'modified', 'deleted')),
   purpose TEXT,
   component_id TEXT REFERENCES component(id) ON DELETE SET NULL
 );
@@ -636,10 +636,10 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  path TEXT NOT NULL,
-  method TEXT NOT NULL,
+  route TEXT NOT NULL,
+  http_method TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('complete', 'stubbed', 'not_started')),
-  UNIQUE(manifest_id, path, method)
+  UNIQUE(manifest_id, route, http_method)
 );
 
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
@@ -735,7 +735,7 @@ CREATE TABLE IF NOT EXISTS test_report (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   total_tests INTEGER NOT NULL DEFAULT 0,
-  passed INTEGER NOT NULL DEFAULT 0,
+  passed_count INTEGER NOT NULL DEFAULT 0,
   failed INTEGER NOT NULL DEFAULT 0,
   skipped INTEGER NOT NULL DEFAULT 0,
   coverage_line REAL,
@@ -813,7 +813,7 @@ CREATE TABLE IF NOT EXISTS test_performance_benchmark (
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   metric TEXT NOT NULL,
-  value REAL NOT NULL,
+  measured_value REAL NOT NULL,
   unit TEXT NOT NULL,
   threshold REAL,
   status TEXT CHECK(status IN ('pass', 'fail'))
@@ -1016,7 +1016,7 @@ CREATE TABLE IF NOT EXISTS deployment_env_var (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  source TEXT NOT NULL,
+  value_source TEXT NOT NULL,
   description TEXT
 );
 
@@ -1034,7 +1034,7 @@ CREATE TABLE IF NOT EXISTS deployment_signing (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
   enabled INTEGER DEFAULT 0,
-  method TEXT
+  signing_method TEXT
 );
 
 CREATE TABLE IF NOT EXISTS deployment_local_executable (
@@ -1130,14 +1130,14 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 CREATE TABLE IF NOT EXISTS entity_snapshot (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_type TEXT NOT NULL, -- must match a table name in the schema (e.g. 'requirement', 'adr', 'component', 'screen', 'user_flow', 'plan_phase', etc.) — see ENTITY_TABLE in read-tools.js for the full set
-  entity_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   snapshot JSON NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
-  ON entity_snapshot(entity_type, entity_id);
+  ON entity_snapshot(entity_type, source_id);
 
 -- ============================================================
 -- INDEXES: high-frequency FK column lookups
@@ -1247,7 +1247,7 @@ CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
 -- Implementation manifest children
 CREATE INDEX IF NOT EXISTS idx_implementation_file_manifest_id
   ON implementation_file(manifest_id);
--- Skipped: implementation_api_endpoint (manifest_id is leftmost in UNIQUE(manifest_id, path, method))
+-- Skipped: implementation_api_endpoint (manifest_id is leftmost in UNIQUE(manifest_id, route, http_method))
 CREATE INDEX IF NOT EXISTS idx_implementation_dependency_added_manifest_id
   ON implementation_dependency_added(manifest_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_db_migration_manifest_id

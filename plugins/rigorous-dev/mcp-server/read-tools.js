@@ -114,7 +114,7 @@ function changelogQuery(args) {
     let sql = `SELECT * FROM entity_snapshot WHERE entity_type = ?`;
     const params = [entity_type];
     if (ids && ids.length > 0) {
-      sql += ` AND entity_id IN (${ids.map(() => "?").join(", ")})`;
+      sql += ` AND source_id IN (${ids.map(() => "?").join(", ")})`;
       params.push(...ids);
     }
     sql += ` ORDER BY id ASC`;
@@ -293,7 +293,7 @@ function attachRelated(db, entityType, results) {
         entry_criteria: JSON.parse(p.entry_criteria || '[]'),
         exit_criteria: JSON.parse(p.exit_criteria || '[]'),
         api_endpoints: db
-          .prepare("SELECT method, path, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
+          .prepare("SELECT http_method, route, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
           .all(p.id),
         db_changes: db
           .prepare("SELECT id, migration_name, description, tables FROM plan_phase_db_change WHERE plan_phase_id = ?")
@@ -330,7 +330,7 @@ function attachRelated(db, entityType, results) {
           .prepare("SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?")
           .get(o.iteration_id).cnt,
         risks: db
-          .prepare("SELECT risk, mitigation, phase FROM plan_overview_risk WHERE plan_overview_id = ?")
+          .prepare("SELECT risk, mitigation, plan_phase_number FROM plan_overview_risk WHERE plan_overview_id = ?")
           .all(o.id),
         assumptions: JSON.parse(o.assumptions || '[]'),
       }));
@@ -345,7 +345,7 @@ function attachRelated(db, entityType, results) {
       return results.map((e) => ({
         ...e,
         attributes: db
-          .prepare("SELECT name, type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
+          .prepare("SELECT name, data_type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
           .all(e.id),
         relationships: db
           .prepare(
@@ -417,8 +417,8 @@ function attachRelated(db, entityType, results) {
           }));
         return {
           ...m,
-          files_created: files.filter((f) => f.action === "created").length,
-          files_modified: files.filter((f) => f.action === "modified").length,
+          files_created: files.filter((f) => f.file_operation === "created").length,
+          files_modified: files.filter((f) => f.file_operation === "modified").length,
           files,
           requirement_status: db
             .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")

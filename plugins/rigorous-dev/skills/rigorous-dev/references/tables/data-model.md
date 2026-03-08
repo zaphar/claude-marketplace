@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id   INTEGER NOT NULL REFERENCES data_entity(id),
   name        TEXT    NOT NULL,
-  type        TEXT    NOT NULL,
+  data_type   TEXT    NOT NULL,
   is_required INTEGER DEFAULT 0,
   description TEXT
 );
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `entity_id` | INTEGER | NOT NULL, FK → `data_entity(id)` | — | The entity this attribute belongs to. |
 | `name` | TEXT | NOT NULL | — | Attribute name (e.g., `email`, `created_at`, `user_id`). |
-| `type` | TEXT | NOT NULL | — | Data type as the architect specifies it (e.g., `UUID`, `VARCHAR(255)`, `TIMESTAMP`, `JSONB`, `INTEGER`). Intentionally free-form to be database-agnostic unless the architect ties it to a specific engine. |
+| `data_type` | TEXT | NOT NULL | — | Data type as the architect specifies it (e.g., `UUID`, `VARCHAR(255)`, `TIMESTAMP`, `JSONB`, `INTEGER`). Intentionally free-form to be database-agnostic unless the architect ties it to a specific engine. |
 | `is_required` | INTEGER | — | `0` | Boolean flag (SQLite convention): `1` = attribute is required / NOT NULL; `0` = nullable / optional. |
 | `description` | TEXT | nullable | NULL | Optional clarification — e.g., "ISO 8601 UTC timestamp of last login", "FK to users.id". |
 

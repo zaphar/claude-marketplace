@@ -158,7 +158,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `description` | TEXT | NOT NULL | Narrative description of the entry's content and purpose. |
 | `source` | TEXT | — | Optional. Where this input originates (e.g. `"upstream ERP system"`, `"user file upload"`). Typically populated for `direction = 'input'`. |
 | `destination` | TEXT | — | Optional. Where this output is sent or stored (e.g. `"S3 bucket"`, `"webhook endpoint"`). Typically populated for `direction = 'output'`. |
-| `format` | TEXT | — | Optional. The expected data format (e.g. `"JSON"`, `"CSV"`, `"PDF"`, `"Parquet"`). |
+| `data_format` | TEXT | — | Optional. The expected data format (e.g. `"JSON"`, `"CSV"`, `"PDF"`, `"Parquet"`). |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
