@@ -895,7 +895,7 @@ function insertPlanMetadata(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_metadata (iteration_id, revision_id, title, version, created, updated, status, requirements_version, architecture_version, ux_specification_version, created_at)
+      `INSERT INTO plan_metadata (iteration_id, revision_id, title, version, document_date, document_updated, status, requirements_version, architecture_version, ux_specification_version, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
@@ -903,8 +903,8 @@ function insertPlanMetadata(db, iteration_id, revision_id, data) {
       revision_id,
       data.title,
       data.version,
-      data.created,
-      data.updated ?? null,
+      data.document_date,
+      data.document_updated ?? null,
       data.status,
       data.requirements_version,
       data.architecture_version,

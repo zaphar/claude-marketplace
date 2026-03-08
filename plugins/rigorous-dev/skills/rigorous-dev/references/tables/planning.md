@@ -580,13 +580,13 @@ Version and provenance record for the implementation plan. Records what version 
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan version. |
 | `title` | TEXT | NOT NULL | — | Human-readable plan title (e.g., "Implementation Plan — Invoice Generation Feature"). |
 | `version` | TEXT | NOT NULL | — | Semantic version string of this plan (e.g., `1.0.0`, `1.1.0`). |
-| `created` | TEXT | NOT NULL | — | Human-readable creation date (e.g., `2024-01-15`). Distinct from `created_at`. |
-| `updated` | TEXT | nullable | — | Human-readable date of last update, if the plan has been revised. |
+| `document_date` | TEXT | NOT NULL | — | Human-readable creation date (e.g., `2024-01-15`). Distinct from `created_at`. Aligns with peer manifest tables. |
+| `document_updated` | TEXT | nullable | — | Human-readable date of last update, if the plan has been revised. Aligns with peer manifest tables. |
 | `status` | TEXT | NOT NULL, CHECK(`draft` \| `review` \| `approved`) | — | Lifecycle status. `draft` = just produced; `review` = submitted to critic; `approved` = critic accepted. |
 | `requirements_version` | TEXT | NOT NULL | — | Version of the requirements document this plan was based on. |
 | `architecture_version` | TEXT | NOT NULL | — | Version of the architecture document this plan was based on. |
 | `ux_specification_version` | TEXT | NOT NULL | — | Version of the UX specification this plan was based on. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation (machine-generated, unlike `created`). |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation (machine-generated, unlike `document_date`). |
 
 ### Relationships
 
