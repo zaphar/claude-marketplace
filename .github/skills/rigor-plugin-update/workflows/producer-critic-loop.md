@@ -21,6 +21,33 @@ Launch the `rigor_plugin_producer` agent (using the assessed model) with the cha
 - The specific change to make
 - Any context about why the change is needed
 
+### Pre-decomposition by File Domain
+
+Before launching a producer, assess whether the work-unit is likely to complete within the agent's execution window. Work-units that span multiple file domains — schema DDL, JavaScript handlers, and documentation — are significantly more likely to time out than single-domain tasks. Use judgment: a rename touching one line in each of 10 files is simpler than rewriting one complex function. Consider both the number of domains and the depth of changes in each.
+
+When a work-unit is large or complex enough to risk timeout, **pre-decompose it into sequential sub-tasks scoped by file domain** and use the N:1 batching pattern. The natural dependency order is:
+
+1. **Schema** (`schema.sql`) — DDL changes must land first; everything else depends on table structure.
+2. **Write handlers** (`write-tools.js`) — Insert/upsert logic depends on the schema.
+3. **Read handlers** (`read-tools.js`) — Query logic depends on the schema.
+4. **Documentation** (table docs, `schemas-overview.md`, `INTERNALS.md`, agent/skill/command docs) — Docs describe the final code state, so they come last.
+
+Each sub-task gets its own focused producer call. The critics review the aggregate result after all sub-tasks complete.
+
+### Handling Producer Timeouts
+
+A producer timeout is a signal that the work-unit was too large — not a failure to retry at the same scope. When a producer times out:
+
+1. **Assess what completed.** Run `git diff --stat HEAD` to see which files were modified. Read the diffs to check for truncated or placeholder code (e.g., `PLACEHOLDER`, incomplete function bodies, half-written SQL).
+
+2. **Triage partial results:**
+   - **Clean, complete files** — keep them. If schema.sql changes are self-consistent and correct, there's no reason to redo that work.
+   - **Broken or partial files** — reset them with `git checkout -- <file>`. Incomplete code is worse than no code.
+
+3. **Decompose the remaining work.** Identify which file domains the producer didn't reach and launch focused, single-domain producer calls for each. These scoped calls are much more likely to succeed.
+
+4. **Orchestrator self-completion.** For purely mechanical remaining work — bulk sed renames, updating counts in documentation, removing table entries from lists — the orchestrator may complete these directly rather than launching another producer. Reserve producer calls for changes requiring judgment: restructuring function logic, rewriting SQL queries, updating prose descriptions. The line is: if the change is a deterministic text transformation, the orchestrator can do it; if it requires understanding intent, use a producer.
+
 ## Phase 2: Classify & Validate (Multi-Critic)
 
 After the producer (or all N producers in a batch) completes, it reports its summary and the list of modified files. Use that file list to determine which critic domains are affected:

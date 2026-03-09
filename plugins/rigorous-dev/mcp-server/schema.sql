@@ -707,75 +707,20 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 -- Implementation manifests (per sub-phase)
 -- Domain: implementation
 -- Purpose: The root record for one sub-phase of implementation work. Every time the
--- senior_developer completes a plan sub-phase it writes exactly one manifest row summarising the
--- outcome: overall status, total lines of code, warning count, and build result. All other
--- implementation tables hang off this row.
--- Context: The implementation phase is divided into sub-phases that mirror work_item rows.
--- work_item_id references the work_item(id) that was just executed. A manifest is written even
--- when work is partial or blocked so that the critic can inspect what was and was not done.
-CREATE TABLE IF NOT EXISTS implementation_manifest (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
-  lines_of_code INTEGER,
-  warnings INTEGER NOT NULL DEFAULT 0,
-  build_status TEXT CHECK(build_status IN ('success', 'failure')), -- NULL when build not yet run
-  version TEXT,
-  document_date TEXT, -- ISO 8601 date (YYYY-MM-DD)
-  requirements_version TEXT,
-  architecture_version TEXT,
-  language TEXT,
-  stdout TEXT,
-  stderr TEXT,
-  commit_sha TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Domain: implementation
--- Purpose: Records each individual file that was created, modified, or deleted during a sub-phase.
--- Provides per-file traceability — which component owns the file and what was the intent behind
--- touching it.
--- Context: Written as children of implementation_manifest. One row per file path per manifest. The
--- component_id links to the architecture component responsible for this file, enabling QA to know
--- which components are affected by each file change.
-CREATE TABLE IF NOT EXISTS implementation_file (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  path TEXT NOT NULL,
-  file_operation TEXT NOT NULL CHECK(file_operation IN ('created', 'modified', 'deleted')),
-  purpose TEXT,
-  component_id TEXT REFERENCES component(id) ON DELETE SET NULL,
-  UNIQUE(manifest_id, path)
-);
-
--- Domain: implementation
--- Purpose: Join table connecting each implementation file to the requirements it helps satisfy.
--- Enables the QA engineer to ask "which files implement REQ-042?" and the critic to verify
--- coverage.
--- Context: Many files implement multiple requirements; a single requirement is typically spread
--- across multiple files. This M:N join captures both directions. Populated as part of the
--- implementation_manifest insert when requirements[] is provided per file entry.
-CREATE TABLE IF NOT EXISTS implementation_file_requirement (
-  file_id INTEGER NOT NULL REFERENCES implementation_file(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  PRIMARY KEY (file_id, requirement_id)
-);
-
 -- Domain: implementation
 -- Purpose: Records the implementation progress of each requirement as assessed by the
 -- senior_developer at the end of a sub-phase. This is the canonical source of truth for "is REQ-042
 -- done?" from the implementation perspective.
--- Context: Written per manifest. A requirement may appear in multiple manifests across sub-phases;
--- later rows supersede earlier ones. The QA engineer consults this table — alongside
--- implementation_file_requirement — to determine what has been built and what still needs testing.
+-- Context: Scoped to an iteration. A requirement may appear multiple times across sub-phases;
+-- later rows supersede earlier ones. The QA engineer consults this table to determine what has been
+-- built and what still needs testing.
 CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('implemented', 'partial', 'not_started', 'blocked', 'not_applicable')),
   notes TEXT,
-  UNIQUE(manifest_id, requirement_id)
+  UNIQUE(iteration_id, requirement_id)
 );
 
 -- Domain: implementation
@@ -786,69 +731,11 @@ CREATE TABLE IF NOT EXISTS implementation_requirement_status (
 -- its files and requirements are done.
 CREATE TABLE IF NOT EXISTS implementation_component_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'not_started')),
   notes TEXT,
-  UNIQUE(manifest_id, component_id)
-);
-
--- Domain: implementation
--- Purpose: Records each HTTP API endpoint actually implemented (as opposed to planned) during a
--- sub-phase. Allows comparison against the original plan to confirm delivery.
--- Context: The QA engineer uses this table to know which endpoints exist and which are only
--- stubbed, so integration tests can be scoped correctly. stubbed means the route exists but returns
--- mock data; complete means the full logic is wired up.
-CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  route TEXT NOT NULL,
-  http_method TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('complete', 'stubbed', 'not_started')),
-  UNIQUE(manifest_id, route, http_method)
-);
-
--- Domain: implementation
--- Purpose: Join table linking implemented API endpoints to the requirements they fulfil. Enables
--- traceability from HTTP surface to business requirements.
--- Context: This is the join table and provides per-endpoint traceability.
-CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
-  endpoint_id INTEGER NOT NULL REFERENCES implementation_api_endpoint(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  PRIMARY KEY (endpoint_id, requirement_id)
-);
-
--- Domain: implementation
--- Purpose: Catalogues third-party packages or libraries added to the project during implementation.
--- Feeds into security/license audits and complements the pre-approved approved_dependency
--- architecture table with what was actually used.
--- Context: The senior_developer must record every npm install, pip install, go get, etc. here. This
--- allows the critic and QA to spot unapproved dependencies and confirm all dependencies are
--- licensed correctly.
-CREATE TABLE IF NOT EXISTS implementation_dependency_added (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  version TEXT NOT NULL,
-  purpose TEXT NOT NULL,
-  license TEXT,
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: implementation
--- Purpose: Tracks each database migration script created or applied during implementation. Provides
--- the ops and QA teams with a clear list of schema changes that need to be run before the code can
--- be deployed.
--- Context: Migrations may be created (file written but not yet run), pending (queued for the next
--- deploy), or applied (already executed against the database). This status helps QA and audit
--- agents verify that all schema changes have been properly executed.
-CREATE TABLE IF NOT EXISTS implementation_db_migration (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT,
-  status TEXT NOT NULL CHECK(status IN ('created', 'applied', 'pending')),
-  UNIQUE(manifest_id, name)
+  UNIQUE(iteration_id, component_id)
 );
 
 -- Domain: implementation
@@ -860,7 +747,7 @@ CREATE TABLE IF NOT EXISTS implementation_db_migration (
 -- checks this flag and severity when writing its verdict in revision.feedback.
 CREATE TABLE IF NOT EXISTS implementation_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
   recommendation TEXT,
@@ -875,20 +762,6 @@ CREATE TABLE IF NOT EXISTS implementation_blocker_requirement (
   blocker_id INTEGER NOT NULL REFERENCES implementation_blocker(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (blocker_id, requirement_id)
-);
-
--- Domain: implementation
--- Purpose: Stores the results of the senior_developer's self-review checklist at the end of each
--- sub-phase. Functions as a structured pre-flight check before submitting to the critic.
--- Context: Typical checklist items include: "all tests pass", "no hardcoded secrets", "API
--- contracts match spec", "migrations are reversible". Each item is either passed (1) or not (0).
--- The critic may reject if mandatory items are failed.
-CREATE TABLE IF NOT EXISTS implementation_review_checklist (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
-  check_name TEXT NOT NULL,
-  passed INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(manifest_id, check_name)
 );
 
 -- VCS commits linked to iterations
@@ -1087,21 +960,13 @@ CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
   ON project_lesson(iteration_id);
 
 -- ------------------------------------------------------------
--- manifest_id — child tables of implementation_manifest
+-- iteration_id — implementation status tables
 -- Skipped: implementation_requirement_status, implementation_component_status
---   (manifest_id is leftmost in UNIQUE)
--- Skipped: implementation_dependency_added, implementation_db_migration
---   (manifest_id is leftmost in UNIQUE added for dedup)
+--   (iteration_id is leftmost in UNIQUE)
 -- ------------------------------------------------------------
 
--- Implementation manifest children
-CREATE INDEX IF NOT EXISTS idx_implementation_file_manifest_id
-  ON implementation_file(manifest_id);
--- Skipped: implementation_api_endpoint (manifest_id is leftmost in UNIQUE(manifest_id, route, http_method))
-CREATE INDEX IF NOT EXISTS idx_implementation_blocker_manifest_id
-  ON implementation_blocker(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_review_checklist_manifest_id
-  ON implementation_review_checklist(manifest_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_blocker_iteration_id
+  ON implementation_blocker(iteration_id);
 
 -- ------------------------------------------------------------
 -- work_item_id — child tables of work_item
@@ -1111,8 +976,6 @@ CREATE INDEX IF NOT EXISTS idx_implementation_review_checklist_manifest_id
 
 CREATE INDEX IF NOT EXISTS idx_work_item_risk_work_item_id
   ON work_item_risk(work_item_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_manifest_work_item_id
-  ON implementation_manifest(work_item_id);
 CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_work_item_id
   ON plan_external_dependency(work_item_id);
 
@@ -1126,12 +989,8 @@ CREATE INDEX IF NOT EXISTS idx_requirement_trace_requirement_id
   ON requirement_trace(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_work_item_requirement_requirement_id
   ON work_item_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_file_requirement_requirement_id
-  ON implementation_file_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_requirement_status_requirement_id
   ON implementation_requirement_status(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_impl_api_endpoint_req_requirement_id
-  ON implementation_api_endpoint_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_blocker_requirement_requirement_id
   ON implementation_blocker_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_iteration_id
@@ -1176,8 +1035,9 @@ CREATE INDEX IF NOT EXISTS idx_work_item_iteration_id
 -- Skipped: plan_overview (iteration_id is the UNIQUE key)
 
 -- Implementation domain
-CREATE INDEX IF NOT EXISTS idx_implementation_manifest_iteration_id
-  ON implementation_manifest(iteration_id);
+-- Skipped: implementation_requirement_status, implementation_component_status
+--   (iteration_id is leftmost in UNIQUE)
+-- implementation_blocker iteration_id covered above in status table indexes
 
 -- QA domain
 CREATE INDEX IF NOT EXISTS idx_test_report_iteration_id
@@ -1229,8 +1089,6 @@ CREATE INDEX IF NOT EXISTS idx_persona_addressed_persona_id
 
 CREATE INDEX IF NOT EXISTS idx_work_item_component_component_id
   ON work_item_component(component_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_file_component_id
-  ON implementation_file(component_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
   ON implementation_component_status(component_id);
 

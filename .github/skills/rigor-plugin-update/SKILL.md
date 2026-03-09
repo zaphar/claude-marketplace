@@ -89,15 +89,16 @@ All agents have deep embedded knowledge of the plugin's file structure, cross-re
 2. **Schema critic always uses Opus** — All 4 audit groups must use `model: "claude-opus-4.6"` — no exceptions.
 3. **MCP server critic always uses Opus** — Correctness auditing requires the strongest model — no exceptions.
 4. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
-4. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
-5. **Critics are read-only** — They never modify files.
-6. **Changes always go through the loop** — No direct edits bypass critique.
-7. **Deep audits are standalone** — Critics run against the current state, not a diff.
-8. **Audit findings go through the Findings Review workflow** — See `workflows/findings-review.md`.
-9. **Decompose into smallest logical chunks** — Each producer call handles one atomic change.
-10. **Commit frequently and minimally** — One commit per coherent sub-change. Each independently revertable.
-11. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
-12. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
-13. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
-14. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
-15. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
+5. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
+6. **Critics are read-only** — They never modify files.
+7. **Changes always go through the loop** — No direct edits bypass critique.
+8. **Deep audits are standalone** — Critics run against the current state, not a diff.
+9. **Audit findings go through the Findings Review workflow** — See `workflows/findings-review.md`.
+10. **Decompose into smallest logical chunks** — Each producer call handles one atomic change.
+11. **Pre-decompose by file domain** — When a work-unit spans multiple file domains (schema, JS handlers, docs), split it into sequential sub-tasks before launching the producer. See `workflows/producer-critic-loop.md` for the decomposition strategy and dependency order.
+12. **Commit frequently and minimally** — One commit per coherent sub-change. Each independently revertable.
+13. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
+14. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
+15. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
+16. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
+17. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
