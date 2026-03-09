@@ -23,7 +23,7 @@ Four tables form the backbone — everything else hangs off them:
 Changelog entities follow a two-tier scoping pattern:
 
 - **`revision_id` only (27 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
-- **`iteration_id` only (11 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `system_io`, `blocker`, `project_lesson`, `deployment_requirement`, `operational_requirement`, `technology_constraint`, `plan_external_dependency`, `asset_deliverable`, `vcs_commit`.
+- **`iteration_id` only (9 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `system_io`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `asset_deliverable`, `vcs_commit`.
 
 No table carries both columns.
 
@@ -39,9 +39,7 @@ No table carries both columns.
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
 | `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
 | `system_io` | requirements_analyst | What goes in/out of the system being built. Direction discriminator ('input'/'output') distinguishes the two. |
-| `deployment_requirement` | requirements_analyst | Deployment infrastructure requirements with target context (private-cloud, local-executable, both, other). |
-| `operational_requirement` | requirements_analyst | Operational requirements: uptime/SLA targets, monitoring, logging, observability items (categorised per row). |
-| `technology_constraint` | requirements_analyst | User-imposed tech constraints (e.g., "must use PostgreSQL"). |
+| `nonfunctional_requirement` | requirements_analyst | Non-functional requirements — deployment infrastructure, operational (uptime/SLA, monitoring, logging, observability), and technology constraints — unified with a `type` discriminator. |
 
 **Critic:** requirements_critic
 
@@ -264,7 +262,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 108 tables with links to their detailed design documents.
+All 105 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -293,7 +291,6 @@ All 108 tables with links to their detailed design documents.
 | `deployment_pipeline` | [deployment](tables/deployment.md) |
 | `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
 | `deployment_quality_gate` | [deployment](tables/deployment.md) |
-| `deployment_requirement` | [requirements](tables/requirements.md) |
 | `deployment_review_checklist` | [deployment](tables/deployment.md) |
 | `deployment_runbook` | [deployment](tables/deployment.md) |
 | `deployment_runbook_step` | [deployment](tables/deployment.md) |
@@ -324,7 +321,7 @@ All 108 tables with links to their detailed design documents.
 | `integration_test_boundary` | [architecture](tables/architecture.md) |
 | `intermediate_asset` | [implementation](tables/implementation.md) |
 | `iteration` | [core](tables/core.md) |
-| `operational_requirement` | [requirements](tables/requirements.md) |
+| `nonfunctional_requirement` | [requirements](tables/requirements.md) |
 | `performance_audit_finding` | [audit](tables/audit.md) |
 | `persona` | [requirements](tables/requirements.md) |
 | `persona_addressed` | [ux-design](tables/ux-design.md) |
@@ -356,7 +353,6 @@ All 108 tables with links to their detailed design documents.
 | `security_audit_finding` | [audit](tables/audit.md) |
 | `system_io` | [requirements](tables/requirements.md) |
 | `technology_choice` | [architecture](tables/architecture.md) |
-| `technology_constraint` | [requirements](tables/requirements.md) |
 | `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |
 | `test_blocker` | [qa-test](tables/qa-test.md) |
 | `test_blocker_requirement` | [qa-test](tables/qa-test.md) |
@@ -376,4 +372,4 @@ All 108 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 107 tables across 12 domains**
+**Total: 105 tables across 12 domains**

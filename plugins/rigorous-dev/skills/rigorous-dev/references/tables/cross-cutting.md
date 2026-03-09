@@ -30,7 +30,7 @@ This is intentionally a key/value store rather than a strongly-typed table so th
 
 ### Context
 
-Architecture-domain entries are written by `backend_architect` during the architecture phase. UX-domain entries are written by `ux_designer` during the ux_design phase. Security entries are driven by `technology_constraint` rows with security implications. Deployment entries are driven by `deployment_requirement` rows. Observability entries are driven by `operational_requirement` rows. UX entries are driven by design requirements and accessibility standards.
+Architecture-domain entries are written by `backend_architect` during the architecture phase. UX-domain entries are written by `ux_designer` during the ux_design phase. Security entries are driven by `nonfunctional_requirement` rows with `type = 'technology'` and security implications. Deployment entries are driven by `nonfunctional_requirement` rows with `type = 'deployment'`. Observability entries are driven by `nonfunctional_requirement` rows with `type = 'operational'`. UX entries are driven by design requirements and accessibility standards.
 
 **domain = architecture:**
 
@@ -67,9 +67,9 @@ Architecture-domain entries are written by `backend_architect` during the archit
 
 - **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `requirement_trace` or by reading upstream requirement tables that share the same iteration.
-- Architecture security entries are conceptually downstream of `technology_constraint` rows with security implications.
-- Architecture deployment entries are conceptually downstream of `deployment_requirement`.
-- Architecture observability entries are conceptually downstream of `operational_requirement`.
+- Architecture security entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'technology'` and security implications.
+- Architecture deployment entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'deployment'`.
+- Architecture observability entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'operational'`.
 - UX entries are informally referenced by `screen_responsive_variant.breakpoint` (config_type `responsive`, no enforced FK).
 
 ### MCP Tool Access

@@ -20,9 +20,7 @@ const ENTITY_TABLE = {
   requirement_trace: "requirement_trace",
   project_context: "project_context",
   system_io: "system_io",
-  deployment_requirement: "deployment_requirement",
-  operational_requirement: "operational_requirement",
-  technology_constraint: "technology_constraint",
+  nonfunctional_requirement: "nonfunctional_requirement",
   config: "config",
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
@@ -999,56 +997,21 @@ function querySystemIo(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const DEPLOYMENT_REQUIREMENT_FILTERS = {
-  target: { nullable: true },
-  description: { nullable: false },
-  notes: { nullable: true },
-};
-
-function queryDeploymentRequirement(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM deployment_requirement";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, DEPLOYMENT_REQUIREMENT_FILTERS, "deployment_requirement");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
-const OPERATIONAL_REQUIREMENT_FILTERS = {
+const NONFUNCTIONAL_REQUIREMENT_FILTERS = {
+  type: { nullable: false },
   item: { nullable: false },
-  category: { nullable: false },
+  category: { nullable: true },
+  value: { nullable: true },
   notes: { nullable: true },
 };
 
-function queryOperationalRequirement(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM operational_requirement";
+function queryNonfunctionalRequirement(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM nonfunctional_requirement";
   const clauses = [];
   const params = [];
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, OPERATIONAL_REQUIREMENT_FILTERS, "operational_requirement");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
-const TECHNOLOGY_CONSTRAINT_FILTERS = {
-  constraint_type: { nullable: false },
-  value: { nullable: false },
-};
-
-function queryTechnologyConstraint(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM technology_constraint";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, TECHNOLOGY_CONSTRAINT_FILTERS, "technology_constraint");
+  const f = applyFilters(filters, NONFUNCTIONAL_REQUIREMENT_FILTERS, "nonfunctional_requirement");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -1305,9 +1268,7 @@ const QUERY_DISPATCH = {
   requirement_trace: queryRequirementTrace,
   project_context: queryProjectContext,
   system_io: querySystemIo,
-  deployment_requirement: queryDeploymentRequirement,
-  operational_requirement: queryOperationalRequirement,
-  technology_constraint: queryTechnologyConstraint,
+  nonfunctional_requirement: queryNonfunctionalRequirement,
   config: queryConfig,
   ux_asset: queryUxAsset,
   // (architecture_config merged into config)

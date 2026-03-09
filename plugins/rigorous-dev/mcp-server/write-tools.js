@@ -1048,57 +1048,24 @@ function insertSystemIo(db, iteration_id, _revision_id, data) {
   return { entity_type: "system_io", id: lastId };
 }
 
-function insertDeploymentRequirement(db, iteration_id, _revision_id, data) {
+function insertNonfunctionalRequirement(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO deployment_requirement (iteration_id, target, description, notes) VALUES (@iteration_id, @target, @description, @notes)`
+    `INSERT INTO nonfunctional_requirement (iteration_id, type, item, category, value, notes) VALUES (@iteration_id, @type, @item, @category, @value, @notes)`
   );
   for (const entry of entries) {
     const result = insert.run({
       iteration_id,
-      target: entry.target ?? null,
-      description: entry.description,
-      notes: entry.notes ?? null
-    });
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "deployment_requirement", id: lastId };
-}
-
-function insertOperationalRequirement(db, iteration_id, _revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO operational_requirement (iteration_id, item, category, notes) VALUES (@iteration_id, @item, @category, @notes)`
-  );
-  for (const entry of entries) {
-    const result = insert.run({
-      iteration_id,
+      type: entry.type,
       item: entry.item,
-      category: entry.category,
+      category: entry.category ?? null,
+      value: entry.value ?? null,
       notes: entry.notes ?? null
     });
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "operational_requirement", id: lastId };
-}
-
-function insertTechnologyConstraint(db, iteration_id, _revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO technology_constraint (iteration_id, constraint_type, value) VALUES (@iteration_id, @constraint_type, @value)`
-  );
-  for (const entry of entries) {
-    const result = insert.run({
-      iteration_id,
-      constraint_type: entry.constraint_type,
-      value: entry.value
-    });
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "technology_constraint", id: lastId };
+  return { entity_type: "nonfunctional_requirement", id: lastId };
 }
 
 function insertVcsCommit(db, iteration_id, revision_id, data) {
@@ -1822,9 +1789,7 @@ function changelogInsert(args) {
     implementation_manifest: insertImplementationManifest,
     project_context: insertProjectContext,
     system_io: insertSystemIo,
-    deployment_requirement: insertDeploymentRequirement,
-    operational_requirement: insertOperationalRequirement,
-    technology_constraint: insertTechnologyConstraint,
+    nonfunctional_requirement: insertNonfunctionalRequirement,
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,
     asset_deliverable: insertAssetDeliverable,

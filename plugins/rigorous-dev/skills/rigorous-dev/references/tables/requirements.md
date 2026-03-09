@@ -165,71 +165,39 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ---
 
-## deployment_requirement
+## nonfunctional_requirement
 
-**Purpose:** Each row is a single deployment infrastructure requirement — e.g., a specific container runtime, network isolation rule, storage class, or hardware specification. The `target` column captures the deployment target context (private-cloud, local-executable, both, or other) inline, so if multiple requirements share the same target, the target value is simply repeated. This flattened design avoids unnecessary parent-child indirection while preserving all the information agents need.
+**Purpose:** Unified table for non-functional requirements spanning three categories: deployment infrastructure requirements, operational requirements (uptime/SLA targets, monitoring, logging, observability), and technology constraints (allowed languages, forbidden dependencies, required frameworks). The `type` column discriminates the three kinds. The `category` column captures each kind's secondary classification — deployment target context (e.g. `"private-cloud"`, `"local-executable"`), operational category (e.g. `"uptime"`, `"monitoring"`), or technology constraint type (e.g. `"allowed_language"`, `"forbidden_dependency"`). The `item` column carries the primary descriptive content, `value` provides an optional supplementary value, and `notes` is available for free-text elaboration (unused by technology type).
 
-**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when selecting infrastructure patterns and by the **implementation_planner** when assessing delivery environment constraints.
+**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when selecting infrastructure patterns, designing for reliability, and evaluating technology choices. The **implementation_planner** uses deployment and operational rows to assess delivery environment constraints and flag operational readiness tasks, and enforces technology constraints when accepting or rejecting proposed dependencies. The **requirements_critic** validates all entries.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this deployment requirement belongs to. |
-| `target` | TEXT | — | The deployment target classification (e.g. `"private-cloud"`, `"local-executable"`, `"both"`). NULL is permitted when the target is not yet determined. |
-| `description` | TEXT | NOT NULL | A single infrastructure requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). |
-| `notes` | TEXT | — | Optional free-text notes elaborating on the deployment target choice or constraints. |
-| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
+**Column mapping from legacy tables:**
 
-**Relationships:**
-- Parent: `iteration` (via `iteration_id`)
-- Children: none
-
-**Produced by:** `changelog_insert` with entity_type `"deployment_requirement"`
-**Queried by:** `changelog_query` with entity_type `"deployment_requirement"`
-
----
-
-## operational_requirement
-
-**Purpose:** Each row captures a single operational requirement — an uptime/SLA target, a monitoring item, a logging policy, or an observability item. The `category` column classifies the row into one of four buckets (`uptime`, `monitoring`, `logging`, `observability`), allowing the architecture phase to address each concern with appropriate tooling. Uptime targets (previously stored as a dedicated `uptime_requirement` column) are now just rows with `category = 'uptime'` and the SLA value in `item`.
-
-**Context:** Produced by the **requirements_analyst**. Consumed by the **backend_architect** when designing for reliability (SLOs, redundancy, failover), and by the `config` (domain: "architecture", config_type: "observability") design in the architecture domain. The **implementation_planner** uses this to flag operational readiness tasks.
+| Legacy table | Legacy column | Unified column |
+|---|---|---|
+| `deployment_requirement` | `description` | `item` |
+| `deployment_requirement` | `target` | `category` |
+| `deployment_requirement` | `notes` | `notes` |
+| `operational_requirement` | `item` | `item` |
+| `operational_requirement` | `category` | `category` |
+| `operational_requirement` | `notes` | `notes` |
+| `technology_constraint` | `value` | `item` |
+| `technology_constraint` | `constraint_type` | `category` |
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this operational requirement belongs to. |
-| `item` | TEXT | NOT NULL | Description of the operational item (e.g. `"99.9% uptime"`, `"Track p99 API response latency"`, `"Retain application logs for 90 days"`). |
-| `category` | TEXT | NOT NULL, CHECK IN (`'uptime'`, `'monitoring'`, `'logging'`, `'observability'`) | Classifies the item to route it to the appropriate design decisions during architecture. |
-| `notes` | TEXT | — | Optional free-text notes providing additional context for the requirement. |
+| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this NFR belongs to. |
+| `type` | TEXT | NOT NULL, CHECK IN (`'deployment'`, `'operational'`, `'technology'`) | Discriminator: `deployment` for infrastructure requirements, `operational` for uptime/monitoring/logging/observability, `technology` for hard constraints on tech choices. |
+| `item` | TEXT | NOT NULL | Primary descriptive content. For deployment: the requirement statement (e.g. `"Must run on Kubernetes 1.28+"`). For operational: the item description (e.g. `"99.9% uptime"`, `"Track p99 API response latency"`). For technology: the constraint value (e.g. `"Python"`, `"Django"`). |
+| `category` | TEXT | — | Secondary classification. For deployment: target context (`"private-cloud"`, `"local-executable"`, `"both"`). For operational: item category (`"uptime"`, `"monitoring"`, `"logging"`, `"observability"`). For technology: constraint type (`"allowed_language"`, `"forbidden_dependency"`, `"required_framework"`). NULL when not yet determined. |
+| `value` | TEXT | — | Optional supplementary value (currently unused; reserved for future extension). |
+| `notes` | TEXT | — | Optional free-text notes. Used by deployment and operational types; unused by technology type. |
 | `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
 - Parent: `iteration` (via `iteration_id`)
-- Children: none
+- Children: none — but `approved_dependency` in the architecture domain must be consistent with technology-type rows.
 
-**Produced by:** `changelog_insert` with entity_type `"operational_requirement"`
-**Queried by:** `changelog_query` with entity_type `"operational_requirement"`
-
----
-
-## technology_constraint
-
-**Purpose:** Records hard constraints on technology choices: languages that are allowed, dependencies that are forbidden, and frameworks that are required. These constraints are non-negotiable inputs to the architecture phase — the **backend_architect** must not propose a technology that violates them, and the **approved_dependency** table in the architecture domain must respect them.
-
-**Context:** Produced by the **requirements_analyst**, often reflecting organisational policy, security rules, or licensing restrictions. Validated by the **requirements_critic**. Consumed directly by the **backend_architect** when evaluating technology choices, and enforced by the **implementation_planner** when accepting or rejecting proposed dependencies.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this constraint belongs to. |
-| `constraint_type` | TEXT | NOT NULL, CHECK IN (`'allowed_language'`, `'forbidden_dependency'`, `'required_framework'`) | The type of constraint. `allowed_language` whitelists a language; `forbidden_dependency` blacklists a package or library; `required_framework` mandates use of a specific framework. |
-| `value` | TEXT | NOT NULL | The constraint value (e.g. `"Python"`, `"log4j"`, `"Django"`). |
-| `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO-8601 timestamp of row creation. |
-
-**Relationships:**
-- Parent: `iteration` (via `iteration_id`)
-- Children: none — but `approved_dependency` in the architecture domain must be consistent with these rows.
-
-**Produced by:** `changelog_insert` with entity_type `"technology_constraint"`
-**Queried by:** `changelog_query` with entity_type `"technology_constraint"`
+**Produced by:** `changelog_insert` with entity_type `"nonfunctional_requirement"`
+**Queried by:** `changelog_query` with entity_type `"nonfunctional_requirement"` — filter by `type` to select a specific kind (e.g. `filters: { type: "technology" }`)

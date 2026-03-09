@@ -44,7 +44,7 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 86 | Everything else (85 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 84 | Everything else (83 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
 | Composite `PRIMARY KEY` | 15 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `snapshotIfExists` and the upsert write pattern only apply to these types.
@@ -67,7 +67,7 @@ Most tables use plain `INSERT` — they accumulate records rather than updating 
 
 ### d. Batch-Capable Inserters
 
-Nine insert functions accept arrays via the `Array.isArray(data) ? data : [data]` pattern: `insertConfig`, `insertApprovedDependency`, `insertProjectContext`, `insertSystemIo`, `insertDeploymentRequirement`, `insertOperationalRequirement`, `insertTechnologyConstraint`, `insertInfoArchitecture`, `insertUxAsset`. Each iterates and inserts every entry using a shared prepared statement.
+Seven insert functions accept arrays via the `Array.isArray(data) ? data : [data]` pattern: `insertConfig`, `insertApprovedDependency`, `insertProjectContext`, `insertSystemIo`, `insertNonfunctionalRequirement`, `insertInfoArchitecture`, `insertUxAsset`. Each iterates and inserts every entry using a shared prepared statement.
 
 ### Transaction usage
 
@@ -79,7 +79,7 @@ Nine insert functions accept arrays via the `Array.isArray(data) ? data : [data]
 
 ### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-`changelogQuery` dispatches to one of 35 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
+`changelogQuery` dispatches to one of 33 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
 **Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to `{ nullable }` metadata. The spec key itself doubles as the SQL column name used in WHERE clauses. When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
@@ -122,7 +122,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-106 indexes with a clear rationale (documented in `schema.sql` comments):
+104 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."

@@ -130,35 +130,19 @@ CREATE TABLE IF NOT EXISTS system_io (
   UNIQUE(iteration_id, direction, name)
 );
 
--- Deployment requirements (per iteration)
--- Each row is a single infrastructure/deployment requirement with its target context inline.
-CREATE TABLE IF NOT EXISTS deployment_requirement (
+-- Non-functional requirements (per iteration)
+-- Unified table for deployment, operational, and technology requirements.
+-- The `type` column discriminates the three kinds; `category` captures
+-- each kind's secondary classification (deployment target, operational
+-- category, or technology constraint type).
+CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  target TEXT,
-  description TEXT NOT NULL,
-  notes TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Operational requirements (per iteration)
--- Uptime is stored as category='uptime' with the SLA value in `item`.
--- Monitoring/logging/observability items use their respective categories.
-CREATE TABLE IF NOT EXISTS operational_requirement (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK(type IN ('deployment', 'operational', 'technology')),
   item TEXT NOT NULL,
-  category TEXT NOT NULL,
+  category TEXT,
+  value TEXT,
   notes TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Technology constraints
-CREATE TABLE IF NOT EXISTS technology_constraint (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  constraint_type TEXT NOT NULL,
-  value TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -1163,12 +1147,8 @@ CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
 
 -- Requirements domain
 -- Skipped: system_io (iteration_id is leftmost in UNIQUE(iteration_id, direction, name))
-CREATE INDEX IF NOT EXISTS idx_deployment_requirement_iteration_id
-  ON deployment_requirement(iteration_id);
-CREATE INDEX IF NOT EXISTS idx_operational_requirement_iteration_id
-  ON operational_requirement(iteration_id);
-CREATE INDEX IF NOT EXISTS idx_technology_constraint_iteration_id
-  ON technology_constraint(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_nonfunctional_requirement_iteration_id
+  ON nonfunctional_requirement(iteration_id);
 
 
 -- Planning domain

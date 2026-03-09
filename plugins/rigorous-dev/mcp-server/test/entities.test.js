@@ -268,19 +268,21 @@ describe("system_io", () => {
   });
 });
 
-describe("deployment_requirement", () => {
+describe("nonfunctional_requirement (deployment)", () => {
   it("inserts deployment requirement", () => {
-    const { readResult } = insertAndQuery("deployment_requirement", {
-      description: "Node 18+ required",
-      target: "production",
+    const { readResult } = insertAndQuery("nonfunctional_requirement", {
+      type: "deployment",
+      item: "Node 18+ required",
+      category: "production",
     });
-    assert.strictEqual(readResult.results[0].description, "Node 18+ required");
+    assert.strictEqual(readResult.results[0].item, "Node 18+ required");
   });
 });
 
-describe("operational_requirement", () => {
+describe("nonfunctional_requirement (operational)", () => {
   it("inserts operational requirement", () => {
-    const { readResult } = insertAndQuery("operational_requirement", {
+    const { readResult } = insertAndQuery("nonfunctional_requirement", {
+      type: "operational",
       item: "Log rotation",
       category: "logging",
     });
@@ -288,10 +290,11 @@ describe("operational_requirement", () => {
   });
 });
 
-describe("technology_constraint", () => {
+describe("nonfunctional_requirement (technology)", () => {
   it("inserts technology constraint", () => {
-    const { readResult } = insertAndQuery("technology_constraint", {
-      constraint_type: "min_node_version",
+    const { readResult } = insertAndQuery("nonfunctional_requirement", {
+      type: "technology",
+      item: "min_node_version",
       value: "18",
     });
     assert.strictEqual(readResult.results[0].value, "18");
