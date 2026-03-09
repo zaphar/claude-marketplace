@@ -44,7 +44,7 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 41 | Everything else (40 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 39 | Everything else (38 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
 | Composite `PRIMARY KEY` | 12 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `existsForUpsert` and the upsert write pattern only apply to these types.
@@ -67,7 +67,7 @@ Most tables use plain `INSERT` — they accumulate records rather than updating 
 
 ### d. Batch-Capable Inserters
 
-Six insert functions accept arrays via the `Array.isArray(data) ? data : [data]` pattern: `insertApprovedDependency`, `insertProjectContext`, `insertSystemIo`, `insertNonfunctionalRequirement`, `insertInfoArchitecture`, `insertUxAsset`. Each iterates and inserts every entry using a shared prepared statement.
+Six insert functions accept arrays via the `Array.isArray(data) ? data : [data]` pattern: `insertApprovedDependency`, `insertProjectContext`, `insertDataExchange`, `insertNonfunctionalRequirement`, `insertInfoArchitecture`, `insertUxAsset`. Each iterates and inserts every entry using a shared prepared statement.
 
 ### Transaction usage
 
@@ -93,7 +93,7 @@ Given a starting entity (one of 6 target types: `component`, `technology`, `requ
 
 ## 6. JSON Columns
 
-Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `data_dependencies`, `components`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `tables`, `assumptions`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
+Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `data_dependencies`, `branches`, `components`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `tables`, `assumptions`, `risks`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
 
 **Trade-off:** These columns cannot be indexed or filtered with SQL WHERE clauses. If you ever need to query inside these values, they would need to be normalized into their own tables.
 
@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~78 child foreign keys.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~76 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -111,7 +111,6 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 | `approved_dependency.adr_id` | `adr(id)` | Dependency record survives ADR deletion |
 | `user_flow.persona_id` | `persona(id)` | Flow definition survives persona deletion |
 | `ux_asset.screen_id` | `screen(id)` | Asset survives screen deletion |
-| `plan_overview_risk.plan_phase_id` | `plan_phase(id)` | Risk survives plan phase deletion |
 | `plan_external_dependency.plan_phase_id` | `plan_phase(id)` | External dependency survives plan phase deletion |
 | `implementation_file.component_id` | `component(id)` | File record survives component deletion |
 | `vcs_commit.phase_id` | `phase(id)` | Commit record survives phase deletion |
@@ -121,7 +120,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-65 indexes with a clear rationale (documented in `schema.sql` comments):
+62 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."

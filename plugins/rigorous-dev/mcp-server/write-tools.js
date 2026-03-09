@@ -511,23 +511,18 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   }
 
   const insertStep = db.prepare(
-    `INSERT INTO user_flow_step (flow_id, step_number, action, surface, is_decision_point)
-     VALUES (@flow_id, @step_number, @action, @surface, @is_decision_point)`
-  );
-  const insertBranch = db.prepare(
-    "INSERT INTO user_flow_step_branch (step_id, condition, next_step) VALUES (@step_id, @condition, @next_step)"
+    `INSERT INTO user_flow_step (flow_id, step_number, action, surface, is_decision_point, branches)
+     VALUES (@flow_id, @step_number, @action, @surface, @is_decision_point, @branches)`
   );
   for (const step of data.steps ?? []) {
-    const stepResult = insertStep.run({
+    insertStep.run({
       flow_id: data.id,
       step_number: step.step_number,
       action: step.action,
       surface: step.surface ?? null,
-      is_decision_point: step.is_decision_point ? 1 : 0
+      is_decision_point: step.is_decision_point ? 1 : 0,
+      branches: step.branches?.length ? JSON.stringify(step.branches) : null
     });
-    for (const branch of step.branches ?? []) {
-      insertBranch.run({ step_id: stepResult.lastInsertRowid, condition: branch.condition, next_step: branch.next_step });
-    }
   }
 
   const insertError = db.prepare(
@@ -677,8 +672,8 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_overview (revision_id, strategy, rationale, phase_one_approach, assumptions, created_at)
-       VALUES (@revision_id, @strategy, @rationale, @phase_one_approach, @assumptions, @created_at)`
+      `INSERT INTO plan_overview (revision_id, strategy, rationale, phase_one_approach, assumptions, risks, created_at)
+       VALUES (@revision_id, @strategy, @rationale, @phase_one_approach, @assumptions, @risks, @created_at)`
     )
     .run({
       revision_id,
@@ -686,16 +681,10 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
       rationale: data.rationale,
       phase_one_approach: data.phase_one_approach ?? null,
       assumptions: JSON.stringify(data.assumptions ?? []),
+      risks: data.risks?.length ? JSON.stringify(data.risks) : null,
       created_at: now
     });
   const plan_overview_id = result.lastInsertRowid;
-
-  const insertRisk = db.prepare(
-    "INSERT INTO plan_overview_risk (plan_overview_id, risk, mitigation, plan_phase_id) VALUES (@plan_overview_id, @risk, @mitigation, @plan_phase_id)"
-  );
-  for (const risk of data.risks ?? []) {
-    insertRisk.run({ plan_overview_id, risk: risk.risk, mitigation: risk.mitigation ?? null, plan_phase_id: risk.plan_phase_id ?? null });
-  }
 
   return { entity_type: "plan_overview", id: plan_overview_id };
 }
@@ -857,11 +846,11 @@ function insertProjectContext(db, iteration_id, _revision_id, data) {
   return { entity_type: "project_context", id: lastId };
 }
 
-function insertSystemIo(db, iteration_id, _revision_id, data) {
+function insertDataExchange(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO system_io (iteration_id, direction, name, description, source, destination, data_format) VALUES (@iteration_id, @direction, @name, @description, @source, @destination, @data_format)`
+    `INSERT INTO data_exchange (iteration_id, direction, name, description, source, destination, data_format) VALUES (@iteration_id, @direction, @name, @description, @source, @destination, @data_format)`
   );
   for (const entry of entries) {
     const result = insert.run({
@@ -875,7 +864,7 @@ function insertSystemIo(db, iteration_id, _revision_id, data) {
     });
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "system_io", id: lastId };
+  return { entity_type: "data_exchange", id: lastId };
 }
 
 function insertNonfunctionalRequirement(db, iteration_id, _revision_id, data) {
@@ -1143,7 +1132,7 @@ function changelogInsert(args) {
     plan_external_dependency: insertPlanExternalDependency,
     implementation_manifest: insertImplementationManifest,
     project_context: insertProjectContext,
-    system_io: insertSystemIo,
+    data_exchange: insertDataExchange,
     nonfunctional_requirement: insertNonfunctionalRequirement,
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,

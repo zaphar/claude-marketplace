@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS phase (
   UNIQUE(iteration_id, name)
 );
 
--- Revisions: producer-critic loops within a phase
+-- Each row = one producer-critic loop attempt within a phase
 -- Domain: core
 -- Purpose: A single producer-critic loop attempt within a phase. When a producer agent generates
 -- output for a phase, a revision row is created. The critic agent then reviews it and records a
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS project_context (
 -- data entities, integration boundaries, and output interfaces, and by the implementation_planner
 -- when identifying external dependencies that affect delivery sequencing. The ux_designer also
 -- reads output rows to understand what information must be surfaced in screens and flows.
-CREATE TABLE IF NOT EXISTS system_io (
+CREATE TABLE IF NOT EXISTS data_exchange (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   direction TEXT NOT NULL CHECK(direction IN ('input', 'output')),
@@ -445,11 +445,11 @@ CREATE TABLE IF NOT EXISTS user_flow (
 -- Domain: ux-design
 -- Purpose: A single discrete action within a user flow. Steps are ordered by step_number and each
 -- names the interaction surface on which the action occurs — a screen for UI apps, an endpoint for
--- APIs, a CLI command, or NULL when not applicable. Decision-point steps can have conditional
--- branches.
+-- APIs, a CLI command, or NULL when not applicable. Decision-point steps carry their conditional
+-- branches inline as a JSON array.
 -- Context: The ux_designer inserts steps as part of the parent user_flow insert (they are not
 -- inserted separately). The backend_architect uses step-to-surface mappings to validate API
--- coverage. Steps with is_decision_point = 1 must have at least one user_flow_step_branch row.
+-- coverage. Steps with is_decision_point = 1 should have a non-NULL branches JSON array.
 CREATE TABLE IF NOT EXISTS user_flow_step (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
@@ -457,23 +457,11 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
   action TEXT NOT NULL,
   surface TEXT, -- soft FK → screen.name (no constraint: references name, not id; screens may not exist yet when flows are defined)
   is_decision_point INTEGER NOT NULL DEFAULT 0,
+  branches JSON, -- [{condition, next_step}] — NULL for non-decision steps, populated when is_decision_point = 1
   UNIQUE(flow_id, step_number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_surface ON user_flow_step(surface);
-
--- Domain: ux-design
--- Purpose: A conditional branch at a decision-point step. Captures the condition that triggers the
--- branch and which step number it leads to (can be a forward or backward jump).
--- Context: Used to model decision trees, retry loops, and alternate paths within a flow. The
--- ux_critic checks that every decision-point step has at least one branch, and that next_step
--- values refer to valid step_number values within the same flow.
-CREATE TABLE IF NOT EXISTS user_flow_step_branch (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  step_id INTEGER NOT NULL REFERENCES user_flow_step(id) ON DELETE CASCADE,
-  condition TEXT NOT NULL,
-  next_step INTEGER NOT NULL
-);
 
 -- Domain: ux-design
 -- Purpose: An error condition that can occur during the flow and the recovery path the user must
@@ -731,7 +719,7 @@ CREATE TABLE IF NOT EXISTS plan_phase_relationship (
 -- Purpose: Records risks specific to a single phase — technical unknowns, integration hazards, or
 -- schedule threats — along with their mitigations.
 -- Context: One-to-many child of plan_phase. A phase may have zero or more risks. Distinct from
--- plan_overview_risk, which records plan-wide risks. These are phase-scoped. implementation_planner
+-- plan_overview.risks (JSON column), which records plan-wide risks. These are phase-scoped. implementation_planner
 -- documents risks when a phase touches unfamiliar technology, has a tight time window, or depends
 -- on external teams. senior_developer reviews these before starting the phase to pre-empt blockers.
 -- implementation_plan_critic checks that every risk has a concrete mitigation (not just "be
@@ -751,8 +739,8 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
 -- Context: Created once per planning revision by implementation_planner, alongside all plan_phase
 -- rows. implementation_plan_critic uses this to evaluate whether the strategy is coherent and
 -- whether the rationale justifies the phase count. senior_developer reads this first to understand
--- the big picture before drilling into individual phases. Child table plan_overview_risk hangs off
--- this row. Assumptions are stored inline as a JSON array.
+-- the big picture before drilling into individual phases. Assumptions and plan-wide risks are
+-- stored inline as JSON arrays.
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -760,25 +748,9 @@ CREATE TABLE IF NOT EXISTS plan_overview (
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
   assumptions JSON NOT NULL DEFAULT '[]',
+  risks JSON, -- [{risk, mitigation, work_item_number}] — plan-wide strategic risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(revision_id)
-);
-
--- Domain: planning
--- Purpose: Records plan-wide risks that apply across multiple phases or to the overall delivery,
--- along with mitigations. These are strategic risks rather than the phase-specific tactical risks
--- stored in plan_phase_risk.
--- Context: One-to-many child of plan_overview. A plan typically has 2–5 overview risks. Examples:
--- "Architecture depends on unproven library X", "Team lacks experience with streaming databases",
--- "Regulatory approval may delay Phase 3". The optional plan_phase_number field indicates if the
--- risk materialises at a specific phase (for scheduling mitigation work).
--- implementation_plan_critic verifies that mitigations are actionable and not generic.
-CREATE TABLE IF NOT EXISTS plan_overview_risk (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id) ON DELETE CASCADE,
-  risk TEXT NOT NULL,
-  mitigation TEXT,
-  plan_phase_id INTEGER REFERENCES plan_phase(id) ON DELETE SET NULL
 );
 
 -- Implementation plan: external dependencies
@@ -1169,7 +1141,7 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 -- ------------------------------------------------------------
 
 -- Requirements domain
--- Skipped: system_io (iteration_id is leftmost in UNIQUE(iteration_id, direction, name))
+-- Skipped: data_exchange (iteration_id is leftmost in UNIQUE(iteration_id, direction, name))
 CREATE INDEX IF NOT EXISTS idx_nonfunctional_requirement_iteration_id
   ON nonfunctional_requirement(iteration_id);
 
@@ -1214,17 +1186,8 @@ CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
   ON plan_phase_risk(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
   ON implementation_manifest(plan_phase_id);
-CREATE INDEX IF NOT EXISTS idx_plan_overview_risk_plan_phase_id
-  ON plan_overview_risk(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_plan_phase_id
   ON plan_external_dependency(plan_phase_id);
-
--- ------------------------------------------------------------
--- plan_overview_id — child tables of plan_overview
--- ------------------------------------------------------------
-
-CREATE INDEX IF NOT EXISTS idx_plan_overview_risk_plan_overview_id
-  ON plan_overview_risk(plan_overview_id);
 
 -- ------------------------------------------------------------
 -- requirement_id — junction and mapping tables
@@ -1402,10 +1365,6 @@ CREATE INDEX IF NOT EXISTS idx_info_architecture_parent_id
 -- persona_addressed_flow.persona_addressed_id → persona_addressed(id)
 -- Skipped: persona_addressed_flow
 --   (persona_addressed_id is leftmost in PK(persona_addressed_id, flow_id))
-
--- user_flow_step_branch.step_id → user_flow_step(id)
-CREATE INDEX IF NOT EXISTS idx_user_flow_step_branch_step_id
-  ON user_flow_step_branch(step_id);
 
 -- plan_phase_relationship.related_phase_id → plan_phase(id)
 CREATE INDEX IF NOT EXISTS idx_plan_phase_relationship_related_phase_id

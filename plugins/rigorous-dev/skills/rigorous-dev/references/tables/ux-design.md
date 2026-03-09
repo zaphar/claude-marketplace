@@ -16,7 +16,7 @@ The UX design domain is organised into five sub-areas:
 
 | Sub-area | Tables |
 |---|---|
-| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state` |
+| **User Flows** | `user_flow`, `user_flow_step`, `user_flow_error_state` |
 | **Screens** | `screen` |
 | **UX Configuration** | `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
@@ -65,9 +65,9 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 
 ### `user_flow_step`
 
-**Purpose:** A single discrete action within a user flow. Steps are ordered by `step_number` and each names the interaction surface on which the action occurs — a screen for UI apps, an endpoint for APIs, a CLI command, or NULL when not applicable. Decision-point steps can have conditional branches.
+**Purpose:** A single discrete action within a user flow. Steps are ordered by `step_number` and each names the interaction surface on which the action occurs — a screen for UI apps, an endpoint for APIs, a CLI command, or NULL when not applicable. Decision-point steps carry their conditional branches inline as a JSON array.
 
-**Context:** The `ux_designer` inserts steps as part of the parent `user_flow` insert (they are not inserted separately). The `backend_architect` uses step-to-surface mappings to validate API coverage. Steps with `is_decision_point = 1` must have at least one `user_flow_step_branch` row.
+**Context:** The `ux_designer` inserts steps as part of the parent `user_flow` insert (they are not inserted separately). The `backend_architect` uses step-to-surface mappings to validate API coverage. Steps with `is_decision_point = 1` should have a non-NULL `branches` JSON array.
 
 **Columns:**
 
@@ -79,10 +79,11 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | `action` | TEXT | NOT NULL | — | What the user does, e.g. "Submits login form". |
 | `surface` | TEXT | — | NULL | Interaction surface where this action occurs. For UI apps, a screen name (matches `screen.name`). For APIs, an endpoint. For CLIs, a command. NULL when not applicable. |
 | `is_decision_point` | INTEGER | — | `0` | `1` if this step branches; `0` otherwise. SQLite boolean. |
+| `branches` | JSON | — | NULL | Conditional branches at this step. Format: `[{"condition": "valid credentials", "next_step": 3}, {"condition": "invalid", "next_step": 5}]`. NULL for non-decision steps, populated when `is_decision_point = 1`. |
 
 **Relationships:**
 - Belongs to `user_flow`
-- Has many `user_flow_step_branch` (conditional paths when `is_decision_point = 1`)
+- **JSON array:** `branches` (inline on this table)
 
 **Indexes:**
 
@@ -91,32 +92,8 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | `idx_user_flow_step_surface` | `(surface)` | Supports soft-FK lookups joining `user_flow_step.surface` to `screen.name`. |
 
 **MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `user_flow`. Not directly addressable.
-- **Read:** Returned as the `steps` array when querying `user_flow` with `include_related: true`.
-
----
-
-### `user_flow_step_branch`
-
-**Purpose:** A conditional branch at a decision-point step. Captures the condition that triggers the branch and which step number it leads to (can be a forward or backward jump).
-
-**Context:** Used to model decision trees, retry loops, and alternate paths within a flow. The `ux_critic` checks that every decision-point step has at least one branch, and that `next_step` values refer to valid `step_number` values within the same flow.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `step_id` | INTEGER | NOT NULL, FK → `user_flow_step(id)` | — | The decision-point step this branch belongs to. |
-| `condition` | TEXT | NOT NULL | — | Human-readable condition, e.g. "If email already exists". |
-| `next_step` | INTEGER | NOT NULL | — | `step_number` to jump to when condition is met. |
-
-**Relationships:**
-- Belongs to `user_flow_step`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `user_flow` when a step includes a `branches` array.
-- **Read:** Returned nested inside each step's `branches` array when querying `user_flow` with `include_related: true`.
+- **Write:** Inserted automatically as part of `changelog_insert` for `user_flow`. Not directly addressable. Pass `branches` array on each step with `is_decision_point: true`.
+- **Read:** Returned as the `steps` array when querying `user_flow` with `include_related: true`. Each step's `branches` is parsed from JSON.
 
 ---
 
@@ -281,8 +258,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | Table | `changelog_insert` | `changelog_query` | Notes |
 |---|---|---|---|
 | `user_flow` | ✅ `entity_type: "user_flow"` | ✅ `entity_type: "user_flow"` | `include_related: true` expands steps, branches, error states, requirements; `data_dependencies` is a JSON column |
-| `user_flow_step` | via `user_flow` | via `user_flow` | Not directly addressable |
-| `user_flow_step_branch` | via `user_flow` | via `user_flow` | Not directly addressable |
+| `user_flow_step` | via `user_flow` | via `user_flow` | Not directly addressable; `branches` is a JSON column |
 | `user_flow_error_state` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `screen` | ✅ `entity_type: "screen"` | ✅ `entity_type: "screen"` | `include_related: true` expands states, responsive variants; `components` is a JSON column |
 | `info_architecture` | ✅ `entity_type: "info_architecture"` | ✅ `entity_type: "info_architecture"` | `include_related: true` attaches direct `children`; supports `parent_id` for tree nesting |

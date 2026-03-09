@@ -365,7 +365,7 @@ describe("queryPlanOverview enrichment", () => {
     assert.strictEqual(overview.risks[0].mitigation, "strict backlog");
     assert.strictEqual(overview.risks[0].plan_phase_id, 1);
     assert.strictEqual(overview.risks[1].risk, "tech debt");
-    assert.strictEqual(overview.risks[1].plan_phase_id, null);
+    assert.strictEqual(overview.risks[1].plan_phase_id, undefined);
   });
 
   it("does not attach total_phases or risks when include_related is false", () => {
@@ -385,7 +385,11 @@ describe("queryPlanOverview enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].total_phases, undefined);
-    assert.strictEqual(r.results[0].risks, undefined);
+    // risks is now a JSON column — returned as raw JSON string when not enriched
+    assert.strictEqual(typeof r.results[0].risks, "string");
+    const parsedRisks = JSON.parse(r.results[0].risks);
+    assert.strictEqual(parsedRisks.length, 1);
+    assert.strictEqual(parsedRisks[0].risk, "failure");
     // assumptions should be raw JSON string
     assert.strictEqual(typeof r.results[0].assumptions, "string");
   });

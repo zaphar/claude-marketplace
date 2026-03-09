@@ -204,9 +204,9 @@ describe("project_context", () => {
   });
 });
 
-describe("system_io", () => {
+describe("data_exchange", () => {
   it("inserts I/O entries", () => {
-    const { readResult } = insertAndQuery("system_io", {
+    const { readResult } = insertAndQuery("data_exchange", {
       direction: "input",
       name: "HTTP Request",
       description: "Incoming API call",

@@ -28,7 +28,6 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_phase_relationship`](#plan_phase_relationship) | Phase ordering and parallelism (merged dependency + parallel) |
 | [`plan_phase_risk`](#plan_phase_risk) | Phase-level risks and mitigations |
 | [`plan_overview`](#plan_overview) | High-level strategy and rationale for a plan |
-| [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
 
 ---
@@ -346,7 +345,7 @@ Records risks specific to a single phase — technical unknowns, integration haz
 ### Context
 
 - One-to-many child of `plan_phase`. A phase may have zero or more risks.
-- Distinct from `plan_overview_risk`, which records plan-wide risks. These are phase-scoped.
+- Distinct from `plan_overview.risks` (JSON column), which records plan-wide risks. These are phase-scoped.
 - `implementation_planner` documents risks when a phase touches unfamiliar technology, has a tight time window, or depends on external teams.
 - `senior_developer` reviews these before starting the phase to pre-empt blockers.
 - `implementation_plan_critic` checks that every risk has a concrete mitigation (not just "be careful").
@@ -384,68 +383,32 @@ One row per planning revision: the high-level summary of the entire implementati
 - Created once per planning revision by `implementation_planner`, alongside all `plan_phase` rows.
 - `implementation_plan_critic` uses this to evaluate whether the strategy is coherent and whether the rationale justifies the phase count.
 - `senior_developer` reads this first to understand the big picture before drilling into individual phases.
-- Child table `plan_overview_risk` hangs off this row. Assumptions are stored inline as a JSON array.
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by child tables as `plan_overview_id`. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan. |
-| `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
-| `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
-| `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
-| `assumptions` | TEXT | NOT NULL | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
-
-### Relationships
-
-- **Parent:** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-- **Children:** `plan_overview_risk`
-- **JSON array:** `assumptions` (inline on this table)
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "plan_overview"` — also inserts child risk and assumption rows |
-| Query | `changelog_query` | `entity_type: "plan_overview"` — returns overview with risks and assumptions hydrated |
-
----
-
-## `plan_overview_risk`
-
-### Purpose
-
-Records plan-wide risks that apply across multiple phases or to the overall delivery, along with mitigations. These are strategic risks rather than the phase-specific tactical risks stored in `plan_phase_risk`.
-
-### Context
-
-- One-to-many child of `plan_overview`. A plan typically has 2–5 overview risks.
-- Examples: "Architecture depends on unproven library X", "Team lacks experience with streaming databases", "Regulatory approval may delay Phase 3".
-- The optional `plan_phase_number` field indicates if the risk materialises at a specific phase (for scheduling mitigation work).
-- `implementation_plan_critic` verifies that mitigations are actionable and not generic.
+- Assumptions and plan-wide risks are stored inline as JSON arrays.
 
 ### Columns
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `plan_overview_id` | INTEGER | NOT NULL, FK → `plan_overview(id)` | — | The plan overview this risk belongs to. |
-| `risk` | TEXT | NOT NULL | — | Description of the risk. |
-| `mitigation` | TEXT | nullable | — | How this risk will be managed or reduced. |
-| `plan_phase_number` | INTEGER | nullable | — | The `phase_number` at which this risk is most acute or must be mitigated, if applicable. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan. |
+| `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
+| `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
+| `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
+| `assumptions` | TEXT | NOT NULL | `'[]'` | JSON array of assumption strings the plan relies on (e.g., `"The third-party payment API supports webhook retries"`). Replaces the former `plan_overview_assumption` child table. |
+| `risks` | JSON | nullable | NULL | JSON array of plan-wide risks: `[{"risk": "...", "mitigation": "...", "work_item_number": 3}]`. NULL when no plan-wide risks exist. |
+| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 ### Relationships
 
-- **Parent:** `plan_overview` via `plan_overview_id`
+- **Parent:** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **JSON arrays:** `assumptions`, `risks` (inline on this table)
 
 ### MCP tool access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Pass `risks: [{risk, mitigation, plan_phase_number}]` in the `plan_overview` payload |
-| Query | `changelog_query` | Retrieved as the `risks` array when querying a `plan_overview` |
+| Insert | `changelog_insert` | `entity_type: "plan_overview"` — pass `risks` and `assumptions` arrays in the data payload |
+| Query | `changelog_query` | `entity_type: "plan_overview"` — returns overview with risks and assumptions hydrated from JSON |
 
 ---
 
@@ -500,7 +463,7 @@ Records external systems, services, or teams that the implementation plan depend
 iteration ──────────────────────────────────────────────────────────┐
 │                                                                    │
 ├─ plan_overview (1:N per revision)                                 │
-│   ├─ plan_overview_risk (1:N)                                     │
+│   ├─ risks (JSON array, inline)                                   │
 │   └─ assumptions (JSON array, inline)                             │
 │                                                                    │
 ├─ plan_phase (1:N, phase_number sequential within iteration)       │

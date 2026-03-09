@@ -23,7 +23,7 @@ Four tables form the backbone — everything else hangs off them:
 Changelog entities follow a two-tier scoping pattern:
 
 - **`revision_id` only (18 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
-- **`iteration_id` only (8 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `system_io`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`.
+- **`iteration_id` only (8 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`.
 
 No table carries both columns.
 
@@ -38,7 +38,7 @@ No table carries both columns.
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
 | `project_context` | requirements_analyst | Project-level problem statement, success criteria, scope type (MVP/full). |
-| `system_io` | requirements_analyst | What goes in/out of the system being built. Direction discriminator ('input'/'output') distinguishes the two. |
+| `data_exchange` | requirements_analyst | What goes in/out of the system being built. Direction discriminator ('input'/'output') distinguishes the two. |
 | `nonfunctional_requirement` | requirements_analyst | Non-functional requirements — deployment infrastructure, operational (uptime/SLA, monitoring, logging, observability), and technology constraints — unified with a `type` discriminator. |
 
 **Critic:** requirements_critic
@@ -79,7 +79,6 @@ No table carries both columns.
 |-------|----------|---------|
 | `user_flow` | ux_designer | User journeys (id: `FLOW-XXX`). Trigger, preconditions, success criteria. Data dependencies stored as JSON array (`data_dependencies` column). |
 | `user_flow_step` | ux_designer | Steps within each flow. |
-| `user_flow_step_branch` | ux_designer | Conditional branches at each step. |
 | `user_flow_error_state` | ux_designer | Error states per flow. |
 | `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. UI components stored as JSON array (`components` column). |
 | `info_architecture` | ux_designer | Navigation structure, sitemap. |
@@ -100,8 +99,7 @@ No table carries both columns.
 | `plan_phase_db_change` | implementation_planner | Database migrations per phase. Affected tables stored as JSON array (`tables` column). |
 | `plan_phase_relationship` | implementation_planner | Phase ordering and parallelism (dependency/parallel via `dependency_type` discriminator). |
 | `plan_phase_risk` | implementation_planner | Phase-level risks and mitigations. |
-| `plan_overview` | implementation_planner | High-level plan summary. Assumptions stored as JSON array (`assumptions` column). |
-| `plan_overview_risk` | implementation_planner | Plan-level risks. |
+| `plan_overview` | implementation_planner | High-level plan summary. Assumptions and plan-wide risks stored as JSON arrays (`assumptions`, `risks` columns). |
 | `plan_external_dependency` | implementation_planner | External blockers. |
 
 **Critic:** implementation_plan_critic
@@ -207,7 +205,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 59 tables with links to their detailed design documents.
+All 57 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -218,6 +216,7 @@ All 59 tables with links to their detailed design documents.
 | `component` | [architecture](tables/architecture.md) |
 | `component_dependency` | [architecture](tables/architecture.md) |
 | `component_interface` | [architecture](tables/architecture.md) |
+| `data_exchange` | [requirements](tables/requirements.md) |
 | `implementation_api_endpoint` | [implementation](tables/implementation.md) |
 | `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |
 | `implementation_blocker` | [implementation](tables/implementation.md) |
@@ -242,7 +241,6 @@ All 59 tables with links to their detailed design documents.
 | `phase` | [core](tables/core.md) |
 | `plan_external_dependency` | [planning](tables/planning.md) |
 | `plan_overview` | [planning](tables/planning.md) |
-| `plan_overview_risk` | [planning](tables/planning.md) |
 | `plan_phase` | [planning](tables/planning.md) |
 | `plan_phase_api_endpoint` | [planning](tables/planning.md) |
 | `plan_phase_component` | [planning](tables/planning.md) |
@@ -262,13 +260,11 @@ All 59 tables with links to their detailed design documents.
 | `revision` | [core](tables/core.md) |
 | `screen` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
-| `system_io` | [requirements](tables/requirements.md) |
 | `test_report` | [qa-test](tables/qa-test.md) |
 | `user_flow` | [ux-design](tables/ux-design.md) |
 | `user_flow_error_state` | [ux-design](tables/ux-design.md) |
 | `user_flow_step` | [ux-design](tables/ux-design.md) |
-| `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 59 tables across 10 domains**
+**Total: 57 tables across 10 domains**

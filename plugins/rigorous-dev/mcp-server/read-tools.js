@@ -17,7 +17,7 @@ const ENTITY_TABLE = {
   implementation_manifest: "implementation_manifest",
   requirement_trace: "requirement_trace",
   project_context: "project_context",
-  system_io: "system_io",
+  data_exchange: "data_exchange",
   nonfunctional_requirement: "nonfunctional_requirement",
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
@@ -238,9 +238,7 @@ function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = 
       .all(fl.id)
       .map((s) => ({
         ...s,
-        branches: db
-          .prepare("SELECT condition, next_step FROM user_flow_step_branch WHERE step_id = ?")
-          .all(s.id),
+        branches: (() => { try { return JSON.parse(s.branches || '[]'); } catch { return s.branches; } })(),
       }));
     return {
       ...fl,
@@ -379,9 +377,7 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
           "SELECT COUNT(*) AS cnt FROM plan_phase WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
         ).get(ctx.iteration_id).cnt;
       })(),
-    risks: db
-      .prepare("SELECT risk, mitigation, plan_phase_id FROM plan_overview_risk WHERE plan_overview_id = ?")
-      .all(o.id),
+    risks: (() => { try { return JSON.parse(o.risks || '[]'); } catch { return o.risks; } })(),
     assumptions: (() => { try { return JSON.parse(o.assumptions || '[]'); } catch { return o.assumptions; } })(),
   }));
 }
@@ -619,7 +615,7 @@ function queryProjectContext(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const SYSTEM_IO_FILTERS = {
+const DATA_EXCHANGE_FILTERS = {
   direction: { nullable: false },
   name: { nullable: false },
   description: { nullable: false },
@@ -628,13 +624,13 @@ const SYSTEM_IO_FILTERS = {
   data_format: { nullable: true },
 };
 
-function querySystemIo(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM system_io";
+function queryDataExchange(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM data_exchange";
   const clauses = [];
   const params = [];
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, SYSTEM_IO_FILTERS, "system_io");
+  const f = applyFilters(filters, DATA_EXCHANGE_FILTERS, "data_exchange");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -861,7 +857,7 @@ const QUERY_DISPATCH = {
   plan_external_dependency: queryPlanExternalDependency,
   requirement_trace: queryRequirementTrace,
   project_context: queryProjectContext,
-  system_io: querySystemIo,
+  data_exchange: queryDataExchange,
   nonfunctional_requirement: queryNonfunctionalRequirement,
   ux_asset: queryUxAsset,
   approved_dependency: queryApprovedDependency,

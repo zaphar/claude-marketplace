@@ -686,7 +686,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `system_io`, `nonfunctional_requirement`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `data_exchange`, `nonfunctional_requirement`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status

@@ -188,11 +188,11 @@ describe("changelog_insert CHECK constraint violations", () => {
     );
   });
 
-  it("rejects system_io with invalid direction", () => {
+  it("rejects data_exchange with invalid direction", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
-          entity_type: "system_io",
+          entity_type: "data_exchange",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
           data: { name: "API", direction: "sideways", protocol: "HTTP", description: "ext" },

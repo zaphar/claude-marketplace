@@ -138,7 +138,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ---
 
-## system_io
+## data_exchange
 
 **Purpose:** Describes the inputs and outputs of the system in a single unified table. Each row names a single input or output, describes it, and optionally records its source, destination, and format. The `direction` column distinguishes inputs from outputs. This information is essential for the **backend_architect** when designing ingestion pipelines, output interfaces, and data contracts.
 
@@ -147,7 +147,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this system I/O entry belongs to. |
+| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) | The iteration this data exchange entry belongs to. |
 | `direction` | TEXT | NOT NULL, CHECK IN (`'input'`, `'output'`) | Whether this row describes a system input or a system output. |
 | `name` | TEXT | NOT NULL | Short name for the input or output (e.g. `"Customer order feed"`, `"Monthly billing report"`). |
 | `description` | TEXT | NOT NULL | Narrative description of the entry's content and purpose. |
@@ -160,8 +160,8 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 - Parent: `iteration` (via `iteration_id`)
 - Children: none
 
-**Produced by:** `changelog_insert` with entity_type `"system_io"`
-**Queried by:** `changelog_query` with entity_type `"system_io"`
+**Produced by:** `changelog_insert` with entity_type `"data_exchange"`
+**Queried by:** `changelog_query` with entity_type `"data_exchange"`
 
 ---
 
