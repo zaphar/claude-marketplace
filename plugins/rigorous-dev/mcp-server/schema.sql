@@ -1266,6 +1266,10 @@ CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
   ON plan_phase_risk(plan_phase_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
   ON implementation_manifest(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_plan_overview_risk_plan_phase_id
+  ON plan_overview_risk(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_plan_phase_id
+  ON plan_external_dependency(plan_phase_id);
 
 -- ------------------------------------------------------------
 -- plan_overview_id — child tables of plan_overview
@@ -1304,8 +1308,8 @@ CREATE INDEX IF NOT EXISTS idx_doc_requirement_coverage_requirement_id
   ON documentation_requirement_coverage(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_revision_id
   ON requirement_trace(revision_id);
-CREATE INDEX IF NOT EXISTS idx_requirement_trace_addressed_by_type
-  ON requirement_trace(addressed_by_type);
+CREATE INDEX IF NOT EXISTS idx_requirement_trace_addressed_by
+  ON requirement_trace(addressed_by_type, addressed_by);
 
 -- ------------------------------------------------------------
 -- revision_id — provenance FK on every entity table
@@ -1530,3 +1534,11 @@ CREATE INDEX IF NOT EXISTS idx_deployment_env_var_environment_id
 -- deployment_runbook_step.runbook_id → deployment_runbook(id)
 CREATE INDEX IF NOT EXISTS idx_deployment_runbook_step_runbook_id
   ON deployment_runbook_step(runbook_id);
+
+-- blocker.phase_name — composite FK (iteration_id, phase_name) → phase(iteration_id, name)
+CREATE INDEX IF NOT EXISTS idx_blocker_phase_name
+  ON blocker(phase_name);
+
+-- project_lesson.phase_name — composite FK (iteration_id, phase_name) → phase(iteration_id, name)
+CREATE INDEX IF NOT EXISTS idx_project_lesson_phase_name
+  ON project_lesson(phase_name);
