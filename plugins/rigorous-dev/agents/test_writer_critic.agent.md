@@ -1,7 +1,7 @@
 ---
 name: test-writer-critic
 description: "Validates test completeness and that tests are in failing (red) state before implementation"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Test Writer Critic

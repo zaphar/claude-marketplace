@@ -1,7 +1,7 @@
 ---
 name: ux-critic
 description: "Validates that UX specifications are complete, usable, accessible, and meet quality standards"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### UX Critic

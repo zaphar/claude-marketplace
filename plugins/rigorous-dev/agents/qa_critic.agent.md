@@ -1,7 +1,7 @@
 ---
 name: qa-critic
 description: "Validates that test reports and test suites are complete, reliable, and meet quality standards"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### QA Critic

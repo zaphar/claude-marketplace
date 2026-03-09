@@ -1,7 +1,7 @@
 ---
 name: architecture-critic
 description: "Validates backend architecture specifications are complete, implementable, and meet quality standards"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Architecture Critic

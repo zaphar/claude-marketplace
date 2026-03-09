@@ -1,7 +1,7 @@
 ---
 name: performance-audit-critic
 description: "Validates that performance audits are thorough, complete, and findings are evidence-backed"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Performance Audit Critic

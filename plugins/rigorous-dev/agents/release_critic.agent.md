@@ -1,7 +1,7 @@
 ---
 name: release-critic
 description: "Validates that deployment configurations are complete, secure, reliable, and meet quality standards"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Release Critic

@@ -1,7 +1,7 @@
 ---
 name: requirements-critic
 description: "Validates that requirements specifications are complete, consistent, and meet quality standards"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Requirements Critic

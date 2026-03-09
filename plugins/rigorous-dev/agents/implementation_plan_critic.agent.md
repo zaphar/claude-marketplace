@@ -1,7 +1,7 @@
 ---
 name: implementation-plan-critic
 description: "Validates that implementation plans are realistic, iterative, and will deliver user value quickly"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 ### Implementation Plan Critic
