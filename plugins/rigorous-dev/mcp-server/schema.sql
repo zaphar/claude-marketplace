@@ -4,6 +4,12 @@ PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 
 -- Project-level config and lifecycle (singleton — one row per repo DB)
+-- Domain: core
+-- Purpose: Project-level config and lifecycle state. Singleton — exactly one row per database,
+-- enforced by CHECK(id = 1).
+-- Context: Created by iteration_create on first run (alongside the first iteration and its phases).
+-- Status transitions to closed via project_update. The canonical "is this project active?" check is
+-- status = 'active'.
 CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
@@ -16,6 +22,15 @@ CREATE TABLE IF NOT EXISTS project (
 );
 
 -- Iterations: each request to change the system
+-- Domain: core
+-- Purpose: A single change-request cycle within a project. Each time new work is requested — a new
+-- feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered
+-- sequentially.
+-- Context: Created by iteration_create. An iteration encompasses all nine phases and their revision
+-- attempts. Changelog entities reference the iteration either directly (via iteration_id for
+-- context tables) or indirectly (via revision_id → phase → iteration for producer-critic
+-- artifacts). Closing an iteration (status closed) signals that the work shipped and a new request
+-- cycle can begin.
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
@@ -27,6 +42,14 @@ CREATE TABLE IF NOT EXISTS iteration (
 CREATE INDEX IF NOT EXISTS idx_iteration_status ON iteration(status);
 
 -- Phases within an iteration
+-- Domain: core
+-- Purpose: One of the nine SDLC stages within an iteration. Phases are created in bulk (all nine,
+-- all pending) when an iteration is created, then activated and completed one at a time as the
+-- workflow advances.
+-- Context: Created by iteration_create alongside the iteration row. Status is advanced by
+-- phase_transition. approved_by records which agent approved the phase output (set by the critic).
+-- Revisions hang off phases, so the full producer-critic history for any phase is traceable via
+-- revision.
 CREATE TABLE IF NOT EXISTS phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -44,6 +67,15 @@ CREATE TABLE IF NOT EXISTS phase (
 );
 
 -- Revisions: producer-critic loops within a phase
+-- Domain: core
+-- Purpose: A single producer-critic loop attempt within a phase. When a producer agent generates
+-- output for a phase, a revision row is created. The critic agent then reviews it and records a
+-- verdict (approved or rejected) along with feedback text. If rejected, a new revision is created
+-- for the next attempt.
+-- Context: Revisions are the mechanism that enforces quality gates. The full revision chain for any
+-- phase shows every draft, the feedback that was given, and the final approved version. Changelog
+-- entities that are produced during a specific revision attempt carry the revision_id so that
+-- approved output can be distinguished from earlier drafts.
 CREATE TABLE IF NOT EXISTS revision (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   phase_id INTEGER NOT NULL REFERENCES phase(id) ON DELETE CASCADE,
@@ -66,6 +98,15 @@ JOIN phase p ON r.phase_id = p.id;
 -- ============================================================
 
 -- Personas
+-- Domain: requirements
+-- Purpose: Represents a user archetype — a named, described role with a defined technical level and
+-- usage frequency. Personas ground the requirements in real human context, preventing the system
+-- from being designed in the abstract. Each persona is scoped to an iteration and pinned to a
+-- specific revision when the requirements_critic has approved or revised the analyst's output.
+-- Context: Produced by the requirements_analyst agent. Validated (and potentially revised) by the
+-- requirements_critic. Consumed by the ux_designer (who associates personas with user flows) and
+-- the requirements_analyst itself (who links personas to requirements via requirement_persona).
+-- Referenced downstream by user_flow.persona_id.
 CREATE TABLE IF NOT EXISTS persona (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -79,6 +120,16 @@ CREATE TABLE IF NOT EXISTS persona (
 );
 
 -- Requirements
+-- Domain: requirements
+-- Purpose: The central table of this domain. Each row is a single requirement — a statement of
+-- something the system must, should, or could do — classified by category and priority.
+-- Requirements have a human-readable description, an optional rationale explaining why the
+-- requirement exists, and a category that guides which downstream agents care about it most.
+-- Context: Produced by the requirements_analyst. Validated by the requirements_critic, which may
+-- reject and request rewriting. Once approved, requirements are referenced by virtually every
+-- downstream agent: the backend_architect maps them to components and ADRs via requirement_trace;
+-- the ux_designer links them to user flows via requirement_trace (with addressed_by_type = 'flow');
+-- the implementation_planner uses priority to sequence work.
 CREATE TABLE IF NOT EXISTS requirement (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -91,12 +142,28 @@ CREATE TABLE IF NOT EXISTS requirement (
   updated_at TEXT
 );
 
+-- Domain: requirements
+-- Purpose: A junction table linking requirements to the personas they serve. A single requirement
+-- may affect multiple personas, and a persona may be implicated in many requirements. This many-to-
+-- many relationship allows downstream agents to ask "which requirements matter to persona X?" or
+-- "which personas are affected by requirement Y?" without scanning free text.
+-- Context: Produced by the requirements_analyst during requirement elaboration. Consumed by the
+-- ux_designer to ensure that user flows cover the requirements relevant to each persona, and by the
+-- implementation_planner to understand stakeholder impact when prioritising work.
 CREATE TABLE IF NOT EXISTS requirement_persona (
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   persona_id TEXT NOT NULL REFERENCES persona(id) ON DELETE CASCADE,
   PRIMARY KEY (requirement_id, persona_id)
 );
 
+-- Domain: requirements
+-- Purpose: Records directed dependencies between requirements. A dependency row asserts that
+-- requirement_id cannot be satisfied without first satisfying depends_on. This models prerequisite
+-- relationships that the implementation_planner must respect when sequencing work — for example, an
+-- authentication requirement that must land before any access-controlled feature requirement.
+-- Context: Produced by the requirements_analyst when dependencies are identified. Validated by the
+-- requirements_critic, who may challenge questionable dependency claims. Consumed by the
+-- implementation_planner to construct a sequenced backlog that respects the dependency graph.
 CREATE TABLE IF NOT EXISTS requirement_dependency (
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   depends_on TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
@@ -104,6 +171,15 @@ CREATE TABLE IF NOT EXISTS requirement_dependency (
 );
 
 -- Project-level context (problem statement, constraints, assumptions, etc.)
+-- Domain: requirements
+-- Purpose: A flexible key-value store for project-level contextual information that does not fit a
+-- more structured table. Common uses include recording the problem statement, key assumptions,
+-- explicit scope constraints, and business context. The optional category column allows grouping of
+-- context entries (e.g. "assumption", "constraint", "context").
+-- Context: Produced by the requirements_analyst during the requirements phase. Validated by the
+-- requirements_critic, who may challenge assumptions or flag missing context. Consumed by all
+-- downstream agents as background context when generating their artefacts, and surfaced in the
+-- final output documents.
 CREATE TABLE IF NOT EXISTS project_context (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -117,6 +193,15 @@ CREATE TABLE IF NOT EXISTS project_context (
 -- System inputs and outputs (per iteration)
 -- direction discriminator: 'input' for data the system receives, 'output' for data it emits.
 -- source is typically set for inputs; destination for outputs (both nullable).
+-- Domain: requirements
+-- Purpose: Describes the inputs and outputs of the system in a single unified table. Each row names
+-- a single input or output, describes it, and optionally records its source, destination, and
+-- format. The direction column distinguishes inputs from outputs. This information is essential for
+-- the backend_architect when designing ingestion pipelines, output interfaces, and data contracts.
+-- Context: Produced by the requirements_analyst. Consumed by the backend_architect when modelling
+-- data entities, integration boundaries, and output interfaces, and by the implementation_planner
+-- when identifying external dependencies that affect delivery sequencing. The ux_designer also
+-- reads output rows to understand what information must be surfaced in screens and flows.
 CREATE TABLE IF NOT EXISTS system_io (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -135,6 +220,21 @@ CREATE TABLE IF NOT EXISTS system_io (
 -- The `type` column discriminates the three kinds; `category` captures
 -- each kind's secondary classification (deployment target, operational
 -- category, or technology constraint type).
+-- Domain: requirements
+-- Purpose: Unified table for non-functional requirements spanning three categories: deployment
+-- infrastructure requirements, operational requirements (uptime/SLA targets, monitoring, logging,
+-- observability), and technology constraints (allowed languages, forbidden dependencies, required
+-- frameworks). The type column discriminates the three kinds. The category column captures each
+-- kind's secondary classification — deployment target context (e.g. "private-cloud", "local-
+-- executable"), operational category (e.g. "uptime", "monitoring"), or technology constraint type
+-- (e.g. "allowed_language", "forbidden_dependency"). The item column carries the primary
+-- descriptive content, value provides an optional supplementary value, and notes is available for
+-- free-text elaboration (unused by technology type).
+-- Context: Produced by the requirements_analyst. Consumed by the backend_architect when selecting
+-- infrastructure patterns, designing for reliability, and evaluating technology choices. The
+-- implementation_planner uses deployment and operational rows to assess delivery environment
+-- constraints and flag operational readiness tasks, and enforces technology constraints when
+-- accepting or rejecting proposed dependencies. The requirements_critic validates all entries.
 CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -147,6 +247,18 @@ CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
 );
 
 -- Architecture Decision Records
+-- Domain: architecture
+-- Purpose: The central record for each Architecture Decision Record. An ADR captures a single
+-- significant technical decision — what was decided, why, and when — giving every future reader a
+-- permanent, auditable record of the reasoning behind the system's shape. All alternative options
+-- are stored in the adr_alternative child table; consequences and research citations are stored
+-- inline as JSON arrays in the consequences and research_sources columns.
+-- Context: ADRs are the backbone of architectural traceability. Every major technology choice,
+-- structural pattern, or integration strategy that required deliberation should have an ADR. adr
+-- rows reference the current revision (with the iteration derived via revision → phase →
+-- iteration), so the full evolution of any decision across critic feedback rounds is preserved. The
+-- superseded_by self-reference creates a chain of record when an earlier decision is replaced. The
+-- research_sources JSON column is the key enabler of the "why are we using X?" traceability query.
 CREATE TABLE IF NOT EXISTS adr (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -163,6 +275,15 @@ CREATE TABLE IF NOT EXISTS adr (
   updated_at TEXT
 );
 
+-- Domain: architecture
+-- Purpose: Records each option that was explicitly considered when making an ADR decision. Every
+-- ADR should have at least two alternatives (including the chosen option) so that future readers
+-- understand what was weighed. Pros and cons are stored inline as JSON arrays.
+-- Context: The alternative-with-pros-and-cons pattern is the structured form of the classic ADR
+-- "options considered" section. Pros and cons are stored as nullable TEXT columns containing JSON
+-- arrays (e.g., ["Built-in horizontal sharding","Mature ecosystem"]). When queried via
+-- changelog_query or traceability_query, these columns are parsed back into arrays for convenient
+-- consumption.
 CREATE TABLE IF NOT EXISTS adr_alternative (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   adr_id TEXT NOT NULL REFERENCES adr(id) ON DELETE CASCADE,
@@ -172,6 +293,17 @@ CREATE TABLE IF NOT EXISTS adr_alternative (
 );
 
 -- Architecture Components
+-- Domain: architecture
+-- Purpose: Represents a deployable or logically distinct unit of the system — an API server,
+-- background worker, database, cache, message queue, external third-party service, or shared
+-- library. Components are the primary unit of architectural decomposition. All interfaces,
+-- dependencies, and requirement mappings hang off component rows.
+-- Context: component is the central node in the architecture domain graph. The backend_architect
+-- decomposes the system into components during the architecture phase; the implementation_planner
+-- then uses component_dependency and requirement_trace (with addressed_by_type = 'component') to
+-- sequence work phases; the senior_developer builds against component_interface contracts.
+-- Component IDs (COMP-XXX) appear in requirement_trace, integration_test_boundary, and
+-- implementation_component_status.
 CREATE TABLE IF NOT EXISTS component (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -182,6 +314,14 @@ CREATE TABLE IF NOT EXISTS component (
   updated_at TEXT
 );
 
+-- Domain: architecture
+-- Purpose: Describes each interface — HTTP endpoint group, gRPC service definition, message topic,
+-- or file I/O contract — that a component exposes to the rest of the system. Interfaces define the
+-- *contract* other components depend on.
+-- Context: component_interface rows are the foundation for implementation contract tests and the
+-- plan_phase_api_endpoint entries created by the implementation_planner. When the senior_developer
+-- builds a component, the interfaces listed here define what must exist and be tested. The type
+-- field is free-text to accommodate diverse interface styles (REST, gRPC, event, file).
 CREATE TABLE IF NOT EXISTS component_interface (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
@@ -191,6 +331,14 @@ CREATE TABLE IF NOT EXISTS component_interface (
   UNIQUE(component_id, name)
 );
 
+-- Domain: architecture
+-- Purpose: Records a directed dependency edge between two components: component_id depends on
+-- depends_on. The set of all rows defines the component dependency graph, which must be a directed
+-- acyclic graph (DAG) — cycles indicate an architectural problem.
+-- Context: The dependency graph is consumed by the implementation_planner to sequence plan phases
+-- (a component cannot be implemented before its dependencies) and by the architecture_critic to
+-- verify there are no cycles and that external components are not being depended on implicitly. The
+-- composite primary key prevents duplicate edges.
 CREATE TABLE IF NOT EXISTS component_dependency (
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   depends_on TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
@@ -199,6 +347,16 @@ CREATE TABLE IF NOT EXISTS component_dependency (
 
 -- requirement_trace: unified traceability — see requirement_trace table below
 
+-- Domain: architecture
+-- Purpose: Identifies the interaction points between components where integration tests are
+-- mandatory. Each row names a source component, a target component, the type of boundary being
+-- crossed, and the correct observable behaviour that tests must verify.
+-- Context: Integration test boundaries are a direct output of architectural decomposition: wherever
+-- two components communicate, there is a test boundary. By recording these boundaries explicitly
+-- during the architecture phase, the backend_architect ensures the test_writer knows exactly which
+-- component interactions need contract or integration-level coverage. The boundary_type field is
+-- free-form text to accommodate project-specific boundary types; canonical values are api_call,
+-- database_access, message_event, and file_system (see column reference below).
 CREATE TABLE IF NOT EXISTS integration_test_boundary (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
@@ -209,6 +367,16 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
 );
 
 -- Architecture: technology choices
+-- Domain: architecture
+-- Purpose: Records each language, framework, runtime, database engine, cloud service, or toolchain
+-- decision made for the system. Unlike ADRs (which capture a decision-making *process*),
+-- technology_choice is an enumerable *inventory* of every technology in the stack, with version
+-- pins, purpose descriptions, and rationale.
+-- Context: technology_choice is consumed by the implementation_planner to select the correct
+-- language/framework tooling for each plan phase, and by the senior_developer to know exactly which
+-- version of each library to use. The category field (free-text) groups choices logically (e.g.,
+-- backend-language, database, auth-library, ci-cd). When a technology choice is backed by formal
+-- evaluation, it should reference an ADR via the rationale field or via approved_dependency.adr_id.
 CREATE TABLE IF NOT EXISTS technology_choice (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -225,6 +393,16 @@ CREATE TABLE IF NOT EXISTS technology_choice (
 CREATE INDEX IF NOT EXISTS idx_technology_choice_name ON technology_choice(name);
 
 -- Architecture overview
+-- Domain: architecture
+-- Purpose: Provides the top-level narrative description of the overall system architecture: its
+-- style (e.g., event-driven microservices, modular monolith, layered), its major structural
+-- concerns, and the communication patterns between subsystems. Acts as the entry point for reading
+-- the architecture domain.
+-- Context: There is typically one architecture_overview row per iteration (created at the start of
+-- the architecture phase). Architectural principles are stored inline in the principles JSON
+-- column, and architecture_diagram children are attached to it. The overview is the first thing the
+-- architecture_critic reads and the primary artifact the implementation_planner uses to understand
+-- the system's intended shape before diving into individual components.
 CREATE TABLE IF NOT EXISTS architecture_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -233,6 +411,15 @@ CREATE TABLE IF NOT EXISTS architecture_overview (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Domain: architecture
+-- Purpose: Stores references to architecture diagrams (component diagrams, sequence diagrams, data
+-- flow diagrams) produced alongside the architecture overview. Each row names a diagram, gives its
+-- file path in the repository, and provides a description of what the diagram shows.
+-- Context: Diagrams are referenced assets rather than inline content — the path column points to
+-- files committed to the repository (e.g., docs/architecture/component-diagram.png or a Mermaid
+-- .mmd file). The architecture_critic verifies that at minimum one component-level diagram exists.
+-- The name field is used to surface diagrams by type when the implementation_planner or
+-- senior_developer needs a visual reference.
 CREATE TABLE IF NOT EXISTS architecture_diagram (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   overview_id INTEGER NOT NULL REFERENCES architecture_overview(id) ON DELETE CASCADE,
@@ -243,6 +430,14 @@ CREATE TABLE IF NOT EXISTS architecture_diagram (
 );
 
 -- Data model entities
+-- Domain: data-model
+-- Purpose: Represents a single database entity (table, collection, model) in the target system's
+-- data model. Each row captures the architect's decision to include a named entity, analogous to a
+-- node in an ERD diagram.
+-- Context: data_entity is the root of the data model sub-graph. Every entity belongs to a specific
+-- revision, with the iteration derived via the revision → phase → iteration chain (or via the
+-- entity_context VIEW), providing full traceability through the producer-critic loop. Child tables
+-- data_entity_attribute and data_entity_relationship hang off this table via foreign key.
 CREATE TABLE IF NOT EXISTS data_entity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -252,6 +447,14 @@ CREATE TABLE IF NOT EXISTS data_entity (
   UNIQUE(revision_id, name)
 );
 
+-- Domain: data-model
+-- Purpose: Represents a single attribute (column, field) on a data_entity. Captures the name, data
+-- type, nullability, and description for each field the architect specifies — the column-level
+-- detail of the ERD.
+-- Context: data_entity_attribute is a 1:N child of data_entity. The backend_architect populates
+-- these rows to fully specify what each entity looks like at the field level. The senior_developer
+-- reads these rows when generating migration files, ORM model definitions, or OpenAPI schemas. The
+-- is_required flag maps directly to NOT NULL / nullable in SQL or required in JSON Schema.
 CREATE TABLE IF NOT EXISTS data_entity_attribute (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
@@ -262,6 +465,15 @@ CREATE TABLE IF NOT EXISTS data_entity_attribute (
   UNIQUE(entity_id, name)
 );
 
+-- Domain: data-model
+-- Purpose: Represents a directional relationship from one data_entity to another — equivalent to a
+-- foreign key or association in an ERD. Captures cardinality (one-to-one, one-to-many, many-to-
+-- many) and a plain-language description.
+-- Context: data_entity_relationship is a 1:N child of data_entity. The source entity is identified
+-- by entity_id (FK to data_entity); the target is identified by target_entity_id (also FK to
+-- data_entity), enforcing referential integrity so relationships can only reference entities that
+-- actually exist in the data model. The senior_developer uses these rows to determine where to add
+-- foreign key constraints, junction tables (for many-to-many), or embedded references.
 CREATE TABLE IF NOT EXISTS data_entity_relationship (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
@@ -271,6 +483,18 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
 );
 
 -- Unified config (architecture: security/deployment/observability; ux: design_system/accessibility/responsive/feedback_pattern)
+-- Domain: cross-cutting
+-- Purpose: Unified key/value store for cross-cutting configuration across both architecture and UX
+-- domains. Each row captures one configuration decision or setting — for example, an authentication
+-- scheme, a deployment scaling policy, a logging format, a design system colour token, or an
+-- accessibility setting. The domain column classifies each row as architecture or ux, and the
+-- config_type column further discriminates the concern within that domain.
+-- Context: Architecture-domain entries are written by backend_architect during the architecture
+-- phase. UX-domain entries are written by ux_designer during the ux_design phase. Security entries
+-- are driven by nonfunctional_requirement rows with type = 'technology' and security implications.
+-- Deployment entries are driven by nonfunctional_requirement rows with type = 'deployment'.
+-- Observability entries are driven by nonfunctional_requirement rows with type = 'operational'. UX
+-- entries are driven by design requirements and accessibility standards.
 CREATE TABLE IF NOT EXISTS config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -286,6 +510,17 @@ CREATE TABLE IF NOT EXISTS config (
 );
 
 -- Dependencies manifest
+-- Domain: cross-cutting
+-- Purpose: The vetted third-party dependency manifest. Every external library, package, or SDK that
+-- the system will use must have an entry here before it can appear in implementation. Each row
+-- records not just *what* the dependency is, but *why* it was chosen, what license it carries, and
+-- an assessment of its supply-chain health (maintenance activity, community adoption, transitive
+-- dependency count, single-maintainer risk).
+-- Context: Written by backend_architect as part of the architecture phase, usually alongside ADRs
+-- that justify the choice of a given library. Each significant dependency should reference the
+-- adr_id that decided to adopt it. Lightweight utilities may not need an ADR but still require a
+-- row here. The single_maintainer_risk flag is a boolean (0/1) that signals whether the package has
+-- only one active maintainer — a supply-chain risk factor worth surfacing explicitly.
 CREATE TABLE IF NOT EXISTS approved_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -304,6 +539,20 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
 );
 
 -- Traceability: unified requirement → design-element mapping
+-- Domain: cross-cutting
+-- Purpose: The traceability backbone of the entire data model. Each row asserts that a specific
+-- requirement (requirement_id) is addressed by some named architectural element (addressed_by) of a
+-- given type (addressed_by_type). This creates the REQ → COMP/ENDPOINT/FLOW/SCREEN chain that makes
+-- the "why" query possible: given any artifact in the system, the architect can trace back to the
+-- requirement that motivated it, and forward to every other artifact that satisfies the same
+-- requirement.
+-- Context: Written by backend_architect after components, user flows, and screens have been
+-- defined. A complete architecture phase should have at least one requirement_trace row per
+-- requirement — requirements with no mapping are dark requirements that cannot be verified during
+-- QA. The addressed_by field is a free-text identifier that should match an existing entity ID:
+-- COMP-XXX for components, an endpoint path/name, a user_flow.id, a screen.id, or a descriptive
+-- label for other. The addressed_by_type column has a CHECK constraint — valid values are
+-- component, endpoint, flow, screen, adr, and technology.
 CREATE TABLE IF NOT EXISTS requirement_trace (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -317,6 +566,14 @@ CREATE TABLE IF NOT EXISTS requirement_trace (
 );
 
 -- UX: user flows
+-- Domain: ux-design
+-- Purpose: Top-level record for a single named user journey. Represents a goal-oriented path a user
+-- takes through the application — from entry point to success state. Each flow belongs to a persona
+-- and maps to one or more requirements.
+-- Context: The ux_designer creates one user_flow row per distinct journey (e.g., "User signs up",
+-- "Admin exports report"). IDs follow the pattern FLOW-XXX. The backend_architect reads flows to
+-- verify that every step has a corresponding API endpoint. The implementation_planner references
+-- flows when assigning UI work to plan phases.
 CREATE TABLE IF NOT EXISTS user_flow (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -330,6 +587,14 @@ CREATE TABLE IF NOT EXISTS user_flow (
   updated_at TEXT
 );
 
+-- Domain: ux-design
+-- Purpose: A single discrete action within a user flow. Steps are ordered by step_number and each
+-- names the interaction surface on which the action occurs — a screen for UI apps, an endpoint for
+-- APIs, a CLI command, or NULL when not applicable. Decision-point steps can have conditional
+-- branches.
+-- Context: The ux_designer inserts steps as part of the parent user_flow insert (they are not
+-- inserted separately). The backend_architect uses step-to-surface mappings to validate API
+-- coverage. Steps with is_decision_point = 1 must have at least one user_flow_step_branch row.
 CREATE TABLE IF NOT EXISTS user_flow_step (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
@@ -342,6 +607,12 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
 
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_surface ON user_flow_step(surface);
 
+-- Domain: ux-design
+-- Purpose: A conditional branch at a decision-point step. Captures the condition that triggers the
+-- branch and which step number it leads to (can be a forward or backward jump).
+-- Context: Used to model decision trees, retry loops, and alternate paths within a flow. The
+-- ux_critic checks that every decision-point step has at least one branch, and that next_step
+-- values refer to valid step_number values within the same flow.
 CREATE TABLE IF NOT EXISTS user_flow_step_branch (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   step_id INTEGER NOT NULL REFERENCES user_flow_step(id) ON DELETE CASCADE,
@@ -349,6 +620,13 @@ CREATE TABLE IF NOT EXISTS user_flow_step_branch (
   next_step INTEGER NOT NULL
 );
 
+-- Domain: ux-design
+-- Purpose: An error condition that can occur during the flow and the recovery path the user must
+-- take. Captures exception handling from a UX perspective (not from a system error perspective).
+-- Context: Error states are sibling records of the flow rather than children of individual steps,
+-- because an error may span multiple steps or originate from backend failures. Examples: "Session
+-- expires mid-flow → redirect to login with return URL", "Payment gateway timeout → show retry
+-- dialog".
 CREATE TABLE IF NOT EXISTS user_flow_error_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
@@ -359,6 +637,14 @@ CREATE TABLE IF NOT EXISTS user_flow_error_state (
 -- requirement_trace: unified traceability — see requirement_trace table above
 
 -- UX: screens
+-- Domain: ux-design
+-- Purpose: A distinct UI view or page in the application. Screens are the atomic building blocks of
+-- the visual design. Each screen has a purpose, optional wireframe and mockup paths, and is
+-- decomposed into components, states, and responsive variants.
+-- Context: The ux_designer creates one screen row per unique view (e.g., SCREEN-001 Dashboard,
+-- SCREEN-002 Login). Screens are referenced by name in user_flow_step.surface. The
+-- backend_architect cross-references screens with flow steps to determine which endpoints each
+-- screen requires. The implementation_planner references screen_id in plan_phase_screen.
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -373,6 +659,14 @@ CREATE TABLE IF NOT EXISTS screen (
 
 CREATE INDEX IF NOT EXISTS idx_screen_name ON screen(name);
 
+-- Domain: ux-design
+-- Purpose: A named UI state variant of a screen. Captures how the screen looks and behaves when it
+-- is in a particular condition (loading, empty, error, etc.). Each state may optionally have its
+-- own wireframe.
+-- Context: The ux_designer must define at minimum a default state. The ux_critic checks that
+-- screens with data dependencies include loading and empty states, and that action-bearing screens
+-- include an error state. The senior_developer implements each state as a conditional render
+-- branch.
 CREATE TABLE IF NOT EXISTS screen_state (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
@@ -382,6 +676,13 @@ CREATE TABLE IF NOT EXISTS screen_state (
   UNIQUE(screen_id, name)
 );
 
+-- Domain: ux-design
+-- Purpose: Describes how a screen layout changes at a specific responsive breakpoint. Captures
+-- breakpoint-specific wireframes and prose descriptions of layout adjustments (e.g., "sidebar
+-- collapses to hamburger menu at mobile breakpoint").
+-- Context: One row per breakpoint per screen. Breakpoint names should align with values defined in
+-- config (domain: ux, config_type responsive). The ux_critic validates that screens either have
+-- responsive variants for all defined breakpoints or explicitly omit them with justification.
 CREATE TABLE IF NOT EXISTS screen_responsive_variant (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
@@ -394,6 +695,14 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
 -- (ux_config has been merged into the unified `config` table — see architecture section)
 
 -- UX: information architecture
+-- Domain: ux-design
+-- Purpose: Captures the information architecture of the application: site map, navigation
+-- hierarchy, route structure, content groupings, and labelling decisions. Rows form a tree via the
+-- parent_id self-reference.
+-- Context: The ux_designer builds the IA before or in parallel with screen design, ensuring that
+-- navigation flows match the site map. The backend_architect reads top-level IA nodes to confirm
+-- routing strategy aligns with the frontend navigation tree. The ux_critic checks that all screens
+-- are reachable from the IA root.
 CREATE TABLE IF NOT EXISTS info_architecture (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -405,6 +714,13 @@ CREATE TABLE IF NOT EXISTS info_architecture (
 );
 
 -- UX: personas addressed mapping
+-- Domain: ux-design
+-- Purpose: Documents how the UX design addresses a specific persona's goals. Each row states which
+-- persona is covered, what their goal is in this context, and how the design addresses it. Serves
+-- as the UX design's accountability record to the personas defined in requirements.
+-- Context: The ux_critic validates that every persona defined in persona (for the iteration) has at
+-- least one persona_addressed row. Each row is linked to one or more user flows via
+-- persona_addressed_flow, closing the traceability chain: persona → addressed by → flows.
 CREATE TABLE IF NOT EXISTS persona_addressed (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -415,6 +731,12 @@ CREATE TABLE IF NOT EXISTS persona_addressed (
   UNIQUE(revision_id, persona_id)
 );
 
+-- Domain: ux-design
+-- Purpose: Many-to-many join table linking a persona_addressed record to the user flows that
+-- deliver the addressed goal. Answers: "which flows implement the design's promise to this
+-- persona?"
+-- Context: The ux_critic checks that every persona_addressed row has at least one flow. The
+-- implementation_planner can use this join to prioritise flows by persona criticality.
 CREATE TABLE IF NOT EXISTS persona_addressed_flow (
   persona_addressed_id INTEGER NOT NULL REFERENCES persona_addressed(id) ON DELETE CASCADE,
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
@@ -422,6 +744,14 @@ CREATE TABLE IF NOT EXISTS persona_addressed_flow (
 );
 
 -- UX: assets
+-- Domain: ux-design
+-- Purpose: A registry of all UX artefact files: wireframes, mockups, prototypes, icons, images, and
+-- videos. Provides a canonical inventory of design files and their locations, optionally linked to
+-- a specific screen.
+-- Context: The ux_designer registers every file it produces. wireframe_path and mockup_path on
+-- screen and screen_state rows should correspond to path values in this table. The ux_critic
+-- verifies that all referenced paths have corresponding ux_asset entries. Assets not tied to a
+-- specific screen (e.g., a global icon set, a prototype video) leave screen_id NULL.
 CREATE TABLE IF NOT EXISTS ux_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -434,6 +764,18 @@ CREATE TABLE IF NOT EXISTS ux_asset (
 );
 
 -- Implementation plan phases
+-- Domain: planning
+-- Purpose: Central record for one implementation work chunk. A phase groups related development
+-- work that can be handed to a developer as a coherent unit. The phase_number field provides the
+-- human-readable sequential ordering; child and related tables reference the phase by its id
+-- primary key (e.g., plan_phase_relationship.related_phase_id). The critical_path_sequence column
+-- (nullable INTEGER) indicates whether this phase is on the critical path and its position in the
+-- sequence; NULL means not on the critical path.
+-- Context: Created by implementation_planner once per logical work grouping within an iteration.
+-- Each phase has a type describing whether it delivers user-facing features, internal
+-- infrastructure, or another category of work. review_checkpoint = 1 flags phases where the critic
+-- or architect should conduct a mid-implementation review before proceeding. complexity is a
+-- t-shirt size estimate used by the senior_developer to gauge effort before starting.
 CREATE TABLE IF NOT EXISTS plan_phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -453,6 +795,14 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   UNIQUE(revision_id, name)
 );
 
+-- Domain: planning
+-- Purpose: Links a plan_phase to the requirement IDs it satisfies. This is the primary traceability
+-- bridge from implementation plan back to the requirements domain.
+-- Context: Many-to-many join. A phase can address multiple requirements; a requirement can span
+-- multiple phases. Populated when implementation_planner inserts a plan_phase. Requirements IDs
+-- must already exist in the requirement table. Used by implementation_plan_critic to verify full
+-- requirement coverage across all phases. Also used in traceability_query to show "which phases
+-- implement REQ-XXX?"
 CREATE TABLE IF NOT EXISTS plan_phase_requirement (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
@@ -461,24 +811,54 @@ CREATE TABLE IF NOT EXISTS plan_phase_requirement (
   PRIMARY KEY (plan_phase_id, requirement_id)
 );
 
+-- Domain: planning
+-- Purpose: Links a plan_phase to the architecture component IDs it touches. Tells developers which
+-- system components will be written or modified during this phase.
+-- Context: Many-to-many join. Populated alongside plan_phase_requirement during phase insertion.
+-- implementation_plan_critic uses this to verify that every component gets covered in at least one
+-- phase, and that no phase is overloaded with unrelated components. senior_developer uses this to
+-- decide which codebases/services to check out before starting a phase.
 CREATE TABLE IF NOT EXISTS plan_phase_component (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, component_id)
 );
 
+-- Domain: planning
+-- Purpose: Links a plan_phase to the user_flow IDs it implements. Records which user flows will be
+-- brought to life during a given phase.
+-- Context: Many-to-many join between plan_phase and user_flow (from the UX domain). Used by
+-- senior_developer and test_writer to understand the end-to-end user journeys that must work by the
+-- end of the phase. Enables implementation_plan_critic to check that all designed user flows are
+-- covered.
 CREATE TABLE IF NOT EXISTS plan_phase_flow (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, flow_id)
 );
 
+-- Domain: planning
+-- Purpose: Links a plan_phase to the screen IDs it will build or modify. Records which UI screens
+-- are in scope for a given phase.
+-- Context: Many-to-many join between plan_phase and screen (from the UX domain). Helps
+-- senior_developer and frontend engineers understand which screens to implement in each phase. Used
+-- by test_writer to scope UI/integration tests per phase.
 CREATE TABLE IF NOT EXISTS plan_phase_screen (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_phase_id, screen_id)
 );
 
+-- Domain: planning
+-- Purpose: Lists the HTTP API endpoints that must be implemented during a phase. This is the
+-- developer's build spec for the API surface of a phase — HTTP method, route, and purpose for each
+-- endpoint.
+-- Context: One-to-many child of plan_phase. A phase may have zero (infrastructure phases) to many
+-- endpoints. implementation_planner derives these from the architecture domain
+-- (component_interface) and requirements. senior_developer treats each row as an endpoint to
+-- implement and unit-test. test_writer generates integration test cases from these rows.
+-- implementation_plan_critic cross-checks that the listed endpoints cover all relevant acceptance
+-- criteria.
 CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
@@ -488,6 +868,15 @@ CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
   UNIQUE(plan_phase_id, route, http_method)
 );
 
+-- Domain: planning
+-- Purpose: Represents one database migration required within a phase. Each row is a named migration
+-- unit (analogous to a migration file). The tables JSON array lists the specific table names the
+-- migration touches.
+-- Context: One-to-many child of plan_phase. Infrastructure phases often have several migrations;
+-- feature phases typically have one or two. implementation_planner names migrations following a
+-- convention so they can be ordered and versioned. senior_developer uses these to generate or write
+-- migration files before implementing application logic. implementation_plan_critic verifies that
+-- migrations align with the architecture's data model and don't conflict across phases.
 CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
@@ -497,6 +886,20 @@ CREATE TABLE IF NOT EXISTS plan_phase_db_change (
   UNIQUE(plan_phase_id, migration_name)
 );
 
+-- Domain: planning
+-- Purpose: Records inter-phase relationships: ordering constraints (dependency) and concurrency
+-- pairs (parallel). A single table with a dependency_type discriminator replaces the former
+-- plan_phase_dependency and plan_phase_parallel tables.
+-- Context: dependency rows define a DAG of phase execution order: plan_phase_id cannot begin until
+-- related_phase_id is complete. parallel rows record pairs of phases that can be worked
+-- concurrently — they have no blocking dependency and touch independent parts of the system.
+-- implementation_planner populates both relationship types to ensure correct sequencing and to
+-- surface safe parallelism. senior_developer reads dependencies to decide which phases to
+-- start/queue, and reads parallel relationships to maximize throughput. The critical path is
+-- derived from the dependency subset — the longest chain through dependency rows. Critical path
+-- membership is tracked on plan_phase.critical_path_sequence. implementation_plan_critic verifies
+-- claimed parallelism by checking for hidden conflicts in plan_phase_db_change.tables and
+-- plan_phase_component.
 CREATE TABLE IF NOT EXISTS plan_phase_relationship (
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   related_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
@@ -505,6 +908,15 @@ CREATE TABLE IF NOT EXISTS plan_phase_relationship (
   PRIMARY KEY (plan_phase_id, related_phase_id)
 );
 
+-- Domain: planning
+-- Purpose: Records risks specific to a single phase — technical unknowns, integration hazards, or
+-- schedule threats — along with their mitigations.
+-- Context: One-to-many child of plan_phase. A phase may have zero or more risks. Distinct from
+-- plan_overview_risk, which records plan-wide risks. These are phase-scoped. implementation_planner
+-- documents risks when a phase touches unfamiliar technology, has a tight time window, or depends
+-- on external teams. senior_developer reviews these before starting the phase to pre-empt blockers.
+-- implementation_plan_critic checks that every risk has a concrete mitigation (not just "be
+-- careful").
 CREATE TABLE IF NOT EXISTS plan_phase_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
@@ -513,6 +925,15 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
 );
 
 -- Implementation plan: overview
+-- Domain: planning
+-- Purpose: One row per planning revision: the high-level summary of the entire implementation plan.
+-- Records the overall strategy, the rationale for the chosen breakdown, and a description of the
+-- Phase 1 approach.
+-- Context: Created once per planning revision by implementation_planner, alongside all plan_phase
+-- rows. implementation_plan_critic uses this to evaluate whether the strategy is coherent and
+-- whether the rationale justifies the phase count. senior_developer reads this first to understand
+-- the big picture before drilling into individual phases. Child table plan_overview_risk hangs off
+-- this row. Assumptions are stored inline as a JSON array.
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -524,6 +945,15 @@ CREATE TABLE IF NOT EXISTS plan_overview (
   UNIQUE(revision_id)
 );
 
+-- Domain: planning
+-- Purpose: Records plan-wide risks that apply across multiple phases or to the overall delivery,
+-- along with mitigations. These are strategic risks rather than the phase-specific tactical risks
+-- stored in plan_phase_risk.
+-- Context: One-to-many child of plan_overview. A plan typically has 2–5 overview risks. Examples:
+-- "Architecture depends on unproven library X", "Team lacks experience with streaming databases",
+-- "Regulatory approval may delay Phase 3". The optional plan_phase_number field indicates if the
+-- risk materialises at a specific phase (for scheduling mitigation work).
+-- implementation_plan_critic verifies that mitigations are actionable and not generic.
 CREATE TABLE IF NOT EXISTS plan_overview_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plan_overview_id INTEGER NOT NULL REFERENCES plan_overview(id) ON DELETE CASCADE,
@@ -533,6 +963,16 @@ CREATE TABLE IF NOT EXISTS plan_overview_risk (
 );
 
 -- Implementation plan: external dependencies
+-- Domain: planning
+-- Purpose: Records external systems, services, or teams that the implementation plan depends on but
+-- cannot directly control. Each row is one external dependency with a risk level and optional
+-- mitigation strategy.
+-- Context: One-to-many child of the iteration (not a specific phase — external dependencies are
+-- plan-wide). Examples: "Auth0 tenant provisioning", "Payment gateway sandbox credentials", "Mobile
+-- team delivering SDK v2", "Legal approval for GDPR data flows". The optional plan_phase_number
+-- field marks when the dependency becomes blocking. implementation_plan_critic verifies that
+-- high/critical external dependencies have concrete mitigations. senior_developer tracks these as
+-- pre-conditions to flag blockers early.
 CREATE TABLE IF NOT EXISTS plan_external_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -546,6 +986,17 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 );
 
 -- Implementation plan: metadata
+-- Domain: planning
+-- Purpose: Version and provenance record for the implementation plan. Records what version of the
+-- requirements, architecture, and UX specifications the plan was produced from, the plan's own
+-- version string, and its lifecycle status.
+-- Context: One row per planning revision. Inserted by implementation_planner when producing a plan.
+-- The status field tracks the plan through its lifecycle: draft (just produced), review (submitted
+-- to critic), approved (critic accepted). requirements_version, architecture_version, and
+-- ux_specification_version capture the source document versions so that, if any upstream artifact
+-- changes, the plan can be identified as potentially stale. implementation_plan_critic updates
+-- status to approved or leaves feedback that triggers a new revision (which creates a new row with
+-- status: 'draft').
 CREATE TABLE IF NOT EXISTS plan_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -561,6 +1012,14 @@ CREATE TABLE IF NOT EXISTS plan_metadata (
 );
 
 -- Implementation manifests (per sub-phase)
+-- Domain: implementation
+-- Purpose: The root record for one sub-phase of implementation work. Every time the
+-- senior_developer completes a plan sub-phase it writes exactly one manifest row summarising the
+-- outcome: overall status, total lines of code, warning count, and build result. All other
+-- implementation tables hang off this row.
+-- Context: The implementation phase is divided into sub-phases that mirror plan_phase rows.
+-- plan_phase_id references the plan_phase(id) that was just executed. A manifest is written even
+-- when work is partial or blocked so that the critic can inspect what was and was not done.
 CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -578,6 +1037,13 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Domain: implementation
+-- Purpose: Records each individual file that was created, modified, or deleted during a sub-phase.
+-- Provides per-file traceability — which component owns the file and what was the intent behind
+-- touching it.
+-- Context: Written as children of implementation_manifest. One row per file path per manifest. The
+-- component_id links to the architecture component responsible for this file, enabling QA to know
+-- which components are affected by each file change.
 CREATE TABLE IF NOT EXISTS implementation_file (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -588,12 +1054,26 @@ CREATE TABLE IF NOT EXISTS implementation_file (
   UNIQUE(manifest_id, path)
 );
 
+-- Domain: implementation
+-- Purpose: Join table connecting each implementation file to the requirements it helps satisfy.
+-- Enables the QA engineer to ask "which files implement REQ-042?" and the critic to verify
+-- coverage.
+-- Context: Many files implement multiple requirements; a single requirement is typically spread
+-- across multiple files. This M:N join captures both directions. Populated as part of the
+-- implementation_manifest insert when requirements[] is provided per file entry.
 CREATE TABLE IF NOT EXISTS implementation_file_requirement (
   file_id INTEGER NOT NULL REFERENCES implementation_file(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (file_id, requirement_id)
 );
 
+-- Domain: implementation
+-- Purpose: Records the implementation progress of each requirement as assessed by the
+-- senior_developer at the end of a sub-phase. This is the canonical source of truth for "is REQ-042
+-- done?" from the implementation perspective.
+-- Context: Written per manifest. A requirement may appear in multiple manifests across sub-phases;
+-- later rows supersede earlier ones. The QA engineer consults this table — alongside
+-- implementation_file_requirement — to determine what has been built and what still needs testing.
 CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -603,6 +1083,12 @@ CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   UNIQUE(manifest_id, requirement_id)
 );
 
+-- Domain: implementation
+-- Purpose: Records per-component implementation progress alongside requirement status. Where
+-- implementation_requirement_status tracks the "what", this table tracks the "which system part".
+-- Context: Useful for architecture-level dashboards: the critic checks that each component reaches
+-- complete before the phase exits. A component's status may be partial across sub-phases until all
+-- its files and requirements are done.
 CREATE TABLE IF NOT EXISTS implementation_component_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -612,6 +1098,12 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
   UNIQUE(manifest_id, component_id)
 );
 
+-- Domain: implementation
+-- Purpose: Records each HTTP API endpoint actually implemented (as opposed to planned) during a
+-- sub-phase. Allows comparison against plan_phase_api_endpoint to confirm delivery.
+-- Context: The QA engineer uses this table to know which endpoints exist and which are only
+-- stubbed, so integration tests can be scoped correctly. stubbed means the route exists but returns
+-- mock data; complete means the full logic is wired up.
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -621,12 +1113,23 @@ CREATE TABLE IF NOT EXISTS implementation_api_endpoint (
   UNIQUE(manifest_id, route, http_method)
 );
 
+-- Domain: implementation
+-- Purpose: Join table linking implemented API endpoints to the requirements they fulfil. Enables
+-- traceability from HTTP surface to business requirements.
+-- Context: This is the join table and provides per-endpoint traceability.
 CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
   endpoint_id INTEGER NOT NULL REFERENCES implementation_api_endpoint(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (endpoint_id, requirement_id)
 );
 
+-- Domain: implementation
+-- Purpose: Catalogues third-party packages or libraries added to the project during implementation.
+-- Feeds into security/license audits and complements the pre-approved approved_dependency
+-- architecture table with what was actually used.
+-- Context: The senior_developer must record every npm install, pip install, go get, etc. here. This
+-- allows the critic and QA to spot unapproved dependencies and the release engineer to confirm all
+-- dependencies are licensed correctly.
 CREATE TABLE IF NOT EXISTS implementation_dependency_added (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -637,6 +1140,13 @@ CREATE TABLE IF NOT EXISTS implementation_dependency_added (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: implementation
+-- Purpose: Tracks each database migration script created or applied during implementation. Provides
+-- the ops and QA teams with a clear list of schema changes that need to be run before the code can
+-- be deployed.
+-- Context: Migrations may be created (file written but not yet run), pending (queued for the next
+-- deploy), or applied (already executed against the database). The release engineer uses this
+-- status when generating deployment runbooks.
 CREATE TABLE IF NOT EXISTS implementation_db_migration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -646,6 +1156,13 @@ CREATE TABLE IF NOT EXISTS implementation_db_migration (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: implementation
+-- Purpose: Records any impediment the senior_developer encountered during a sub-phase that
+-- prevented complete implementation. Blockers are the primary signal used by the
+-- senior_developer_critic to decide whether to reject a revision and escalate.
+-- Context: Blockers have three severity levels. needs_escalation = 1 flags that the
+-- senior_developer believes human intervention or architecture revision is required. The critic
+-- checks this flag and severity when writing its verdict in revision.feedback.
 CREATE TABLE IF NOT EXISTS implementation_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -655,12 +1172,22 @@ CREATE TABLE IF NOT EXISTS implementation_blocker (
   needs_escalation INTEGER NOT NULL DEFAULT 0
 );
 
+-- Domain: implementation
+-- Purpose: Join table associating each blocker with the requirements it prevents from being
+-- implemented. Enables the critic and QA to pinpoint exactly which requirements are at risk.
+-- Context: The join table tracks which requirements are affected by each blocker.
 CREATE TABLE IF NOT EXISTS implementation_blocker_requirement (
   blocker_id INTEGER NOT NULL REFERENCES implementation_blocker(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (blocker_id, requirement_id)
 );
 
+-- Domain: implementation
+-- Purpose: Stores the results of the senior_developer's self-review checklist at the end of each
+-- sub-phase. Functions as a structured pre-flight check before submitting to the critic.
+-- Context: Typical checklist items include: "all tests pass", "no hardcoded secrets", "API
+-- contracts match spec", "migrations are reversible". Each item is either passed (1) or not (0).
+-- The critic may reject if mandatory items are failed.
 CREATE TABLE IF NOT EXISTS implementation_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -670,6 +1197,12 @@ CREATE TABLE IF NOT EXISTS implementation_review_checklist (
 );
 
 -- VCS commits linked to iterations
+-- Domain: implementation
+-- Purpose: Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific phase.
+-- Acts as the durable connection between the changelog database and the version control history.
+-- Context: Populated exclusively by the commit_link MCP tool, not by changelog_insert. The
+-- senior_developer calls commit_link after each commit. The iteration_summary read tool surfaces
+-- these rows alongside deliverables to give a complete picture of an iteration's VCS activity.
 CREATE TABLE IF NOT EXISTS vcs_commit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -681,6 +1214,15 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
 );
 
 -- Intermediate assets shared between producer/critic
+-- Domain: implementation
+-- Purpose: Stores transient work items, notes, plans, and references that the senior_developer (or
+-- any agent) creates during work but that are not final deliverables. Used for producer-critic
+-- handoff context — the critic reads intermediate assets to understand what the producer was
+-- thinking.
+-- Context: asset_type determines what content contains. For example, commit_ref and file_ref
+-- typically store identifiers rather than full content, work_item captures task notes, plan
+-- captures sub-phase planning text, and note captures free-form observations. The field is free-
+-- form — agents may use any descriptive type string.
 CREATE TABLE IF NOT EXISTS intermediate_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
@@ -692,6 +1234,14 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
 );
 
 -- Asset deliverables: files committed to VCS
+-- Domain: implementation
+-- Purpose: Records files that have been committed to VCS as finished deliverables. Where
+-- intermediate_asset captures in-progress work, asset_deliverable captures the permanent artefacts:
+-- source code, tests, documentation, diagrams, toolchain configs.
+-- Context: The asset_type field categorises the deliverable (e.g., source code, tests,
+-- documentation). file_path is the repository-relative path. commit_sha ties the deliverable to the
+-- specific commit that introduced it, enabling the iteration_summary tool to surface "what was
+-- shipped" without querying VCS directly.
 CREATE TABLE IF NOT EXISTS asset_deliverable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -708,6 +1258,13 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
 -- ============================================================
 
 -- Test report
+-- Domain: qa-test
+-- Purpose: The root entity for a QA run. One test_report row represents the aggregate outcome of a
+-- full test execution for a given iteration. All other test-domain tables reference this row.
+-- Context: The qa_engineer creates exactly one test_report per iteration (possibly revised across
+-- multiple revisions). The status field is the single signal the release_engineer uses to gate
+-- release: pass means all tests passed and no critical blockers exist; fail means failures
+-- occurred; blocked means testing could not complete.
 CREATE TABLE IF NOT EXISTS test_report (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -728,6 +1285,14 @@ CREATE TABLE IF NOT EXISTS test_report (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Domain: qa-test
+-- Purpose: Records whether each requirement has been exercised by the test suite. Provides per-
+-- requirement test traceability at the requirement level (as opposed to per-criterion detail in
+-- test_acceptance_criterion_result).
+-- Context: The qa_engineer creates one row per requirement. The qa_critic cross-checks this list
+-- against the full requirement set in requirement to detect untested requirements. The
+-- release_engineer uses this table to confirm that all must_have requirements have at least a pass
+-- or partial coverage status.
 CREATE TABLE IF NOT EXISTS test_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -736,6 +1301,13 @@ CREATE TABLE IF NOT EXISTS test_requirement_coverage (
   UNIQUE(report_id, requirement_id)
 );
 
+-- Domain: qa-test
+-- Purpose: Records the pass/fail status of a single acceptance criterion for a given requirement
+-- coverage entry. This is the finest level of requirement traceability in the test domain.
+-- Context: Each requirement has one or more acceptance criteria (stored as the acceptance_criteria
+-- JSON array on the requirement table). The qa_engineer must produce a result row for every
+-- criterion. Unverified criteria appear as not_tested. The criterion text is copied from the source
+-- requirement to make the report self-contained.
 CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   coverage_id INTEGER NOT NULL REFERENCES test_requirement_coverage(id) ON DELETE CASCADE,
@@ -746,6 +1318,12 @@ CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
   UNIQUE(coverage_id, criterion)
 );
 
+-- Domain: qa-test
+-- Purpose: Groups test cases into named suites by their testing type. Each suite belongs to exactly
+-- one test report and contains one or more test cases.
+-- Context: The qa_engineer organizes test cases into suites reflecting the testing strategy (unit
+-- tests, integration tests, end-to-end, security scans, performance benchmarks). Suites are the
+-- second level of the hierarchy: test_report → test_suite → test_case.
 CREATE TABLE IF NOT EXISTS test_suite (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -754,6 +1332,13 @@ CREATE TABLE IF NOT EXISTS test_suite (
   UNIQUE(report_id, name)
 );
 
+-- Domain: qa-test
+-- Purpose: Stores the result of a single test case execution, including its status, timing, and any
+-- failure diagnostics.
+-- Context: Each test_case belongs to a suite. The test_id is the canonical identifier used by the
+-- test runner (e.g., "auth.login.valid_credentials"). Flaky tests (intermittently passing/failing)
+-- are captured with the flaky status and a retry_count. Full stack traces are preserved to support
+-- root-cause analysis.
 CREATE TABLE IF NOT EXISTS test_case (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   suite_id INTEGER NOT NULL REFERENCES test_suite(id) ON DELETE CASCADE,
@@ -768,12 +1353,26 @@ CREATE TABLE IF NOT EXISTS test_case (
   UNIQUE(suite_id, test_id)
 );
 
+-- Domain: qa-test
+-- Purpose: Many-to-many bridge table linking test cases to the requirements they verify. Enables
+-- requirement-centric queries ("which test cases cover REQ-042?") and test-centric queries ("what
+-- requirements does this test verify?").
+-- Context: The qa_engineer populates this for each test case that directly verifies a requirement.
+-- Together with test_requirement_coverage and test_acceptance_criterion_result, this forms the full
+-- traceability chain: requirement ↔ test case ↔ test suite ↔ test report.
 CREATE TABLE IF NOT EXISTS test_case_requirement (
   test_case_id INTEGER NOT NULL REFERENCES test_case(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (test_case_id, requirement_id)
 );
 
+-- Domain: qa-test
+-- Purpose: Records a security issue discovered during the QA phase, either from a vulnerability
+-- scanner or a dependency audit tool.
+-- Context: The qa_engineer runs security tooling (e.g., SAST scanners, npm audit, pip-audit) and
+-- records each finding here. Critical or high severity findings typically populate the test_blocker
+-- table as well. The release_engineer checks this table for unresolved critical findings before
+-- approving release.
 CREATE TABLE IF NOT EXISTS test_security_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -787,6 +1386,13 @@ CREATE TABLE IF NOT EXISTS test_security_finding (
   advisory TEXT
 );
 
+-- Domain: qa-test
+-- Purpose: Stores a measured performance metric alongside its target threshold and a pass/fail
+-- verdict. One row per benchmark measurement.
+-- Context: The qa_engineer runs benchmarks defined by performance requirements (from the
+-- requirement table with category = 'performance'). Each metric (e.g., p95 response time,
+-- throughput) is recorded with its actual value, the threshold from the requirement, and whether it
+-- passed. Failed benchmarks typically become blockers.
 CREATE TABLE IF NOT EXISTS test_performance_benchmark (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -799,6 +1405,13 @@ CREATE TABLE IF NOT EXISTS test_performance_benchmark (
   UNIQUE(report_id, name)
 );
 
+-- Domain: qa-test
+-- Purpose: Records an issue that prevents the test report from achieving a pass status. Each
+-- blocker has a severity level and an optional recommendation for resolution.
+-- Context: The qa_engineer creates blocker rows for critical failures, unresolved security
+-- findings, or missing test coverage that disqualify the build from release. The release_engineer
+-- checks for open blockers before proceeding. The qa_critic validates that every fail status in
+-- test_requirement_coverage has a corresponding blocker.
 CREATE TABLE IF NOT EXISTS test_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -807,12 +1420,25 @@ CREATE TABLE IF NOT EXISTS test_blocker (
   recommendation TEXT
 );
 
+-- Domain: qa-test
+-- Purpose: Many-to-many bridge linking blockers to the requirements they affect. Allows the
+-- release_engineer to identify exactly which requirements are at risk due to each blocker.
+-- Context: When a blocker is related to a specific requirement (e.g., a failed functional test for
+-- REQ-012), the qa_engineer records that link here. A blocker may affect multiple requirements; a
+-- requirement may be referenced by multiple blockers.
 CREATE TABLE IF NOT EXISTS test_blocker_requirement (
   blocker_id INTEGER NOT NULL REFERENCES test_blocker(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (blocker_id, requirement_id)
 );
 
+-- Domain: qa-test
+-- Purpose: Captures QA improvement suggestions that are not blocking but should be addressed in
+-- future iterations. Categorized and prioritized for easy triage.
+-- Context: The qa_engineer and qa_critic identify weaknesses in the test suite (gaps in coverage,
+-- reliability issues, missing performance benchmarks, etc.) and record them here. The
+-- release_engineer reviews high-priority recommendations when deciding whether to release or
+-- request a follow-up iteration. Unlike blockers, recommendations do not prevent release.
 CREATE TABLE IF NOT EXISTS test_recommendation (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -826,6 +1452,17 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
 -- ============================================================
 
 -- Security audit findings (produced by security_auditor during audit phase)
+-- Domain: audit
+-- Purpose: Records a single security vulnerability or concern discovered during the audit phase.
+-- Each finding is an independent row — auditors record findings incrementally as they complete each
+-- OWASP category or code area.
+-- Context: The security_auditor performs a deep code-level security audit (OWASP Top 10, data flow
+-- tracing, dependency audit, configuration review) and records each finding individually via
+-- changelog_insert. This differs from test_security_finding in the QA domain: QA findings come from
+-- automated scanners during testing, while audit findings come from manual expert code review
+-- during the audit phase. The security_audit_critic queries all findings for the current iteration
+-- to validate completeness, accuracy, and actionability. The release_engineer checks for unresolved
+-- high/critical findings before approving release.
 CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -841,6 +1478,18 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
 );
 
 -- Performance audit findings (produced by performance_auditor during audit phase)
+-- Domain: audit
+-- Purpose: Records a single performance bottleneck, anti-pattern, or optimization opportunity
+-- discovered during the audit phase. Each finding is an independent row — auditors record findings
+-- incrementally as they complete each performance area.
+-- Context: The performance_auditor performs a deep code-level performance audit (database queries,
+-- memory patterns, concurrency, API design, algorithm analysis) and records each finding
+-- individually via changelog_insert. This differs from test_performance_benchmark in the QA domain:
+-- QA benchmarks measure against defined thresholds from requirements, while audit findings identify
+-- code-level anti-patterns and bottlenecks regardless of requirements. The performance_audit_critic
+-- queries all findings for the current iteration to validate completeness, evidence backing, and
+-- actionability. The release_engineer checks for unresolved high/critical findings before approving
+-- release.
 CREATE TABLE IF NOT EXISTS performance_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -858,6 +1507,16 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
 );
 
 -- Documentation manifest
+-- Domain: documentation
+-- Purpose: The root aggregate for a documentation pass. One row is created per changelog_insert
+-- call with entity_type = "documentation_manifest". It records the overall status (complete /
+-- partial / blocked), a count of documents created, total pages, and accessibility compliance.
+-- Context: Every other documentation table references this row. The manifest ties documentation
+-- artifacts back to a specific revision via revision_id (NOT NULL), so the full history of
+-- documentation revisions is preserved. The iteration is derived via the revision → phase →
+-- iteration chain (or via the entity_context VIEW). The documentation_critic reads this row (and
+-- its children) to validate coverage and quality; it then calls revision_update with a verdict of
+-- approved or rejected.
 CREATE TABLE IF NOT EXISTS documentation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -873,6 +1532,15 @@ CREATE TABLE IF NOT EXISTS documentation_manifest (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Domain: documentation
+-- Purpose: A flexible key/value store for named documentation sections within a manifest. Examples
+-- include entries like category = "readme", key = "installation", value = "..." or category =
+-- "api", key = "authentication", value = "...". The path field records the file path where this
+-- section lives on disk.
+-- Context: The documentation_master uses this table to enumerate every discrete section of the
+-- documentation suite — README sections, API doc sections, guides, changelogs, etc. The
+-- documentation_critic scans these records to verify section coverage against the requirements and
+-- feature list.
 CREATE TABLE IF NOT EXISTS documentation_section (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
@@ -883,6 +1551,15 @@ CREATE TABLE IF NOT EXISTS documentation_section (
   UNIQUE(manifest_id, category, key)
 );
 
+-- Domain: documentation
+-- Purpose: Records a documentation entry for a single feature of the product. Captures where the
+-- feature's documentation lives (path) and whether it includes concrete examples and screenshots.
+-- Child rows in documentation_feature_requirement link each feature documentation to the
+-- requirements it satisfies.
+-- Context: The documentation_master creates one row per documented feature. This allows the
+-- documentation_critic to verify that every user-facing feature has documentation at a known path,
+-- with examples where required. The includes_examples and includes_screenshots flags are used in
+-- accessibility and quality checks.
 CREATE TABLE IF NOT EXISTS documentation_feature (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
@@ -893,12 +1570,29 @@ CREATE TABLE IF NOT EXISTS documentation_feature (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: documentation
+-- Purpose: A many-to-many join table linking documented features to the requirements they satisfy.
+-- Enables bidirectional traceability: given a feature, find its requirements; given a requirement,
+-- find which features document it.
+-- Context: The documentation_master populates this after recording each documentation_feature. The
+-- documentation_critic uses it to verify that all must_have requirements appear in at least one
+-- feature's documentation. The requirement_id is a TEXT foreign key matching the REQ-XXX
+-- identifiers from the requirement table.
 CREATE TABLE IF NOT EXISTS documentation_feature_requirement (
   feature_id INTEGER NOT NULL REFERENCES documentation_feature(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   PRIMARY KEY (feature_id, requirement_id)
 );
 
+-- Domain: documentation
+-- Purpose: Records per-requirement documentation coverage status. One row per requirement that the
+-- documentation_master assessed. Records whether the requirement is documented (documented flag),
+-- whether it is user-facing, and any free-form notes. The paths JSON array lists the actual file
+-- paths where coverage appears.
+-- Context: This table is the primary coverage report used by the documentation_critic. A
+-- requirement with documented = 0 is a gap. user_facing = 1 flags requirements that must appear in
+-- end-user documentation (guides, README) rather than internal developer docs. The notes field
+-- captures reasons for non-coverage (e.g., "internal implementation detail, no user doc needed").
 CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
@@ -910,6 +1604,15 @@ CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
   UNIQUE(manifest_id, requirement_id)
 );
 
+-- Domain: documentation
+-- Purpose: Catalogs generated documentation assets — diagrams, screenshots, videos, code samples,
+-- and other media — that are referenced within the documentation. Each row records the asset's file
+-- path, type, human-readable description, and accessibility alt text.
+-- Context: The documentation_master creates one row per asset it generates or references. The
+-- alt_text field is specifically required for accessibility compliance (accessibility_compliant = 1
+-- on the manifest). The documentation_critic checks that all assets of type screenshot or diagram
+-- have non-null alt_text. The asset_type CHECK constraint enforces a closed vocabulary aligned with
+-- the output formats the workflow supports.
 CREATE TABLE IF NOT EXISTS documentation_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
@@ -920,6 +1623,15 @@ CREATE TABLE IF NOT EXISTS documentation_asset (
   UNIQUE(manifest_id, path)
 );
 
+-- Domain: documentation
+-- Purpose: Records the results of named verification checks run against the documentation. Each row
+-- is a single check (e.g., "all_requirements_documented", "links_valid", "examples_compile") with a
+-- boolean passed flag. The full set of rows for a manifest forms the documentation quality gate.
+-- Context: The documentation_critic populates this table (or the documentation_master self-
+-- validates and the critic confirms). A manifest is ready for release only when all critical checks
+-- have passed = 1. The check names are free-form strings, giving flexibility to add new checks
+-- without schema changes. The documentation_critic's rejection feedback will reference specific
+-- failed check names from this table.
 CREATE TABLE IF NOT EXISTS documentation_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
@@ -929,6 +1641,13 @@ CREATE TABLE IF NOT EXISTS documentation_review_checklist (
 );
 
 -- Deployment manifest
+-- Domain: deployment
+-- Purpose: Root record for a release attempt. Carries readiness status and anchors all deployment
+-- sub-tables. One manifest per release iteration (or per revision if the release was rejected and
+-- re-attempted).
+-- Context: Created by release_engineer at the start of the release phase. Status is set to
+-- not_ready initially, updated to ready when all checks pass, or blocked when hard blockers exist.
+-- The release_critic reads this row plus all children to produce its verdict.
 CREATE TABLE IF NOT EXISTS deployment_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -944,6 +1663,12 @@ CREATE TABLE IF NOT EXISTS deployment_manifest (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Domain: deployment
+-- Purpose: Represents a CI/CD pipeline platform (e.g., GitHub Actions, GitLab CI, CircleCI,
+-- Jenkins). One row per pipeline; a manifest may in principle define multiple pipelines for
+-- different platforms.
+-- Context: The pipeline is the top-level CI/CD object. All pipeline stages, their triggers, steps,
+-- and quality gates descend from this table.
 CREATE TABLE IF NOT EXISTS deployment_pipeline (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -952,6 +1677,12 @@ CREATE TABLE IF NOT EXISTS deployment_pipeline (
   UNIQUE(manifest_id, platform)
 );
 
+-- Domain: deployment
+-- Purpose: Defines a named stage within the CI/CD pipeline (e.g., build, test, security-scan,
+-- deploy-staging, deploy-production). Each stage has a stated purpose.
+-- Context: Stages map to jobs or stages in the underlying CI/CD platform. The purpose field is a
+-- human-readable description used by the release critic to verify that all required deployment
+-- concerns (build, test, security, deploy, smoke-test) are covered.
 CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id) ON DELETE CASCADE,
@@ -962,6 +1693,13 @@ CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
   UNIQUE(pipeline_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Defines a named quality gate check attached to a specific pipeline stage. Each gate has
+-- a condition expression and a failure_action that controls how the pipeline responds when the
+-- condition is not met.
+-- Context: Per-stage gates enforce standards at the point of execution (e.g., "test coverage ≥ 80%"
+-- on the test stage, "no critical CVEs" on the security-scan stage). The failure_action column
+-- determines whether failure blocks the pipeline, emits a warning, or just sends a notification.
 CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id) ON DELETE CASCADE,
@@ -971,6 +1709,13 @@ CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
   UNIQUE(stage_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Stores global, manifest-level quality gate thresholds and rules organised by category
+-- and key/value pairs. Complements the per-stage gates with project-wide standards.
+-- Context: While deployment_stage_quality_gate attaches gates to specific pipeline stages,
+-- deployment_quality_gate records the overall policy (e.g., category: test_coverage, key:
+-- minimum_percent, value: 80). The release critic compares these global rules against the QA test
+-- report to verify the release meets the project's own declared standards.
 CREATE TABLE IF NOT EXISTS deployment_quality_gate (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -980,6 +1725,13 @@ CREATE TABLE IF NOT EXISTS deployment_quality_gate (
   UNIQUE(manifest_id, category, key)
 );
 
+-- Domain: deployment
+-- Purpose: Describes a named deployment environment (development, staging, or production). Captures
+-- the deployment method, access URL, and rollback procedure for that environment.
+-- Context: The three-environment model (dev/staging/prod) is standard. Each environment gets its
+-- own infrastructure resources (deployment_env_infra) and environment variable set
+-- (deployment_env_var). The rollback procedure is critical — the critic verifies it is documented
+-- for staging and production.
 CREATE TABLE IF NOT EXISTS deployment_environment (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -990,6 +1742,13 @@ CREATE TABLE IF NOT EXISTS deployment_environment (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Lists the cloud or infrastructure resources provisioned for a specific environment. One
+-- row per resource.
+-- Context: Resources are typically cloud provider primitives (e.g., AWS ECS Cluster, GCP Cloud SQL
+-- instance, Kubernetes namespace prod). The provider field is optional because some infrastructure
+-- is provider-agnostic (e.g., a bare-metal server). This table drives infrastructure-as-code
+-- checklists in the release review.
 CREATE TABLE IF NOT EXISTS deployment_env_infra (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
@@ -997,6 +1756,13 @@ CREATE TABLE IF NOT EXISTS deployment_env_infra (
   resource TEXT NOT NULL
 );
 
+-- Domain: deployment
+-- Purpose: Inventories the environment variables used by the application in a specific environment,
+-- along with their value-source classification. Does NOT store values.
+-- Context: Common value_source values include secret, config, and hardcoded. secret vars are
+-- expected to be sourced from a secrets manager (cross-referenced with deployment_secret). config
+-- vars come from CI/CD config files or infrastructure config maps. hardcoded vars are baked into
+-- the image or binary — flagged for review if they contain sensitive data.
 CREATE TABLE IF NOT EXISTS deployment_env_var (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
@@ -1006,6 +1772,12 @@ CREATE TABLE IF NOT EXISTS deployment_env_var (
   UNIQUE(environment_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Describes a build artifact produced by the CI/CD pipeline. One row per artifact type
+-- (e.g., a Docker image, a statically-compiled binary, a .tar.gz release archive).
+-- Context: Artifacts are the deployable outputs of the build process. The registry field points to
+-- where the artifact is stored (container registry, S3 bucket, GitHub Releases). The versioning
+-- field records the versioning strategy used to tag the artifact.
 CREATE TABLE IF NOT EXISTS deployment_artifact (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1017,6 +1789,13 @@ CREATE TABLE IF NOT EXISTS deployment_artifact (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Records whether code signing is enabled for this release and, if so, which signing
+-- method is used.
+-- Context: Code signing is required for macOS binaries (Gatekeeper), Windows executables
+-- (SmartScreen), and container images (Sigstore/cosign). A single row per manifest captures the
+-- overall signing posture. The critic verifies that enabled = 1 when the target includes a platform
+-- that mandates signing.
 CREATE TABLE IF NOT EXISTS deployment_signing (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1024,6 +1803,13 @@ CREATE TABLE IF NOT EXISTS deployment_signing (
   signing_method TEXT
 );
 
+-- Domain: deployment
+-- Purpose: Top-level metadata for locally-distributed executables — tools or CLIs shipped directly
+-- to end-user machines via package managers rather than deployed to a server.
+-- Context: Applies when the manifest targets local-executable (as listed in the
+-- deployment_manifest.targets JSON array). Captures the installation method (e.g., homebrew-tap,
+-- apt-repository, winget, direct-download) and the update mechanism (e.g., brew upgrade, apt-get
+-- upgrade, self-update). Platform and channel lists are stored as JSON arrays on this table.
 CREATE TABLE IF NOT EXISTS deployment_local_executable (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1033,6 +1819,14 @@ CREATE TABLE IF NOT EXISTS deployment_local_executable (
   channels JSON NOT NULL DEFAULT '[]'
 );
 
+-- Domain: deployment
+-- Purpose: Inventories the secrets required by the deployment — their names, purposes, managing
+-- provider, and rotation policy. Values are NEVER stored.
+-- Context: This table is the deployment domain's secrets ledger. It enables the release critic to
+-- verify that every environment variable with value_source = 'secret' has a corresponding secret
+-- record. The provider points to the secrets management system (e.g., AWS Secrets Manager,
+-- HashiCorp Vault, GitHub Actions secrets). The rotation_policy drives operational runbook
+-- requirements.
 CREATE TABLE IF NOT EXISTS deployment_secret (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1043,6 +1837,13 @@ CREATE TABLE IF NOT EXISTS deployment_secret (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Declares the health check endpoints or probes that should be polled after deployment to
+-- verify the service is running correctly.
+-- Context: Health checks are used by load balancers, container orchestrators (Kubernetes
+-- liveness/readiness probes), and monitoring systems. The endpoint field is the HTTP path or
+-- command; interval is the polling frequency. Multiple health checks can be defined per manifest
+-- (e.g., liveness, readiness, and deep-health).
 CREATE TABLE IF NOT EXISTS deployment_health_check (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1052,6 +1853,12 @@ CREATE TABLE IF NOT EXISTS deployment_health_check (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Captures the alerting configuration for the deployed system — which alerting provider is
+-- used and which channel receives notifications.
+-- Context: One row per alerting channel. A system may route different alert severities to different
+-- channels (e.g., PagerDuty for critical, Slack #alerts for warnings). The provider field names the
+-- alerting platform; channel is the destination identifier within that platform.
 CREATE TABLE IF NOT EXISTS deployment_alerting (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1060,6 +1867,14 @@ CREATE TABLE IF NOT EXISTS deployment_alerting (
   UNIQUE(manifest_id, channel)
 );
 
+-- Domain: deployment
+-- Purpose: Defines a named operational runbook for a specific incident scenario (e.g., "Database
+-- connection exhaustion", "High error rate", "Rollback production"). Each runbook has ordered
+-- steps.
+-- Context: Runbooks are the operational knowledge base for the deployed system. They are produced
+-- by the Release Engineer and reviewed by the Release Critic. Each runbook addresses a distinct
+-- failure scenario. Some steps are normal remediation steps; others are explicitly marked as
+-- rollback steps.
 CREATE TABLE IF NOT EXISTS deployment_runbook (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1068,6 +1883,13 @@ CREATE TABLE IF NOT EXISTS deployment_runbook (
   UNIQUE(manifest_id, name)
 );
 
+-- Domain: deployment
+-- Purpose: Lists the ordered steps within a runbook. Steps marked is_rollback = 1 are specifically
+-- part of the rollback procedure within that runbook.
+-- Context: The is_rollback flag allows runbooks to contain both diagnostic/remediation steps and
+-- rollback steps in a single ordered sequence, with rollback steps clearly distinguished. This
+-- enables the release critic to verify that every runbook addressing a production scenario includes
+-- at least one rollback step.
 CREATE TABLE IF NOT EXISTS deployment_runbook_step (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   runbook_id INTEGER NOT NULL REFERENCES deployment_runbook(id) ON DELETE CASCADE,
@@ -1075,6 +1897,14 @@ CREATE TABLE IF NOT EXISTS deployment_runbook_step (
   is_rollback INTEGER NOT NULL DEFAULT 0
 );
 
+-- Domain: deployment
+-- Purpose: Tracks the release review checklist items that the Release Engineer self-assesses and
+-- the Release Critic validates. Each item has a name and a pass/fail state.
+-- Context: The review checklist is the final gate before a release is approved. It covers items
+-- such as "All quality gates pass", "Rollback procedure documented", "Secrets rotation policy
+-- defined", "Health checks configured". The Release Critic verifies that all items are passed = 1
+-- before issuing an approval verdict. Items with passed = 0 correspond to entries in the
+-- deployment_manifest.blockers JSON array.
 CREATE TABLE IF NOT EXISTS deployment_review_checklist (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
@@ -1087,6 +1917,12 @@ CREATE TABLE IF NOT EXISTS deployment_review_checklist (
 -- BLOCKER: cross-phase workflow blockers raised by agents
 -- ============================================================
 
+-- Domain: cross-cutting
+-- Purpose: System-wide blockers that span all phases or apply to a specific workflow phase as a
+-- whole — issues that the system cannot progress past until resolved.
+-- Context: Created when blockers are identified that cannot be addressed within the current phase
+-- or are escalations from lower-level blockers. These are distinct from phase-specific blockers in
+-- implementation and QA.
 CREATE TABLE IF NOT EXISTS blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -1104,6 +1940,12 @@ CREATE TABLE IF NOT EXISTS blocker (
 -- PROJECT LESSON: cross-phase lessons learned, recorded by critics
 -- ============================================================
 
+-- Domain: cross-cutting
+-- Purpose: Captures lessons learned and key insights from the project for future reference.
+-- Recorded by agents or the team as the project progresses or concludes.
+-- Context: Project lessons provide organizational memory — what worked, what didn't, patterns that
+-- emerged, and recommendations for future projects. These are distinct from recommendations in
+-- specific domains (QA, implementation) and capture systemic insights.
 CREATE TABLE IF NOT EXISTS project_lesson (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -1119,6 +1961,13 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 -- ENTITY SNAPSHOT: JSON history of entity changes across revisions
 -- ============================================================
 
+-- Domain: cross-cutting
+-- Purpose: Preserves the full change history of entities without complicating the main entity
+-- tables. Before an UPSERT overwrites an entity, the old state is captured as a JSON snapshot in
+-- this table.
+-- Context: Enables querying change history for specific entities while keeping the main entity
+-- tables clean and current. Supports the ability to see how any entity evolved across critic
+-- feedback cycles within an iteration.
 CREATE TABLE IF NOT EXISTS entity_snapshot (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   -- soft FK: entity_type must match a key in ENTITY_TABLE (read-tools.js)
