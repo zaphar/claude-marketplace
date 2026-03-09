@@ -409,11 +409,19 @@ describe("implementation_manifest", () => {
 
 describe("vcs_commit (via changelog_insert)", () => {
   it("inserts commit record", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "vcs-entity", type: "feature", goal: "Test" },
+    });
     const { readResult } = insertAndQuery("vcs_commit", {
+      work_item_id: wi.id,
       commit_sha: "abc123",
       message: "Initial commit",
     });
     assert.strictEqual(readResult.results[0].commit_sha, "abc123");
+    assert.strictEqual(readResult.results[0].work_item_id, wi.id);
   });
 });
 

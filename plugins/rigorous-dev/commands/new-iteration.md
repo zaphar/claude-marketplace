@@ -16,7 +16,7 @@ Start a new workflow iteration after closing the previous one. Commits current a
 1. Validates workflow exists and is closed
 2. Shows previous iteration summary
 3. Asks user for confirmation
-4. Commits current artifacts to VCS for history (and records the commit with `commit_link`)
+4. Commits current artifacts to VCS for history
 5. Resets state for the new iteration via `iteration_create`
 6. Begins Requirements phase with context from prior iteration
 
@@ -99,14 +99,9 @@ elif [ -d .git ]; then
 fi
 ```
 
-Record the commit in the DB using `commit_link`:
-
-```
-commit_link({
-  commit_sha: "<commit_sha>",
-  message: "Archive iteration <iteration_id> artifacts for <project_name>"
-})
-```
+> **Note:** The archival commit is recorded in VCS history but not in the `vcs_commit` table,
+> since `vcs_commit` tracks work-item-scoped implementation commits (each linked to a specific
+> `work_item_id` and `revision_id`). Archival commits are infrastructure, not deliverables.
 
 ### 6. Create New Iteration in DB
 

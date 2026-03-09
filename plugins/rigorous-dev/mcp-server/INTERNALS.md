@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~59 child foreign keys.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~61 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -113,14 +113,13 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 | `user_flow.persona_id` | `persona(id)` | Flow definition survives persona deletion |
 | `ux_asset.screen_id` | `screen(id)` | Asset survives screen deletion |
 | `plan_external_dependency.work_item_id` | `work_item(id)` | External dependency survives work item deletion |
-| `vcs_commit.phase_id` | `phase(id)` | Commit record survives phase deletion |
 | `intermediate_asset.phase_id` | `phase(id)` | Asset record survives phase deletion |
 
 **Soft FK (no constraint):** `user_flow_step.surface` references `screen.name` (not `screen.id`) with no foreign key constraint, because screens might not exist when flows are defined. Documented inline in `schema.sql` at the column definition.
 
 ## 8. Index Strategy
 
-53 indexes with a clear rationale (documented in `schema.sql` comments):
+54 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`requirement_id`** indexes on junction/mapping tables — requirements are the most cross-referenced entity.

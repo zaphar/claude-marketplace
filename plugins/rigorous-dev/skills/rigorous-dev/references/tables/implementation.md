@@ -160,19 +160,20 @@ Join table associating each blocker with the requirements it prevents from being
 
 ### Purpose
 
-Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific phase. Acts as the durable connection between the changelog database and the version control history.
+Links a Git (or Jujutsu) commit SHA to a specific work item and revision attempt within an iteration. Acts as the durable connection between the changelog database and the version control history.
 
 ### Context
 
-**Populated exclusively by the `commit_link` MCP tool**, not by `changelog_insert`. The senior_developer calls `commit_link` after each commit. The `iteration_summary` read tool surfaces these rows alongside deliverables to give a complete picture of an iteration's VCS activity.
+**Populated by both `commit_link` and `changelog_insert` MCP tools.** The senior_developer calls `commit_link` after each commit. Every commit belongs to exactly one work item and one revision attempt. The `iteration_summary` read tool surfaces these rows alongside deliverables to give a complete picture of an iteration's VCS activity.
 
 ### Columns
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | The iteration this commit belongs to. |
-| `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Optional: which phase of the iteration this commit was made in. |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this commit belongs to. |
+| `work_item_id` | INTEGER | NO | — | FK → `work_item(id)` ON DELETE CASCADE | The work item this commit implements. |
+| `revision_id` | INTEGER | NO | — | FK → `revision(id)` ON DELETE CASCADE | The producer-critic revision attempt that produced this commit. |
 | `commit_sha` | TEXT | NO | — | UNIQUE with `iteration_id` | Full or abbreviated VCS commit identifier. |
 | `message` | TEXT | YES | NULL | — | Commit message summary. |
 | `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
@@ -182,15 +183,15 @@ Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific
 
 ### Relationships
 
-- **Parents:** `iteration` (via `iteration_id`), `phase` (via `phase_id`)
+- **Parents:** `iteration` (via `iteration_id`), `work_item` (via `work_item_id`), `revision` (via `revision_id`)
 
 ### MCP Tool Access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `commit_link` | Required fields: `iteration_id`, `commit_sha`. Optional: `phase_id`, `message`. **Do not use `changelog_insert` for this table.** |
-| Query | `iteration_summary` | Returns all commits for an iteration under the `commits` array. |
-| Direct query | `changelog_query` is not wired to `vcs_commit`; use `iteration_summary` or raw SQL. |
+| Insert | `commit_link` | Required fields: `iteration_id`, `work_item_id`, `revision_id`, `commit_sha`. Optional: `message`. |
+| Insert | `changelog_insert` | `entity_type: "vcs_commit"`. Fields: `work_item_id`, `commit_sha`, `message`. |
+| Query | `changelog_query` | `entity_type: "vcs_commit"`. Filters: `work_item_id`, `revision_id`, `commit_sha`. |
 
 ---
 
@@ -237,7 +238,7 @@ iteration
  ├── implementation_component_status (iteration_id, component_id)
  ├── implementation_blocker (iteration_id)
  │    └── implementation_blocker_requirement (blocker_id, requirement_id)
- ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
+ ├── vcs_commit (iteration_id, work_item_id, revision_id)
  └── intermediate_asset (phase_id, iteration_id)
 ```
 
@@ -260,7 +261,9 @@ All 4 implementation tables (`implementation_requirement_status`, `implementatio
 | This domain references | Via column | Why |
 |------------------------|-----------|-----|
 | `iteration` | `iteration_id` | All rows scoped to an iteration (direct FK). |
-| `phase` | `phase_id` | Phase-level VCS and asset scoping. |
+| `work_item` | `work_item_id` | VCS commits tied to the work item they implement. |
+| `revision` | `revision_id` | VCS commits tied to the producer-critic revision attempt. |
+| `phase` | `phase_id` | Phase-level asset scoping (intermediate_asset only). |
 | `requirement` | `requirement_id` | Traceability from implementation status and blockers to requirements. |
 | `component` | `component_id` | Traceability from implementation status to architecture. |
 

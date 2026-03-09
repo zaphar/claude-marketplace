@@ -787,12 +787,13 @@ function insertVcsCommit(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO vcs_commit (iteration_id, phase_id, commit_sha, message, created_at)
-       VALUES (@iteration_id, @phase_id, @commit_sha, @message, @created_at)`
+      `INSERT INTO vcs_commit (iteration_id, work_item_id, revision_id, commit_sha, message, created_at)
+       VALUES (@iteration_id, @work_item_id, @revision_id, @commit_sha, @message, @created_at)`
     )
     .run({
       iteration_id,
-      phase_id: data.phase_id ?? null,
+      work_item_id: data.work_item_id,
+      revision_id,
       commit_sha: data.commit_sha,
       message: data.message ?? null,
       created_at: now
@@ -1104,15 +1105,15 @@ function changelogUpdate(args) {
 
 function commitLink(args) {
   const db = getDb();
-  const { iteration_id, phase_id, commit_sha, message } = args;
+  const { iteration_id, work_item_id, revision_id, commit_sha, message } = args;
   const now = new Date().toISOString();
 
   const result = db
     .prepare(
-      `INSERT INTO vcs_commit (iteration_id, phase_id, commit_sha, message, created_at)
-       VALUES (@iteration_id, @phase_id, @commit_sha, @message, @created_at)`
+      `INSERT INTO vcs_commit (iteration_id, work_item_id, revision_id, commit_sha, message, created_at)
+       VALUES (@iteration_id, @work_item_id, @revision_id, @commit_sha, @message, @created_at)`
     )
-    .run({ iteration_id, phase_id: phase_id ?? null, commit_sha, message: message ?? null, created_at: now });
+    .run({ iteration_id, work_item_id, revision_id, commit_sha, message: message ?? null, created_at: now });
 
   return { id: result.lastInsertRowid, commit_sha };
 }
@@ -1309,16 +1310,17 @@ export const WRITE_TOOLS = [
   },
   {
     name: "commit_link",
-    description: "Links a VCS commit to an iteration and optionally a phase.",
+    description: "Links a VCS commit to a work item and revision attempt within an iteration.",
     inputSchema: {
       type: "object",
       properties: {
         iteration_id: { type: "integer" },
-        phase_id: { type: "integer" },
+        work_item_id: { type: "integer" },
+        revision_id: { type: "integer" },
         commit_sha: { type: "string" },
         message: { type: "string" },
       },
-      required: ["iteration_id", "commit_sha"],
+      required: ["iteration_id", "work_item_id", "revision_id", "commit_sha"],
     },
   },
   {

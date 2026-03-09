@@ -156,7 +156,7 @@ Use these tools for artifact management:
 - `revision_history` — Check how many revisions have occurred for a given phase
 
 **VCS-tracked deliverables** (source code, documentation files, diagrams) remain as files in the repository.
-Use `commit_link` to associate VCS commits with iterations.
+Use `commit_link` to associate VCS commits with work items and revisions.
 
 ### 5. Phase Transitions
 
@@ -472,7 +472,7 @@ active → close → closed → new-iteration → active (iteration N+1)
 **VCS-Based Iteration Cleanup:**
 
 When a new iteration starts, the `new-iteration` command:
-1. Calls `commit_link` to associate the current VCS commit with the closing iteration
+1. Commits current artifacts to VCS via shell (archival only — not tracked in `vcs_commit` since it's not work-item-scoped)
 2. Calls `iteration_create` to open the new iteration in the DB with all phases reset to pending
 3. VCS-tracked files (source code, documentation) remain in the repository as the starting point for the new iteration
 4. Release workflow phase data (qa, audit) is owned by the release workflow and is not reset by `new-iteration`
@@ -691,7 +691,7 @@ You have access to:
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
-- **commit_link** (MCP tool) - Associate a VCS commit SHA with an iteration
+- **commit_link** (MCP tool) - Associate a VCS commit SHA with a work item and revision
 - **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
 - **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr), `entity_id`, and `updates` object with `status` field. Validates status against allowed values per entity type
 - **iteration_close** (MCP tool) - Close an active iteration. Takes `iteration_id` (integer) and optional `notes` (string). Sets `status` to `closed` and `closed_at` to current timestamp. Validates the iteration exists and is currently active

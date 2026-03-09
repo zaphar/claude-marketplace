@@ -198,9 +198,17 @@ describe("revision_update", () => {
 // ───────────────────────────────────────────────────────────────
 
 describe("commit_link", () => {
-  it("links a commit to an iteration", () => {
+  it("links a commit to a work item and revision", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "commit-test", type: "feature", goal: "Test" },
+    });
     const result = handleWriteTool("commit_link", {
       iteration_id: seed.iteration_id,
+      work_item_id: wi.id,
+      revision_id: seed.revision_id,
       commit_sha: "abc123def",
       message: "Initial commit",
     });
@@ -209,16 +217,8 @@ describe("commit_link", () => {
     const row = db.prepare("SELECT * FROM vcs_commit WHERE commit_sha = ?").get("abc123def");
     assert.ok(row);
     assert.strictEqual(row.message, "Initial commit");
-  });
-
-  it("optionally links to a phase", () => {
-    const result = handleWriteTool("commit_link", {
-      iteration_id: seed.iteration_id,
-      phase_id: seed.phase_id,
-      commit_sha: "def456",
-    });
-    const row = db.prepare("SELECT phase_id FROM vcs_commit WHERE id = ?").get(result.id);
-    assert.strictEqual(row.phase_id, seed.phase_id);
+    assert.strictEqual(row.work_item_id, wi.id);
+    assert.strictEqual(row.revision_id, seed.revision_id);
   });
 });
 

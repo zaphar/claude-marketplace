@@ -128,8 +128,16 @@ describe("UNIQUE constraints", () => {
   });
 
   it("prevents duplicate vcs_commit sha", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "vcs-test", type: "feature", goal: "Test" },
+    });
     handleWriteTool("commit_link", {
       iteration_id: seed.iteration_id,
+      work_item_id: wi.id,
+      revision_id: seed.revision_id,
       commit_sha: "abc123",
       message: "First",
     });
@@ -137,6 +145,8 @@ describe("UNIQUE constraints", () => {
       () =>
         handleWriteTool("commit_link", {
           iteration_id: seed.iteration_id,
+          work_item_id: wi.id,
+          revision_id: seed.revision_id,
           commit_sha: "abc123",
           message: "Duplicate",
         }),

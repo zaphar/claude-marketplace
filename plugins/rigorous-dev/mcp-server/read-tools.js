@@ -777,7 +777,8 @@ function queryIntermediateAsset(db, { iteration_id, ids, filters = {} }) {
 }
 
 const VCS_COMMIT_FILTERS = {
-  phase_id: { nullable: true },
+  work_item_id: { nullable: false },
+  revision_id: { nullable: false },
   commit_sha: { nullable: false },
   message: { nullable: true },
 };

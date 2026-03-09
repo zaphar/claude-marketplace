@@ -376,7 +376,7 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `phase_transition` — advance a phase status (pending → in_progress → completed)
 - `revision_create` / `revision_update` — record producer-critic loops
 - `changelog_insert` — append a structured decision to the changelog
-- `commit_link` — associate a VCS commit with a phase/revision
+- `commit_link` — associate a VCS commit with a work item and revision
 - `blocker_resolve` — mark a blocker as resolved with optional resolution notes
 - `project_update` — update project-level metadata
 - `iteration_close` — close an active iteration (sets status to closed, records closed_at)

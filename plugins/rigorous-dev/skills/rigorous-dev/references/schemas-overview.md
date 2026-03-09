@@ -109,7 +109,7 @@ Changelog entities follow a two-tier scoping pattern:
 | `implementation_requirement_status` | senior_developer | Per-requirement implementation progress. |
 | `implementation_component_status` | senior_developer | Per-component implementation progress. |
 | `implementation_blocker` / `_blocker_requirement` | senior_developer | Issues encountered and affected requirements. |
-| `vcs_commit` | (commit_link tool) | Git/jj commits linked to iterations. |
+| `vcs_commit` | senior_developer | Git/jj commits linked to work items and revisions. |
 | `intermediate_asset` | senior_developer | Build artifacts. |
 
 **Critic:** senior_developer_critic (also test_writer / test_writer_critic for the test-writing step)
@@ -154,7 +154,7 @@ Documentation quality is enforced by the `documentation_critic` reviewing commit
 | `phase_transition` | Update phase status (pending → in_progress → completed/skipped). |
 | `revision_create` | Start a new producer-critic revision within a phase. |
 | `revision_update` | Record critic verdict (approved/rejected) with feedback. |
-| `commit_link` | Link a VCS commit to the current iteration. |
+| `commit_link` | Link a VCS commit to a work item and revision within an iteration. |
 | `project_update` | Update project status (e.g., close it). |
 | `work_item_transition` | Update a work_item row's status (pending → test_writing → implementing → completed). |
 | `blocker_resolve` | Mark a blocker as resolved with optional resolution notes. |

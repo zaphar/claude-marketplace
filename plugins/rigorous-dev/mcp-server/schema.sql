@@ -764,17 +764,20 @@ CREATE TABLE IF NOT EXISTS implementation_blocker_requirement (
   PRIMARY KEY (blocker_id, requirement_id)
 );
 
--- VCS commits linked to iterations
+-- VCS commits linked to work items and revision attempts
 -- Domain: implementation
--- Purpose: Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific phase.
+-- Purpose: Links a Git (or Jujutsu) commit SHA to exactly one work item and one revision attempt.
 -- Acts as the durable connection between the changelog database and the version control history.
 -- Context: Populated exclusively by the commit_link MCP tool, not by changelog_insert. The
--- senior_developer calls commit_link after each commit. The iteration_summary read tool surfaces
--- these rows alongside deliverables to give a complete picture of an iteration's VCS activity.
+-- senior_developer calls commit_link after each commit. Each commit belongs to a specific work
+-- item (what was being implemented) and revision (which producer-critic attempt produced it).
+-- The iteration_summary read tool surfaces these rows alongside deliverables to give a complete
+-- picture of an iteration's VCS activity.
 CREATE TABLE IF NOT EXISTS vcs_commit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
+  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
+  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   commit_sha TEXT NOT NULL,
   message TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -978,6 +981,8 @@ CREATE INDEX IF NOT EXISTS idx_work_item_risk_work_item_id
   ON work_item_risk(work_item_id);
 CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_work_item_id
   ON plan_external_dependency(work_item_id);
+CREATE INDEX IF NOT EXISTS idx_vcs_commit_work_item_id
+  ON vcs_commit(work_item_id);
 
 -- ------------------------------------------------------------
 -- requirement_id — junction and mapping tables
@@ -1061,10 +1066,15 @@ CREATE INDEX IF NOT EXISTS idx_intermediate_asset_iteration_id
 
 CREATE INDEX IF NOT EXISTS idx_revision_phase_id
   ON revision(phase_id);
-CREATE INDEX IF NOT EXISTS idx_vcs_commit_phase_id
-  ON vcs_commit(phase_id);
 CREATE INDEX IF NOT EXISTS idx_intermediate_asset_phase_id
   ON intermediate_asset(phase_id);
+
+-- ------------------------------------------------------------
+-- revision_id — FK to revision(id)
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS idx_vcs_commit_revision_id
+  ON vcs_commit(revision_id);
 
 -- ------------------------------------------------------------
 -- persona_id — FK to persona(id)
