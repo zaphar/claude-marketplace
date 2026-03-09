@@ -91,77 +91,43 @@ Produce your findings in the standard audit report format. Persist results to .s
 
 **For a focused audit**, launch only the relevant agent group(s).
 
-## Step 3: Wait for All Agents and Consolidate
+## Step 3: Wait for Critics
 
 Wait for all launched agents to complete using `read_agent` with `wait: true`.
 
 **⚠️ Do NOT delete the individual group reports.** They are preserved as the raw audit fragments.
 
-Once ALL agents have completed, **you (the skill orchestrator) create the consolidated report** by:
+Collect the persisted report paths from each agent's output — these are the `.scratch/rigor-schema-critic/<date>/` paths each group was told to write to. Do NOT read the reports yourself.
 
-1. Reading each agent group's **full persisted report** from `.scratch/rigor-schema-critic/<date>/` — do NOT rely on the agent result summaries returned by `read_agent`; you must read the actual files
-2. **Deduplication via SQLite**: Query the audit database for prior decisions on schema findings:
-   ```bash
-   sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "SELECT f.category, f.summary, d.decision, d.action, d.reason FROM finding f JOIN decision d ON d.finding_id = f.id WHERE f.critic = 'schema' ORDER BY d.decided_at DESC;"
-   ```
-   Match each new finding against prior decisions using `fingerprint` (structural match) or `summary` (fuzzy text match). Findings that match a prior decision should be pre-filled with that decision in the `Approved` column and marked with `(prior)`.
-3. **Insert findings into the database**: For each finding in the consolidated report, insert a row:
-   ```bash
-   sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "INSERT INTO finding (audit_run_id, critic, category, severity, summary, affected_entities, fingerprint, report_path) VALUES ('<run_id>', 'schema', '<category>', '<severity>', '<summary>', '<affected_json>', 'schema::<category>::<sorted_entities>', '<report_path>');"
-   ```
-4. Merging all findings into a single prioritized list ordered by impact (most tables/code eliminated, most critical bugs first)
-5. Writing the consolidated report to `.scratch/rigor-schema-critic/<date>/<HHMMSS>_consolidated-audit.md`
+## Step 4: Consolidate Findings
 
-**⚠️ MANDATORY: The consolidated report MUST use the exact Canonical Persisted Report Structure defined in `workflows/findings-review.md`. Do NOT invent your own format. The Findings Index table (with `#`, `Group`, `Severity`, `Approved`, `Finding` columns) MUST be the first content section after the header. If you find yourself writing a report without this table, STOP — you are doing it wrong.**
+Launch the `rigor_audit_consolidator` agent (`claude-opus-4.6`, `mode: "sync"`) with:
+- `audit_run_id`: the run ID created in Step 2
+- `mode`: `schema_audit`
+- `report_paths`: the group report file paths (up to 4), each labeled with critic name `schema`
+- `db_path`: `.scratch/rigor-plugin-update/audit.db`
 
-The consolidated report format:
+The consolidation agent reads all group reports, parses findings, deduplicates against prior decisions, inserts everything into `audit.db`, and writes the consolidated report to `.scratch/rigor-schema-critic/<date>/<HHMMSS>_consolidated-audit.md`. See the agent definition for the full procedure and canonical report format.
 
-```markdown
-# Schema Audit — Consolidated Report
+After the agent completes, query the database for the findings index and present it to the user:
 
-**Date:** [date]
-**Schema Tables:** [count]
-**Groups Run:** [A, B, C, D]
-**Total Findings:** [count across all groups]
-
----
-
-## Findings Index
-
-| # | Group | Severity | Approved | Finding |
-|---|-------|----------|----------|---------|
-| 1 | [A/B/C/D] | [critical/medium/low] | | [one-line summary — include impact, e.g. "22 child tables can collapse to JSON columns"] |
-| 2 | ... | ... | | ... |
-
----
-
-## Group A: Simplification (Categories 1-4)
-[paste or summarize findings from group A report]
-
-## Group B: Correctness (Categories 5, 12-14)
-[paste or summarize findings from group B report]
-
-## Group C: Waste & Consistency (Categories 6-9)
-[paste or summarize findings from group C report]
-
-## Group D: Performance & Hygiene (Categories 10-11, 15-20)
-[paste or summarize findings from group D report]
-
----
-**Individual reports preserved at:**
-- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
-- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
-- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
-- .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performance-hygiene.md
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "SELECT f.id, f.category, f.severity, f.summary,
+          COALESCE(d.decision, '') as prior_decision
+   FROM finding f
+   LEFT JOIN decision d ON d.finding_id = f.id
+   WHERE f.audit_run_id = '<run-id>'
+   ORDER BY
+     CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,
+     f.category;"
 ```
 
-Note: The `Approved` column starts blank. The `Implementation Phasing` section is NOT included in the initial report — it is appended later during the shared workflow (Step D).
+Note: The `Implementation Phasing` section is NOT included in the initial consolidated report — it is appended later during the shared workflow (Step D).
 
-**Self-check before persisting the report:** Verify that (1) the `## Findings Index` section exists and contains a markdown table, (2) every finding from the group reports has a row, (3) prior decisions are marked with `(prior)`, and (4) the group detail sections follow the index. If any of these are missing, fix the report before writing it to disk.
+## Step 5: Enter Findings Review & Implementation Workflow
 
-## Step 4: Enter Findings Review & Implementation Workflow
-
-After creating the consolidated report, enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index is already built in Step 3 above).
+Enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index is already loaded in the database from Step 4).
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report) → execution with progress reporting.
 

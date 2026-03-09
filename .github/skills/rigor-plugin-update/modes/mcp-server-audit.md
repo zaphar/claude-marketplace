@@ -56,62 +56,51 @@ dimensions systematically. Persist your report to .scratch/rigor-mcp-server-crit
 
 Always use `model: "claude-opus-4.6"` — no exceptions. Correctness auditing requires the strongest model.
 
-## Step 3: Build Findings Index with Deduplication
+## Step 3: Bootstrap Audit Database
 
-**Bootstrap the audit database (if not already initialized):**
+Initialize the audit database and create an audit run:
 
 ```bash
 mkdir -p .scratch/rigor-plugin-update
 sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
 ```
 
-**Create an audit run for this session:**
+Create the run record:
 
 ```bash
 sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
   "INSERT INTO audit_run (id, mode) VALUES ('<timestamp>_mcp_server_audit', 'mcp_server_audit');"
 ```
 
-After the critic completes, read its **full persisted report** from `.scratch/rigor-mcp-server-critic/<date>/` — do NOT rely on the agent result summary returned by `read_agent`; you must read the actual file.
+## Step 4: Consolidate Findings
 
-**Deduplication against prior decisions:**
+After the critic completes, collect the persisted report path from its output — the `.scratch/rigor-mcp-server-critic/<date>/` path it was told to write to. Do NOT read the report yourself.
 
-Query the audit database for prior decisions on MCP server findings:
+Launch the `rigor_audit_consolidator` agent (`claude-opus-4.6`, `mode: "sync"`) with:
+- `audit_run_id`: the run ID created in Step 3
+- `mode`: `mcp_server_audit`
+- `report_paths`: the single MCP server critic report path, labeled with critic name `mcp_server`
+- `db_path`: `.scratch/rigor-plugin-update/audit.db`
+
+The consolidation agent reads the report, parses findings, deduplicates against prior decisions, and inserts everything into `audit.db`. See the agent definition for the full procedure.
+
+After the agent completes, query the database for the findings index and present it to the user:
 
 ```bash
 sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "SELECT f.category, f.summary, d.decision, d.action, d.reason
-   FROM finding f JOIN decision d ON d.finding_id = f.id
-   WHERE f.critic = 'mcp_server'
-   ORDER BY d.decided_at DESC;"
+  "SELECT f.id, f.category, f.severity, f.summary,
+          COALESCE(d.decision, '') as prior_decision
+   FROM finding f
+   LEFT JOIN decision d ON d.finding_id = f.id
+   WHERE f.audit_run_id = '<run-id>'
+   ORDER BY
+     CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,
+     f.category;"
 ```
 
-Match each new finding against prior decisions using:
-- **Fingerprint match**: compare `critic || '::' || category || '::' || sorted(affected_entities)` against the `fingerprint` column in the `finding` table
-- **Fuzzy text match**: `summary` — similar one-line description = likely same finding
+## Step 5: Enter Findings Review & Implementation Workflow
 
-Pre-fill the `Approved` column for matches and mark with `(prior)`:
-- Prior `approved` → `✅ (prior)`
-- Prior `rejected` → `❌ (prior)`
-- Prior `skipped` → `⏭️ (prior)`
-
-**Build the Findings Index:**
-
-If the critic's report does not already contain a properly formatted Findings Index (unlikely but possible), build one from the dimension detail sections:
-
-1. Each finding gets a monotonically increasing `#` (starting at 1)
-2. Order by impact: critical severity first, then high, then medium, then low, then info
-3. Use the report's existing Findings Index if it's well-formed; supplement with deduplication markers
-
-**⚠️ MANDATORY: The report MUST use the exact Canonical Persisted Report Structure defined in `workflows/findings-review.md`. The Findings Index table (with `#`, `Dimension`, `Severity`, `Approved`, `Finding` columns) MUST be the first content section after the header.**
-
-Update the persisted report with deduplication markers if any prior decisions were found.
-
-**Self-check before presenting to the user:** Verify that (1) the `## Findings Index` section exists and contains a markdown table, (2) every finding from the dimension sections has a row, (3) prior decisions are marked with `(prior)`, and (4) dimension detail sections follow the index. If any of these are missing, fix the report before proceeding.
-
-## Step 4: Enter Findings Review & Implementation Workflow
-
-After building the Findings Index, enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index was already built in Step 3).
+Enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index is already loaded in the database from Step 4).
 
 The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the report only if 3+ fixes are approved) → execution with progress reporting.
 
@@ -123,25 +112,5 @@ The shared workflow handles: interactive approve/reject/skip review → dependen
 - **Expand (tell me more)**
 
 When the user approves a test addition, include it as part of the work-unit for that finding during implementation. The producer should add the test to the appropriate existing test file (never create new test files unless no suitable one exists).
-
-**Recording decisions to the audit database:**
-
-After interactive review completes, INSERT each finding and its decision into the audit database. For each reviewed finding:
-
-```bash
-sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "INSERT INTO finding (audit_run_id, critic, category, severity, summary, affected_entities, fingerprint, report_path)
-   VALUES ('<run_id>', 'mcp_server', '<category>', '<severity>', '<summary>', '<affected_entities_json>', '<fingerprint>', '<report_path>');"
-```
-
-Then record the user's decision on that finding:
-
-```bash
-sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "INSERT INTO decision (finding_id, decision, action, reason)
-   VALUES (last_insert_rowid(), '<approved|rejected|skipped>', '<action_or_null>', '<reason_or_null>');"
-```
-
-The database enables deduplication on future audits — findings that were already reviewed won't be re-presented unless the user overrides.
 
 If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). Use the `rigor_plugin_producer` for code changes (it has knowledge of the MCP server architecture) and the `rigor_mcp_server_critic` as the critic for validation — it has specialized knowledge of SQL correctness, MCP protocol compliance, and the server's patterns that the generic `rigor_consistency_critic` lacks.

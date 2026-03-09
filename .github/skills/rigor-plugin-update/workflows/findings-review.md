@@ -7,36 +7,34 @@ This shared workflow is used by any mode that produces multiple findings (Schema
 **Document scope varies by mode:**
 - **Update Mode** — The workflow applies when a change request is decomposed into multiple work-units. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
 - **Schema Audit Mode** — findings are recorded in the `finding` table and decisions in the `decision` table. Raw critic reports remain in `.scratch/` for reference.
-- **Deep Audit Mode** — the critic creates a raw report in `.scratch/`. The orchestrator records structured findings into the database. The implementation plan is only generated if the user approves 3+ fixes.
+- **Deep Audit Mode** — critics create raw reports in `.scratch/`. The consolidation agent records structured findings into the database from the raw reports. The implementation plan is only generated if the user approves 3+ fixes.
+- **MCP Server Audit Mode** — the critic creates a raw report in `.scratch/`. The consolidation agent records structured findings into the database. The implementation plan is only generated if the user approves 3+ fixes.
 - **Q&A Mode** — findings are presented inline in the conversation. The conversation itself is the record.
 
-## Step A: Build Findings Index
+## Step A: Retrieve Findings Index from Database
 
 **⚠️ This is the most critical step. The Findings Index drives the entire review. Do NOT skip or improvise this.**
 
-- Collect all findings from critic reports (or investigation results). Read each group report in full — do not rely on agent result summaries alone.
-- For each finding, compute a fingerprint from `category` + affected entities (e.g., table names, file paths) — this is a structural key for deduplication.
-- **INSERT each finding** into the database:
-  ```bash
-  sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "
-    INSERT INTO finding (audit_run_id, critic, category, severity, summary, affected_entities, fingerprint, report_path)
-    VALUES ('<run-id>', '<critic>', '<category>', '<severity>', '<summary>', '<json-entities>', '<fingerprint>', '<report-path>');"
-  ```
-- **Deduplication**: For each finding, check for a prior decision on the same fingerprint:
-  ```bash
-  sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "
-    SELECT d.decision, d.action, d.reason, f.summary, f.audit_run_id
-    FROM decision d
-    JOIN finding f ON d.finding_id = f.id
-    WHERE f.fingerprint = '<fingerprint>'
-    ORDER BY d.decided_at DESC
-    LIMIT 1;"
-  ```
-  If a prior decision exists, pre-fill the finding's status with that decision and mark it `(prior)` so the user can see it was already decided. The user can override any prior decision during interactive review.
-- Assign monotonically increasing `#` starting at 1
-- Build the findings table with columns: `#`, `Group`/`Category`, `Severity`, `Finding` (one-line summary), `Approved` (blank, or pre-filled from prior decisions)
-- Order by impact: critical bugs first, then high-elimination changes, then medium, then low
+The `rigor_audit_consolidator` agent has already read all critic reports, parsed findings, computed fingerprints, deduplicated against prior decisions, and inserted everything into `audit.db`. The orchestrator retrieves the findings index by querying the database:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db "
+  SELECT f.id, f.critic, f.category, f.severity, f.summary,
+         COALESCE(d.decision, '') as prior_decision,
+         COALESCE(d.reason, '') as prior_reason
+  FROM finding f
+  LEFT JOIN decision d ON d.finding_id = f.id
+  WHERE f.audit_run_id = '<run-id>'
+  ORDER BY
+    CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,
+    f.critic;"
+```
+
+- Assign monotonically increasing `#` to each row starting at 1
+- Findings with a non-empty `prior_decision` are auto-carried from a previous audit — mark them with `(prior)` so the user can see they were already decided. The user can override any prior decision during interactive review.
 - Present the numbered findings table to the user (inline in conversation)
+
+**Q&A mode exception:** When findings come from the orchestrator's own investigation (not critic reports), there is no consolidation agent involved. The orchestrator inserts findings and handles deduplication directly in this case only.
 
 ## Step B: Interactive Review
 

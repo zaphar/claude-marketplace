@@ -86,43 +86,37 @@ where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MA
 
 **⚠️ The `<HHMMSS>_` filename prefix is mandatory for ALL reports.** It enables multiple runs per day without overwriting. Reports without the timestamp prefix are malformed.
 
-## Step 3: Wait and Load into SQLite
+## Step 3: Wait for Critics
 
 Wait for all 6 agents to complete using `read_agent` with `wait: true`.
 
-Read each critic's **full persisted report** from its `.scratch/` directory — do NOT rely on agent result summaries returned by `read_agent`; you must read the actual files. Parse all findings and INSERT them into the `finding` table with the current audit run ID. The database is the consolidated view — no separate consolidated markdown report is needed.
+Collect the persisted report paths from each agent's output — these are the `.scratch/` paths each critic was told to write to. Do NOT read the reports yourself.
 
-Present the loaded findings to the user:
+## Step 4: Consolidate Findings
 
-```bash
-sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "SELECT f.id, f.critic, f.category, f.severity, f.summary
-   FROM finding f
-   WHERE f.audit_run_id = '<run-id>'
-   ORDER BY f.severity, f.critic;"
-```
+Launch the `rigor_audit_consolidator` agent (`claude-opus-4.6`, `mode: "sync"`) with:
+- `audit_run_id`: the run ID created in Step 1
+- `mode`: `deep_audit`
+- `report_paths`: the 6 file paths collected in Step 3, each labeled with its critic name (`consistency`, `schema`, or `mcp_server`)
+- `db_path`: `.scratch/rigor-plugin-update/audit.db`
 
-## Step 4: Deduplication
+The consolidation agent reads all reports, parses findings, deduplicates against prior decisions, and inserts everything into `audit.db`. See the agent definition for the full procedure.
 
-Query for prior decisions on the same fingerprints and auto-carry-forward:
+After the agent completes, query the database for the findings index and present it to the user:
 
 ```bash
 sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "SELECT f.id, f.critic, f.category, f.summary, d.decision, d.reason
+  "SELECT f.id, f.critic, f.category, f.severity, f.summary,
+          COALESCE(d.decision, '') as prior_decision
    FROM finding f
-   JOIN finding prior ON f.fingerprint = prior.fingerprint AND prior.id != f.id
-   JOIN decision d ON d.finding_id = prior.id
+   LEFT JOIN decision d ON d.finding_id = f.id
    WHERE f.audit_run_id = '<run-id>'
-   ORDER BY d.decided_at DESC;"
+   ORDER BY
+     CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,
+     f.critic;"
 ```
 
-For each match, INSERT a new decision row that carries forward the prior decision and links via `supersedes`:
-
-- Prior `approved` → auto-approve with `supersedes` pointing at the prior decision
-- Prior `rejected` → auto-reject with `supersedes` pointing at the prior decision
-- Prior `skipped` → auto-skip with `supersedes` pointing at the prior decision
-
-Present the deduplication summary to the user so they can see which findings were auto-resolved and override if needed.
+Include the agent's dedup summary (auto-carried count) so the user can see which findings were auto-resolved and override if needed.
 
 ## Step 5: Enter Findings Review
 

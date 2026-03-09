@@ -43,6 +43,7 @@ These terms have precise meanings throughout all skill files. Each word has exac
 | **Decisions ledger** | Persistent file at `.scratch/<critic-name>/audit-decisions.md` recording approve/reject/skip decisions. |
 | **Consolidated report** | Merged output from all agent groups. Contains the Findings Index and group details. |
 | **Orchestrator** | You, the AI running this skill. Coordinates agents and reports to the user. |
+| **Consolidator** | The `rigor_audit_consolidator` agent. Reads critic reports, inserts findings into `audit.db`, deduplicates against prior decisions, and (for schema audit) writes the consolidated report. Bridges critics and the orchestrator. |
 | **Deduplication** | Matching new findings against the decisions ledger to avoid re-reviewing. |
 
 **Plugin domain concepts** always use the compound form: **plugin-phase**, **plugin-workflow**.
@@ -80,25 +81,27 @@ These are referenced by the mode files above:
 | `rigor_consistency_critic` | Critic | Always `claude-opus-4.6` | Validates changes for correctness, consistency, ergonomics |
 | `rigor_schema_critic` | Critic | Always `claude-opus-4.6` | Schema simplification, correctness, and consistency analysis (20 audit categories) |
 | `rigor_mcp_server_critic` | Critic | Always `claude-opus-4.6` | MCP server code quality, correctness, protocol compliance, and documentation accuracy analysis (7 audit dimensions). Also serves as the critic in the producer-critic loop for MCP server changes. |
+| `rigor_audit_consolidator` | Consolidator | Always `claude-opus-4.6` | Reads critic reports, parses findings, deduplicates against prior decisions, inserts into audit DB. For schema audits, also writes the consolidated report. |
 
-All agents have deep embedded knowledge of the plugin's file structure, cross-reference map, and conventions.
+All agents have deep embedded knowledge of the plugin's file structure, cross-reference map, and conventions. The consolidation agent additionally knows the audit database schema and canonical report format.
 
 ## Critical Rules
 
 1. **Critic always uses Opus** — Catching subtle cross-reference bugs requires the strongest model.
 2. **Schema critic always uses Opus** — All 4 audit groups must use `model: "claude-opus-4.6"` — no exceptions.
 3. **MCP server critic always uses Opus** — Correctness auditing requires the strongest model — no exceptions.
-4. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
-5. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
-6. **Critics are read-only** — They never modify files.
-7. **Changes always go through the loop** — No direct edits bypass critique.
-8. **Deep audits are standalone** — Critics run against the current state, not a diff.
-9. **Audit findings go through the Findings Review workflow** — See `workflows/findings-review.md`.
-10. **Decompose into smallest logical chunks** — Each producer call handles one atomic change.
-11. **Pre-decompose by file domain** — When a work-unit spans multiple file domains (schema, JS handlers, docs), split it into sequential sub-tasks before launching the producer. See `workflows/producer-critic-loop.md` for the decomposition strategy and dependency order.
-12. **Commit frequently and minimally** — One commit per coherent sub-change. Each independently revertable.
-13. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
-14. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
-15. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
-16. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
-17. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
+4. **Consolidation agent always uses Opus** — Deduplication correctness (fingerprint matching, carry-forward logic) requires the strongest model — no exceptions.
+5. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
+6. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
+7. **Critics are read-only** — They never modify files.
+8. **Changes always go through the loop** — No direct edits bypass critique.
+9. **Deep audits are standalone** — Critics run against the current state, not a diff.
+10. **Audit findings go through the Findings Review workflow** — See `workflows/findings-review.md`.
+11. **Decompose into smallest logical chunks** — Each producer call handles one atomic change.
+12. **Pre-decompose by file domain** — When a work-unit spans multiple file domains (schema, JS handlers, docs), split it into sequential sub-tasks before launching the producer. See `workflows/producer-critic-loop.md` for the decomposition strategy and dependency order.
+13. **Commit frequently and minimally** — One commit per coherent sub-change. Each independently revertable.
+14. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
+15. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
+16. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
+17. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
+18. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
