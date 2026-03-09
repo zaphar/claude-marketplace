@@ -151,51 +151,6 @@ describe("screen", () => {
 // INTEGER-PK entity types (append-only)
 // ───────────────────────────────────────────────────────────────
 
-describe("architecture_overview", () => {
-  it("inserts with diagrams", () => {
-    const { readResult } = insertAndQuery(
-      "architecture_overview",
-      {
-        description: "Monolith architecture",
-        principles: ["simplicity"],
-        diagrams: [{ name: "overview", path: "/docs/arch.png" }],
-      },
-      { include_related: true }
-    );
-    assert.strictEqual(readResult.results[0].description, "Monolith architecture");
-  });
-});
-
-describe("data_entity", () => {
-  it("inserts with attributes", () => {
-    const { readResult } = insertAndQuery(
-      "data_entity",
-      {
-        name: "User",
-        description: "Application user",
-        attributes: [
-          { name: "email", data_type: "string", is_required: 1 },
-        ],
-      },
-      { include_related: true }
-    );
-    assert.strictEqual(readResult.results[0].name, "User");
-  });
-});
-
-describe("technology_choice", () => {
-  it("inserts and queries back", () => {
-    const { readResult } = insertAndQuery("technology_choice", {
-      category: "runtime",
-      name: "Node.js",
-      purpose: "Server runtime",
-      rationale: "JavaScript ecosystem",
-      version: "18",
-    });
-    assert.strictEqual(readResult.results[0].name, "Node.js");
-  });
-});
-
 describe("requirement_trace", () => {
   it("inserts mapping from requirement to component", () => {
     // Insert requirement + component first

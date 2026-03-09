@@ -144,18 +144,6 @@ describe("changelog_insert FK violations", () => {
     );
   });
 
-  it("rejects technology_choice with non-existent revision_id", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          entity_type: "technology_choice",
-          iteration_id: seed.iteration_id,
-          revision_id: 99999,
-          data: { category: "runtime", name: "Node", purpose: "Server" },
-        }),
-      /FOREIGN KEY/
-    );
-  });
 });
 
 // ───────────────────────────────────────────────────────────────

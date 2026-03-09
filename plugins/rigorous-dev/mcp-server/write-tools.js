@@ -387,98 +387,6 @@ function insertComponent(db, iteration_id, revision_id, data) {
   return { entity_type: "component", id: data.id, updated: !!existed };
 }
 
-function insertArchitectureOverview(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      `INSERT INTO architecture_overview (revision_id, description, principles, created_at)
-       VALUES (@revision_id, @description, @principles, @created_at)`
-    )
-    .run({
-      revision_id,
-      description: data.description,
-      principles: JSON.stringify(data.principles ?? []),
-      created_at: now
-    });
-
-  const overviewId = result.lastInsertRowid;
-
-  const insertDiagram = db.prepare(
-    "INSERT INTO architecture_diagram (overview_id, name, path, description) VALUES (@overview_id, @name, @path, @description)"
-  );
-  for (const d of data.diagrams ?? []) {
-    insertDiagram.run({ overview_id: overviewId, name: d.name, path: d.path, description: d.description ?? null });
-  }
-
-  return { entity_type: "architecture_overview", id: overviewId };
-}
-
-function insertDataEntity(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      `INSERT INTO data_entity (revision_id, name, description, created_at)
-       VALUES (@revision_id, @name, @description, @created_at)`
-    )
-    .run({
-      revision_id,
-      name: data.name,
-      description: data.description,
-      created_at: now
-    });
-
-  const entityId = result.lastInsertRowid;
-
-  const insertAttr = db.prepare(
-    "INSERT INTO data_entity_attribute (entity_id, name, data_type, is_required, description) VALUES (@entity_id, @name, @data_type, @is_required, @description)"
-  );
-  for (const a of data.attributes ?? []) {
-    insertAttr.run({ entity_id: entityId, name: a.name, data_type: a.data_type, is_required: a.is_required ?? 0, description: a.description ?? null });
-  }
-
-  // Resolve and insert relationships.
-  // target_entity (name string) is looked up in data_entity within the same iteration.
-  const insertRel = db.prepare(
-    "INSERT INTO data_entity_relationship (entity_id, target_entity_id, cardinality, description) VALUES (@entity_id, @target_entity_id, @cardinality, @description)"
-  );
-  const lookupTarget = db.prepare(
-    `SELECT id FROM data_entity WHERE name = @target_name AND revision_id IN
-       (SELECT revision_id FROM entity_context WHERE iteration_id = @iteration_id)
-     ORDER BY id DESC LIMIT 1`
-  );
-  for (const r of data.relationships ?? []) {
-    const targetRow = lookupTarget.get({ target_name: r.target_entity, iteration_id });
-    if (!targetRow) {
-      throw new Error(
-        `Cannot resolve target_entity "${r.target_entity}" — no data_entity with that name exists in iteration ${iteration_id}. Insert the target entity first, then insert this entity's relationships.`
-      );
-    }
-    insertRel.run({ entity_id: entityId, target_entity_id: targetRow.id, cardinality: r.cardinality ?? r.relationship_type ?? null, description: r.description ?? null });
-  }
-
-  return { entity_type: "data_entity", id: entityId };
-}
-
-function insertTechnologyChoice(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      `INSERT INTO technology_choice (revision_id, category, name, purpose, rationale, version, config, created_at)
-       VALUES (@revision_id, @category, @name, @purpose, @rationale, @version, @config, @created_at)`
-    )
-    .run({
-      revision_id,
-      category: data.category,
-      name: data.name,
-      purpose: data.purpose ?? null,
-      rationale: data.rationale ?? null,
-      version: data.version ?? null,
-      config: data.config ?? null,
-      created_at: now
-    });
-  return { entity_type: "technology_choice", id: result.lastInsertRowid };
-}
-
 const VALID_ADDRESSED_BY_TYPES = ['component', 'flow', 'screen', 'adr', 'endpoint', 'technology'];
 
 function insertRequirementTrace(db, iteration_id, revision_id, data) {
@@ -577,8 +485,8 @@ function insertApprovedDependency(db, iteration_id, revision_id, data) {
   let lastId;
   const insert = db.prepare(
     `INSERT INTO approved_dependency
-       (revision_id, package, version_constraint, purpose, justification, adr_id, license, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
-     VALUES (@revision_id, @package, @version_constraint, @purpose, @justification, @adr_id, @license, @maintenance_activity, @community_adoption, @transitive_deps, @single_maintainer_risk, @created_at)`
+       (revision_id, package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
+     VALUES (@revision_id, @package, @version_constraint, @purpose, @justification, @adr_id, @license, @category, @maintenance_activity, @community_adoption, @transitive_deps, @single_maintainer_risk, @created_at)`
   );
   for (const entry of entries) {
     const result = insert.run({
@@ -589,6 +497,7 @@ function insertApprovedDependency(db, iteration_id, revision_id, data) {
       justification: entry.justification,
       adr_id: entry.adr_id ?? null,
       license: entry.license ?? null,
+      category: entry.category ?? null,
       maintenance_activity: entry.maintenance_activity ?? null,
       community_adoption: entry.community_adoption ?? null,
       transitive_deps: entry.transitive_deps ?? null,
@@ -1566,9 +1475,6 @@ function changelogInsert(args) {
     requirement: insertRequirement,
     adr: insertAdr,
     component: insertComponent,
-    technology_choice: insertTechnologyChoice,
-    architecture_overview: insertArchitectureOverview,
-    data_entity: insertDataEntity,
     requirement_trace: insertRequirementTrace,
     config: insertConfig,
     approved_dependency: insertApprovedDependency,

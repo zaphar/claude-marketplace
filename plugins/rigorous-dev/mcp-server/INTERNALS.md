@@ -44,7 +44,7 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 67 | Everything else (66 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 61 | Everything else (60 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
 | Composite `PRIMARY KEY` | 15 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `snapshotIfExists` and the upsert write pattern only apply to these types.
@@ -63,7 +63,7 @@ When upserting a parent entity that already exists, all child rows are deleted f
 
 ### c. Append-Only (INTEGER PK entities)
 
-Most tables use plain `INSERT` — they accumulate records rather than updating in place. Examples: `technology_choice`, `config`, `plan_phase`.
+Most tables use plain `INSERT` — they accumulate records rather than updating in place. Examples: `config`, `plan_phase`.
 
 ### d. Batch-Capable Inserters
 
@@ -79,7 +79,7 @@ Seven insert functions accept arrays via the `Array.isArray(data) ? data : [data
 
 ### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-`changelogQuery` dispatches to one of 32 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
+`changelogQuery` dispatches to one of 29 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
 **Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to `{ nullable }` metadata. The spec key itself doubles as the SQL column name used in WHERE clauses. When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
@@ -93,7 +93,7 @@ Given a starting entity (one of 6 target types: `component`, `technology`, `requ
 
 ## 6. JSON Columns
 
-Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `principles`, `data_dependencies`, `components`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `tables`, `assumptions`, `test_ids`, `paths`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
+Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `data_dependencies`, `components`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `tables`, `assumptions`, `test_ids`, `paths`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
 
 **Trade-off:** These columns cannot be indexed or filtered with SQL WHERE clauses. If you ever need to query inside these values, they would need to be normalized into their own tables.
 
@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~113 child foreign keys.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~106 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -122,7 +122,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-90 indexes with a clear rationale (documented in `schema.sql` comments):
+84 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."

@@ -366,122 +366,6 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
   UNIQUE(component_id, target_component_id, boundary_type)
 );
 
--- Architecture: technology choices
--- Domain: architecture
--- Purpose: Records each language, framework, runtime, database engine, cloud service, or toolchain
--- decision made for the system. Unlike ADRs (which capture a decision-making *process*),
--- technology_choice is an enumerable *inventory* of every technology in the stack, with version
--- pins, purpose descriptions, and rationale.
--- Context: technology_choice is consumed by the implementation_planner to select the correct
--- language/framework tooling for each plan phase, and by the senior_developer to know exactly which
--- version of each library to use. The category field (free-text) groups choices logically (e.g.,
--- backend-language, database, auth-library, ci-cd). When a technology choice is backed by formal
--- evaluation, it should reference an ADR via the rationale field or via approved_dependency.adr_id.
-CREATE TABLE IF NOT EXISTS technology_choice (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  name TEXT NOT NULL,
-  purpose TEXT,
-  rationale TEXT,
-  version TEXT,
-  config TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, category, name)
-);
-
-CREATE INDEX IF NOT EXISTS idx_technology_choice_name ON technology_choice(name);
-
--- Architecture overview
--- Domain: architecture
--- Purpose: Provides the top-level narrative description of the overall system architecture: its
--- style (e.g., event-driven microservices, modular monolith, layered), its major structural
--- concerns, and the communication patterns between subsystems. Acts as the entry point for reading
--- the architecture domain.
--- Context: There is typically one architecture_overview row per iteration (created at the start of
--- the architecture phase). Architectural principles are stored inline in the principles JSON
--- column, and architecture_diagram children are attached to it. The overview is the first thing the
--- architecture_critic reads and the primary artifact the implementation_planner uses to understand
--- the system's intended shape before diving into individual components.
-CREATE TABLE IF NOT EXISTS architecture_overview (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  principles JSON NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Domain: architecture
--- Purpose: Stores references to architecture diagrams (component diagrams, sequence diagrams, data
--- flow diagrams) produced alongside the architecture overview. Each row names a diagram, gives its
--- file path in the repository, and provides a description of what the diagram shows.
--- Context: Diagrams are referenced assets rather than inline content — the path column points to
--- files committed to the repository (e.g., docs/architecture/component-diagram.png or a Mermaid
--- .mmd file). The architecture_critic verifies that at minimum one component-level diagram exists.
--- The name field is used to surface diagrams by type when the implementation_planner or
--- senior_developer needs a visual reference.
-CREATE TABLE IF NOT EXISTS architecture_diagram (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  overview_id INTEGER NOT NULL REFERENCES architecture_overview(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  path TEXT NOT NULL,
-  description TEXT,
-  UNIQUE(overview_id, name)
-);
-
--- Data model entities
--- Domain: data-model
--- Purpose: Represents a single database entity (table, collection, model) in the target system's
--- data model. Each row captures the architect's decision to include a named entity, analogous to a
--- node in an ERD diagram.
--- Context: data_entity is the root of the data model sub-graph. Every entity belongs to a specific
--- revision, with the iteration derived via the revision → phase → iteration chain (or via the
--- entity_context VIEW), providing full traceability through the producer-critic loop. Child tables
--- data_entity_attribute and data_entity_relationship hang off this table via foreign key.
-CREATE TABLE IF NOT EXISTS data_entity (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, name)
-);
-
--- Domain: data-model
--- Purpose: Represents a single attribute (column, field) on a data_entity. Captures the name, data
--- type, nullability, and description for each field the architect specifies — the column-level
--- detail of the ERD.
--- Context: data_entity_attribute is a 1:N child of data_entity. The backend_architect populates
--- these rows to fully specify what each entity looks like at the field level. The senior_developer
--- reads these rows when generating migration files, ORM model definitions, or OpenAPI schemas. The
--- is_required flag maps directly to NOT NULL / nullable in SQL or required in JSON Schema.
-CREATE TABLE IF NOT EXISTS data_entity_attribute (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  data_type TEXT NOT NULL,
-  is_required INTEGER NOT NULL DEFAULT 0,
-  description TEXT,
-  UNIQUE(entity_id, name)
-);
-
--- Domain: data-model
--- Purpose: Represents a directional relationship from one data_entity to another — equivalent to a
--- foreign key or association in an ERD. Captures cardinality (one-to-one, one-to-many, many-to-
--- many) and a plain-language description.
--- Context: data_entity_relationship is a 1:N child of data_entity. The source entity is identified
--- by entity_id (FK to data_entity); the target is identified by target_entity_id (also FK to
--- data_entity), enforcing referential integrity so relationships can only reference entities that
--- actually exist in the data model. The senior_developer uses these rows to determine where to add
--- foreign key constraints, junction tables (for many-to-many), or embedded references.
-CREATE TABLE IF NOT EXISTS data_entity_relationship (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
-  target_entity_id INTEGER NOT NULL REFERENCES data_entity(id) ON DELETE CASCADE,
-  cardinality TEXT CHECK(cardinality IN ('one-to-one', 'one-to-many', 'many-to-many')), -- NULL when cardinality not yet determined
-  description TEXT
-);
-
 -- Unified config (architecture: security/deployment/observability; ux: design_system/accessibility/responsive/feedback_pattern)
 -- Domain: cross-cutting
 -- Purpose: Unified key/value store for cross-cutting configuration across both architecture and UX
@@ -530,6 +414,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
   justification TEXT NOT NULL,
   adr_id TEXT REFERENCES adr(id) ON DELETE SET NULL,
   license TEXT,
+  category TEXT,
   maintenance_activity TEXT,
   community_adoption TEXT,
   transitive_deps INTEGER,
@@ -1849,12 +1734,6 @@ CREATE INDEX IF NOT EXISTS idx_adr_revision_id
   ON adr(revision_id);
 CREATE INDEX IF NOT EXISTS idx_component_revision_id
   ON component(revision_id);
-CREATE INDEX IF NOT EXISTS idx_technology_choice_revision_id
-  ON technology_choice(revision_id);
-CREATE INDEX IF NOT EXISTS idx_architecture_overview_revision_id
-  ON architecture_overview(revision_id);
-CREATE INDEX IF NOT EXISTS idx_data_entity_revision_id
-  ON data_entity(revision_id);
 -- Skipped: config (revision_id is leftmost in UNIQUE(revision_id, domain, config_type, category, key))
 CREATE INDEX IF NOT EXISTS idx_approved_dependency_revision_id
   ON approved_dependency(revision_id);
@@ -1997,20 +1876,6 @@ CREATE INDEX IF NOT EXISTS idx_integration_test_boundary_target_component_id
 -- adr.superseded_by → adr(id)
 CREATE INDEX IF NOT EXISTS idx_adr_superseded_by
   ON adr(superseded_by);
-
--- architecture_diagram.overview_id → architecture_overview(id)
--- Skipped: architecture_diagram
---   (overview_id is leftmost in UNIQUE(overview_id, name))
-
--- Skipped: data_entity_attribute (entity_id is leftmost in UNIQUE(entity_id, name))
-
--- data_entity_relationship.entity_id → data_entity(id)
-CREATE INDEX IF NOT EXISTS idx_data_entity_relationship_entity_id
-  ON data_entity_relationship(entity_id);
-
--- data_entity_relationship.target_entity_id → data_entity(id)
-CREATE INDEX IF NOT EXISTS idx_data_entity_relationship_target_entity_id
-  ON data_entity_relationship(target_entity_id);
 
 -- info_architecture.parent_id → info_architecture(id) (self-referencing)
 CREATE INDEX IF NOT EXISTS idx_info_architecture_parent_id

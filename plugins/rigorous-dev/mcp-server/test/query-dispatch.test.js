@@ -70,50 +70,6 @@ describe("applyFilters validation", () => {
 // Per-function filter tests: 3 representative simple types
 // ───────────────────────────────────────────────────────────────
 
-describe("queryTechnologyChoice (INTEGER PK, simple)", () => {
-  it("filters by category", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { category: "runtime", name: "Node.js", purpose: "Server" },
-    });
-    handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { category: "database", name: "SQLite", purpose: "Storage" },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "technology_choice",
-      filters: { category: "runtime" },
-    });
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].name, "Node.js");
-  });
-
-  it("filters by nullable column with null value", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { category: "runtime", name: "Node.js" },
-    });
-    handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { category: "runtime", name: "Deno", rationale: "Modern runtime" },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "technology_choice",
-      filters: { rationale: null },
-    });
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].name, "Node.js");
-  });
-});
-
 describe("queryPlanPhase filters critical_path_sequence", () => {
   it("filters by critical_path_sequence", () => {
     handleWriteTool("changelog_insert", {
@@ -435,59 +391,6 @@ describe("queryPlanOverview enrichment", () => {
   });
 });
 
-describe("queryArchitectureOverview enrichment", () => {
-  it("parses principles and attaches diagrams when include_related is true", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "architecture_overview",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        description: "Microservices architecture",
-        principles: ["loose coupling", "high cohesion"],
-        diagrams: [
-          { name: "system-context", path: "/docs/system.svg", description: "System context diagram" },
-          { name: "container", path: "/docs/container.svg" },
-        ],
-      },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "architecture_overview",
-      iteration_id: seed.iteration_id,
-      include_related: true,
-    });
-    assert.strictEqual(r.count, 1);
-    const ao = r.results[0];
-    assert.deepStrictEqual(ao.principles, ["loose coupling", "high cohesion"]);
-    assert.strictEqual(ao.diagrams.length, 2);
-    const byName = Object.fromEntries(ao.diagrams.map((d) => [d.name, d]));
-    assert.strictEqual(byName["system-context"].path, "/docs/system.svg");
-    assert.strictEqual(byName["system-context"].description, "System context diagram");
-    assert.ok(byName["system-context"].id); // id column should be present
-    assert.strictEqual(byName["container"].name, "container");
-    assert.strictEqual(byName["container"].description, null);
-  });
-
-  it("does not parse principles or attach diagrams when include_related is false", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "architecture_overview",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        description: "Monolith",
-        principles: ["simplicity"],
-        diagrams: [{ name: "overview", path: "/d.svg" }],
-      },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "architecture_overview",
-      iteration_id: seed.iteration_id,
-    });
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(typeof r.results[0].principles, "string");
-    assert.strictEqual(r.results[0].diagrams, undefined);
-  });
-});
-
 describe("queryPersonaAddressed enrichment", () => {
   it("attaches flows when include_related is true", () => {
     // Need a persona and user_flow first
@@ -605,95 +508,6 @@ describe("queryInfoArchitecture enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].children, undefined);
-  });
-});
-
-describe("queryDataEntity enrichment", () => {
-  it("attaches attributes and relationships when include_related is true", () => {
-    // Insert target entity first (for relationship)
-    handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { name: "Address", description: "Physical address" },
-    });
-    // Insert main entity with attributes and relationship
-    handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        name: "User",
-        description: "Application user",
-        attributes: [
-          { name: "email", data_type: "TEXT", is_required: 1, description: "User email" },
-          { name: "age", data_type: "INTEGER", is_required: 0 },
-        ],
-        relationships: [
-          { target_entity: "Address", cardinality: "one-to-many", description: "User addresses" },
-        ],
-      },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "data_entity",
-      filters: { name: "User" },
-      include_related: true,
-    });
-    assert.strictEqual(r.count, 1);
-    const entity = r.results[0];
-
-    // Check attributes
-    assert.strictEqual(entity.attributes.length, 2);
-    const emailAttr = entity.attributes.find((a) => a.name === "email");
-    assert.strictEqual(emailAttr.data_type, "TEXT");
-    assert.strictEqual(emailAttr.is_required, 1);
-    assert.strictEqual(emailAttr.description, "User email");
-    const ageAttr = entity.attributes.find((a) => a.name === "age");
-    assert.strictEqual(ageAttr.is_required, 0);
-
-    // Check relationships
-    assert.strictEqual(entity.relationships.length, 1);
-    assert.strictEqual(entity.relationships[0].target_entity, "Address");
-    assert.strictEqual(entity.relationships[0].cardinality, "one-to-many");
-    assert.strictEqual(entity.relationships[0].description, "User addresses");
-    assert.ok(entity.relationships[0].target_entity_id);
-  });
-
-  it("does not attach attributes or relationships when include_related is omitted", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        name: "Product",
-        description: "A product",
-        attributes: [{ name: "sku", data_type: "TEXT", is_required: 1 }],
-      },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "data_entity",
-      filters: { name: "Product" },
-    });
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].attributes, undefined);
-    assert.strictEqual(r.results[0].relationships, undefined);
-  });
-
-  it("returns empty arrays for entity with no attributes or relationships", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { name: "Empty", description: "No attrs" },
-    });
-    const r = handleReadTool("changelog_query", {
-      entity_type: "data_entity",
-      filters: { name: "Empty" },
-      include_related: true,
-    });
-    assert.strictEqual(r.count, 1);
-    assert.deepStrictEqual(r.results[0].attributes, []);
-    assert.deepStrictEqual(r.results[0].relationships, []);
   });
 });
 

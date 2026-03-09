@@ -170,6 +170,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 | `justification` | TEXT | NOT NULL | — | — | Rationale for choosing this specific package over alternatives. Should cross-reference the relevant ADR. |
 | `adr_id` | TEXT | NULL | — | FK → `adr(id)` | The ADR that decided to adopt this dependency, if one exists. |
 | `license` | TEXT | NULL | — | — | SPDX license identifier (e.g., `MIT`, `Apache-2.0`, `GPL-3.0-only`). NULL means license was not checked (a gap that should be filled). |
+| `category` | TEXT | NULL | — | — | Logical grouping for technology classification (e.g., `backend-language`, `database`, `cache`, `auth`, `testing`, `ci-cd`, `frontend-framework`). Used to categorize dependencies by their role in the stack, preserving the technology inventory concept. NULL if no category applies. |
 | `maintenance_activity` | TEXT | NULL | — | — | Qualitative assessment of upstream maintenance health (e.g., `active — released 2024-11`, `sporadic — last release 18 months ago`). |
 | `community_adoption` | TEXT | NULL | — | — | Qualitative measure of ecosystem adoption (e.g., `>10M weekly npm downloads`, `widely used in Go stdlib ecosystem`). |
 | `transitive_deps` | INTEGER | NULL | — | — | Approximate count of transitive dependencies pulled in by this package, as a supply-chain surface area indicator. |
@@ -215,6 +216,7 @@ Fetch all dependencies linked to a specific ADR:
     "justification": "Industry-standard Node.js HTTP framework; chosen per ADR-003 over Fastify due to team familiarity and plugin ecosystem.",
     "adr_id": "ADR-003",
     "license": "MIT",
+    "category": "backend-framework",
     "maintenance_activity": "active — v4.18.2 released 2023-02",
     "community_adoption": ">30M weekly npm downloads",
     "transitive_deps": 52,

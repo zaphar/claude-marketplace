@@ -46,19 +46,11 @@ describe("FK cascade deletes", () => {
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Dev" },
     });
-    handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { category: "runtime", name: "Node", purpose: "Server" },
-    });
 
     db.prepare("DELETE FROM iteration WHERE id = ?").run(seed.iteration_id);
 
     const personas = db.prepare("SELECT COUNT(*) AS n FROM persona").get();
     assert.strictEqual(personas.n, 0);
-    const techs = db.prepare("SELECT COUNT(*) AS n FROM technology_choice").get();
-    assert.strictEqual(techs.n, 0);
   });
 });
 
@@ -205,52 +197,6 @@ describe("changelog_update", () => {
     });
     const row = db.prepare("SELECT status FROM performance_audit_finding WHERE id = ?").get(finding.id);
     assert.strictEqual(row.status, "resolved");
-  });
-});
-
-// ───────────────────────────────────────────────────────────────
-// data_entity relationship FK enforcement
-// ───────────────────────────────────────────────────────────────
-
-describe("data_entity relationships", () => {
-  it("rejects relationship to nonexistent target entity", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          entity_type: "data_entity",
-          iteration_id: seed.iteration_id,
-          revision_id: seed.revision_id,
-          data: {
-            name: "Order",
-            description: "An order",
-            relationships: [{ target_entity: "NonexistentEntity", relationship_type: "has_many" }],
-          },
-        }),
-      /Cannot resolve target_entity/
-    );
-  });
-
-  it("resolves relationship to existing target entity", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { name: "User", description: "A user" },
-    });
-    const result = handleWriteTool("changelog_insert", {
-      entity_type: "data_entity",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        name: "Order",
-        description: "An order",
-        relationships: [{ target_entity: "User", relationship_type: "one-to-many" }],
-      },
-    });
-    assert.ok(result.id);
-
-    const rels = db.prepare("SELECT * FROM data_entity_relationship WHERE entity_id = ?").all(result.id);
-    assert.strictEqual(rels.length, 1);
   });
 });
 

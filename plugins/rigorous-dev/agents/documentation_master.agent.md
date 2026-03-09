@@ -15,10 +15,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Inputs:**
 
 - Requirements (query via `changelog_query`)
-- Architecture index (query via `changelog_query`, entity_type: "architecture_overview") — for technology choices and overview
+- Architecture overview (read the committed architecture overview markdown document) — for technology choices and overview
 - Architecture components (query via `changelog_query`, entity_type: "component") — for component documentation
 - Architecture API spec (`api_spec.yaml`) — for API reference generation
-- Architecture data model (query via `changelog_query`, entity_type: "data_entity") — for data documentation
+- Architecture data model (read the committed data model markdown document) — for data documentation
 - Architecture deployment (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "deployment" }) — for operator docs
 - Architecture observability (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "observability" }) — for monitoring docs
 - Implementation entries (query via `changelog_query`)

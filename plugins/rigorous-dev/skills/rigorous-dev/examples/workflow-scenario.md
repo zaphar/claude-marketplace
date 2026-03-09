@@ -198,40 +198,17 @@ Next: Architecture
 
 ### Architecture Specification
 
-The Backend Architect records modular architecture entries in the changelog DB:
+The Backend Architect records modular architecture entries in the changelog DB and commits architecture documents:
 
-- `architecture_overview` — metadata, technology choices, linters
+- Architecture overview — committed as a markdown document (e.g., `docs/architecture/overview.md`)
 - `component` entries — system components with integration test boundaries
-- `data_entity` entries — data entities and relationships
+- Data model — committed as a markdown document (e.g., `docs/architecture/data-model.md`)
 - `config` (domain: "architecture", config_type: "deployment") — deployment targets and environments
 - `config` (domain: "architecture", config_type: "security") — authentication, authorization, secrets management
 - `config` (domain: "architecture", config_type: "observability") — logging, metrics, tracing
 - `requirement_trace` entries — requirements-to-component mapping
-- `approved_dependency` entries — dependency manifest with health assessments
+- `approved_dependency` entries — dependency manifest with health assessments and `category` for technology grouping
 - `api_spec.yaml` — OpenAPI specification (file artifact)
-
-Example `architecture_overview` entry:
-```yaml
-metadata:
-  project_name: "Task Management API"
-  requirements_version: "1.0.0"
-
-overview:
-  description: "REST API for task management across projects"
-  architecture_style: "Layered monolith"
-
-technology_choices:
-  language: "TypeScript"
-  runtime: "Node.js 20.x"
-  framework: "Express.js 4.x"
-  database: "PostgreSQL 15 (AWS RDS)"
-  caching: "Redis (AWS ElastiCache)"
-
-linters:
-  - tool: "eslint"
-    language: "TypeScript"
-    ruleset: "@typescript-eslint/recommended-type-checked"
-```
 
 Example `component` entry:
 ```yaml
@@ -258,7 +235,7 @@ components:
 
 ✓ Technology stack appropriate for requirements
 ✓ All API endpoints from UX spec covered in api_spec.yaml
-✓ Data models support all requirements
+✓ Data model document complete with entities, attributes, and relationships
 ✓ Security architecture comprehensive
 ✓ Observability strategy defined
 ✓ Dependency manifest complete with health assessments
@@ -270,7 +247,8 @@ components:
 ```
 ✅ Architecture Complete
 
-Entities recorded in changelog DB (architecture_overview, components, data_entities, etc.)
+Entities recorded in changelog DB (components, ADRs, approved_dependencies, etc.)
+Architecture docs committed (overview, data model, diagrams)
 Approved by: architecture_critic
 Duration: 40 minutes
 
@@ -540,7 +518,8 @@ Progress:
 Recorded Entities (in changelog DB):
 - requirements (personas, acceptance criteria, glossary, constraints)
 - ux_specification (user flows, screens, design system)
-- architecture (overview, components, data entities, ADRs, deployment, security, observability, dependencies)
+- architecture (components, ADRs, approved dependencies, security, observability)
+- architecture file artifacts (overview, data model, diagrams — committed as markdown docs)
 - api_spec.yaml (file artifact)
 - implementation_plan (phases, work items, checkpoints)
 - implementation_manifest

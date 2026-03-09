@@ -170,10 +170,10 @@ describe("traceability_query", () => {
       },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "technology_choice",
+      entity_type: "approved_dependency",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { category: "auth", name: "JWT", purpose: "Token auth", rationale: "Stateless JWT" },
+      data: { package: "jsonwebtoken", purpose: "JWT token auth", justification: "Industry standard JWT library", adr_id: "ADR-1" },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "screen",
@@ -220,7 +220,7 @@ describe("traceability_query", () => {
       iteration_id: seed.iteration_id,
     });
     assert.ok(r.chain.length >= 1);
-    assert.strictEqual(r.chain[0].type, "technology_choice");
+    assert.strictEqual(r.chain[0].type, "related_adrs");
     const adrChain = r.chain.find((c) => c.type === "related_adrs");
     assert.ok(adrChain, "Should find ADRs mentioning JWT");
   });

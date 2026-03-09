@@ -1,10 +1,10 @@
 # Architecture Domain — Table Reference
 
-This document covers the 9 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, technology selections, and high-level vision that downstream agents build upon.
+This document covers the 6 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, and integration test boundaries that downstream agents build upon.
 
 **Producer:** `backend_architect`
 **Critic/Validator:** `architecture_critic`
-**Downstream consumers:** `implementation_planner` (builds work phases from components/requirements), `senior_developer` (implements against component interfaces and technology choices)
+**Downstream consumers:** `implementation_planner` (builds work phases from components/requirements), `senior_developer` (implements against component interfaces)
 
 ---
 
@@ -16,9 +16,6 @@ This document covers the 9 tables that capture the output of the **backend_archi
 4. [component_interface](#4-component_interface)
 5. [component_dependency](#5-component_dependency)
 6. [integration_test_boundary](#6-integration_test_boundary)
-7. [technology_choice](#7-technology_choice)
-8. [architecture_overview](#8-architecture_overview)
-9. [architecture_diagram](#9-architecture_diagram)
 
 ---
 
@@ -258,134 +255,11 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 
 ---
 
-## 7. `technology_choice`
-
-### Purpose
-
-Records each language, framework, runtime, database engine, cloud service, or toolchain decision made for the system. Unlike ADRs (which capture a decision-making *process*), `technology_choice` is an enumerable *inventory* of every technology in the stack, with version pins, purpose descriptions, and rationale.
-
-### Context
-
-`technology_choice` is consumed by the implementation_planner to select the correct language/framework tooling for each plan phase, and by the senior_developer to know exactly which version of each library to use. The `category` field (free-text) groups choices logically (e.g., `backend-language`, `database`, `auth-library`, `ci-cd`). When a technology choice is backed by formal evaluation, it should reference an ADR via the `rationale` field or via `approved_dependency.adr_id`.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
-| `category` | TEXT | NOT NULL | — | Logical grouping for the technology (e.g., `backend-language`, `database`, `cache`, `auth`, `testing`, `ci-cd`). Free-text — no CHECK constraint. |
-| `name` | TEXT | NOT NULL | — | Technology name (e.g., `TypeScript`, `PostgreSQL 16`, `Redis`, `Jest`). |
-| `purpose` | TEXT | — | NULL | One-sentence description of why this technology is in the stack. |
-| `rationale` | TEXT | — | NULL | Justification for the choice. Should cite alternatives considered and the ADR ID if a formal decision record exists. |
-| `version` | TEXT | — | NULL | Specific version pin or minimum version (e.g., `16.x`, `^7.3.0`). |
-| `config` | TEXT | — | NULL | Key configuration notes: notable non-default settings, connection pool sizes, feature flags enabled. Free-text or JSON snippet. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
-
-### Relationships
-
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-- **Referenced by:** `approved_dependency` (approved third-party deps may be backed by a technology_choice category)
-
-### Indexes
-
-| Index | Columns | Purpose |
-|-------|---------|---------|
-| `idx_technology_choice_name` | `(name)` | Supports lookup queries filtering by technology name (e.g., `WHERE name = 'TypeScript'`). |
-
-### MCP Tool Access
-
-```
-# Write
-changelog_insert  entity_type="technology_choice"  { iteration_id, revision_id, category, name, purpose, rationale, version, config }
-
-# Read
-changelog_query   entity_type="technology_choice"  [iteration_id=N]
-changelog_query   entity_type="technology_choice"  [filters={category: "database"}]
-```
-
----
-
-## 8. `architecture_overview`
-
-### Purpose
-
-Provides the top-level narrative description of the overall system architecture: its style (e.g., event-driven microservices, modular monolith, layered), its major structural concerns, and the communication patterns between subsystems. Acts as the entry point for reading the architecture domain.
-
-### Context
-
-There is typically one `architecture_overview` row per iteration (created at the start of the architecture phase). Architectural principles are stored inline in the `principles` JSON column, and `architecture_diagram` children are attached to it. The overview is the first thing the architecture_critic reads and the primary artifact the implementation_planner uses to understand the system's intended shape before diving into individual components.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
-| `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
-| `principles` | TEXT | NOT NULL | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
-
-### Relationships
-
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-- **Children:** `architecture_diagram`
-
-### MCP Tool Access
-
-```
-# Write (principles is a direct JSON column; diagrams are nested children)
-changelog_insert  entity_type="architecture_overview"  {
-  iteration_id, revision_id, description,
-  principles: ["Prefer async over sync", ...],
-  diagrams: [{ name, path, description }, ...]
-}
-
-# Read (include_related attaches diagrams; principles are always returned inline)
-changelog_query  entity_type="architecture_overview"  iteration_id=N  include_related=true
-```
-
----
-
-## 9. `architecture_diagram`
-
-### Purpose
-
-Stores references to architecture diagrams (component diagrams, sequence diagrams, data flow diagrams) produced alongside the architecture overview. Each row names a diagram, gives its file path in the repository, and provides a description of what the diagram shows.
-
-### Context
-
-Diagrams are referenced assets rather than inline content — the `path` column points to files committed to the repository (e.g., `docs/architecture/component-diagram.png` or a Mermaid `.mmd` file). The architecture_critic verifies that at minimum one component-level diagram exists. The `name` field is used to surface diagrams by type when the implementation_planner or senior_developer needs a visual reference.
-
-### Column Reference
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `overview_id` | INTEGER | NOT NULL, FK → `architecture_overview(id)`, part of UNIQUE(overview_id, name) | — | The overview this diagram illustrates. |
-| `name` | TEXT | NOT NULL, part of UNIQUE(overview_id, name) | — | Descriptive name identifying the diagram's type and scope (e.g., `System Context Diagram`, `Component Interaction Diagram`, `Auth Sequence Diagram`). |
-| `path` | TEXT | NOT NULL | — | Repository-relative path to the diagram file (e.g., `docs/architecture/system-context.mmd`). |
-| `description` | TEXT | — | NULL | Brief explanation of what the diagram depicts, what audience it is intended for, and any notable conventions used. |
-
-### Relationships
-
-- **Parent:** `architecture_overview` (via `overview_id`)
-
-### MCP Tool Access
-
-```
-# Written as nested children when inserting an architecture_overview via changelog_insert
-# Queried as part of the architecture_overview entity
-changelog_query  entity_type="architecture_overview"  ids=[1]
-```
-
----
-
 ## Cross-Table Query Patterns
 
 ### "Why are we using X?"
 
-The canonical traceability query traverses: `technology_choice` → `adr` (via rationale mention or `approved_dependency.adr_id`) → `adr.research_sources` JSON column.
+The canonical traceability query traverses: `approved_dependency` (with `category` for grouping) → `adr` (via `approved_dependency.adr_id`) → `adr.research_sources` JSON column. Technology choices that are not third-party dependencies are recorded in ADRs directly.
 
 ```
 traceability_query  from="adr"  id="ADR-003"
@@ -433,6 +307,3 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 | `component_interface` | INTEGER AUTO | `component` | UNIQUE(component_id, name) |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
 | `integration_test_boundary` | INTEGER AUTO | `component` × 2 | UNIQUE(component_id, target_component_id, boundary_type); `boundary_type` free-form TEXT |
-| `technology_choice` | INTEGER AUTO | `revision` | — |
-| `architecture_overview` | INTEGER AUTO | `revision` | `principles` JSON column |
-| `architecture_diagram` | INTEGER AUTO | `architecture_overview` | UNIQUE(overview_id, name) |

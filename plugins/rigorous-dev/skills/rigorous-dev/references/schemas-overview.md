@@ -22,7 +22,7 @@ Four tables form the backbone — everything else hangs off them:
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`revision_id` only (25 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
+- **`revision_id` only (22 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
 - **`iteration_id` only (9 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `system_io`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `asset_deliverable`, `vcs_commit`.
 
 No table carries both columns.
@@ -55,21 +55,10 @@ No table carries both columns.
 | `component_interface` | backend_architect | APIs/ports each component exposes. |
 | `component_dependency` | backend_architect | Component-to-component dependency graph (must be a DAG). |
 | `integration_test_boundary` | backend_architect | Where integration tests are needed between components. |
-| `technology_choice` | backend_architect | Language, framework, DB choices with rationale. |
-| `architecture_overview` | backend_architect | High-level summary, style, communication patterns. Design principles stored as JSON array (`principles` column). |
-| `architecture_diagram` | backend_architect | Diagram references. |
 
 **Critic:** architecture_critic
 
-## Data Model Domain
-
-📄 **Detailed design:** [tables/data-model.md](tables/data-model.md)
-
-| Table | Producer | Purpose |
-|-------|----------|---------|
-| `data_entity` | backend_architect | Database entities/models (like an ERD). |
-| `data_entity_attribute` | backend_architect | Columns/fields per entity with types, constraints, nullability. |
-| `data_entity_relationship` | backend_architect | Foreign key / relationship mappings between entities. |
+> **Note:** Architecture narrative, principles, diagrams, technology inventory, and data model design live in committed markdown documents (not in the database). The `approved_dependency` table (see Cross-Cutting) tracks vetted third-party packages with an optional `category` column for logical grouping (e.g., `backend-language`, `database`, `ci-cd`).
 
 ## Cross-Cutting Architecture
 
@@ -240,7 +229,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 88 tables with links to their detailed design documents.
+All 82 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -248,16 +237,11 @@ All 88 tables with links to their detailed design documents.
 | `adr_alternative` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
 | `config` | [cross-cutting](tables/cross-cutting.md) |
-| `architecture_diagram` | [architecture](tables/architecture.md) |
-| `architecture_overview` | [architecture](tables/architecture.md) |
 | `asset_deliverable` | [implementation](tables/implementation.md) |
 | `blocker` | [cross-cutting](tables/cross-cutting.md) |
 | `component` | [architecture](tables/architecture.md) |
 | `component_dependency` | [architecture](tables/architecture.md) |
 | `component_interface` | [architecture](tables/architecture.md) |
-| `data_entity` | [data-model](tables/data-model.md) |
-| `data_entity_attribute` | [data-model](tables/data-model.md) |
-| `data_entity_relationship` | [data-model](tables/data-model.md) |
 | `documentation_asset` | [documentation](tables/documentation.md) |
 | `documentation_feature` | [documentation](tables/documentation.md) |
 | `documentation_feature_requirement` | [documentation](tables/documentation.md) |
@@ -313,7 +297,6 @@ All 88 tables with links to their detailed design documents.
 | `screen_state` | [ux-design](tables/ux-design.md) |
 | `security_audit_finding` | [audit](tables/audit.md) |
 | `system_io` | [requirements](tables/requirements.md) |
-| `technology_choice` | [architecture](tables/architecture.md) |
 | `test_acceptance_criterion_result` | [qa-test](tables/qa-test.md) |
 | `test_blocker` | [qa-test](tables/qa-test.md) |
 | `test_blocker_requirement` | [qa-test](tables/qa-test.md) |
@@ -333,4 +316,4 @@ All 88 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 88 tables across 11 domains**
+**Total: 82 tables across 10 domains**

@@ -220,8 +220,8 @@ Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Ove
 **Output artifacts** (modular architecture files):
 - `architecture_index.yaml` — stored via `changelog_insert` tool
 - `architecture_components.yaml` — stored via `changelog_insert` tool
-- `architecture_data_model.yaml` — stored via `changelog_insert` tool
-- `architecture_deployment.yaml` — stored via `changelog_insert` tool
+- `docs/architecture/data-model.md` — committed as markdown document
+- `docs/architecture/deployment.md` — committed as markdown document
 - `architecture_security.yaml` — stored via `changelog_insert` tool
 - `architecture_observability.yaml` — stored via `changelog_insert` tool
 - `architecture_traceability.yaml` — stored via `changelog_insert` tool
@@ -233,7 +233,7 @@ Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Ove
 - `metadata.ux_specification_version`: set to `"onboarding-inferred"` (or reference the version from the just-produced UX spec if one was created in step 6)
 - `requirements_mapping` in traceability (required, minItems: 1): Create placeholder entries with `REQ-001`, `REQ-002`, etc. describing inferred functionality areas. Each entry maps to the components that implement it.
 - `components` (required, minItems: 1): Map discovered source modules to `COMP-XXX` identifiers
-- `technology_choices.language` in index: Extract from project config; rationale can note "existing codebase choice"
+- Technology choices: Record as `approved_dependency` entries with appropriate `category` values (e.g., `backend-language`, `database`); rationale can note "existing codebase choice"
 
 #### 7b. Run Architecture Critic with Onboarding Override
 

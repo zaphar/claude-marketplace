@@ -35,14 +35,17 @@ tools: Read, Grep, Glob, Bash
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
-    - [ ] All expected architecture entities present in DB: architecture_overview, component, data_entity, adr, config (domain: "architecture"), requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] All expected architecture entities present in DB: component, adr, config (domain: "architecture"), requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] Architecture narrative committed as a markdown document — overview, style, communication patterns, and design principles
+    - [ ] Architecture diagrams committed as repository files (at minimum one component-level diagram)
+    - [ ] Data model committed as a markdown document — entities, attributes, relationships, and cardinality
     - [ ] All technical requirements mapped to architectural elements (check via `traceability_query`)
-    - [ ] Technology choices documented with rationale and current research citations
+    - [ ] Technology choices documented with rationale and current research citations — recorded in ADRs and as `approved_dependency` entries with `category` for grouping
     - [ ] Technology recommendations include source links (official docs, release notes, benchmarks) — not just training-data knowledge
     - [ ] Uncertainty flagged where current information could not be found
     - [ ] All components defined with clear interfaces (query via `changelog_query` entity_type: `component`)
     - [ ] Integration test boundaries defined for inter-component interactions — boundary type, interacting components, and expected behavior specified
-    - [ ] Data model complete (query via `changelog_query` entity_type: `data_entity`)
+    - [ ] Data model complete — entities, attributes (with types and nullability), and relationships documented in the committed data model markdown document
     - [ ] API specification complete with machine-readable OpenAPI spec (`api_spec.yaml`) that is valid OpenAPI 3.x
     - [ ] Deployment architecture addresses all target scenarios
     - [ ] Observability strategy defined
@@ -110,7 +113,7 @@ When reviewing architecture for a bug fix iteration:
 
 **Context Management:**
 
-- **Read architecture entries one at a time** — they are your primary review targets. Start with the architecture overview (query via `changelog_query` entity_type: `architecture_overview`), then work through each entity type against the checklist.
+- **Read architecture entries one at a time** — they are your primary review targets. Start with the committed architecture overview markdown document, then work through each DB entity type against the checklist.
 - **Read requirements selectively.** For traceability, read the requirements for requirement IDs and categories. For deployment, read the constraints. Don't load glossary, stakeholders, decisions, or risks.
 - **Read UX entries selectively.** For UX support verification, read user flows and UX traceability. Don't load mockups, design system, accessibility, or responsive files.
 - **On re-review cycles**, read only your previous review's issues and the specific architecture entries that were revised.

@@ -706,8 +706,7 @@ When you need to understand table structures — what columns exist, what constr
 - **[schemas-overview.md](references/schemas-overview.md)** — High-level overview of all tables organized by domain, plus an alphabetical index of every table in the database
 - **[tables/core.md](references/tables/core.md)** — Project, iteration, phase, revision (the spine)
 - **[tables/requirements.md](references/tables/requirements.md)** — Requirements, personas, acceptance criteria, dependencies
-- **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, technology choices, interfaces
-- **[tables/data-model.md](references/tables/data-model.md)** — Data entities, fields, relationships
+- **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, interfaces
 - **[tables/cross-cutting.md](references/tables/cross-cutting.md)** — Security, observability configs, dependencies, traceability
 - **[tables/ux-design.md](references/tables/ux-design.md)** — User flows, screens, design system, accessibility
 - **[tables/planning.md](references/tables/planning.md)** — Plan phases, tasks, requirement mappings, risks

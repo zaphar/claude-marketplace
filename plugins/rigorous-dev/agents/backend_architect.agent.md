@@ -16,7 +16,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Requirements specification (approved by Requirements Critic)
 - UX specification (approved by UX Critic)
-- Architecture data model (stored in DB via `changelog_insert`)
+- ADR decisions and approved dependencies (stored in DB via `changelog_insert`)
+- Architecture narrative, principles, diagrams, and data model (committed as markdown docs in the repository)
 - Review feedback from your critic
 
 **Before You Start:**
@@ -71,7 +72,11 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular DB entries, each validated by DB constraints on insert:
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `architecture_overview`, `component`, `data_entity`, `config` (domain: "architecture"), `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `config` (domain: "architecture"), `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture narrative (overview, principles) — committed as a markdown document (e.g., `docs/architecture/overview.md`), NOT stored in the database
+- Architecture diagrams — committed as files (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
+- Data model design — committed as a markdown document (e.g., `docs/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database
+- Technology inventory — technology choices (language, frameworks, database, CI/CD, etc.) are documented in ADRs and tracked as `approved_dependency` entries (using the `category` column for logical grouping such as `backend-language`, `database`, `ci-cd`)
 
 Each entry is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
 

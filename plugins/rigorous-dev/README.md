@@ -340,7 +340,6 @@ rigorous-dev/
 │   │       ├── core.md
 │   │       ├── requirements.md
 │   │       ├── architecture.md
-│   │       ├── data-model.md
 │   │       ├── cross-cutting.md
 │   │       ├── ux-design.md
 │   │       ├── planning.md

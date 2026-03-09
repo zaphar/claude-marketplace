@@ -9,7 +9,6 @@ const ENTITY_TABLE = {
   requirement: "requirement",
   adr: "adr",
   component: "component",
-  technology_choice: "technology_choice",
   user_flow: "user_flow",
   screen: "screen",
   plan_phase: "plan_phase",
@@ -25,8 +24,6 @@ const ENTITY_TABLE = {
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
   ux_asset: "ux_asset",
-  architecture_overview: "architecture_overview",
-  data_entity: "data_entity",
   // (architecture_config merged into config)
   approved_dependency: "approved_dependency",
   test_report: "test_report",
@@ -400,64 +397,6 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
   }));
 }
 
-const DATA_ENTITY_FILTERS = {
-  name: { nullable: false },
-  description: { nullable: false },
-};
-
-function queryDataEntity(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM data_entity";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, DATA_ENTITY_FILTERS, "data_entity");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
-  return results.map((e) => ({
-    ...e,
-    attributes: db
-      .prepare("SELECT name, data_type, is_required, description FROM data_entity_attribute WHERE entity_id = ?")
-      .all(e.id),
-    relationships: db
-      .prepare(
-        `SELECT t.name AS target_entity, r.target_entity_id, r.cardinality, r.description
-         FROM data_entity_relationship r
-         JOIN data_entity t ON t.id = r.target_entity_id
-         WHERE r.entity_id = ?`
-      )
-      .all(e.id),
-  }));
-}
-
-const ARCHITECTURE_OVERVIEW_FILTERS = {
-  description: { nullable: false },
-};
-
-function queryArchitectureOverview(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM architecture_overview";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, ARCHITECTURE_OVERVIEW_FILTERS, "architecture_overview");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
-  return results.map((o) => ({
-    ...o,
-    principles: (() => { try { return JSON.parse(o.principles || '[]'); } catch { return o.principles; } })(),
-    diagrams: db
-      .prepare("SELECT id, name, path, description FROM architecture_diagram WHERE overview_id = ?")
-      .all(o.id),
-  }));
-}
-
 const PERSONA_ADDRESSED_FILTERS = {
   persona_id: { nullable: false },
   goal: { nullable: false },
@@ -754,28 +693,6 @@ function queryDocumentationManifest(db, { iteration_id, ids, filters = {}, inclu
 // Complete implementations, no enrichment needed.
 // ---------------------------------------------------------------------------
 
-const TECHNOLOGY_CHOICE_FILTERS = {
-  category: { nullable: false },
-  name: { nullable: false },
-  purpose: { nullable: true },
-  rationale: { nullable: true },
-  version: { nullable: true },
-  config: { nullable: true },
-};
-
-function queryTechnologyChoice(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM technology_choice";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, TECHNOLOGY_CHOICE_FILTERS, "technology_choice");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
 const PLAN_EXTERNAL_DEPENDENCY_FILTERS = {
   name: { nullable: false },
   description: { nullable: false },
@@ -955,6 +872,7 @@ const APPROVED_DEPENDENCY_FILTERS = {
   justification: { nullable: false },
   adr_id: { nullable: true },
   license: { nullable: true },
+  category: { nullable: true },
   maintenance_activity: { nullable: true },
   community_adoption: { nullable: true },
   transitive_deps: { nullable: true },
@@ -1139,14 +1057,11 @@ const QUERY_DISPATCH = {
   screen: queryScreen,
   plan_phase: queryPlanPhase,
   plan_overview: queryPlanOverview,
-  data_entity: queryDataEntity,
-  architecture_overview: queryArchitectureOverview,
   persona_addressed: queryPersonaAddressed,
   info_architecture: queryInfoArchitecture,
   implementation_manifest: queryImplementationManifest,
   test_report: queryTestReport,
   documentation_manifest: queryDocumentationManifest,
-  technology_choice: queryTechnologyChoice,
   plan_external_dependency: queryPlanExternalDependency,
   plan_metadata: queryPlanMetadata,
   requirement_trace: queryRequirementTrace,
@@ -1268,16 +1183,9 @@ function traceabilityQuery(args) {
     }
 
     case "technology": {
-      const techRows = db
-        .prepare(
-          "SELECT * FROM technology_choice WHERE name = ?" +
-            (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
-        )
-        .all(target, ...iterParam);
-      if (!techRows.length) break;
-      chain.push({ type: "technology_choice", data: techRows });
-
-      // Find ADRs whose decision text mentions the technology name
+      // Technology choices are now tracked via approved_dependency (with category column)
+      // and ADRs. Find ADRs whose decision/rationale mentions the technology name,
+      // then follow to approved dependencies.
       const adrs = db
         .prepare(
           "SELECT * FROM adr WHERE (decision LIKE ? OR rationale LIKE ?)" +
@@ -1286,16 +1194,35 @@ function traceabilityQuery(args) {
         .all(`%${target}%`, `%${target}%`, ...iterParam);
       if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
 
-      // Find requirements linked via ADR traceability
+      // Find approved dependencies matching the technology name
+      const deps = db
+        .prepare(
+          "SELECT * FROM approved_dependency WHERE (package LIKE ? OR purpose LIKE ?)" +
+            (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
+        )
+        .all(`%${target}%`, `%${target}%`, ...iterParam);
+      if (deps.length > 0) chain.push({ type: "approved_dependencies", data: deps });
+
+      // Find approved dependencies linked to the related ADRs
       const adrIds = adrs.map((a) => a.id);
       if (adrIds.length > 0) {
-        const approved = db
+        const adrDeps = db
           .prepare(
             `SELECT * FROM approved_dependency WHERE adr_id IN (${adrIds.map(() => "?").join(",")})` +
               (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
           )
           .all(...adrIds, ...iterParam);
-        if (approved.length > 0) chain.push({ type: "approved_dependencies", data: approved });
+        // Merge with existing deps (avoid duplicates by ID)
+        const existingIds = new Set(deps.map((d) => d.id));
+        const newDeps = adrDeps.filter((d) => !existingIds.has(d.id));
+        if (newDeps.length > 0) {
+          if (deps.length > 0) {
+            // Append to existing approved_dependencies entry
+            chain.find((c) => c.type === "approved_dependencies").data.push(...newDeps);
+          } else {
+            chain.push({ type: "approved_dependencies", data: newDeps });
+          }
+        }
       }
       break;
     }
@@ -1550,7 +1477,6 @@ function iterationSummary(args) {
     requirements: countFor("requirement"),
     adrs: countFor("adr"),
     components: countFor("component"),
-    technology_choices: countFor("technology_choice"),
     user_flows: countFor("user_flow"),
     screens: countFor("screen"),
     plan_phases: countFor("plan_phase"),
