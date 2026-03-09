@@ -128,6 +128,11 @@ function revisionCreate(args) {
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
+    const phase = db.prepare("SELECT id FROM phase WHERE id = @phase_id").get({ phase_id });
+    if (!phase) {
+      throw new Error(`phase_id ${phase_id} does not exist`);
+    }
+
     const result = db
       .prepare(
         `INSERT INTO revision (phase_id, producer_agent, created_at, status)
