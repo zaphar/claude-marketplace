@@ -1372,7 +1372,7 @@ function changelogQuery(args) {
     // Parse snapshot JSON for convenience
     const results = snapshots.map((s) => ({
       ...s,
-      snapshot: JSON.parse(s.snapshot),
+      snapshot: (() => { try { return JSON.parse(s.snapshot); } catch { return {}; } })(),
     }));
     return { entity_type, history: true, results, count: results.length };
   }
@@ -1479,7 +1479,7 @@ function traceabilityQuery(args) {
       if (!req) break;
       chain.push({ type: "requirement", data: req });
 
-      const acceptanceCriteria = JSON.parse(req.acceptance_criteria || '[]');
+      const acceptanceCriteria = (() => { try { return JSON.parse(req.acceptance_criteria || '[]'); } catch { return []; } })();
       if (acceptanceCriteria.length > 0)
         chain.push({ type: "acceptance_criteria", data: acceptanceCriteria });
 
@@ -1528,12 +1528,12 @@ function traceabilityQuery(args) {
         .all(adr.id)
         .map((alt) => ({
           ...alt,
-          pros: alt.pros ? JSON.parse(alt.pros) : [],
-          cons: alt.cons ? JSON.parse(alt.cons) : [],
+          pros: alt.pros ? (() => { try { return JSON.parse(alt.pros); } catch { return []; } })() : [],
+          cons: alt.cons ? (() => { try { return JSON.parse(alt.cons); } catch { return []; } })() : [],
         }));
       if (alternatives.length > 0) chain.push({ type: "alternatives", data: alternatives });
 
-      const consequences = JSON.parse(adr.consequences || '[]');
+      const consequences = (() => { try { return JSON.parse(adr.consequences || '[]'); } catch { return []; } })();
       if (consequences.length > 0) chain.push({ type: "consequences", data: consequences });
 
       // Components in the same iteration as this ADR
