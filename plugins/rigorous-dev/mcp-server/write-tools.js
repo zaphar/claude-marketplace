@@ -623,11 +623,6 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   });
 
   if (existed) {
-    // Delete steps and their branches
-    const stepIds = db.prepare("SELECT id FROM user_flow_step WHERE flow_id = @flow_id").all({ flow_id: data.id });
-    for (const step of stepIds) {
-      db.prepare("DELETE FROM user_flow_step_branch WHERE step_id = @step_id").run({ step_id: step.id });
-    }
     db.prepare("DELETE FROM user_flow_step WHERE flow_id = @flow_id").run({ flow_id: data.id });
     db.prepare("DELETE FROM user_flow_error_state WHERE flow_id = @flow_id").run({ flow_id: data.id });
     db.prepare("DELETE FROM requirement_trace WHERE addressed_by = @addressed_by AND addressed_by_type = 'flow'").run({ addressed_by: data.id });
