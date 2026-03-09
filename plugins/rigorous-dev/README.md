@@ -49,7 +49,7 @@ The development workflow runs fast iteration loops. When ready to ship, the rele
 #### Implementation Phase
 - **Test Writer**: Writes failing tests before implementation following TDD principles
 - **Test Writer Critic**: Validates test completeness and that tests are in failing (red) state
-- **Senior Developer**: Implements code following the plan
+- **Senior Developer**: Implements production-ready code to make pre-written failing tests pass (TDD producer)
 - **Senior Developer Critic**: Reviews code quality and adherence to architecture
 
 #### Documentation Phase

@@ -13,6 +13,7 @@ You are orchestrating a rigorous Software Development Life Cycle (SDLC) workflow
 - **Producer** — An agent that generates a decision (e.g. ADR) or deliverables (e.g. software), sometimes via an interview with the user.
 - **Critic** — An agent that evaluates the output of a producer and determines whether the output is of acceptable quality. May reject producer output, which forces the producer to try again.
 - **Producer-critic loop** — One exchange between a producer and a critic: the producer submits work, the critic reviews it.
+- **Revision** — A single producer-critic loop attempt within a phase, tracked in the DB via `revision_create`/`revision_update`. The revision count determines escalation (≥ 3 → escalate to user).
 - **Phase** — A collection of producer-critic loops. You exit the phase when the critic is satisfied.
 - **Iteration** — A set of phases that together record decisions and produce associated deliverables.
 - **Persona** — The user of the system and what their goal is. Closely related to requirements.
