@@ -18,7 +18,7 @@ Persistence layer mechanics for the rigorous-dev MCP server.
 
 **Return values.** `.run()` returns `{ changes, lastInsertRowid }`. The codebase chains parent→child inserts via `lastInsertRowid` — for example, `iterationCreate` captures the iteration ID from the insert result and uses it for all subsequent phase inserts.
 
-**Named parameters.** `@param` syntax, bound via an object. The codebase uses positional (`?`) parameters throughout — individual `queryXxx` functions in `read-tools.js` build their own queries with positional placeholders to avoid mixing named and positional params (which SQLite does not allow in a single statement).
+**Named parameters.** `@param` syntax, bound via an object. `write-tools.js` uses `@named` parameters exclusively — every `.run()` and `.get()` call passes an object (e.g., `{ id, revision_id, name }`). `read-tools.js` uses positional (`?`) parameters exclusively — individual `queryXxx` functions build their own queries with positional placeholders and pass values as arrays. The two files never mix styles (which SQLite does not allow in a single statement).
 
 ## 2. Database Initialization (db.js)
 
@@ -51,7 +51,7 @@ The 6 text-PK entities are handled by their individual `insertXxx` functions in 
 
 ## 4. Write Patterns (write-tools.js)
 
-`changelogInsert` dispatches to a per-entity-type `insertXxx()` function and wraps each call in `db.transaction()` (line ~1873). Four distinct patterns are used within these handlers:
+`changelogInsert` (in `write-tools.js`) dispatches to a per-entity-type `insertXxx()` function and wraps each call in `db.transaction()`. Four distinct patterns are used within these handlers:
 
 ### a. Upsert + Snapshot (TEXT PK entities only)
 
@@ -59,7 +59,7 @@ Before overwriting a text-PK entity, `snapshotIfExists()` captures the complete 
 
 ### b. Delete-and-Reinsert (child tables)
 
-When upserting a parent entity that already exists, all child rows are deleted first, then re-inserted from the new data. Example: updating a component deletes all `component_interface`, `component_dependency`, and `integration_test_boundary` rows, then re-inserts from the incoming data. This is simpler than per-row diffing and safe because `changelogInsert` wraps the handler in a transaction.
+When upserting a parent entity that already exists, all child rows are deleted first, then re-inserted from the new data. Example: updating a component deletes all `component_interface`, `component_dependency`, `requirement_trace` (where `addressed_by_type = 'component'`), and `integration_test_boundary` rows, then re-inserts from the incoming data. This is simpler than per-row diffing and safe because `changelogInsert` wraps the handler in a transaction.
 
 ### c. Append-Only (INTEGER PK entities)
 
@@ -79,9 +79,9 @@ Ten insert functions accept arrays via the `Array.isArray(data) ? data : [data]`
 
 ### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-`changelogQuery` dispatches to one of 37 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
+`changelogQuery` dispatches to one of 36 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
-**Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to column metadata (column name, table alias, nullable flag). When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
+**Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to `{ nullable }` metadata. The spec key itself doubles as the SQL column name used in WHERE clauses. When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
 ### b. Co-located Enrichment (`include_related`)
 
@@ -91,9 +91,9 @@ When `include_related: true`, each `queryXxx` function enriches its own results 
 
 Given a starting entity (one of 6 target types: `component`, `technology`, `requirement`, `adr`, `flow`, `screen`), follows relationships through junction tables and FKs to build a chain of related decisions. Uses LIKE queries for text-based matching (e.g., finding ADRs whose `decision` or `rationale` mentions a technology name).
 
-## 6. JSON-in-TEXT Columns
+## 6. JSON Columns
 
-Arrays that don't need relational querying are stored as JSON-serialized TEXT columns: `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `components`, `data_dependencies`, `targets`, `platforms`, `steps`, `channels`, `config_files`, `triggers`, `test_ids`, `paths`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `assumptions`, `principles`, etc. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
+Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `components`, `data_dependencies`, `targets`, `platforms`, `steps`, `channels`, `config_files`, `triggers`, `test_ids`, `paths`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `assumptions`, `principles`, `tables`, `blockers`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
 
 **Trade-off:** These columns cannot be indexed or filtered with SQL WHERE clauses. If you ever need to query inside these values, they would need to be normalized into their own tables.
 
@@ -111,6 +111,8 @@ Arrays that don't need relational querying are stored as JSON-serialized TEXT co
 | `approved_dependency.adr_id` | `adr(id)` | Dependency record survives ADR deletion |
 | `user_flow.persona_id` | `persona(id)` | Flow definition survives persona deletion |
 | `ux_asset.screen_id` | `screen(id)` | Asset survives screen deletion |
+| `plan_overview_risk.plan_phase_id` | `plan_phase(id)` | Risk survives plan phase deletion |
+| `plan_external_dependency.plan_phase_id` | `plan_phase(id)` | External dependency survives plan phase deletion |
 | `implementation_file.component_id` | `component(id)` | File record survives component deletion |
 | `vcs_commit.phase_id` | `phase(id)` | Commit record survives phase deletion |
 | `intermediate_asset.phase_id` | `phase(id)` | Asset record survives phase deletion |
@@ -138,6 +140,7 @@ Adding a new entity type requires synchronized changes in 4+ files:
 3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping (this automatically populates `VALID_ENTITY_TYPES`, which is derived as `Object.keys(ENTITY_TABLE)`) + write a `queryXxx` function with a hardcoded `FILTERS` spec and optional `include_related` enrichment + register it in `QUERY_DISPATCH`.
 4. **Table documentation** — Add or update the relevant `skills/rigorous-dev/references/tables/<domain>.md`.
 5. **`schemas-overview.md`** — Add the table to the domain listing.
+6. **Test files** — Add or update tests in `test/` (`entities.test.js` for insert round-trips, `query-dispatch.test.js` for dispatch coverage, `reads.test.js` for query/filter/enrichment, and others as needed).
 
 ## 10. Performance Considerations
 
