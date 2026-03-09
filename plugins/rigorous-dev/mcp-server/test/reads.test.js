@@ -327,7 +327,7 @@ describe("iteration_summary", () => {
     });
     const r = handleReadTool("iteration_summary", { iteration_id: seed.iteration_id });
     assert.ok(r.iteration);
-    assert.strictEqual(r.phases.length, 9);
+    assert.strictEqual(r.phases.length, 8);
     assert.ok(r.decisions);
     assert.strictEqual(r.decisions.requirements, 0);  // none inserted in this test
   });
@@ -342,7 +342,7 @@ describe("project_status", () => {
     const r = handleReadTool("project_status", {});
     assert.ok(r.project);
     assert.strictEqual(r.project.project_name, "test-project");
-    assert.strictEqual(r.phases.length, 9);
+    assert.strictEqual(r.phases.length, 8);
     assert.ok(r.current_iteration);
   });
 });

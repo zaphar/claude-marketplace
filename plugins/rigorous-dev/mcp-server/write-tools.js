@@ -10,7 +10,6 @@ const PHASES = [
   "documentation",
   "qa",
   "audit",
-  "release",
 ];
 
 // ---------------------------------------------------------------------------
@@ -45,7 +44,7 @@ function iterationCreate(args) {
 
     const iteration_id = iterResult.lastInsertRowid;
 
-    // Create all 9 phase records
+    // Create all 8 phase records
     const insertPhase = db.prepare(
       `INSERT INTO phase (iteration_id, name, status) VALUES (@iteration_id, @name, @status)`
     );
@@ -1478,209 +1477,6 @@ function insertDocumentationManifest(db, iteration_id, revision_id, data) {
   return { entity_type: "documentation_manifest", id: manifest_id };
 }
 
-function insertDeploymentManifest(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
-  const result = db
-    .prepare(
-      `INSERT INTO deployment_manifest
-         (revision_id, status, targets, blockers,
-          version, document_date, requirements_version,
-          architecture_version, implementation_version, test_report_version,
-          created_at)
-       VALUES (@revision_id, @status, @targets, @blockers,
-               @version, @document_date, @requirements_version,
-               @architecture_version, @implementation_version, @test_report_version,
-               @created_at)`
-    )
-    .run({
-      revision_id,
-      status: data.status,
-      targets: JSON.stringify((data.targets ?? []).map(t => t.target ?? t)),
-      blockers: JSON.stringify((data.blockers ?? []).map(b => b.blocker ?? b)),
-      version: meta?.version ?? data.version ?? null,
-      document_date: meta?.document_date ?? data.document_date ?? null,
-      requirements_version: meta?.requirements_version ?? data.requirements_version ?? null,
-      architecture_version: meta?.architecture_version ?? data.architecture_version ?? null,
-      implementation_version: meta?.implementation_version ?? data.implementation_version ?? null,
-      test_report_version: meta?.test_report_version ?? data.test_report_version ?? null,
-      created_at: now
-    });
-  const manifest_id = result.lastInsertRowid;
-
-  // -- deployment_pipeline (1:N) --
-  //    → deployment_pipeline_stage (1:N per pipeline)
-  //      → deployment_stage_quality_gate (1:N per stage)
-  const insertPipeline = db.prepare(
-    "INSERT INTO deployment_pipeline (manifest_id, platform, config_files) VALUES (@manifest_id, @platform, @config_files)"
-  );
-  const insertPipelineStage = db.prepare(
-    "INSERT INTO deployment_pipeline_stage (pipeline_id, name, purpose, triggers, steps) VALUES (@pipeline_id, @name, @purpose, @triggers, @steps)"
-  );
-  const insertStageQualityGate = db.prepare(
-    `INSERT INTO deployment_stage_quality_gate
-       (stage_id, name, condition, failure_action)
-     VALUES (@stage_id, @name, @condition, @failure_action)`
-  );
-  for (const pipeline of data.pipelines ?? []) {
-    const pipeResult = insertPipeline.run({ manifest_id, platform: pipeline.platform, config_files: JSON.stringify((pipeline.config_files ?? []).map(cf => cf.file_path ?? cf)) });
-    const pipeline_id = pipeResult.lastInsertRowid;
-    for (const stage of pipeline.stages ?? []) {
-      const stageResult = insertPipelineStage.run({
-        pipeline_id,
-        name: stage.name,
-        purpose: stage.purpose,
-        triggers: JSON.stringify((stage.triggers ?? []).map(tr => tr.trigger_text ?? tr)),
-        steps: JSON.stringify((stage.steps ?? []).map(st => st.step ?? st))
-      });
-      const stage_id = stageResult.lastInsertRowid;
-      for (const qg of stage.quality_gates ?? []) {
-        insertStageQualityGate.run({ stage_id, name: qg.name, condition: qg.condition, failure_action: qg.failure_action });
-      }
-    }
-  }
-
-  // -- deployment_quality_gate (1:N) --
-  const insertQualityGates = db.prepare(
-    "INSERT INTO deployment_quality_gate (manifest_id, category, key, value) VALUES (@manifest_id, @category, @key, @value)"
-  );
-  for (const qg of data.quality_gates ?? []) {
-    insertQualityGates.run({ manifest_id, category: qg.category, key: qg.key, value: qg.value });
-  }
-
-  // -- deployment_environment (1:N) --
-  //    → deployment_env_infra (1:N per environment)
-  //    → deployment_env_var (1:N per environment)
-  const insertEnvironment = db.prepare(
-    `INSERT INTO deployment_environment
-       (manifest_id, name, deployment_method, url, rollback_procedure)
-     VALUES (@manifest_id, @name, @deployment_method, @url, @rollback_procedure)`
-  );
-  const insertEnvInfra = db.prepare(
-    "INSERT INTO deployment_env_infra (environment_id, provider, resource) VALUES (@environment_id, @provider, @resource)"
-  );
-  const insertEnvVar = db.prepare(
-    `INSERT INTO deployment_env_var
-       (environment_id, name, value_source, description)
-     VALUES (@environment_id, @name, @value_source, @description)`
-  );
-  for (const env of data.environments ?? []) {
-    const envResult = insertEnvironment.run({
-      manifest_id,
-      name: env.name,
-      deployment_method: env.deployment_method,
-      url: env.url ?? null,
-      rollback_procedure: env.rollback_procedure ?? null
-    });
-    const environment_id = envResult.lastInsertRowid;
-    for (const infra of env.infra ?? []) {
-      insertEnvInfra.run({ environment_id, provider: infra.provider ?? null, resource: infra.resource });
-    }
-    for (const v of env.vars ?? []) {
-      insertEnvVar.run({ environment_id, name: v.name, value_source: v.value_source, description: v.description ?? null });
-    }
-  }
-
-  // -- deployment_artifact (1:N) --
-  const insertArtifact = db.prepare(
-    `INSERT INTO deployment_artifact
-       (manifest_id, name, artifact_type, registry, versioning, platforms)
-     VALUES (@manifest_id, @name, @artifact_type, @registry, @versioning, @platforms)`
-  );
-  for (const art of data.artifacts ?? []) {
-    insertArtifact.run({
-      manifest_id,
-      name: art.name,
-      artifact_type: art.type,
-      registry: art.registry ?? null,
-      versioning: art.versioning ?? null,
-      platforms: JSON.stringify((art.platforms ?? []).map(plat => plat.platform ?? plat))
-    });
-  }
-
-  // -- deployment_signing (1:N) --
-  const insertSigning = db.prepare(
-    "INSERT INTO deployment_signing (manifest_id, enabled, signing_method) VALUES (@manifest_id, @enabled, @signing_method)"
-  );
-  for (const s of data.signing ?? []) {
-    insertSigning.run({ manifest_id, enabled: s.enabled ? 1 : 0, signing_method: s.signing_method ?? null });
-  }
-
-  // -- deployment_local_executable (1:N) --
-  const insertLocalExec = db.prepare(
-    `INSERT INTO deployment_local_executable
-       (manifest_id, installation_method, update_mechanism, platforms, channels)
-     VALUES (@manifest_id, @installation_method, @update_mechanism, @platforms, @channels)`
-  );
-  for (const le of data.local_executables ?? []) {
-    insertLocalExec.run({
-      manifest_id,
-      installation_method: le.installation_method ?? null,
-      update_mechanism: le.update_mechanism ?? null,
-      platforms: JSON.stringify((le.platforms ?? []).map(p => p.platform ?? p)),
-      channels: JSON.stringify((le.channels ?? []).map(ch => ch.channel ?? ch))
-    });
-  }
-
-  // -- deployment_secret (1:N) --
-  const insertSecret = db.prepare(
-    `INSERT INTO deployment_secret
-       (manifest_id, provider, name, purpose, rotation_policy)
-     VALUES (@manifest_id, @provider, @name, @purpose, @rotation_policy)`
-  );
-  for (const sec of data.secrets ?? []) {
-    insertSecret.run({
-      manifest_id,
-      provider: sec.provider ?? null,
-      name: sec.name,
-      purpose: sec.purpose,
-      rotation_policy: sec.rotation_policy ?? null
-    });
-  }
-
-  // -- deployment_health_check (1:N) --
-  const insertHealthCheck = db.prepare(
-    "INSERT INTO deployment_health_check (manifest_id, name, endpoint, interval) VALUES (@manifest_id, @name, @endpoint, @interval)"
-  );
-  for (const hc of data.health_checks ?? []) {
-    insertHealthCheck.run({ manifest_id, name: hc.name, endpoint: hc.endpoint ?? null, interval: hc.interval ?? null });
-  }
-
-  // -- deployment_alerting (1:N) --
-  const insertAlerting = db.prepare(
-    "INSERT INTO deployment_alerting (manifest_id, provider, channel) VALUES (@manifest_id, @provider, @channel)"
-  );
-  for (const al of data.alerting ?? []) {
-    insertAlerting.run({ manifest_id, provider: al.provider ?? null, channel: al.channel });
-  }
-
-  // -- deployment_runbook (1:N) --
-  //    → deployment_runbook_step (1:N per runbook)
-  const insertRunbook = db.prepare(
-    "INSERT INTO deployment_runbook (manifest_id, name, scenario) VALUES (@manifest_id, @name, @scenario)"
-  );
-  const insertRunbookStep = db.prepare(
-    "INSERT INTO deployment_runbook_step (runbook_id, step, is_rollback) VALUES (@runbook_id, @step, @is_rollback)"
-  );
-  for (const rb of data.runbooks ?? []) {
-    const rbResult = insertRunbook.run({ manifest_id, name: rb.name, scenario: rb.scenario });
-    const runbook_id = rbResult.lastInsertRowid;
-    for (const s of rb.steps ?? []) {
-      insertRunbookStep.run({ runbook_id, step: s.step, is_rollback: s.is_rollback ? 1 : 0 });
-    }
-  }
-
-  // -- deployment_review_checklist (1:N) --
-  const insertChecklist = db.prepare(
-    "INSERT INTO deployment_review_checklist (manifest_id, check_name, passed) VALUES (@manifest_id, @check_name, @passed)"
-  );
-  for (const item of data.review_checklist ?? []) {
-    insertChecklist.run({ manifest_id, check_name: item.check_name, passed: item.passed ? 1 : 0 });
-  }
-
-  return { entity_type: "deployment_manifest", id: manifest_id };
-}
-
 // (ux_config merged into insertConfig — see above)
 
 function insertInfoArchitecture(db, iteration_id, revision_id, data) {
@@ -1799,7 +1595,6 @@ function changelogInsert(args) {
     performance_audit_finding: insertPerformanceAuditFinding,
     test_report: insertTestReport,
     documentation_manifest: insertDocumentationManifest,
-    deployment_manifest: insertDeploymentManifest,
   };
 
   const handler = handlers[entity_type];
@@ -1955,7 +1750,7 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_create",
     description:
-      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 9 phase records and sets requirements to in_progress. Returns the new iteration_id (auto-incremented).",
+      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 8 phase records and sets requirements to in_progress. Returns the new iteration_id (auto-incremented).",
     inputSchema: {
       type: "object",
       properties: {

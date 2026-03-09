@@ -4,9 +4,8 @@ This domain captures the complete output of the **qa_engineer** agent during the
 
 **Producer:** `qa_engineer`
 **Critic:** `qa_critic` (validates completeness, correctness, and coverage)
-**Consumer:** `release_engineer` (reads this data to determine release readiness)
 
-**Phase:** `qa` (8th of 9 phases in each iteration)
+**Phase:** `qa` (7th of 8 phases in each iteration)
 
 ---
 
@@ -36,7 +35,7 @@ The root entity for a QA run. One `test_report` row represents the aggregate out
 
 ### Context
 
-The `qa_engineer` creates exactly one `test_report` per iteration (possibly revised across multiple revisions). The `status` field is the single signal the `release_engineer` uses to gate release: `pass` means all tests passed and no critical blockers exist; `fail` means failures occurred; `blocked` means testing could not complete.
+The `qa_engineer` creates exactly one `test_report` per iteration (possibly revised across multiple revisions). The `status` field is the aggregate outcome signal: `pass` means all tests passed and no critical blockers exist; `fail` means failures occurred; `blocked` means testing could not complete.
 
 ### Columns
 
@@ -81,7 +80,7 @@ Records whether each requirement has been exercised by the test suite. Provides 
 
 ### Context
 
-The `qa_engineer` creates one row per requirement. The `qa_critic` cross-checks this list against the full requirement set in `requirement` to detect untested requirements. The `release_engineer` uses this table to confirm that all `must_have` requirements have at least a `pass` or `partial` coverage status.
+The `qa_engineer` creates one row per requirement. The `qa_critic` cross-checks this list against the full requirement set in `requirement` to detect untested requirements. This table confirms that all `must_have` requirements have at least a `pass` or `partial` coverage status.
 
 ### Columns
 
@@ -243,7 +242,7 @@ Records a security issue discovered during the QA phase, either from a vulnerabi
 
 ### Context
 
-The `qa_engineer` runs security tooling (e.g., SAST scanners, `npm audit`, `pip-audit`) and records each finding here. Critical or high severity findings typically populate the `test_blocker` table as well. The `release_engineer` checks this table for unresolved critical findings before approving release.
+The `qa_engineer` runs security tooling (e.g., SAST scanners, `npm audit`, `pip-audit`) and records each finding here. Critical or high severity findings typically populate the `test_blocker` table as well.
 
 ### Columns
 
@@ -311,7 +310,7 @@ Records an issue that prevents the test report from achieving a `pass` status. E
 
 ### Context
 
-The `qa_engineer` creates blocker rows for critical failures, unresolved security findings, or missing test coverage that disqualify the build from release. The `release_engineer` checks for open blockers before proceeding. The `qa_critic` validates that every `fail` status in `test_requirement_coverage` has a corresponding blocker.
+The `qa_engineer` creates blocker rows for critical failures, unresolved security findings, or missing test coverage that disqualify the build from passing. The `qa_critic` validates that every `fail` status in `test_requirement_coverage` has a corresponding blocker.
 
 ### Columns
 
@@ -338,7 +337,7 @@ Inserted as items in the `blockers` array of a `changelog_insert` `test_report` 
 
 ### Purpose
 
-Many-to-many bridge linking blockers to the requirements they affect. Allows the `release_engineer` to identify exactly which requirements are at risk due to each blocker.
+Many-to-many bridge linking blockers to the requirements they affect. Identifies exactly which requirements are at risk due to each blocker.
 
 ### Context
 
@@ -372,7 +371,7 @@ Captures QA improvement suggestions that are not blocking but should be addresse
 
 ### Context
 
-The `qa_engineer` and `qa_critic` identify weaknesses in the test suite (gaps in coverage, reliability issues, missing performance benchmarks, etc.) and record them here. The `release_engineer` reviews high-priority recommendations when deciding whether to release or request a follow-up iteration. Unlike blockers, recommendations do not prevent release.
+The `qa_engineer` and `qa_critic` identify weaknesses in the test suite (gaps in coverage, reliability issues, missing performance benchmarks, etc.) and record them here. Unlike blockers, recommendations do not prevent progress — they are suggestions for future improvement.
 
 ### Columns
 

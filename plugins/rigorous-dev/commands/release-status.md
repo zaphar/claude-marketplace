@@ -37,7 +37,7 @@ Exit without error.
 
 ### 2. Load and Parse State
 
-Use the `project_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit, release).
+Use the `project_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit).
 
 ### 3. Display Formatted Status
 
@@ -61,10 +61,6 @@ Release Progress:
    <if approved_by>Approved by: <approved_by></if>
 
 <status_indicator> Audit
-   Status: <status>
-   [same format as above]
-
-<status_indicator> Release
    Status: <status>
    [same format as above]
 
@@ -105,9 +101,6 @@ QA
 Audit
    Status: in_progress
    Iteration: 1/3
-
-Release
-   Status: pending
 
 Dev Artifact Inputs:
   Requirements: requirements/requirements.yaml

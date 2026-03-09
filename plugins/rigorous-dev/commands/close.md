@@ -131,4 +131,4 @@ To check status:
 
 - Closing a workflow does not delete any artifacts or DB records
 - A closed workflow cannot be resumed; use `/rigorous-dev:new-iteration` to continue work
-- The release phases (qa, audit, release) are part of the same iteration in the DB and are not affected by closing the dev workflow
+- The release phases (qa, audit) are part of the same iteration in the DB and are not affected by closing the dev workflow

@@ -30,7 +30,7 @@ export function seedIteration(db) {
 
   const phases = [
     "requirements", "ux_design", "architecture", "planning",
-    "implementation", "documentation", "qa", "audit", "release",
+    "implementation", "documentation", "qa", "audit",
   ];
   const insertPhase = db.prepare(
     "INSERT INTO phase (iteration_id, name, status) VALUES (?, ?, 'pending')"

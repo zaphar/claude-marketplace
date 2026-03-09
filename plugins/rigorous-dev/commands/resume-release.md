@@ -28,7 +28,7 @@ Call `project_status` to check whether release phases exist and have any activit
 project_status()
 ```
 
-Check if release phases (qa, audit, release) exist. If none have been started (all pending), show error suggesting /rigorous-dev:start-release:
+Check if release phases (qa, audit) exist. If none have been started (all pending), show error suggesting /rigorous-dev:start-release:
 
 ```
 ERROR: No release workflow found in this project.
@@ -68,7 +68,6 @@ Artifacts: <artifacts_directory>
 Phase Status:
 <status_indicator> QA: <status>
 <status_indicator> Audit: <status>
-<status_indicator> Release: <status>
 
 Resuming <current_phase> phase...
 ```
@@ -84,7 +83,6 @@ Based on the current phase and its status, load the appropriate agent:
 **Phase-to-Agent Mapping:**
 - `qa` → `rigorous-dev:qa_engineer`
 - `audit` → `rigorous-dev:security_auditor` + `rigorous-dev:performance_auditor` (parallel)
-- `release` → `rigorous-dev:release_engineer`
 
 **If phase status is "in_progress":**
 - Load the producer agent for that phase (continue work)

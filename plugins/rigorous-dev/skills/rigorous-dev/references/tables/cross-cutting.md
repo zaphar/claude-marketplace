@@ -351,7 +351,7 @@ Write a second mapping for the same requirement to a screen:
 
 ### Purpose
 
-Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`, `deployment_manifest.blockers` JSON array) which are stored within their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
+Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`) which are stored within their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
 
 Blockers use soft-delete semantics: active blockers have `resolved_at IS NULL`. When a blocker is addressed, `blocker_resolve` sets `resolved_at` and optionally records resolution notes.
 

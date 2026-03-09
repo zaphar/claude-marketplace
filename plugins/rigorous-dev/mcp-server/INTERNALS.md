@@ -14,7 +14,7 @@ Persistence layer mechanics for the rigorous-dev MCP server.
 
 **Prepared statements.** `db.prepare(sql)` compiles SQL once. Reusing a prepared statement via `stmt.run(...)` in a loop is the fast path. This codebase follows this pattern consistently — see any `insertXxx()` function in `write-tools.js` for examples (e.g., `insertComponent` prepares once, then loops over interfaces, dependencies, requirements, and test boundaries).
 
-**Transactions.** `db.transaction(() => { ... })` creates an implicit `BEGIN ... COMMIT` block (equivalent to `BEGIN DEFERRED` in SQLite) with automatic rollback on throw. Used in `iterationCreate` (wraps project + iteration + 9 phase inserts) and by `changelogInsert` (wraps each entity handler call).
+**Transactions.** `db.transaction(() => { ... })` creates an implicit `BEGIN ... COMMIT` block (equivalent to `BEGIN DEFERRED` in SQLite) with automatic rollback on throw. Used in `iterationCreate` (wraps project + iteration + 8 phase inserts) and by `changelogInsert` (wraps each entity handler call).
 
 **Return values.** `.run()` returns `{ changes, lastInsertRowid }`. The codebase chains parent→child inserts via `lastInsertRowid` — for example, `iterationCreate` captures the iteration ID from the insert result and uses it for all subsequent phase inserts.
 
@@ -44,7 +44,7 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 84 | Everything else (83 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 67 | Everything else (66 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
 | Composite `PRIMARY KEY` | 15 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `snapshotIfExists` and the upsert write pattern only apply to these types.
@@ -71,7 +71,7 @@ Seven insert functions accept arrays via the `Array.isArray(data) ? data : [data
 
 ### Transaction usage
 
-- `iterationCreate` wraps project creation + iteration + 9 phase inserts in an explicit `db.transaction()`.
+- `iterationCreate` wraps project creation + iteration + 8 phase inserts in an explicit `db.transaction()`.
 - `changelogInsert` wraps each `insertXxx()` handler call in `db.transaction()` — the snapshot + upsert + child delete/reinsert sequence for text-PK entities is atomic.
 - `changelogUpdate` and `phaseTransition` run individual prepared statements without an explicit transaction wrapper (each is a single UPDATE).
 
@@ -79,7 +79,7 @@ Seven insert functions accept arrays via the `Array.isArray(data) ? data : [data
 
 ### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-`changelogQuery` dispatches to one of 33 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
+`changelogQuery` dispatches to one of 32 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
 **Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to `{ nullable }` metadata. The spec key itself doubles as the SQL column name used in WHERE clauses. When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
@@ -93,7 +93,7 @@ Given a starting entity (one of 6 target types: `component`, `technology`, `requ
 
 ## 6. JSON Columns
 
-Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `components`, `data_dependencies`, `targets`, `platforms`, `steps`, `channels`, `config_files`, `triggers`, `test_ids`, `paths`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `assumptions`, `principles`, `tables`, `blockers`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
+Arrays that don't need relational querying are stored as `JSON`-typed columns (SQLite treats `JSON` as `TEXT` affinity, but the schema declares them explicitly as `JSON` for clarity): `goals`, `acceptance_criteria`, `consequences`, `research_sources`, `principles`, `data_dependencies`, `components`, `entry_criteria`, `exit_criteria`, `checkpoint_focus`, `tables`, `assumptions`, `test_ids`, `paths`. Serialized with `JSON.stringify()` on write, `JSON.parse()` on read.
 
 **Trade-off:** These columns cannot be indexed or filtered with SQL WHERE clauses. If you ever need to query inside these values, they would need to be normalized into their own tables.
 
@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~100+ child tables.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~113 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -122,7 +122,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-104 indexes with a clear rationale (documented in `schema.sql` comments):
+90 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."

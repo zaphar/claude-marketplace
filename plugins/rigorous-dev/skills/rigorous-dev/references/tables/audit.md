@@ -4,9 +4,8 @@ This domain captures the complete output of the **security_auditor** and **perfo
 
 **Producers:** `security_auditor` (security findings), `performance_auditor` (performance findings)
 **Critics:** `security_audit_critic`, `performance_audit_critic`
-**Consumer:** `release_engineer` (reads findings to determine release readiness)
 
-**Phase:** `audit` (8th of 9 phases in each iteration)
+**Phase:** `audit` (8th of 8 phases in each iteration)
 
 ---
 
@@ -29,7 +28,7 @@ Records a single security vulnerability or concern discovered during the audit p
 
 The `security_auditor` performs a deep code-level security audit (OWASP Top 10, data flow tracing, dependency audit, configuration review) and records each finding individually via `changelog_insert`. This differs from `test_security_finding` in the QA domain: QA findings come from automated scanners during testing, while audit findings come from manual expert code review during the audit phase.
 
-The `security_audit_critic` queries all findings for the current iteration to validate completeness, accuracy, and actionability. The `release_engineer` checks for unresolved high/critical findings before approving release.
+The `security_audit_critic` queries all findings for the current iteration to validate completeness, accuracy, and actionability.
 
 ### Columns
 
@@ -70,7 +69,7 @@ Records a single performance bottleneck, anti-pattern, or optimization opportuni
 
 The `performance_auditor` performs a deep code-level performance audit (database queries, memory patterns, concurrency, API design, algorithm analysis) and records each finding individually via `changelog_insert`. This differs from `test_performance_benchmark` in the QA domain: QA benchmarks measure against defined thresholds from requirements, while audit findings identify code-level anti-patterns and bottlenecks regardless of requirements.
 
-The `performance_audit_critic` queries all findings for the current iteration to validate completeness, evidence backing, and actionability. The `release_engineer` checks for unresolved high/critical findings before approving release.
+The `performance_audit_critic` queries all findings for the current iteration to validate completeness, evidence backing, and actionability.
 
 ### Columns
 

@@ -117,7 +117,7 @@ changelog_insert(entity_type: "performance_audit_finding", iteration_id: <curren
 - If findings exist with severity high or critical (or 5+ medium findings accumulated across both audits), the remediation cycle is triggered (developer fixes → QA re-tests → re-audit)
 - If no issues are found, the summary must still include the full coverage assessment and "Areas Not Audited" section so the critic can verify thoroughness
 
-**Handoff:** The performance audit findings are reviewed by the Performance Audit Critic via `changelog_query(entity_type: "performance_audit_finding")`. Once the critic approves, the findings flow into the Release phase alongside the security audit findings.
+**Handoff:** The performance audit findings are reviewed by the Performance Audit Critic via `changelog_query(entity_type: "performance_audit_finding")`. Once the critic approves, the audit phase of the release workflow is complete.
 
 **Context Management:**
 

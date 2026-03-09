@@ -509,41 +509,6 @@ describe("documentation_manifest", () => {
   });
 });
 
-describe("deployment_manifest", () => {
-  it("inserts with pipelines and environments", () => {
-    const { readResult } = insertAndQuery(
-      "deployment_manifest",
-      {
-        status: "ready",
-        targets: ["production"],
-        pipelines: [
-          {
-            platform: "github-actions",
-            config_files: ["ci.yml"],
-            stages: [
-              {
-                name: "build",
-                purpose: "Build artifacts",
-                quality_gates: [{ name: "tests", condition: "pass", failure_action: "block" }],
-              },
-            ],
-          },
-        ],
-        environments: [
-          {
-            name: "prod",
-            deployment_method: "docker",
-            infra: [{ provider: "aws", resource: "ECS" }],
-            vars: [{ name: "NODE_ENV", value_source: "secret", description: "Environment" }],
-          },
-        ],
-      },
-      { include_related: true }
-    );
-    assert.strictEqual(readResult.results[0].status, "ready");
-  });
-});
-
 // ───────────────────────────────────────────────────────────────
 // Remaining append-only entities
 // ───────────────────────────────────────────────────────────────

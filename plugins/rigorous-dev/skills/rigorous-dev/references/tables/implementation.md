@@ -281,7 +281,7 @@ Catalogues third-party packages or libraries added to the project during impleme
 
 ### Context
 
-The senior_developer must record every `npm install`, `pip install`, `go get`, etc. here. This allows the critic and QA to spot unapproved dependencies and the release engineer to confirm all dependencies are licensed correctly.
+The senior_developer must record every `npm install`, `pip install`, `go get`, etc. here. This allows the critic and QA to spot unapproved dependencies and confirm all dependencies are licensed correctly.
 
 ### Columns
 
@@ -315,7 +315,7 @@ Tracks each database migration script created or applied during implementation. 
 
 ### Context
 
-Migrations may be `created` (file written but not yet run), `pending` (queued for the next deploy), or `applied` (already executed against the database). The release engineer uses this status when generating deployment runbooks.
+Migrations may be `created` (file written but not yet run), `pending` (queued for the next deploy), or `applied` (already executed against the database). This status helps QA and audit agents verify that all schema changes have been properly executed.
 
 ### Columns
 

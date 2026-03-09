@@ -22,7 +22,6 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture deployment (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "deployment" }) — for operator docs
 - Architecture observability (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "observability" }) — for monitoring docs
 - Implementation entries (query via `changelog_query`)
-- Deployment entries (query via `changelog_query`) — optional, only available after release workflow runs
 - Codebase
 - Glossary from requirements specification
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
@@ -77,7 +76,6 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 *Operator Documentation* (if applicable):
 - Deployment guide
-- Runbooks (from Release Engineer, if release workflow has run — reference, don't duplicate)
 - Monitoring and alerting guide (from observability spec)
 - Backup and recovery procedures
 

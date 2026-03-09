@@ -1,10 +1,10 @@
 # Core Spine Tables
 
-These four tables form the backbone of the entire data model. Every other table in the system exists to record artifacts produced during the development lifecycle, and each of those tables traces back to this spine. The hierarchy flows strictly downward: a **project** is the root identity for a project, **iterations** represent discrete change-request cycles within that project, **phases** represent the nine SDLC stages executed within each iteration, and **revisions** represent individual producer-critic loop attempts within a phase.
+These four tables form the backbone of the entire data model. Every other table in the system exists to record artifacts produced during the development lifecycle, and each of those tables traces back to this spine. The hierarchy flows strictly downward: a **project** is the root identity for a project, **iterations** represent discrete change-request cycles within that project, **phases** represent the eight SDLC stages executed within each iteration, and **revisions** represent individual producer-critic loop attempts within a phase.
 
 The core spine is write-once and append-forward. The project row is created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
 
-Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries a required `revision_id` (NOT NULL) to record exactly when and why it was produced. Some tables that model iteration-scoped context (e.g., `project_context`, `system_io`, `nonfunctional_requirement`) carry a direct `iteration_id` instead. No table carries both columns — tables with `revision_id` derive their iteration through the `revision → phase → iteration` chain (or via the `entity_context` VIEW). This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
+Every changelog entity in the system — requirements, ADRs, components, test cases, and so on — carries a required `revision_id` (NOT NULL) to record exactly when and why it was produced. Some tables that model iteration-scoped context (e.g., `project_context`, `system_io`, `nonfunctional_requirement`) carry a direct `iteration_id` instead. No table carries both columns — tables with `revision_id` derive their iteration through the `revision → phase → iteration` chain (or via the `entity_context` VIEW). This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
 
 ---
 
@@ -38,7 +38,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Purpose:** A single change-request cycle within a project. Each time new work is requested — a new feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered sequentially.
 
-**Context:** Created by `iteration_create`. An iteration encompasses all nine phases and their revision attempts. Changelog entities reference the iteration either directly (via `iteration_id` for context tables) or indirectly (via `revision_id → phase → iteration` for producer-critic artifacts). Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
+**Context:** Created by `iteration_create`. An iteration encompasses all eight phases and their revision attempts. Changelog entities reference the iteration either directly (via `iteration_id` for context tables) or indirectly (via `revision_id → phase → iteration` for producer-critic artifacts). Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -66,7 +66,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 ## phase
 
-**Purpose:** One of the nine SDLC stages within an iteration. Phases are created in bulk (all nine, all `pending`) when an iteration is created, then activated and completed one at a time as the workflow advances.
+**Purpose:** One of the eight SDLC stages within an iteration. Phases are created in bulk (all eight, all `pending`) when an iteration is created, then activated and completed one at a time as the workflow advances.
 
 **Context:** Created by `iteration_create` alongside the iteration row. Status is advanced by `phase_transition`. `approved_by` records which agent approved the phase output (set by the critic). Revisions hang off phases, so the full producer-critic history for any phase is traceable via `revision`.
 
@@ -74,7 +74,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 |--------|------|-------------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Surrogate key. |
 | `iteration_id` | INTEGER | NOT NULL, REFERENCES `iteration(id)` | Parent iteration. |
-| `name` | TEXT | NOT NULL, CHECK(one of 9 values), UNIQUE with `iteration_id` | The SDLC stage name. One of: `requirements`, `ux_design`, `architecture`, `planning`, `implementation`, `documentation`, `qa`, `audit`, `release`. |
+| `name` | TEXT | NOT NULL, CHECK(one of 8 values), UNIQUE with `iteration_id` | The SDLC stage name. One of: `requirements`, `ux_design`, `architecture`, `planning`, `implementation`, `documentation`, `qa`, `audit`. |
 | `status` | TEXT | NOT NULL, CHECK(`pending`, `in_progress`, `completed`, `skipped`) | Lifecycle state of this phase within the iteration. |
 | `started_at` | TEXT | — | ISO-8601 timestamp when the phase moved to `in_progress`. NULL if not yet started. |
 | `completed_at` | TEXT | — | ISO-8601 timestamp when the phase reached `completed` or `skipped`. NULL while in progress. |
@@ -88,7 +88,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 - Parent: `iteration` (via `iteration_id`)
 - Children: `revision` (via `phase_id`)
 
-**Produced by:** `iteration_create` (all nine phase rows created at once)
+**Produced by:** `iteration_create` (all eight phase rows created at once)
 **Updated by:** `phase_transition`
 **Queried by:** `project_status`, `iteration_summary`
 

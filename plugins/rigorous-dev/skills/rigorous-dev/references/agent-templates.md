@@ -138,7 +138,6 @@ Most phases use a producer-critic pair:
 | Audit (Security) | `security_auditor.agent.md` | `security_audit_critic.agent.md` |
 | Audit (Performance) | `performance_auditor.agent.md` | `performance_audit_critic.agent.md` |
 | Documentation | `documentation_master.agent.md` | `documentation_critic.agent.md` |
-| Release | `release_engineer.agent.md` | `release_critic.agent.md` |
 
 ## Best Practices
 

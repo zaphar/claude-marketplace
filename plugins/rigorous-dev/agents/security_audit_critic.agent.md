@@ -62,7 +62,7 @@ tools: Read, Grep, Glob, Bash
 
 **Handoff:**
 
-- On approval, the security audit findings proceed to the Release phase
+- On approval, the security audit findings complete the audit phase of the release workflow
 - On rejection, returns to Security Auditor with specific feedback
 
 **Context Management:**

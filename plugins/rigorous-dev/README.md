@@ -13,7 +13,7 @@ Requirements → UX Design → Architecture → Planning → Implementation → 
 
 **Release Workflow** (pre-release verification):
 ```
-QA → Audit → Release
+QA → Audit
 ```
 
 The development workflow runs fast iteration loops. When ready to ship, the release workflow provides thorough verification. Each phase uses specialized agents with producer-critic patterns to ensure quality and completeness.
@@ -70,10 +70,6 @@ The development workflow runs fast iteration loops. When ready to ship, the rele
 
 > **Note:** Auditor agents are read-only producers — they analyze code using Read, Grep, Glob, and Bash but do not edit files. They submit findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`).
 
-#### Release Phase
-- **Release Engineer**: Prepares deployment and release
-- **Release Critic**: Validates release readiness
-
 ## Installation
 
 ### Remote Marketplace Install
@@ -128,7 +124,7 @@ After installation, you'll have these commands available in Claude Code:
 - `/rigorous-dev:new-iteration` - Start a new iteration from a closed workflow
 
 **Release Workflow:**
-- `/rigorous-dev:start-release` - Start the release workflow (QA, audit, release)
+- `/rigorous-dev:start-release` - Start the release workflow (QA, audit)
 - `/rigorous-dev:resume-release` - Resume an existing release workflow
 - `/rigorous-dev:release-status` - Display release workflow status
 
@@ -212,7 +208,7 @@ When you've completed (or partially completed) a workflow and want to start fres
 - All dev phase statuses reset to pending
 - The workflow begins again at the Requirements phase
 - Prior artifacts are retrievable from VCS history
-- Release workflow artifacts (qa, audit, release) are owned by the release workflow and not affected
+- Release workflow artifacts (qa, audit) are owned by the release workflow and not affected
 
 ## Workflow Details
 
@@ -270,7 +266,7 @@ Output: Implementation progress tracked in `.claude/rigorous-dev.db` (phases, re
 The Documentation Master creates:
 - User documentation
 - API documentation
-- Deployment guides (if release workflow has run)
+- Deployment guides
 - Architecture documentation
 
 Output: Documentation manifest stored in `.claude/rigorous-dev.db`
@@ -294,15 +290,6 @@ Security and Performance Auditors run in parallel:
 - **Performance Auditor**: Database query analysis, memory patterns, algorithm review
 
 Output: Security and performance audit findings stored in `.claude/rigorous-dev.db` (entity types: `security_audit_finding`, `performance_audit_finding`)
-
-#### 3. Release Phase
-
-The Release Engineer prepares:
-- Deployment manifest
-- Release notes
-- Deployment verification checklist
-
-Output: Deployment manifest stored in `.claude/rigorous-dev.db`
 
 ## Directory Structure
 
@@ -331,9 +318,7 @@ rigorous-dev/
 │   ├── performance_auditor.agent.md
 │   ├── performance_audit_critic.agent.md
 │   ├── documentation_master.agent.md
-│   ├── documentation_critic.agent.md
-│   ├── release_engineer.agent.md
-│   └── release_critic.agent.md
+│   └── documentation_critic.agent.md
 ├── commands/                        # Slash command definitions
 │   ├── start.md
 │   ├── onboard.md
@@ -360,9 +345,9 @@ rigorous-dev/
 │   │       ├── ux-design.md
 │   │       ├── planning.md
 │   │       ├── implementation.md
-│   │       ├── qa-test.md
 │   │       ├── documentation.md
-│   │       └── deployment.md
+│   │       ├── qa-test.md
+│   │       └── audit.md
 │   └── examples/                    # Example files for agents
 └── mcp-server/                      # MCP server with SQLite changelog backend
     ├── server.js                    # MCP server entry point
@@ -428,7 +413,7 @@ File artifacts (generated documentation) are written to `.claude/rigorous-dev-ar
 ```
 
 **Key Points:**
-- Structured phase data (requirements, architecture, planning, implementation, QA, audit, release) lives in the SQLite DB — query it with `changelog_query`, `traceability_query`, or `iteration_summary`
+- Structured phase data (requirements, architecture, planning, implementation, QA, audit) lives in the SQLite DB — query it with `changelog_query`, `traceability_query`, or `iteration_summary`
 - File artifacts are only written where a document format is more appropriate (doc pages)
 - Release workflow phase tracking is stored in the DB alongside development phases — no separate release state file
 

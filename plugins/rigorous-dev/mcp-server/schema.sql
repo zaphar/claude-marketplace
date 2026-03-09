@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS phase (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL CHECK(name IN (
     'requirements', 'ux_design', 'architecture', 'planning',
-    'implementation', 'documentation', 'qa', 'audit', 'release'
+    'implementation', 'documentation', 'qa', 'audit'
   )),
   status TEXT NOT NULL CHECK(status IN ('pending', 'in_progress', 'completed', 'skipped')),
   started_at TEXT,
@@ -1128,8 +1128,8 @@ CREATE TABLE IF NOT EXISTS implementation_api_endpoint_requirement (
 -- Feeds into security/license audits and complements the pre-approved approved_dependency
 -- architecture table with what was actually used.
 -- Context: The senior_developer must record every npm install, pip install, go get, etc. here. This
--- allows the critic and QA to spot unapproved dependencies and the release engineer to confirm all
--- dependencies are licensed correctly.
+-- allows the critic and QA to spot unapproved dependencies and confirm all dependencies are
+-- licensed correctly.
 CREATE TABLE IF NOT EXISTS implementation_dependency_added (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -1145,8 +1145,8 @@ CREATE TABLE IF NOT EXISTS implementation_dependency_added (
 -- the ops and QA teams with a clear list of schema changes that need to be run before the code can
 -- be deployed.
 -- Context: Migrations may be created (file written but not yet run), pending (queued for the next
--- deploy), or applied (already executed against the database). The release engineer uses this
--- status when generating deployment runbooks.
+-- deploy), or applied (already executed against the database). This status helps QA and audit
+-- agents verify that all schema changes have been properly executed.
 CREATE TABLE IF NOT EXISTS implementation_db_migration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   manifest_id INTEGER NOT NULL REFERENCES implementation_manifest(id) ON DELETE CASCADE,
@@ -1254,7 +1254,7 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
 );
 
 -- ============================================================
--- RELEASE WORKFLOW TABLES
+-- QA & TEST TABLES
 -- ============================================================
 
 -- Test report
@@ -1262,9 +1262,9 @@ CREATE TABLE IF NOT EXISTS asset_deliverable (
 -- Purpose: The root entity for a QA run. One test_report row represents the aggregate outcome of a
 -- full test execution for a given iteration. All other test-domain tables reference this row.
 -- Context: The qa_engineer creates exactly one test_report per iteration (possibly revised across
--- multiple revisions). The status field is the single signal the release_engineer uses to gate
--- release: pass means all tests passed and no critical blockers exist; fail means failures
--- occurred; blocked means testing could not complete.
+-- multiple revisions). The status field is the aggregate outcome signal: pass means all tests
+-- passed and no critical blockers exist; fail means failures occurred; blocked means testing could
+-- not complete.
 CREATE TABLE IF NOT EXISTS test_report (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -1290,9 +1290,8 @@ CREATE TABLE IF NOT EXISTS test_report (
 -- requirement test traceability at the requirement level (as opposed to per-criterion detail in
 -- test_acceptance_criterion_result).
 -- Context: The qa_engineer creates one row per requirement. The qa_critic cross-checks this list
--- against the full requirement set in requirement to detect untested requirements. The
--- release_engineer uses this table to confirm that all must_have requirements have at least a pass
--- or partial coverage status.
+-- against the full requirement set in requirement to detect untested requirements. This table
+-- confirms that all must_have requirements have at least a pass or partial coverage status.
 CREATE TABLE IF NOT EXISTS test_requirement_coverage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -1371,8 +1370,7 @@ CREATE TABLE IF NOT EXISTS test_case_requirement (
 -- scanner or a dependency audit tool.
 -- Context: The qa_engineer runs security tooling (e.g., SAST scanners, npm audit, pip-audit) and
 -- records each finding here. Critical or high severity findings typically populate the test_blocker
--- table as well. The release_engineer checks this table for unresolved critical findings before
--- approving release.
+-- table as well.
 CREATE TABLE IF NOT EXISTS test_security_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -1409,9 +1407,8 @@ CREATE TABLE IF NOT EXISTS test_performance_benchmark (
 -- Purpose: Records an issue that prevents the test report from achieving a pass status. Each
 -- blocker has a severity level and an optional recommendation for resolution.
 -- Context: The qa_engineer creates blocker rows for critical failures, unresolved security
--- findings, or missing test coverage that disqualify the build from release. The release_engineer
--- checks for open blockers before proceeding. The qa_critic validates that every fail status in
--- test_requirement_coverage has a corresponding blocker.
+-- findings, or missing test coverage that disqualify the build from passing. The qa_critic
+-- validates that every fail status in test_requirement_coverage has a corresponding blocker.
 CREATE TABLE IF NOT EXISTS test_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -1421,8 +1418,8 @@ CREATE TABLE IF NOT EXISTS test_blocker (
 );
 
 -- Domain: qa-test
--- Purpose: Many-to-many bridge linking blockers to the requirements they affect. Allows the
--- release_engineer to identify exactly which requirements are at risk due to each blocker.
+-- Purpose: Many-to-many bridge linking blockers to the requirements they affect. Identifies
+-- exactly which requirements are at risk due to each blocker.
 -- Context: When a blocker is related to a specific requirement (e.g., a failed functional test for
 -- REQ-012), the qa_engineer records that link here. A blocker may affect multiple requirements; a
 -- requirement may be referenced by multiple blockers.
@@ -1436,9 +1433,8 @@ CREATE TABLE IF NOT EXISTS test_blocker_requirement (
 -- Purpose: Captures QA improvement suggestions that are not blocking but should be addressed in
 -- future iterations. Categorized and prioritized for easy triage.
 -- Context: The qa_engineer and qa_critic identify weaknesses in the test suite (gaps in coverage,
--- reliability issues, missing performance benchmarks, etc.) and record them here. The
--- release_engineer reviews high-priority recommendations when deciding whether to release or
--- request a follow-up iteration. Unlike blockers, recommendations do not prevent release.
+-- reliability issues, missing performance benchmarks, etc.) and record them here. Unlike blockers,
+-- recommendations do not prevent progress — they are suggestions for future improvement.
 CREATE TABLE IF NOT EXISTS test_recommendation (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
@@ -1461,8 +1457,7 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
 -- changelog_insert. This differs from test_security_finding in the QA domain: QA findings come from
 -- automated scanners during testing, while audit findings come from manual expert code review
 -- during the audit phase. The security_audit_critic queries all findings for the current iteration
--- to validate completeness, accuracy, and actionability. The release_engineer checks for unresolved
--- high/critical findings before approving release.
+-- to validate completeness, accuracy, and actionability.
 CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -1488,8 +1483,7 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
 -- QA benchmarks measure against defined thresholds from requirements, while audit findings identify
 -- code-level anti-patterns and bottlenecks regardless of requirements. The performance_audit_critic
 -- queries all findings for the current iteration to validate completeness, evidence backing, and
--- actionability. The release_engineer checks for unresolved high/critical findings before approving
--- release.
+-- actionability.
 CREATE TABLE IF NOT EXISTS performance_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
@@ -1640,279 +1634,6 @@ CREATE TABLE IF NOT EXISTS documentation_review_checklist (
   UNIQUE(manifest_id, check_name)
 );
 
--- Deployment manifest
--- Domain: deployment
--- Purpose: Root record for a release attempt. Carries readiness status and anchors all deployment
--- sub-tables. One manifest per release iteration (or per revision if the release was rejected and
--- re-attempted).
--- Context: Created by release_engineer at the start of the release phase. Status is set to
--- not_ready initially, updated to ready when all checks pass, or blocked when hard blockers exist.
--- The release_critic reads this row plus all children to produce its verdict.
-CREATE TABLE IF NOT EXISTS deployment_manifest (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('ready', 'not_ready', 'blocked')),
-  targets JSON NOT NULL DEFAULT '[]',
-  blockers JSON NOT NULL DEFAULT '[]',
-  version TEXT,
-  document_date TEXT, -- ISO 8601 date (YYYY-MM-DD)
-  requirements_version TEXT,
-  architecture_version TEXT,
-  implementation_version TEXT,
-  test_report_version TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Domain: deployment
--- Purpose: Represents a CI/CD pipeline platform (e.g., GitHub Actions, GitLab CI, CircleCI,
--- Jenkins). One row per pipeline; a manifest may in principle define multiple pipelines for
--- different platforms.
--- Context: The pipeline is the top-level CI/CD object. All pipeline stages, their triggers, steps,
--- and quality gates descend from this table.
-CREATE TABLE IF NOT EXISTS deployment_pipeline (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  platform TEXT NOT NULL,
-  config_files JSON NOT NULL DEFAULT '[]',
-  UNIQUE(manifest_id, platform)
-);
-
--- Domain: deployment
--- Purpose: Defines a named stage within the CI/CD pipeline (e.g., build, test, security-scan,
--- deploy-staging, deploy-production). Each stage has a stated purpose.
--- Context: Stages map to jobs or stages in the underlying CI/CD platform. The purpose field is a
--- human-readable description used by the release critic to verify that all required deployment
--- concerns (build, test, security, deploy, smoke-test) are covered.
-CREATE TABLE IF NOT EXISTS deployment_pipeline_stage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pipeline_id INTEGER NOT NULL REFERENCES deployment_pipeline(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  purpose TEXT NOT NULL,
-  triggers JSON NOT NULL DEFAULT '[]',
-  steps JSON NOT NULL DEFAULT '[]',
-  UNIQUE(pipeline_id, name)
-);
-
--- Domain: deployment
--- Purpose: Defines a named quality gate check attached to a specific pipeline stage. Each gate has
--- a condition expression and a failure_action that controls how the pipeline responds when the
--- condition is not met.
--- Context: Per-stage gates enforce standards at the point of execution (e.g., "test coverage ≥ 80%"
--- on the test stage, "no critical CVEs" on the security-scan stage). The failure_action column
--- determines whether failure blocks the pipeline, emits a warning, or just sends a notification.
-CREATE TABLE IF NOT EXISTS deployment_stage_quality_gate (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  stage_id INTEGER NOT NULL REFERENCES deployment_pipeline_stage(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  condition TEXT NOT NULL,
-  failure_action TEXT NOT NULL CHECK(failure_action IN ('block', 'warn', 'notify')),
-  UNIQUE(stage_id, name)
-);
-
--- Domain: deployment
--- Purpose: Stores global, manifest-level quality gate thresholds and rules organised by category
--- and key/value pairs. Complements the per-stage gates with project-wide standards.
--- Context: While deployment_stage_quality_gate attaches gates to specific pipeline stages,
--- deployment_quality_gate records the overall policy (e.g., category: test_coverage, key:
--- minimum_percent, value: 80). The release critic compares these global rules against the QA test
--- report to verify the release meets the project's own declared standards.
-CREATE TABLE IF NOT EXISTS deployment_quality_gate (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  UNIQUE(manifest_id, category, key)
-);
-
--- Domain: deployment
--- Purpose: Describes a named deployment environment (development, staging, or production). Captures
--- the deployment method, access URL, and rollback procedure for that environment.
--- Context: The three-environment model (dev/staging/prod) is standard. Each environment gets its
--- own infrastructure resources (deployment_env_infra) and environment variable set
--- (deployment_env_var). The rollback procedure is critical — the critic verifies it is documented
--- for staging and production.
-CREATE TABLE IF NOT EXISTS deployment_environment (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  deployment_method TEXT NOT NULL,
-  url TEXT,
-  rollback_procedure TEXT,
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: deployment
--- Purpose: Lists the cloud or infrastructure resources provisioned for a specific environment. One
--- row per resource.
--- Context: Resources are typically cloud provider primitives (e.g., AWS ECS Cluster, GCP Cloud SQL
--- instance, Kubernetes namespace prod). The provider field is optional because some infrastructure
--- is provider-agnostic (e.g., a bare-metal server). This table drives infrastructure-as-code
--- checklists in the release review.
-CREATE TABLE IF NOT EXISTS deployment_env_infra (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
-  provider TEXT,
-  resource TEXT NOT NULL
-);
-
--- Domain: deployment
--- Purpose: Inventories the environment variables used by the application in a specific environment,
--- along with their value-source classification. Does NOT store values.
--- Context: Common value_source values include secret, config, and hardcoded. secret vars are
--- expected to be sourced from a secrets manager (cross-referenced with deployment_secret). config
--- vars come from CI/CD config files or infrastructure config maps. hardcoded vars are baked into
--- the image or binary — flagged for review if they contain sensitive data.
-CREATE TABLE IF NOT EXISTS deployment_env_var (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  environment_id INTEGER NOT NULL REFERENCES deployment_environment(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  value_source TEXT NOT NULL,
-  description TEXT,
-  UNIQUE(environment_id, name)
-);
-
--- Domain: deployment
--- Purpose: Describes a build artifact produced by the CI/CD pipeline. One row per artifact type
--- (e.g., a Docker image, a statically-compiled binary, a .tar.gz release archive).
--- Context: Artifacts are the deployable outputs of the build process. The registry field points to
--- where the artifact is stored (container registry, S3 bucket, GitHub Releases). The versioning
--- field records the versioning strategy used to tag the artifact.
-CREATE TABLE IF NOT EXISTS deployment_artifact (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  artifact_type TEXT NOT NULL,
-  registry TEXT,
-  versioning TEXT CHECK(versioning IN ('semantic', 'git-sha', 'timestamp', 'custom')), -- NULL when versioning strategy not yet chosen
-  platforms JSON NOT NULL DEFAULT '[]',
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: deployment
--- Purpose: Records whether code signing is enabled for this release and, if so, which signing
--- method is used.
--- Context: Code signing is required for macOS binaries (Gatekeeper), Windows executables
--- (SmartScreen), and container images (Sigstore/cosign). A single row per manifest captures the
--- overall signing posture. The critic verifies that enabled = 1 when the target includes a platform
--- that mandates signing.
-CREATE TABLE IF NOT EXISTS deployment_signing (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  enabled INTEGER NOT NULL DEFAULT 0,
-  signing_method TEXT
-);
-
--- Domain: deployment
--- Purpose: Top-level metadata for locally-distributed executables — tools or CLIs shipped directly
--- to end-user machines via package managers rather than deployed to a server.
--- Context: Applies when the manifest targets local-executable (as listed in the
--- deployment_manifest.targets JSON array). Captures the installation method (e.g., homebrew-tap,
--- apt-repository, winget, direct-download) and the update mechanism (e.g., brew upgrade, apt-get
--- upgrade, self-update). Platform and channel lists are stored as JSON arrays on this table.
-CREATE TABLE IF NOT EXISTS deployment_local_executable (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  installation_method TEXT,
-  update_mechanism TEXT,
-  platforms JSON NOT NULL DEFAULT '[]',
-  channels JSON NOT NULL DEFAULT '[]'
-);
-
--- Domain: deployment
--- Purpose: Inventories the secrets required by the deployment — their names, purposes, managing
--- provider, and rotation policy. Values are NEVER stored.
--- Context: This table is the deployment domain's secrets ledger. It enables the release critic to
--- verify that every environment variable with value_source = 'secret' has a corresponding secret
--- record. The provider points to the secrets management system (e.g., AWS Secrets Manager,
--- HashiCorp Vault, GitHub Actions secrets). The rotation_policy drives operational runbook
--- requirements.
-CREATE TABLE IF NOT EXISTS deployment_secret (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  provider TEXT,
-  name TEXT NOT NULL,
-  purpose TEXT NOT NULL,
-  rotation_policy TEXT,
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: deployment
--- Purpose: Declares the health check endpoints or probes that should be polled after deployment to
--- verify the service is running correctly.
--- Context: Health checks are used by load balancers, container orchestrators (Kubernetes
--- liveness/readiness probes), and monitoring systems. The endpoint field is the HTTP path or
--- command; interval is the polling frequency. Multiple health checks can be defined per manifest
--- (e.g., liveness, readiness, and deep-health).
-CREATE TABLE IF NOT EXISTS deployment_health_check (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  endpoint TEXT,
-  interval TEXT, -- duration string, e.g. "30s", "5m", "1h"
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: deployment
--- Purpose: Captures the alerting configuration for the deployed system — which alerting provider is
--- used and which channel receives notifications.
--- Context: One row per alerting channel. A system may route different alert severities to different
--- channels (e.g., PagerDuty for critical, Slack #alerts for warnings). The provider field names the
--- alerting platform; channel is the destination identifier within that platform.
-CREATE TABLE IF NOT EXISTS deployment_alerting (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  provider TEXT,
-  channel TEXT NOT NULL,
-  UNIQUE(manifest_id, channel)
-);
-
--- Domain: deployment
--- Purpose: Defines a named operational runbook for a specific incident scenario (e.g., "Database
--- connection exhaustion", "High error rate", "Rollback production"). Each runbook has ordered
--- steps.
--- Context: Runbooks are the operational knowledge base for the deployed system. They are produced
--- by the Release Engineer and reviewed by the Release Critic. Each runbook addresses a distinct
--- failure scenario. Some steps are normal remediation steps; others are explicitly marked as
--- rollback steps.
-CREATE TABLE IF NOT EXISTS deployment_runbook (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  scenario TEXT NOT NULL,
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: deployment
--- Purpose: Lists the ordered steps within a runbook. Steps marked is_rollback = 1 are specifically
--- part of the rollback procedure within that runbook.
--- Context: The is_rollback flag allows runbooks to contain both diagnostic/remediation steps and
--- rollback steps in a single ordered sequence, with rollback steps clearly distinguished. This
--- enables the release critic to verify that every runbook addressing a production scenario includes
--- at least one rollback step.
-CREATE TABLE IF NOT EXISTS deployment_runbook_step (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  runbook_id INTEGER NOT NULL REFERENCES deployment_runbook(id) ON DELETE CASCADE,
-  step TEXT NOT NULL,
-  is_rollback INTEGER NOT NULL DEFAULT 0
-);
-
--- Domain: deployment
--- Purpose: Tracks the release review checklist items that the Release Engineer self-assesses and
--- the Release Critic validates. Each item has a name and a pass/fail state.
--- Context: The review checklist is the final gate before a release is approved. It covers items
--- such as "All quality gates pass", "Rollback procedure documented", "Secrets rotation policy
--- defined", "Health checks configured". The Release Critic verifies that all items are passed = 1
--- before issuing an approval verdict. Items with passed = 0 correspond to entries in the
--- deployment_manifest.blockers JSON array.
-CREATE TABLE IF NOT EXISTS deployment_review_checklist (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES deployment_manifest(id) ON DELETE CASCADE,
-  check_name TEXT NOT NULL,
-  passed INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(manifest_id, check_name)
-);
-
 -- ============================================================
 -- BLOCKER: cross-phase workflow blockers raised by agents
 -- ============================================================
@@ -2015,12 +1736,11 @@ CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
 
 -- ------------------------------------------------------------
 -- manifest_id — child tables of implementation_manifest,
---   documentation_manifest, deployment_manifest
+--   documentation_manifest
 -- Skipped: implementation_requirement_status, implementation_component_status,
 --   documentation_requirement_coverage (manifest_id is leftmost in UNIQUE)
 -- Skipped: implementation_dependency_added, implementation_db_migration,
---   documentation_section, deployment_secret, deployment_health_check,
---   deployment_alerting (manifest_id is leftmost in UNIQUE added for dedup)
+--   documentation_section (manifest_id is leftmost in UNIQUE added for dedup)
 -- ------------------------------------------------------------
 
 -- Implementation manifest children
@@ -2039,24 +1759,6 @@ CREATE INDEX IF NOT EXISTS idx_documentation_asset_manifest_id
   ON documentation_asset(manifest_id);
 CREATE INDEX IF NOT EXISTS idx_documentation_review_checklist_manifest_id
   ON documentation_review_checklist(manifest_id);
-
--- Deployment manifest children
-CREATE INDEX IF NOT EXISTS idx_deployment_pipeline_manifest_id
-  ON deployment_pipeline(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_quality_gate_manifest_id
-  ON deployment_quality_gate(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_environment_manifest_id
-  ON deployment_environment(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_artifact_manifest_id
-  ON deployment_artifact(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_signing_manifest_id
-  ON deployment_signing(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_local_executable_manifest_id
-  ON deployment_local_executable(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_runbook_manifest_id
-  ON deployment_runbook(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_review_checklist_manifest_id
-  ON deployment_review_checklist(manifest_id);
 
 -- ------------------------------------------------------------
 -- report_id — child tables of test_report
@@ -2182,7 +1884,7 @@ CREATE INDEX IF NOT EXISTS idx_plan_metadata_revision_id
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_revision_id
   ON implementation_manifest(revision_id);
 
--- Release workflow domain
+-- QA domain
 CREATE INDEX IF NOT EXISTS idx_test_report_revision_id
   ON test_report(revision_id);
 
@@ -2195,10 +1897,6 @@ CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_revision_id
 -- Documentation domain
 CREATE INDEX IF NOT EXISTS idx_documentation_manifest_revision_id
   ON documentation_manifest(revision_id);
-
--- Deployment domain
-CREATE INDEX IF NOT EXISTS idx_deployment_manifest_revision_id
-  ON deployment_manifest(revision_id);
 
 -- Cross-cutting domain
 CREATE INDEX IF NOT EXISTS idx_intermediate_asset_revision_id
@@ -2333,26 +2031,6 @@ CREATE INDEX IF NOT EXISTS idx_plan_phase_relationship_related_phase_id
 -- test_acceptance_criterion_result.coverage_id → test_requirement_coverage(id)
 CREATE INDEX IF NOT EXISTS idx_test_acceptance_criterion_result_coverage_id
   ON test_acceptance_criterion_result(coverage_id);
-
--- deployment_pipeline_stage.pipeline_id → deployment_pipeline(id)
-CREATE INDEX IF NOT EXISTS idx_deployment_pipeline_stage_pipeline_id
-  ON deployment_pipeline_stage(pipeline_id);
-
--- deployment_stage_quality_gate.stage_id → deployment_pipeline_stage(id)
-CREATE INDEX IF NOT EXISTS idx_deployment_stage_quality_gate_stage_id
-  ON deployment_stage_quality_gate(stage_id);
-
--- deployment_env_infra.environment_id → deployment_environment(id)
-CREATE INDEX IF NOT EXISTS idx_deployment_env_infra_environment_id
-  ON deployment_env_infra(environment_id);
-
--- deployment_env_var.environment_id → deployment_environment(id)
-CREATE INDEX IF NOT EXISTS idx_deployment_env_var_environment_id
-  ON deployment_env_var(environment_id);
-
--- deployment_runbook_step.runbook_id → deployment_runbook(id)
-CREATE INDEX IF NOT EXISTS idx_deployment_runbook_step_runbook_id
-  ON deployment_runbook_step(runbook_id);
 
 -- blocker.phase_name — composite FK (iteration_id, phase_name) → phase(iteration_id, name)
 CREATE INDEX IF NOT EXISTS idx_blocker_phase_name

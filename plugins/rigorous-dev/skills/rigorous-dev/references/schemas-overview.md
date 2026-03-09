@@ -15,14 +15,14 @@ Four tables form the backbone — everything else hangs off them:
 |-------|-----|---------|
 | `project` | `id INTEGER` | Single row per database (singleton). Identity, status (active/closed), critic model, timestamps. |
 | `iteration` | `id INTEGER` | Each change-request cycle. The auto-incrementing `id` serves as the sequential counter. |
-| `phase` | `id INTEGER` | 9 phases per iteration: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit, release. Tracks status, timestamps, approval. |
+| `phase` | `id INTEGER` | 8 phases per iteration: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit. Tracks status, timestamps, approval. |
 | `revision` | `id INTEGER` | Producer-critic loop attempts within a phase. Tracks producer/critic agents, feedback text, verdict (draft → submitted → approved/rejected). |
 
 **Hierarchy:** project → iteration → phase → revision
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`revision_id` only (27 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
+- **`revision_id` only (25 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
 - **`iteration_id` only (9 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `system_io`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `asset_deliverable`, `vcs_commit`.
 
 No table carries both columns.
@@ -189,28 +189,6 @@ No table carries both columns.
 
 **Critic:** documentation_critic
 
-## Deployment/Release Domain
-
-📄 **Detailed design:** [tables/deployment.md](tables/deployment.md)
-
-| Table | Producer | Purpose |
-|-------|----------|---------|
-| `deployment_manifest` | release_engineer | Release readiness summary. Targets, blockers, and version provenance metadata stored as columns. |
-| `deployment_pipeline` | release_engineer | CI/CD pipeline definition. Config files stored as JSON array (`config_files` column). |
-| `deployment_pipeline_stage` | release_engineer | Pipeline stages. Triggers and steps stored as JSON arrays (`triggers`, `steps` columns). |
-| `deployment_quality_gate` | release_engineer | Global quality gate rules. |
-| `deployment_environment` / `_env_infra` / `_env_var` | release_engineer | Environment configs. |
-| `deployment_artifact` | release_engineer | Build artifacts. Platform targets stored as JSON array (`platforms` column). |
-| `deployment_signing` | release_engineer | Code signing config. |
-| `deployment_local_executable` | release_engineer | Local distribution metadata. Platforms and channels stored as JSON arrays (`platforms`, `channels` columns). |
-| `deployment_secret` | release_engineer | Secrets inventory (names/purposes, not values). |
-| `deployment_health_check` | release_engineer | Health check config. |
-| `deployment_alerting` | release_engineer | Alerting config. |
-| `deployment_runbook` / `_runbook_step` | release_engineer | Operational runbooks. |
-| `deployment_review_checklist` | release_engineer | Release review items. |
-
-**Critic:** release_critic
-
 ## MCP Tools for Data Access
 
 ### Write Tools
@@ -262,7 +240,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 105 tables with links to their detailed design documents.
+All 88 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -280,23 +258,6 @@ All 105 tables with links to their detailed design documents.
 | `data_entity` | [data-model](tables/data-model.md) |
 | `data_entity_attribute` | [data-model](tables/data-model.md) |
 | `data_entity_relationship` | [data-model](tables/data-model.md) |
-| `deployment_alerting` | [deployment](tables/deployment.md) |
-| `deployment_artifact` | [deployment](tables/deployment.md) |
-| `deployment_env_infra` | [deployment](tables/deployment.md) |
-| `deployment_env_var` | [deployment](tables/deployment.md) |
-| `deployment_environment` | [deployment](tables/deployment.md) |
-| `deployment_health_check` | [deployment](tables/deployment.md) |
-| `deployment_local_executable` | [deployment](tables/deployment.md) |
-| `deployment_manifest` | [deployment](tables/deployment.md) |
-| `deployment_pipeline` | [deployment](tables/deployment.md) |
-| `deployment_pipeline_stage` | [deployment](tables/deployment.md) |
-| `deployment_quality_gate` | [deployment](tables/deployment.md) |
-| `deployment_review_checklist` | [deployment](tables/deployment.md) |
-| `deployment_runbook` | [deployment](tables/deployment.md) |
-| `deployment_runbook_step` | [deployment](tables/deployment.md) |
-| `deployment_secret` | [deployment](tables/deployment.md) |
-| `deployment_signing` | [deployment](tables/deployment.md) |
-| `deployment_stage_quality_gate` | [deployment](tables/deployment.md) |
 | `documentation_asset` | [documentation](tables/documentation.md) |
 | `documentation_feature` | [documentation](tables/documentation.md) |
 | `documentation_feature_requirement` | [documentation](tables/documentation.md) |
@@ -372,4 +333,4 @@ All 105 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 105 tables across 12 domains**
+**Total: 88 tables across 11 domains**

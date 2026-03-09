@@ -16,7 +16,7 @@ beforeEach(() => {
 // ───────────────────────────────────────────────────────────────
 
 describe("iteration_create", () => {
-  it("creates project singleton + iteration + 9 phases", () => {
+  it("creates project singleton + iteration + 8 phases", () => {
     // freshDb + seedIteration already created iteration 1 via raw SQL.
     // Use handleWriteTool to create a SECOND iteration via the tool interface.
     const result = handleWriteTool("iteration_create", { project_name: "tool-test" });
@@ -24,7 +24,7 @@ describe("iteration_create", () => {
 
     const status = handleReadTool("project_status", {});
     assert.strictEqual(status.project.project_name, "test-project"); // first wins
-    assert.strictEqual(status.phases.length, 9);
+    assert.strictEqual(status.phases.length, 8);
   });
 
   it("sets requirements phase to in_progress", () => {
@@ -38,7 +38,7 @@ describe("iteration_create", () => {
     const result = handleWriteTool("iteration_create", {});
     const summary = handleReadTool("iteration_summary", { iteration_id: result.iteration_id });
     const nonReq = summary.phases.filter((p) => p.name !== "requirements");
-    assert.strictEqual(nonReq.length, 8);
+    assert.strictEqual(nonReq.length, 7);
     for (const p of nonReq) {
       assert.strictEqual(p.status, "pending", `${p.name} should be pending`);
     }

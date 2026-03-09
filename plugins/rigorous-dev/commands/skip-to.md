@@ -63,7 +63,7 @@ Valid phases (development workflow):
 - implementation
 - documentation
 
-Note: QA, audit, and release phases are part of the release workflow.
+Note: QA and audit phases are part of the release workflow.
 Use /rigorous-dev:start-release to begin the release workflow.
 ```
 

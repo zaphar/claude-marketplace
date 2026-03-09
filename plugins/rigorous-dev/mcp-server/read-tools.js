@@ -31,7 +31,6 @@ const ENTITY_TABLE = {
   approved_dependency: "approved_dependency",
   test_report: "test_report",
   documentation_manifest: "documentation_manifest",
-  deployment_manifest: "deployment_manifest",
   blocker: "blocker",
   project_lesson: "project_lesson",
   security_audit_finding: "security_audit_finding",
@@ -750,120 +749,6 @@ function queryDocumentationManifest(db, { iteration_id, ids, filters = {}, inclu
   });
 }
 
-const DEPLOYMENT_MANIFEST_FILTERS = {
-  status: { nullable: false },
-  version: { nullable: true },
-  document_date: { nullable: true },
-  requirements_version: { nullable: true },
-  architecture_version: { nullable: true },
-  implementation_version: { nullable: true },
-  test_report_version: { nullable: true },
-};
-
-function queryDeploymentManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM deployment_manifest";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, DEPLOYMENT_MANIFEST_FILTERS, "deployment_manifest");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
-  return results.map((m) => {
-    // deployment_pipeline → config_files, stages
-    //   deployment_pipeline_stage → triggers, steps, quality_gates
-    const pipelines = db
-      .prepare("SELECT * FROM deployment_pipeline WHERE manifest_id = ?")
-      .all(m.id)
-      .map((p) => ({
-        ...p,
-        config_files: (() => { try { return JSON.parse(p.config_files || '[]'); } catch { return p.config_files; } })(),
-        stages: db
-          .prepare("SELECT * FROM deployment_pipeline_stage WHERE pipeline_id = ?")
-          .all(p.id)
-          .map((s) => ({
-            ...s,
-            triggers: (() => { try { return JSON.parse(s.triggers || '[]'); } catch { return s.triggers; } })(),
-            steps: (() => { try { return JSON.parse(s.steps || '[]'); } catch { return s.steps; } })(),
-            quality_gates: db
-              .prepare("SELECT * FROM deployment_stage_quality_gate WHERE stage_id = ?")
-              .all(s.id),
-          })),
-      }));
-    // deployment_environment → infra, vars
-    const environments = db
-      .prepare("SELECT * FROM deployment_environment WHERE manifest_id = ?")
-      .all(m.id)
-      .map((e) => ({
-        ...e,
-        infra: db
-          .prepare("SELECT * FROM deployment_env_infra WHERE environment_id = ?")
-          .all(e.id),
-        vars: db
-          .prepare("SELECT * FROM deployment_env_var WHERE environment_id = ?")
-          .all(e.id),
-      }));
-    // deployment_artifact → platforms
-    const artifacts = db
-      .prepare("SELECT * FROM deployment_artifact WHERE manifest_id = ?")
-      .all(m.id)
-      .map((a) => ({
-        ...a,
-        platforms: (() => { try { return JSON.parse(a.platforms || '[]'); } catch { return a.platforms; } })(),
-      }));
-    // deployment_local_executable → platforms, channels
-    const local_executables = db
-      .prepare("SELECT * FROM deployment_local_executable WHERE manifest_id = ?")
-      .all(m.id)
-      .map((le) => ({
-        ...le,
-        platforms: (() => { try { return JSON.parse(le.platforms || '[]'); } catch { return le.platforms; } })(),
-        channels: (() => { try { return JSON.parse(le.channels || '[]'); } catch { return le.channels; } })(),
-      }));
-    // deployment_runbook → steps
-    const runbooks = db
-      .prepare("SELECT * FROM deployment_runbook WHERE manifest_id = ?")
-      .all(m.id)
-      .map((rb) => ({
-        ...rb,
-        steps: db
-          .prepare("SELECT * FROM deployment_runbook_step WHERE runbook_id = ?")
-          .all(rb.id),
-      }));
-    return {
-      ...m,
-      targets: (() => { try { return JSON.parse(m.targets || '[]'); } catch { return m.targets; } })(),
-      blockers: (() => { try { return JSON.parse(m.blockers || '[]'); } catch { return m.blockers; } })(),
-      pipelines,
-      quality_gates: db
-        .prepare("SELECT * FROM deployment_quality_gate WHERE manifest_id = ?")
-        .all(m.id),
-      environments,
-      artifacts,
-      signing: db
-        .prepare("SELECT * FROM deployment_signing WHERE manifest_id = ?")
-        .all(m.id),
-      local_executables,
-      secrets: db
-        .prepare("SELECT * FROM deployment_secret WHERE manifest_id = ?")
-        .all(m.id),
-      health_checks: db
-        .prepare("SELECT * FROM deployment_health_check WHERE manifest_id = ?")
-        .all(m.id),
-      alerting: db
-        .prepare("SELECT * FROM deployment_alerting WHERE manifest_id = ?")
-        .all(m.id),
-      runbooks,
-      review_checklist: db
-        .prepare("SELECT * FROM deployment_review_checklist WHERE manifest_id = ?")
-        .all(m.id),
-    };
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Per-entity query functions -- simple types (21)
 // Complete implementations, no enrichment needed.
@@ -1261,7 +1146,6 @@ const QUERY_DISPATCH = {
   implementation_manifest: queryImplementationManifest,
   test_report: queryTestReport,
   documentation_manifest: queryDocumentationManifest,
-  deployment_manifest: queryDeploymentManifest,
   technology_choice: queryTechnologyChoice,
   plan_external_dependency: queryPlanExternalDependency,
   plan_metadata: queryPlanMetadata,
@@ -1823,7 +1707,7 @@ export const READ_TOOLS = [
         phase_name: {
           type: "string",
           description:
-            "Phase name (use with iteration_id). One of: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit, release",
+            "Phase name (use with iteration_id). One of: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit",
         },
       },
     },

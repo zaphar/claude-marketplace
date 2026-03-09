@@ -39,9 +39,8 @@ The plugin provides two separate workflows:
 
 1. **QA** - Test → Review → Validate
 2. **Audit** - Security Audit + Performance Audit (parallel) → Validate
-3. **Release** - Prepare → Review → Validate
 
-The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, release prep). The release workflow reads dev artifacts from the same changelog database.
+The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit). The release workflow reads dev artifacts from the same changelog database.
 
 ### Import (data bootstrapping)
 
@@ -127,7 +126,6 @@ For each phase, follow this pattern:
 | QA | `rigorous-dev:qa_engineer` | `rigorous-dev:qa_critic` |
 | Audit (Security) | `rigorous-dev:security_auditor` | `rigorous-dev:security_audit_critic` |
 | Audit (Performance) | `rigorous-dev:performance_auditor` | `rigorous-dev:performance_audit_critic` |
-| Release | `rigorous-dev:release_engineer` | `rigorous-dev:release_critic` |
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
 
@@ -178,7 +176,7 @@ requirements → ux_design → architecture → planning → implementation → 
 
 **Release Workflow Phase Order:**
 ```
-qa → audit → release
+qa → audit
 ```
 
 **Special Cases:**
@@ -382,7 +380,7 @@ The implementation phase as a whole is only marked `"completed"` after:
 
 ### 9. Audit Phase Special Handling (Release Workflow)
 
-The audit phase is part of the **release workflow** and runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before advancing to the Release phase.
+The audit phase is part of the **release workflow** and runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before the release workflow is considered finished.
 
 **Parallel Tracks:**
 
@@ -413,7 +411,7 @@ Findings from both audits are combined for the remediation threshold:
 
 **Artifact Storage:**
 
-Auditors record their findings directly to the changelog database via `changelog_insert` — each finding is a separate `security_audit_finding` or `performance_audit_finding` row with full provenance (`iteration_id`, `revision_id`). There are no file-based audit reports. The Release Engineer queries audit findings via `changelog_query` to assess release readiness.
+Auditors record their findings directly to the changelog database via `changelog_insert` — each finding is a separate `security_audit_finding` or `performance_audit_finding` row with full provenance (`iteration_id`, `revision_id`). There are no file-based audit reports.
 
 **Phase Completion:**
 
@@ -433,7 +431,7 @@ Development Workflow Complete!
 All development phases have been completed and approved.
 
 Next steps:
-- To run pre-release verification (QA, audit, release): /rigorous-dev:start-release
+- To run pre-release verification (QA, audit): /rigorous-dev:start-release
 - To close this iteration and start a new one: /rigorous-dev:close
 - To check status: /rigorous-dev:status
 - To import existing docs into the database: /rigorous-dev:import
@@ -449,11 +447,10 @@ The release workflow is triggered by `/rigorous-dev:start-release` and tracked i
 
 1. **QA Phase**: Load QA Engineer, run tests, produce test report. Standard producer-critic loop.
 2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 9). Standard producer-critic loops with remediation cycles.
-3. **Release Phase**: Load Release Engineer, prepare deployment. Standard producer-critic loop.
 
 **Release Workflow Completion:**
 
-When the Release Critic approves the deployment manifest, call `phase_transition` to mark the release phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
+When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
 
 ### 12. Workflow Iterations
 
@@ -478,7 +475,7 @@ When a new iteration starts, the `new-iteration` command:
 1. Calls `commit_link` to associate the current VCS commit with the closing iteration
 2. Calls `iteration_create` to open the new iteration in the DB with all phases reset to pending
 3. VCS-tracked files (source code, documentation) remain in the repository as the starting point for the new iteration
-4. Release workflow phase data (qa, audit, release) is owned by the release workflow and is not reset by `new-iteration`
+4. Release workflow phase data (qa, audit) is owned by the release workflow and is not reset by `new-iteration`
 
 **Referencing Prior Iteration Artifacts:**
 
@@ -597,8 +594,8 @@ If the user already has requirements docs, PRDs, or design specs, they can run `
 1. User runs `/rigorous-dev:start-release`
 2. Command validates dev workflow has completed implementation
 3. Creates release state, begins QA phase
-4. QA → Audit → Release phases run with producer-critic validation
-5. Release approved — ready for production
+4. QA → Audit phases run with producer-critic validation
+5. Audit approved — release workflow complete
 
 ## Tips for Success
 
@@ -711,14 +708,13 @@ When you need to understand table structures — what columns exist, what constr
 - **[tables/requirements.md](references/tables/requirements.md)** — Requirements, personas, acceptance criteria, dependencies
 - **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, technology choices, interfaces
 - **[tables/data-model.md](references/tables/data-model.md)** — Data entities, fields, relationships
-- **[tables/cross-cutting.md](references/tables/cross-cutting.md)** — Security, deployment, observability configs, dependencies, traceability
+- **[tables/cross-cutting.md](references/tables/cross-cutting.md)** — Security, observability configs, dependencies, traceability
 - **[tables/ux-design.md](references/tables/ux-design.md)** — User flows, screens, design system, accessibility
 - **[tables/planning.md](references/tables/planning.md)** — Plan phases, tasks, requirement mappings, risks
 - **[tables/implementation.md](references/tables/implementation.md)** — Implementation manifests, component status, file mappings
 - **[tables/qa-test.md](references/tables/qa-test.md)** — Test reports, suites, cases, coverage
 - **[tables/audit.md](references/tables/audit.md)** — Security and performance audit findings
 - **[tables/documentation.md](references/tables/documentation.md)** — Documentation manifests, sections, API endpoints
-- **[tables/deployment.md](references/tables/deployment.md)** — Deployment manifests, environments, runbooks, release notes
 
 ---
 

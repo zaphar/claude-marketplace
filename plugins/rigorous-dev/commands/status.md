@@ -86,9 +86,6 @@ Release Workflow:
 
 <status_indicator> Audit
    [same format as above]
-
-<status_indicator> Release
-   [same format as above]
 </if>
 
 <if notes>
