@@ -92,33 +92,7 @@ describe("changelog_query", () => {
     assert.strictEqual(r.results[0].interfaces.length, 1);
   });
 
-  it("returns history snapshots", () => {
-    handleWriteTool("changelog_insert", {
-      entity_type: "persona",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { id: "P-1", name: "v1", description: "d" },
-    });
-    // Create v2 to trigger snapshot
-    const rev2 = db.prepare(
-      "INSERT INTO revision (phase_id, producer_agent, created_at, status) VALUES (?, 'test', datetime('now'), 'draft')"
-    ).run(seed.phase_id);
-    handleWriteTool("changelog_insert", {
-      entity_type: "persona",
-      iteration_id: seed.iteration_id,
-      revision_id: Number(rev2.lastInsertRowid),
-      data: { id: "P-1", name: "v2", description: "d" },
-    });
-
-    const r = handleReadTool("changelog_query", {
-      entity_type: "persona",
-      ids: ["P-1"],
-      history: true,
-    });
-    assert.ok(r.history);
-    assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.results[0].snapshot.name, "v1");
-  });
+  // history mode removed — entity_snapshot table dropped
 
   it("rejects unknown entity_type", () => {
     assert.throws(
