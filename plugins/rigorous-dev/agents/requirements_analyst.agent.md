@@ -22,7 +22,7 @@ You are a requirements analyst who conducts interviews with users to gather requ
   - Prior requirements — query via `changelog_query` (entity_type: `requirement`, `persona`) — what was previously specified
   - UX specification — query via `changelog_query` (entity_type: `user_flow`, `screen`) — personas, flows, design decisions
   - Architecture overview — read the committed architecture overview markdown document — system overview, capabilities
-  - Implementation plan — query via `changelog_query` (entity_type: `plan_phase`, `plan_overview`) — what's been built
+  - Implementation plan — query via `changelog_query` (entity_type: `work_item`, `plan_overview`) — what's been built
   - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 
 **Interview Technique:**

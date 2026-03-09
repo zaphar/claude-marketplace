@@ -35,7 +35,7 @@ The root record for one sub-phase of implementation work. Every time the `senior
 
 ### Context
 
-The implementation phase is divided into sub-phases that mirror `plan_phase` rows. `plan_phase_id` references the `plan_phase(id)` that was just executed. A manifest is written even when work is partial or blocked so that the critic can inspect what was and was not done.
+The implementation phase is divided into sub-phases that mirror `work_item` rows. `work_item_id` references the `work_item(id)` that was just executed. A manifest is written even when work is partial or blocked so that the critic can inspect what was and was not done.
 
 ### Columns
 
@@ -43,7 +43,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this manifest belongs to. |
-| `plan_phase_id` | INTEGER | NO | — | FK → `plan_phase(id)` | Plan phase that was implemented. |
+| `work_item_id` | INTEGER | NO | — | FK → `work_item(id)` | Plan phase that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
 | `lines_of_code` | INTEGER | YES | NULL | — | Total non-blank, non-comment lines added/changed; NULL if not measured. |
 | `warnings` | INTEGER | YES | 0 | — | Build/lint warning count at time of submission. |
@@ -213,7 +213,7 @@ Useful for architecture-level dashboards: the critic checks that each component 
 
 ### Purpose
 
-Records each HTTP API endpoint actually implemented (as opposed to planned) during a sub-phase. Allows comparison against `plan_phase_api_endpoint` to confirm delivery.
+Records each HTTP API endpoint actually implemented (as opposed to planned) during a sub-phase. Allows comparison against `work_item_api_endpoint` to confirm delivery.
 
 ### Context
 

@@ -70,28 +70,28 @@ describe("applyFilters validation", () => {
 // Per-function filter tests: 3 representative simple types
 // ───────────────────────────────────────────────────────────────
 
-describe("queryPlanPhase filters critical_path_sequence", () => {
+describe("queryWorkItem filters critical_path_sequence", () => {
   it("filters by critical_path_sequence", () => {
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "phase-a", type: "feature", goal: "A", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "phase-b", type: "feature", goal: "B", critical_path_sequence: 2 },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 3, name: "phase-c", type: "feature", goal: "C" },
     });
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       filters: { critical_path_sequence: 2 },
     });
@@ -101,19 +101,19 @@ describe("queryPlanPhase filters critical_path_sequence", () => {
 
   it("filters by critical_path_sequence = null to find non-critical-path phases", () => {
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "critical-phase", type: "feature", goal: "Critical", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "optional-phase", type: "feature", goal: "Optional" },
     });
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       filters: { critical_path_sequence: null },
     });
@@ -326,13 +326,13 @@ describe("queryPlanOverview enrichment", () => {
   it("attaches total_phases, risks, and parsed assumptions when include_related is true", () => {
     // Insert plan phases first so COUNT works
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "setup", type: "feature", goal: "Setup project" },
     });
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "core", type: "feature", goal: "Build core" },
@@ -346,7 +346,7 @@ describe("queryPlanOverview enrichment", () => {
         rationale: "reduce risk",
         assumptions: ["stable API", "team of 3"],
         risks: [
-          { risk: "scope creep", mitigation: "strict backlog", plan_phase_id: 1 },
+          { risk: "scope creep", mitigation: "strict backlog", work_item_id: 1 },
           { risk: "tech debt", mitigation: "refactor sprint" },
         ],
       },
@@ -363,9 +363,9 @@ describe("queryPlanOverview enrichment", () => {
     assert.strictEqual(overview.risks.length, 2);
     assert.strictEqual(overview.risks[0].risk, "scope creep");
     assert.strictEqual(overview.risks[0].mitigation, "strict backlog");
-    assert.strictEqual(overview.risks[0].plan_phase_id, 1);
+    assert.strictEqual(overview.risks[0].work_item_id, 1);
     assert.strictEqual(overview.risks[1].risk, "tech debt");
-    assert.strictEqual(overview.risks[1].plan_phase_id, undefined);
+    assert.strictEqual(overview.risks[1].work_item_id, undefined);
   });
 
   it("does not attach total_phases or risks when include_related is false", () => {
@@ -765,7 +765,7 @@ describe("queryUserFlow enrichment", () => {
   });
 });
 
-describe("queryPlanPhase enrichment", () => {
+describe("queryWorkItem enrichment", () => {
   it("attaches all child data and parses JSON when include_related is true", () => {
     // Prerequisites: requirements, components, user flows, screens
     handleWriteTool("changelog_insert", {
@@ -801,7 +801,7 @@ describe("queryPlanPhase enrichment", () => {
 
     // Create phase 1 first (needed as dependency target)
     const phase1Result = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
@@ -815,7 +815,7 @@ describe("queryPlanPhase enrichment", () => {
 
     // Create phase 2 (depends on phase 1, parallel with none yet)
     const phase2Result = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
@@ -834,42 +834,17 @@ describe("queryPlanPhase enrichment", () => {
           { requirement_id: "REQ-PP2", priority: "high", notes: "Stretch goal" },
         ],
         components: ["COMP-PP1"],
-        flows: ["UF-PP1"],
-        screens: ["SCR-PP1"],
-        api_endpoints: [
-          { http_method: "GET", route: "/api/users", description: "List users" },
-          { http_method: "POST", route: "/api/users" },
-        ],
-        db_changes: [
-          { migration_name: "001_create_users", description: "Initial schema", tables: ["users", "sessions"] },
-        ],
         risks: [
           { risk: "API breaking changes", mitigation: "Versioned endpoints" },
           { risk: "Performance regression" },
         ],
-        dependencies: [{ depends_on_phase_id: phase1Id, reason: "Foundation required" }],
       },
     });
     const phase2Id = phase2Result.id;
 
-    // Create phase 3 that can be parallel with phase 2
-    const phase3Result = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: {
-        phase_number: 3,
-        name: "Docs",
-        type: "documentation",
-        goal: "Write docs",
-        parallel_with: [phase2Id],
-      },
-    });
-    const phase3Id = phase3Result.id;
-
     // Query phase 2 with full enrichment
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       ids: [phase2Id],
       include_related: true,
     });
@@ -894,50 +869,16 @@ describe("queryPlanPhase enrichment", () => {
     // Components — mapped to component_id array
     assert.deepStrictEqual(phase.components, ["COMP-PP1"]);
 
-    // Flows — mapped to flow_id array
-    assert.deepStrictEqual(phase.flows, ["UF-PP1"]);
-
-    // Screens — mapped to screen_id array
-    assert.deepStrictEqual(phase.screens, ["SCR-PP1"]);
-
-    // API endpoints
-    assert.strictEqual(phase.api_endpoints.length, 2);
-    const getEndpoint = phase.api_endpoints.find((e) => e.http_method === "GET");
-    assert.strictEqual(getEndpoint.route, "/api/users");
-    assert.strictEqual(getEndpoint.description, "List users");
-    const postEndpoint = phase.api_endpoints.find((e) => e.http_method === "POST");
-    assert.strictEqual(postEndpoint.description, null);
-
-    // DB changes with parsed tables JSON
-    assert.strictEqual(phase.db_changes.length, 1);
-    assert.strictEqual(phase.db_changes[0].migration_name, "001_create_users");
-    assert.deepStrictEqual(phase.db_changes[0].tables, ["users", "sessions"]);
-    assert.ok(phase.db_changes[0].id); // has autoincrement id
-
     // Risks
     assert.strictEqual(phase.risks.length, 2);
     assert.strictEqual(phase.risks[0].risk, "API breaking changes");
     assert.strictEqual(phase.risks[0].mitigation, "Versioned endpoints");
     assert.strictEqual(phase.risks[1].mitigation, null);
-
-    // Dependencies — aliased columns
-    assert.strictEqual(phase.dependencies.length, 1);
-    assert.strictEqual(phase.dependencies[0].depends_on_phase_id, phase1Id);
-    assert.strictEqual(phase.dependencies[0].reason, "Foundation required");
-
-    // Phase 3 query: parallel_with
-    const r3 = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
-      ids: [phase3Id],
-      include_related: true,
-    });
-    assert.strictEqual(r3.count, 1);
-    assert.deepStrictEqual(r3.results[0].parallel_with, [phase2Id]);
   });
 
   it("does not attach child data when include_related is false", () => {
     const result = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
@@ -950,7 +891,7 @@ describe("queryPlanPhase enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       ids: [result.id],
     });
     assert.strictEqual(r.count, 1);
@@ -962,18 +903,12 @@ describe("queryPlanPhase enrichment", () => {
     // Child data should not be present
     assert.strictEqual(phase.requirements, undefined);
     assert.strictEqual(phase.components, undefined);
-    assert.strictEqual(phase.api_endpoints, undefined);
-    assert.strictEqual(phase.db_changes, undefined);
     assert.strictEqual(phase.risks, undefined);
-    assert.strictEqual(phase.flows, undefined);
-    assert.strictEqual(phase.screens, undefined);
-    assert.strictEqual(phase.dependencies, undefined);
-    assert.strictEqual(phase.parallel_with, undefined);
   });
 
-  it("returns empty arrays for plan_phase with no children", () => {
+  it("returns empty arrays for work_item with no children", () => {
     const result = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
@@ -984,7 +919,7 @@ describe("queryPlanPhase enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       ids: [result.id],
       include_related: true,
     });
@@ -992,13 +927,7 @@ describe("queryPlanPhase enrichment", () => {
     const phase = r.results[0];
     assert.deepStrictEqual(phase.requirements, []);
     assert.deepStrictEqual(phase.components, []);
-    assert.deepStrictEqual(phase.api_endpoints, []);
-    assert.deepStrictEqual(phase.db_changes, []);
     assert.deepStrictEqual(phase.risks, []);
-    assert.deepStrictEqual(phase.flows, []);
-    assert.deepStrictEqual(phase.screens, []);
-    assert.deepStrictEqual(phase.dependencies, []);
-    assert.deepStrictEqual(phase.parallel_with, []);
     assert.deepStrictEqual(phase.entry_criteria, []);
     assert.deepStrictEqual(phase.exit_criteria, []);
     assert.deepStrictEqual(phase.checkpoint_focus, []);
@@ -1011,9 +940,9 @@ describe("queryPlanPhase enrichment", () => {
 
 describe("queryImplementationManifest enrichment", () => {
   it("attaches all child data with nested requirements when include_related is true", () => {
-    // Prerequisites: plan_phase, requirements, component
+    // Prerequisites: work_item, requirements, component
     const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "impl-phase", type: "implementation", goal: "Build it" },
@@ -1043,7 +972,7 @@ describe("queryImplementationManifest enrichment", () => {
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
-        plan_phase_id: ppResult.id,
+        work_item_id: ppResult.id,
         status: "complete",
         lines_of_code: 500,
         warnings: 2,
@@ -1149,7 +1078,7 @@ describe("queryImplementationManifest enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "impl-no-enrich", type: "implementation", goal: "Test" },
@@ -1159,7 +1088,7 @@ describe("queryImplementationManifest enrichment", () => {
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
-        plan_phase_id: ppResult.id,
+        work_item_id: ppResult.id,
         status: "partial",
         files: [{ path: "a.js", file_operation: "created" }],
         review_checklist: [{ check_name: "Smoke test", passed: true }],
@@ -1186,7 +1115,7 @@ describe("queryImplementationManifest enrichment", () => {
 
   it("returns empty arrays for manifest with no children", () => {
     const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 3, name: "impl-empty", type: "implementation", goal: "Empty" },
@@ -1195,7 +1124,7 @@ describe("queryImplementationManifest enrichment", () => {
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { plan_phase_id: ppResult.id, status: "complete" },
+      data: { work_item_id: ppResult.id, status: "complete" },
     });
     const r = handleReadTool("changelog_query", {
       entity_type: "implementation_manifest",

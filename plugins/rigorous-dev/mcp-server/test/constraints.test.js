@@ -89,9 +89,9 @@ describe("CHECK constraints", () => {
   });
 
   it("rejects invalid implementation_manifest status", () => {
-    // Need a valid plan_phase_id first
+    // Need a valid work_item_id first
     const pp = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "p1", type: "feature", goal: "G" },
@@ -102,7 +102,7 @@ describe("CHECK constraints", () => {
           entity_type: "implementation_manifest",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
-          data: { plan_phase_id: pp.id, status: "invalid" },
+          data: { work_item_id: pp.id, status: "invalid" },
         }),
       /CHECK constraint/
     );

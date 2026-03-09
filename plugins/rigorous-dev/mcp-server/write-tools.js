@@ -107,18 +107,18 @@ function phaseTransition(args) {
   return { phase_id: row.id, name: row.name, status: row.status };
 }
 
-function planPhaseTransition(args) {
+function workItemTransition(args) {
   const db = getDb();
-  const { plan_phase_id, status } = args;
+  const { work_item_id, status } = args;
 
-  const row = db.prepare("SELECT id, phase_number, name, status FROM plan_phase WHERE id = @plan_phase_id").get({ plan_phase_id });
-  if (!row) throw new Error(`Plan phase ${plan_phase_id} not found`);
+  const row = db.prepare("SELECT id, phase_number, name, status FROM work_item WHERE id = @work_item_id").get({ work_item_id });
+  if (!row) throw new Error(`Work item ${work_item_id} not found`);
 
   db.prepare(
-    "UPDATE plan_phase SET status = @status WHERE id = @plan_phase_id"
-  ).run({ status, plan_phase_id });
+    "UPDATE work_item SET status = @status WHERE id = @work_item_id"
+  ).run({ status, work_item_id });
 
-  return { plan_phase_id: row.id, phase_number: row.phase_number, name: row.name, status };
+  return { work_item_id: row.id, phase_number: row.phase_number, name: row.name, status };
 }
 
 function revisionCreate(args) {
@@ -587,12 +587,12 @@ function insertScreen(db, iteration_id, revision_id, data) {
   return { entity_type: "screen", id: data.id, updated: !!existed };
 }
 
-function insertPlanPhase(db, iteration_id, revision_id, data) {
+function insertWorkItem(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_phase (iteration_id, phase_number, name, phase_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, created_at)
-       VALUES (@iteration_id, @phase_number, @name, @phase_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @created_at)`
+      `INSERT INTO work_item (iteration_id, phase_number, name, phase_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, work_order, created_at)
+       VALUES (@iteration_id, @phase_number, @name, @phase_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @work_order, @created_at)`
     )
     .run({
       iteration_id,
@@ -607,80 +607,37 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
       exit_criteria: JSON.stringify(data.exit_criteria ?? []),
       checkpoint_focus: JSON.stringify(data.checkpoint_focus ?? []),
       critical_path_sequence: data.critical_path_sequence ?? null,
+      work_order: data.work_order ?? null,
       created_at: now
     });
-  const plan_phase_id = result.lastInsertRowid;
+  const work_item_id = result.lastInsertRowid;
 
   const insertReq = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_requirement (plan_phase_id, requirement_id, priority, notes) VALUES (@plan_phase_id, @requirement_id, @priority, @notes)"
+    "INSERT OR IGNORE INTO work_item_requirement (work_item_id, requirement_id, priority, notes) VALUES (@work_item_id, @requirement_id, @priority, @notes)"
   );
   for (const req of data.requirements ?? []) {
     if (typeof req === "string") {
-      insertReq.run({ plan_phase_id, requirement_id: req, priority: null, notes: null });
+      insertReq.run({ work_item_id, requirement_id: req, priority: null, notes: null });
     } else {
-      insertReq.run({ plan_phase_id, requirement_id: req.requirement_id, priority: req.priority ?? null, notes: req.notes ?? null });
+      insertReq.run({ work_item_id, requirement_id: req.requirement_id, priority: req.priority ?? null, notes: req.notes ?? null });
     }
   }
 
   const insertComp = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_component (plan_phase_id, component_id) VALUES (@plan_phase_id, @component_id)"
+    "INSERT OR IGNORE INTO work_item_component (work_item_id, component_id) VALUES (@work_item_id, @component_id)"
   );
   for (const comp_id of data.components ?? []) {
-    insertComp.run({ plan_phase_id, component_id: comp_id });
-  }
-
-  const insertFlow = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_flow (plan_phase_id, flow_id) VALUES (@plan_phase_id, @flow_id)"
-  );
-  for (const flow_id of data.flows ?? []) {
-    insertFlow.run({ plan_phase_id, flow_id });
-  }
-
-  const insertScreenLink = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_screen (plan_phase_id, screen_id) VALUES (@plan_phase_id, @screen_id)"
-  );
-  for (const screen_id of data.screens ?? []) {
-    insertScreenLink.run({ plan_phase_id, screen_id });
-  }
-
-  const insertEndpoint = db.prepare(
-    "INSERT INTO plan_phase_api_endpoint (plan_phase_id, http_method, route, description) VALUES (@plan_phase_id, @http_method, @route, @description)"
-  );
-  for (const ep of data.api_endpoints ?? []) {
-    insertEndpoint.run({ plan_phase_id, http_method: ep.http_method, route: ep.route, description: ep.description ?? null });
-  }
-
-  const insertDbChange = db.prepare(
-    "INSERT INTO plan_phase_db_change (plan_phase_id, migration_name, description, tables) VALUES (@plan_phase_id, @migration_name, @description, @tables)"
-  );
-  for (const change of data.db_changes ?? []) {
-    insertDbChange.run({ plan_phase_id, migration_name: change.migration_name, description: change.description ?? null, tables: JSON.stringify(change.tables ?? []) });
-  }
-
-  const insertDep = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, dependency_type, reason) VALUES (@plan_phase_id, @related_phase_id, 'dependency', @reason)"
-  );
-  for (const dep of data.dependencies ?? []) {
-    const depPhase = typeof dep === "object" ? dep.depends_on_phase_id ?? dep.phase : dep;
-    const reason = typeof dep === "object" ? dep.reason ?? null : null;
-    insertDep.run({ plan_phase_id, related_phase_id: depPhase, reason });
+    insertComp.run({ work_item_id, component_id: comp_id });
   }
 
   const insertRisk = db.prepare(
-    "INSERT INTO plan_phase_risk (plan_phase_id, risk, mitigation) VALUES (@plan_phase_id, @risk, @mitigation)"
+    "INSERT INTO work_item_risk (work_item_id, risk, mitigation) VALUES (@work_item_id, @risk, @mitigation)"
   );
   for (const risk of data.risks ?? []) {
-    insertRisk.run({ plan_phase_id, risk: risk.risk, mitigation: risk.mitigation ?? null });
+    insertRisk.run({ work_item_id, risk: risk.risk, mitigation: risk.mitigation ?? null });
   }
 
-  const insertParallel = db.prepare(
-    "INSERT OR IGNORE INTO plan_phase_relationship (plan_phase_id, related_phase_id, dependency_type) VALUES (@plan_phase_id, @related_phase_id, 'parallel')"
-  );
-  for (const parallel_id of data.parallel_with ?? []) {
-    insertParallel.run({ plan_phase_id, related_phase_id: parallel_id });
-  }
-
-  return { entity_type: "plan_phase", id: plan_phase_id };
+  return { entity_type: "work_item", id: work_item_id };
 }
 
 function insertPlanOverview(db, iteration_id, revision_id, data) {
@@ -707,14 +664,14 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
 function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
   const result = db
     .prepare(
-      `INSERT INTO plan_external_dependency (iteration_id, name, description, plan_phase_id, risk_level, mitigation)
-       VALUES (@iteration_id, @name, @description, @plan_phase_id, @risk_level, @mitigation)`
+      `INSERT INTO plan_external_dependency (iteration_id, name, description, work_item_id, risk_level, mitigation)
+       VALUES (@iteration_id, @name, @description, @work_item_id, @risk_level, @mitigation)`
     )
     .run({
       iteration_id,
       name: data.name,
       description: data.description,
-      plan_phase_id: data.plan_phase_id ?? null,
+      work_item_id: data.work_item_id ?? null,
       risk_level: data.risk_level,
       mitigation: data.mitigation ?? null
     });
@@ -727,16 +684,16 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO implementation_manifest
-         (iteration_id, plan_phase_id, status, lines_of_code, warnings, build_status,
+         (iteration_id, work_item_id, status, lines_of_code, warnings, build_status,
           version, document_date, requirements_version, architecture_version, language, stdout, stderr, commit_sha,
           created_at)
-       VALUES (@iteration_id, @plan_phase_id, @status, @lines_of_code, @warnings, @build_status,
+       VALUES (@iteration_id, @work_item_id, @status, @lines_of_code, @warnings, @build_status,
                @version, @document_date, @requirements_version, @architecture_version, @language, @stdout, @stderr, @commit_sha,
                @created_at)`
     )
     .run({
       iteration_id,
-      plan_phase_id: data.plan_phase_id,
+      work_item_id: data.work_item_id,
       status: data.status,
       lines_of_code: data.lines_of_code ?? null,
       warnings: data.warnings ?? 0,
@@ -1143,7 +1100,7 @@ function changelogInsert(args) {
     info_architecture: insertInfoArchitecture,
     persona_addressed: insertPersonaAddressed,
     ux_asset: insertUxAsset,
-    plan_phase: insertPlanPhase,
+    work_item: insertWorkItem,
     plan_overview: insertPlanOverview,
     plan_external_dependency: insertPlanExternalDependency,
     implementation_manifest: insertImplementationManifest,
@@ -1340,15 +1297,15 @@ export const WRITE_TOOLS = [
     },
   },
   {
-    name: "plan_phase_transition",
+    name: "work_item_transition",
     description: "Transitions an implementation plan sub-phase's status (pending → test_writing → implementing → completed). Used during the implementation phase to track progress through each sub-phase.",
     inputSchema: {
       type: "object",
       properties: {
-        plan_phase_id: { type: "integer", description: "The plan_phase row ID" },
+        work_item_id: { type: "integer", description: "The work_item row ID" },
         status: { type: "string", enum: ["pending", "test_writing", "implementing", "completed"] },
       },
-      required: ["plan_phase_id", "status"],
+      required: ["work_item_id", "status"],
     },
   },
   {
@@ -1489,8 +1446,8 @@ export function handleWriteTool(name, args) {
       return iterationCreate(args);
     case "phase_transition":
       return phaseTransition(args);
-    case "plan_phase_transition":
-      return planPhaseTransition(args);
+    case "work_item_transition":
+      return workItemTransition(args);
     case "revision_create":
       return revisionCreate(args);
     case "revision_update":

@@ -64,7 +64,7 @@ Use your reasoning to extract structured entities from the content — even if t
 | `requirements` | `persona`, `requirement` (with `acceptance_criteria`, `user_stories`, `dependencies`) |
 | `ux_design` | `user_flow`, `screen` |
 | `architecture` | `adr`, `component`, `approved_dependency` (with optional `category` for technology grouping) |
-| `planning` | `plan_phase`, `plan_overview` |
+| `planning` | `work_item`, `plan_overview` |
 
 **ID Generation Rules:**
 

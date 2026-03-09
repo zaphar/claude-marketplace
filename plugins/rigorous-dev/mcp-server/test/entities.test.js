@@ -294,10 +294,10 @@ describe("ux_asset", () => {
 // Planning entities
 // ───────────────────────────────────────────────────────────────
 
-describe("plan_phase", () => {
+describe("work_item", () => {
   it("inserts with requirements and endpoints", () => {
     const { readResult } = insertAndQuery(
-      "plan_phase",
+      "work_item",
       {
         phase_number: 1,
         name: "auth-module",
@@ -338,22 +338,22 @@ describe("plan_external_dependency", () => {
   });
 });
 
-describe("plan_phase with critical_path_sequence", () => {
-  it("inserts plan_phase with critical_path_sequence", () => {
-    const { writeResult, readResult } = insertAndQuery("plan_phase", {
+describe("work_item with critical_path_sequence", () => {
+  it("inserts work_item with critical_path_sequence", () => {
+    const { writeResult, readResult } = insertAndQuery("work_item", {
       phase_number: 1,
       name: "setup",
       type: "feature",
       goal: "Initial setup",
       critical_path_sequence: 1,
     });
-    assert.strictEqual(writeResult.entity_type, "plan_phase");
+    assert.strictEqual(writeResult.entity_type, "work_item");
     assert.ok(readResult.results.length > 0);
     assert.strictEqual(readResult.results[0].critical_path_sequence, 1);
   });
 
-  it("inserts plan_phase without critical_path_sequence (defaults to null)", () => {
-    const { readResult } = insertAndQuery("plan_phase", {
+  it("inserts work_item without critical_path_sequence (defaults to null)", () => {
+    const { readResult } = insertAndQuery("work_item", {
       phase_number: 2,
       name: "build",
       type: "feature",
@@ -372,7 +372,7 @@ describe("plan_phase with critical_path_sequence", () => {
 describe("implementation_manifest", () => {
   it("inserts with files and requirement status", () => {
     const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "impl", type: "feature", goal: "Implement" },
@@ -380,7 +380,7 @@ describe("implementation_manifest", () => {
     const { readResult } = insertAndQuery(
       "implementation_manifest",
       {
-        plan_phase_id: ppResult.id,
+        work_item_id: ppResult.id,
         status: "partial",
         files: [{ path: "src/auth.js", file_operation: "created", purpose: "Auth module" }],
       },

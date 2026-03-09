@@ -22,7 +22,7 @@ Four tables form the backbone — everything else hangs off them:
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`iteration_id` (25 entity tables):** Most entity tables carry `iteration_id` (NOT NULL, FK → `iteration`). This includes both producer-critic artifacts and iteration-scoped context tables: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`, `requirement`, `requirement_trace`, `adr`, `component`, `approved_dependency`, `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset`, `plan_phase`, `plan_overview`, `implementation_manifest`, `intermediate_asset`, `test_report`, `security_audit_finding`, `performance_audit_finding`.
+- **`iteration_id` (25 entity tables):** Most entity tables carry `iteration_id` (NOT NULL, FK → `iteration`). This includes both producer-critic artifacts and iteration-scoped context tables: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`, `requirement`, `requirement_trace`, `adr`, `component`, `approved_dependency`, `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset`, `work_item`, `plan_overview`, `implementation_manifest`, `intermediate_asset`, `test_report`, `security_audit_finding`, `performance_audit_finding`.
 - **`project_id` only (1 table):** `persona` is project-scoped — it carries `project_id` (NOT NULL, FK → `project`) and an informational `introduced_in_iteration_id` (FK → `iteration`, ON DELETE SET NULL).
 
 ## Requirements Domain
@@ -92,12 +92,9 @@ Changelog entities follow a two-tier scoping pattern:
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `plan_phase` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). Entry/exit criteria and checkpoint focus stored as JSON arrays (`entry_criteria`, `exit_criteria`, `checkpoint_focus` columns). |
-| `plan_phase_requirement` / `_component` / `_flow` / `_screen` | implementation_planner | What each plan phase covers. |
-| `plan_phase_api_endpoint` | implementation_planner | APIs built in each phase. |
-| `plan_phase_db_change` | implementation_planner | Database migrations per phase. Affected tables stored as JSON array (`tables` column). |
-| `plan_phase_relationship` | implementation_planner | Phase ordering and parallelism (dependency/parallel via `dependency_type` discriminator). |
-| `plan_phase_risk` | implementation_planner | Phase-level risks and mitigations. |
+| `work_item` | implementation_planner | Implementation work phases (dev work chunks, not workflow phases). Entry/exit criteria and checkpoint focus stored as JSON arrays (`entry_criteria`, `exit_criteria`, `checkpoint_focus` columns). |
+| `work_item_requirement` / `_component` | implementation_planner | What each work item covers. |
+| `work_item_risk` | implementation_planner | Phase-level risks and mitigations. |
 | `plan_overview` | implementation_planner | High-level plan summary. Assumptions and plan-wide risks stored as JSON arrays (`assumptions`, `risks` columns). |
 | `plan_external_dependency` | implementation_planner | External blockers. |
 
@@ -166,7 +163,7 @@ Documentation quality is enforced by the `documentation_critic` reviewing commit
 | `revision_update` | Record critic verdict (approved/rejected) with feedback. |
 | `commit_link` | Link a VCS commit to the current iteration. |
 | `project_update` | Update project status (e.g., close it). |
-| `plan_phase_transition` | Update a plan_phase row's status (pending → test_writing → implementing → completed). |
+| `work_item_transition` | Update a work_item row's status (pending → test_writing → implementing → completed). |
 | `blocker_resolve` | Mark a blocker as resolved with optional resolution notes. |
 | `iteration_close` | Close an active iteration (sets status to closed, records closed_at). |
 | `changelog_update` | Update mutable fields on an existing changelog entity (e.g. status transitions for audit findings and ADRs). |
@@ -204,7 +201,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 58 tables with links to their detailed design documents.
+All 53 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -241,15 +238,10 @@ All 58 tables with links to their detailed design documents.
 | `phase` | [core](tables/core.md) |
 | `plan_external_dependency` | [planning](tables/planning.md) |
 | `plan_overview` | [planning](tables/planning.md) |
-| `plan_phase` | [planning](tables/planning.md) |
-| `plan_phase_api_endpoint` | [planning](tables/planning.md) |
-| `plan_phase_component` | [planning](tables/planning.md) |
-| `plan_phase_db_change` | [planning](tables/planning.md) |
-| `plan_phase_flow` | [planning](tables/planning.md) |
-| `plan_phase_relationship` | [planning](tables/planning.md) |
-| `plan_phase_requirement` | [planning](tables/planning.md) |
-| `plan_phase_risk` | [planning](tables/planning.md) |
-| `plan_phase_screen` | [planning](tables/planning.md) |
+| `work_item` | [planning](tables/planning.md) |
+| `work_item_component` | [planning](tables/planning.md) |
+| `work_item_requirement` | [planning](tables/planning.md) |
+| `work_item_risk` | [planning](tables/planning.md) |
 | `project` | [core](tables/core.md) |
 | `project_context` | [requirements](tables/requirements.md) |
 | `project_lesson` | [cross-cutting](tables/cross-cutting.md) |
@@ -267,4 +259,4 @@ All 58 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 58 tables across 10 domains**
+**Total: 53 tables across 10 domains**

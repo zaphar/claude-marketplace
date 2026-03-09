@@ -181,7 +181,7 @@ qa → audit
 
 **Special Cases:**
 - If phase is "skipped", proceed to next non-skipped phase
-- Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `plan_phase` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query `plan_phase` for the first row with `status != 'completed'` ordered by `phase_number`.
+- Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `work_item` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`.
 
 ### 6. Iteration Management
 
@@ -294,8 +294,8 @@ When loading an agent, provide context:
 The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
 
 **Determining Sub-phases:**
-- Query the approved implementation plan via `changelog_query(entity_type="plan_phase", iteration_id=<current_iteration_id>)`
-- Each returned row is a flat `plan_phase` record with fields such as `phase_number`, `name`, `type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve child data (linked `requirements`, `components`, `flows`, `screens`, `entry_criteria`, `exit_criteria`, `api_endpoints`, `db_changes`, `risks`, `dependencies`, `parallel_with`, `checkpoint_focus`)
+- Query the approved implementation plan via `changelog_query(entity_type="work_item", iteration_id=<current_iteration_id>)`
+- Each returned row is a flat `work_item` record with fields such as `phase_number`, `name`, `type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve child data (linked `requirements`, `components`, `flows`, `screens`, `entry_criteria`, `exit_criteria`, `api_endpoints`, `db_changes`, `risks`, `dependencies`, `parallel_with`, `checkpoint_focus`)
 - The response's `count` field gives the total number of sub-phases
 - Process sub-phases sequentially in ascending `phase_number` order
 
@@ -303,9 +303,9 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 Each sub-phase has two steps: **test writing** then **implementation**. This enforces TDD structurally — tests are written and validated before any implementation begins.
 
-For each sub-phase (query `plan_phase` for the first row with `status != 'completed'` ordered by `phase_number`):
+For each sub-phase (query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`):
 
-1. Call `plan_phase_transition({ plan_phase_id: <id>, status: "test_writing" })` to start test writing
+1. Call `work_item_transition({ work_item_id: <id>, status: "test_writing" })` to start test writing
 2. Call `revision_create` with `phase_id: "implementation"`, sub-phase number, and `"test_writer"` agent name
 
 **Step 1 — Test Writing:**
@@ -320,7 +320,7 @@ For each sub-phase (query `plan_phase` for the first row with `status != 'comple
    - No implementation logic in stubs
 9. **If approved:**
    - Call `revision_update` with approved status
-   - Call `plan_phase_transition({ plan_phase_id: <id>, status: "implementing" })` to advance to implementation step
+   - Call `work_item_transition({ work_item_id: <id>, status: "implementing" })` to advance to implementation step
    - Compact agent context
    - Proceed to Step 2
 10. **If rejected:**
@@ -342,7 +342,7 @@ For each sub-phase (query `plan_phase` for the first row with `status != 'comple
     - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX (via `traceability_query`)
 16. **If approved:**
     - Call `revision_update` with approved status and `approved_by: "senior_developer_critic"`
-    - Call `plan_phase_transition({ plan_phase_id: <id>, status: "completed" })` to mark sub-phase completed
+    - Call `work_item_transition({ work_item_id: <id>, status: "completed" })` to mark sub-phase completed
     - Compact agent context (see below)
     - Check if this sub-phase is a review checkpoint (see below)
     - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
@@ -681,7 +681,7 @@ You have access to:
 - **AskUserQuestion** - Escalate decisions to user
 - **project_status** (MCP tool) - Get current project state, iteration number, and all phase statuses
 - **phase_transition** (MCP tool) - Update a phase's status (pending → in_progress → completed → skipped)
-- **plan_phase_transition** (MCP tool) - Update a plan_phase row's status (pending → test_writing → implementing → completed). Takes `plan_phase_id` and `status`
+- **work_item_transition** (MCP tool) - Update a work_item row's status (pending → test_writing → implementing → completed). Takes `work_item_id` and `status`
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks

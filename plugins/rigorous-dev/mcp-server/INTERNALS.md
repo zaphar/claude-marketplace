@@ -44,8 +44,8 @@ Three PK strategies coexist, each serving a different purpose:
 | Strategy | Count | Tables | Purpose |
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | 39 | Everything else (38 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
-| Composite `PRIMARY KEY` | 13 | Junction/mapping tables + `adr_decision` | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)`, `(adr_id)` |
+| `INTEGER PRIMARY KEY AUTOINCREMENT` | 37 | Everything else (36 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
+| Composite `PRIMARY KEY` | 10 | Junction/mapping tables + `adr_decision` | e.g., `(requirement_id, persona_id)`, `(work_item_id, component_id)`, `(adr_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `existsForUpsert` and the upsert write pattern only apply to these types.
 
@@ -63,7 +63,7 @@ When upserting a parent entity that already exists, all child rows are deleted f
 
 ### c. Append-Only (INTEGER PK entities)
 
-Most tables use plain `INSERT` — they accumulate records rather than updating in place. Examples: `plan_phase`.
+Most tables use plain `INSERT` — they accumulate records rather than updating in place. Examples: `work_item`.
 
 ### d. Batch-Capable Inserters
 
@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~78 child foreign keys.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~70 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -112,7 +112,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 | `persona.introduced_in_iteration_id` | `iteration(id)` | Persona survives iteration deletion (project-scoped) |
 | `user_flow.persona_id` | `persona(id)` | Flow definition survives persona deletion |
 | `ux_asset.screen_id` | `screen(id)` | Asset survives screen deletion |
-| `plan_external_dependency.plan_phase_id` | `plan_phase(id)` | External dependency survives plan phase deletion |
+| `plan_external_dependency.work_item_id` | `work_item(id)` | External dependency survives work item deletion |
 | `implementation_file.component_id` | `component(id)` | File record survives component deletion |
 | `vcs_commit.phase_id` | `phase(id)` | Commit record survives phase deletion |
 | `intermediate_asset.phase_id` | `phase(id)` | Asset record survives phase deletion |
@@ -121,11 +121,11 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-64 indexes with a clear rationale (documented in `schema.sql` comments):
+60 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`requirement_id`** indexes on junction/mapping tables — requirements are the most cross-referenced entity.
-- **`plan_phase_id`** on child tables — parent→child joins.
+- **`work_item_id`** on child tables — parent→child joins.
 - **Single-column indexes** on `requirement_trace(requirement_id)`, `(iteration_id)`, and `(addressed_by_type)`.
 - **Explicit skip comments** where a column is already leftmost in a PK or UNIQUE constraint that SQLite auto-indexes (e.g., `component_dependency.component_id` is leftmost in its composite PK, so no separate index is needed).
 

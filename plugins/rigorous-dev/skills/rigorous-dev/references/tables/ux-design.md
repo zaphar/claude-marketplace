@@ -31,7 +31,7 @@ Every primary table carries `iteration_id` (NOT NULL, FK → `iteration`) to sco
 
 **Purpose:** Top-level record for a single named user journey. Represents a goal-oriented path a user takes through the application — from entry point to success state. Each flow belongs to a persona and maps to one or more requirements.
 
-**Context:** The `ux_designer` creates one `user_flow` row per distinct journey (e.g., "User signs up", "Admin exports report"). IDs follow the pattern `FLOW-XXX`. The `backend_architect` reads flows to verify that every step has a corresponding API endpoint. The `implementation_planner` references flows when assigning UI work to plan phases.
+**Context:** The `ux_designer` creates one `user_flow` row per distinct journey (e.g., "User signs up", "Admin exports report"). IDs follow the pattern `FLOW-XXX`. The `backend_architect` reads flows to verify that every step has a corresponding API endpoint. The `implementation_planner` references flows when assigning UI work to work items.
 
 **Columns:**
 
@@ -53,7 +53,7 @@ Every primary table carries `iteration_id` (NOT NULL, FK → `iteration`) to sco
 - Has many `user_flow_error_state` (error recovery paths)
 - JSON array: `data_dependencies` (inline on this table)
 - Referenced by `persona_addressed_flow` (persona coverage tracking)
-- Referenced by `plan_phase_flow` (implementation planning)
+- Referenced by `work_item_flow` (implementation planning)
 - Referenced by `requirement_trace` via `addressed_by_type = 'flow'`
 
 **MCP tool access:**
@@ -131,7 +131,7 @@ Every primary table carries `iteration_id` (NOT NULL, FK → `iteration`) to sco
 
 **Purpose:** A distinct UI view or page in the application. Screens are the atomic building blocks of the visual design. Each screen has a purpose, optional wireframe and mockup paths, and is decomposed into components, states, and responsive variants.
 
-**Context:** The `ux_designer` creates one `screen` row per unique view (e.g., `SCREEN-001 Dashboard`, `SCREEN-002 Login`). Screens are referenced by name in `user_flow_step.surface`. The `backend_architect` cross-references screens with flow steps to determine which endpoints each screen requires. The `implementation_planner` references `screen_id` in `plan_phase_screen`.
+**Context:** The `ux_designer` creates one `screen` row per unique view (e.g., `SCREEN-001 Dashboard`, `SCREEN-002 Login`). Screens are referenced by name in `user_flow_step.surface`. The `backend_architect` cross-references screens with flow steps to determine which endpoints each screen requires. The `implementation_planner` references `screen_id` in `work_item_screen`.
 
 **Columns:**
 
@@ -151,7 +151,7 @@ Every primary table carries `iteration_id` (NOT NULL, FK → `iteration`) to sco
 - JSON array: `components` (inline on this table)
 - Referenced by `user_flow_step.surface` (by name, not by FK)
 - Referenced by `ux_asset.screen_id`
-- Referenced by `plan_phase_screen`
+- Referenced by `work_item_screen`
 - Referenced by `requirement_trace` via `addressed_by_type = 'screen'`
 
 **Indexes:**

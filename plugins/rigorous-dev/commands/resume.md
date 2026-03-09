@@ -90,7 +90,7 @@ Based on the current phase and its status, load the appropriate agent:
 - `ux_design` → `rigorous-dev:ux_designer`
 - `architecture` → `rigorous-dev:backend_architect`
 - `planning` → `rigorous-dev:implementation_planner`
-- `implementation` → Query `plan_phase` for first row with `status != 'completed'` ordered by `phase_number`:
+- `implementation` → Query `work_item` for first row with `status != 'completed'` ordered by `phase_number`:
   - If that row's `status` is `"test_writing"` or `"pending"` → `rigorous-dev:test_writer`
   - If that row's `status` is `"implementing"` → `rigorous-dev:senior_developer`
 - `documentation` → `rigorous-dev:documentation_master`

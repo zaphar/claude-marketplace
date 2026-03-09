@@ -330,7 +330,7 @@ CREATE TABLE IF NOT EXISTS component (
 -- or file I/O contract — that a component exposes to the rest of the system. Interfaces define the
 -- *contract* other components depend on.
 -- Context: component_interface rows are the foundation for implementation contract tests and the
--- plan_phase_api_endpoint entries created by the implementation_planner. When the senior_developer
+-- work_item API endpoint entries created by the implementation_planner. When the senior_developer
 -- builds a component, the interfaces listed here define what must exist and be tested. The type
 -- field is free-text to accommodate diverse interface styles (REST, gRPC, event, file).
 CREATE TABLE IF NOT EXISTS component_interface (
@@ -498,7 +498,7 @@ CREATE TABLE IF NOT EXISTS user_flow_error_state (
 -- Context: The ux_designer creates one screen row per unique view (e.g., SCREEN-001 Dashboard,
 -- SCREEN-002 Login). Screens are referenced by name in user_flow_step.surface. The
 -- backend_architect cross-references screens with flow steps to determine which endpoints each
--- screen requires. The implementation_planner references screen_id in plan_phase_screen.
+-- screen requires.
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
@@ -583,18 +583,19 @@ CREATE TABLE IF NOT EXISTS ux_asset (
 
 -- Implementation plan phases
 -- Domain: planning
--- Purpose: Central record for one implementation work chunk. A phase groups related development
+-- Purpose: Central record for one implementation work chunk. A work item groups related development
 -- work that can be handed to a developer as a coherent unit. The phase_number field provides the
--- human-readable sequential ordering; child and related tables reference the phase by its id
--- primary key (e.g., plan_phase_relationship.related_phase_id). The critical_path_sequence column
--- (nullable INTEGER) indicates whether this phase is on the critical path and its position in the
--- sequence; NULL means not on the critical path.
+-- human-readable sequential ordering; child and related tables reference the work item by its id
+-- primary key. The critical_path_sequence column (nullable INTEGER) indicates whether this work
+-- item is on the critical path and its position in the sequence; NULL means not on the critical
+-- path. The work_order column (nullable INTEGER) captures execution ordering when explicit
+-- sequencing is needed (replaces the former plan_phase_relationship table).
 -- Context: Created by implementation_planner once per logical work grouping within an iteration.
--- Each phase has a type describing whether it delivers user-facing features, internal
--- infrastructure, or another category of work. review_checkpoint = 1 flags phases where the critic
--- or architect should conduct a mid-implementation review before proceeding. complexity is a
+-- Each work item has a type describing whether it delivers user-facing features, internal
+-- infrastructure, or another category of work. review_checkpoint = 1 flags work items where the
+-- critic or architect should conduct a mid-implementation review before proceeding. complexity is a
 -- t-shirt size estimate used by the senior_developer to gauge effort before starting.
-CREATE TABLE IF NOT EXISTS plan_phase (
+CREATE TABLE IF NOT EXISTS work_item (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_number INTEGER NOT NULL,
@@ -609,135 +610,52 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   exit_criteria JSON NOT NULL DEFAULT '[]',
   checkpoint_focus JSON NOT NULL DEFAULT '[]',
   critical_path_sequence INTEGER, -- NULL = not on critical path; non-NULL = sequence order
+  work_order INTEGER, -- NULL = unordered; non-NULL = explicit execution sequence
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
 );
 
 -- Domain: planning
--- Purpose: Links a plan_phase to the requirement IDs it satisfies. This is the primary traceability
+-- Purpose: Links a work_item to the requirement IDs it satisfies. This is the primary traceability
 -- bridge from implementation plan back to the requirements domain.
--- Context: Many-to-many join. A phase can address multiple requirements; a requirement can span
--- multiple phases. Populated when implementation_planner inserts a plan_phase. Requirements IDs
+-- Context: Many-to-many join. A work item can address multiple requirements; a requirement can span
+-- multiple work items. Populated when implementation_planner inserts a work_item. Requirements IDs
 -- must already exist in the requirement table. Used by implementation_plan_critic to verify full
--- requirement coverage across all phases. Also used in traceability_query to show "which phases
--- implement REQ-XXX?"
-CREATE TABLE IF NOT EXISTS plan_phase_requirement (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+-- requirement coverage across all work items. Also used in traceability_query to show "which work
+-- items implement REQ-XXX?"
+CREATE TABLE IF NOT EXISTS work_item_requirement (
+  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   priority TEXT,
   notes TEXT,
-  PRIMARY KEY (plan_phase_id, requirement_id)
+  PRIMARY KEY (work_item_id, requirement_id)
 );
 
 -- Domain: planning
--- Purpose: Links a plan_phase to the architecture component IDs it touches. Tells developers which
--- system components will be written or modified during this phase.
--- Context: Many-to-many join. Populated alongside plan_phase_requirement during phase insertion.
+-- Purpose: Links a work_item to the architecture component IDs it touches. Tells developers which
+-- system components will be written or modified during this work item.
+-- Context: Many-to-many join. Populated alongside work_item_requirement during work item insertion.
 -- implementation_plan_critic uses this to verify that every component gets covered in at least one
--- phase, and that no phase is overloaded with unrelated components. senior_developer uses this to
--- decide which codebases/services to check out before starting a phase.
-CREATE TABLE IF NOT EXISTS plan_phase_component (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+-- work item, and that no work item is overloaded with unrelated components. senior_developer uses
+-- this to decide which codebases/services to check out before starting a work item.
+CREATE TABLE IF NOT EXISTS work_item_component (
+  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
-  PRIMARY KEY (plan_phase_id, component_id)
+  PRIMARY KEY (work_item_id, component_id)
 );
 
 -- Domain: planning
--- Purpose: Links a plan_phase to the user_flow IDs it implements. Records which user flows will be
--- brought to life during a given phase.
--- Context: Many-to-many join between plan_phase and user_flow (from the UX domain). Used by
--- senior_developer and test_writer to understand the end-to-end user journeys that must work by the
--- end of the phase. Enables implementation_plan_critic to check that all designed user flows are
--- covered.
-CREATE TABLE IF NOT EXISTS plan_phase_flow (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
-  PRIMARY KEY (plan_phase_id, flow_id)
-);
-
--- Domain: planning
--- Purpose: Links a plan_phase to the screen IDs it will build or modify. Records which UI screens
--- are in scope for a given phase.
--- Context: Many-to-many join between plan_phase and screen (from the UX domain). Helps
--- senior_developer and frontend engineers understand which screens to implement in each phase. Used
--- by test_writer to scope UI/integration tests per phase.
-CREATE TABLE IF NOT EXISTS plan_phase_screen (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
-  PRIMARY KEY (plan_phase_id, screen_id)
-);
-
--- Domain: planning
--- Purpose: Lists the HTTP API endpoints that must be implemented during a phase. This is the
--- developer's build spec for the API surface of a phase — HTTP method, route, and purpose for each
--- endpoint.
--- Context: One-to-many child of plan_phase. A phase may have zero (infrastructure phases) to many
--- endpoints. implementation_planner derives these from the architecture domain
--- (component_interface) and requirements. senior_developer treats each row as an endpoint to
--- implement and unit-test. test_writer generates integration test cases from these rows.
--- implementation_plan_critic cross-checks that the listed endpoints cover all relevant acceptance
--- criteria.
-CREATE TABLE IF NOT EXISTS plan_phase_api_endpoint (
+-- Purpose: Records risks specific to a single work item — technical unknowns, integration hazards,
+-- or schedule threats — along with their mitigations.
+-- Context: One-to-many child of work_item. A work item may have zero or more risks. Distinct from
+-- plan_overview.risks (JSON column), which records plan-wide risks. These are work-item-scoped.
+-- implementation_planner documents risks when a work item touches unfamiliar technology, has a
+-- tight time window, or depends on external teams. senior_developer reviews these before starting
+-- the work item to pre-empt blockers. implementation_plan_critic checks that every risk has a
+-- concrete mitigation (not just "be careful").
+CREATE TABLE IF NOT EXISTS work_item_risk (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  http_method TEXT NOT NULL,
-  route TEXT NOT NULL,
-  description TEXT,
-  UNIQUE(plan_phase_id, route, http_method)
-);
-
--- Domain: planning
--- Purpose: Represents one database migration required within a phase. Each row is a named migration
--- unit (analogous to a migration file). The tables JSON array lists the specific table names the
--- migration touches.
--- Context: One-to-many child of plan_phase. Infrastructure phases often have several migrations;
--- feature phases typically have one or two. implementation_planner names migrations following a
--- convention so they can be ordered and versioned. senior_developer uses these to generate or write
--- migration files before implementing application logic. implementation_plan_critic verifies that
--- migrations align with the architecture's data model and don't conflict across phases.
-CREATE TABLE IF NOT EXISTS plan_phase_db_change (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  migration_name TEXT NOT NULL,
-  description TEXT,
-  tables JSON NOT NULL DEFAULT '[]',
-  UNIQUE(plan_phase_id, migration_name)
-);
-
--- Domain: planning
--- Purpose: Records inter-phase relationships: ordering constraints (dependency) and concurrency
--- pairs (parallel). A single table with a dependency_type discriminator replaces the former
--- plan_phase_dependency and plan_phase_parallel tables.
--- Context: dependency rows define a DAG of phase execution order: plan_phase_id cannot begin until
--- related_phase_id is complete. parallel rows record pairs of phases that can be worked
--- concurrently — they have no blocking dependency and touch independent parts of the system.
--- implementation_planner populates both relationship types to ensure correct sequencing and to
--- surface safe parallelism. senior_developer reads dependencies to decide which phases to
--- start/queue, and reads parallel relationships to maximize throughput. The critical path is
--- derived from the dependency subset — the longest chain through dependency rows. Critical path
--- membership is tracked on plan_phase.critical_path_sequence. implementation_plan_critic verifies
--- claimed parallelism by checking for hidden conflicts in plan_phase_db_change.tables and
--- plan_phase_component.
-CREATE TABLE IF NOT EXISTS plan_phase_relationship (
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  related_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
-  dependency_type TEXT NOT NULL CHECK(dependency_type IN ('dependency', 'parallel')),
-  reason TEXT, -- only populated for dependency_type = 'dependency'
-  PRIMARY KEY (plan_phase_id, related_phase_id)
-);
-
--- Domain: planning
--- Purpose: Records risks specific to a single phase — technical unknowns, integration hazards, or
--- schedule threats — along with their mitigations.
--- Context: One-to-many child of plan_phase. A phase may have zero or more risks. Distinct from
--- plan_overview.risks (JSON column), which records plan-wide risks. These are phase-scoped. implementation_planner
--- documents risks when a phase touches unfamiliar technology, has a tight time window, or depends
--- on external teams. senior_developer reviews these before starting the phase to pre-empt blockers.
--- implementation_plan_critic checks that every risk has a concrete mitigation (not just "be
--- careful").
-CREATE TABLE IF NOT EXISTS plan_phase_risk (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
   risk TEXT NOT NULL,
   mitigation TEXT
 );
@@ -747,7 +665,7 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
 -- Purpose: One row per planning revision: the high-level summary of the entire implementation plan.
 -- Records the overall strategy, the rationale for the chosen breakdown, and a description of the
 -- Phase 1 approach.
--- Context: Created once per planning revision by implementation_planner, alongside all plan_phase
+-- Context: Created once per planning revision by implementation_planner, alongside all work_item
 -- rows. implementation_plan_critic uses this to evaluate whether the strategy is coherent and
 -- whether the rationale justifies the phase count. senior_developer reads this first to understand
 -- the big picture before drilling into individual phases. Assumptions and plan-wide risks are
@@ -771,7 +689,7 @@ CREATE TABLE IF NOT EXISTS plan_overview (
 -- mitigation strategy.
 -- Context: One-to-many child of the iteration (not a specific phase — external dependencies are
 -- plan-wide). Examples: "Auth0 tenant provisioning", "Payment gateway sandbox credentials", "Mobile
--- team delivering SDK v2", "Legal approval for GDPR data flows". The optional plan_phase_number
+-- team delivering SDK v2", "Legal approval for GDPR data flows". The optional work_item_number
 -- field marks when the dependency becomes blocking. implementation_plan_critic verifies that
 -- high/critical external dependencies have concrete mitigations. senior_developer tracks these as
 -- pre-conditions to flag blockers early.
@@ -780,7 +698,7 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
-  plan_phase_id INTEGER REFERENCES plan_phase(id) ON DELETE SET NULL,
+  work_item_id INTEGER REFERENCES work_item(id) ON DELETE SET NULL,
   risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
   mitigation TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -792,13 +710,13 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 -- senior_developer completes a plan sub-phase it writes exactly one manifest row summarising the
 -- outcome: overall status, total lines of code, warning count, and build result. All other
 -- implementation tables hang off this row.
--- Context: The implementation phase is divided into sub-phases that mirror plan_phase rows.
--- plan_phase_id references the plan_phase(id) that was just executed. A manifest is written even
+-- Context: The implementation phase is divided into sub-phases that mirror work_item rows.
+-- work_item_id references the work_item(id) that was just executed. A manifest is written even
 -- when work is partial or blocked so that the critic can inspect what was and was not done.
 CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
+  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   lines_of_code INTEGER,
   warnings INTEGER NOT NULL DEFAULT 0,
@@ -877,7 +795,7 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
 
 -- Domain: implementation
 -- Purpose: Records each HTTP API endpoint actually implemented (as opposed to planned) during a
--- sub-phase. Allows comparison against plan_phase_api_endpoint to confirm delivery.
+-- sub-phase. Allows comparison against the original plan to confirm delivery.
 -- Context: The QA engineer uses this table to know which endpoints exist and which are only
 -- stubbed, so integration tests can be scoped correctly. stubbed means the route exists but returns
 -- mock data; complete means the full logic is wired up.
@@ -1186,21 +1104,17 @@ CREATE INDEX IF NOT EXISTS idx_implementation_review_checklist_manifest_id
   ON implementation_review_checklist(manifest_id);
 
 -- ------------------------------------------------------------
--- plan_phase_id — child tables of plan_phase
--- Skipped: plan_phase_requirement, plan_phase_component, plan_phase_flow,
---   plan_phase_screen, plan_phase_relationship
---   (plan_phase_id is leftmost in their composite PKs)
+-- work_item_id — child tables of work_item
+-- Skipped: work_item_requirement, work_item_component
+--   (work_item_id is leftmost in their composite PKs)
 -- ------------------------------------------------------------
 
--- Skipped: plan_phase_api_endpoint (plan_phase_id is leftmost in UNIQUE(plan_phase_id, route, http_method))
-CREATE INDEX IF NOT EXISTS idx_plan_phase_db_change_plan_phase_id
-  ON plan_phase_db_change(plan_phase_id);
-CREATE INDEX IF NOT EXISTS idx_plan_phase_risk_plan_phase_id
-  ON plan_phase_risk(plan_phase_id);
-CREATE INDEX IF NOT EXISTS idx_implementation_manifest_plan_phase_id
-  ON implementation_manifest(plan_phase_id);
-CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_plan_phase_id
-  ON plan_external_dependency(plan_phase_id);
+CREATE INDEX IF NOT EXISTS idx_work_item_risk_work_item_id
+  ON work_item_risk(work_item_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_manifest_work_item_id
+  ON implementation_manifest(work_item_id);
+CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_work_item_id
+  ON plan_external_dependency(work_item_id);
 
 -- ------------------------------------------------------------
 -- requirement_id — junction and mapping tables
@@ -1210,8 +1124,8 @@ CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_plan_phase_id
 
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_requirement_id
   ON requirement_trace(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_plan_phase_requirement_requirement_id
-  ON plan_phase_requirement(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_work_item_requirement_requirement_id
+  ON work_item_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_file_requirement_requirement_id
   ON implementation_file_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_requirement_status_requirement_id
@@ -1257,8 +1171,8 @@ CREATE INDEX IF NOT EXISTS idx_ux_asset_iteration_id
   ON ux_asset(iteration_id);
 
 -- Planning domain
-CREATE INDEX IF NOT EXISTS idx_plan_phase_iteration_id
-  ON plan_phase(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_work_item_iteration_id
+  ON work_item(iteration_id);
 -- Skipped: plan_overview (iteration_id is the UNIQUE key)
 
 -- Implementation domain
@@ -1313,8 +1227,8 @@ CREATE INDEX IF NOT EXISTS idx_persona_addressed_persona_id
 --   (component_id is leftmost in their UNIQUE constraints)
 -- ------------------------------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_plan_phase_component_component_id
-  ON plan_phase_component(component_id);
+CREATE INDEX IF NOT EXISTS idx_work_item_component_component_id
+  ON work_item_component(component_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_file_component_id
   ON implementation_file(component_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
@@ -1326,8 +1240,6 @@ CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
 
 CREATE INDEX IF NOT EXISTS idx_ux_asset_screen_id
   ON ux_asset(screen_id);
-CREATE INDEX IF NOT EXISTS idx_plan_phase_screen_screen_id
-  ON plan_phase_screen(screen_id);
 
 -- ------------------------------------------------------------
 -- flow_id — FK to user_flow(id)
@@ -1339,8 +1251,6 @@ CREATE INDEX IF NOT EXISTS idx_user_flow_error_state_flow_id
   ON user_flow_error_state(flow_id);
 CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_flow_id
   ON persona_addressed_flow(flow_id);
-CREATE INDEX IF NOT EXISTS idx_plan_phase_flow_flow_id
-  ON plan_phase_flow(flow_id);
 
 -- ------------------------------------------------------------
 -- adr_id — FK to adr(id)
@@ -1383,10 +1293,6 @@ CREATE INDEX IF NOT EXISTS idx_info_architecture_parent_id
 -- persona_addressed_flow.persona_addressed_id → persona_addressed(id)
 -- Skipped: persona_addressed_flow
 --   (persona_addressed_id is leftmost in PK(persona_addressed_id, flow_id))
-
--- plan_phase_relationship.related_phase_id → plan_phase(id)
-CREATE INDEX IF NOT EXISTS idx_plan_phase_relationship_related_phase_id
-  ON plan_phase_relationship(related_phase_id);
 
 -- blocker.phase_name — composite FK (iteration_id, phase_name) → phase(iteration_id, name)
 CREATE INDEX IF NOT EXISTS idx_blocker_phase_name

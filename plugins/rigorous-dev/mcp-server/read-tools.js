@@ -12,7 +12,7 @@ const ENTITY_TABLE = {
   component: "component",
   user_flow: "user_flow",
   screen: "screen",
-  plan_phase: "plan_phase",
+  work_item: "work_item",
   plan_overview: "plan_overview",
   plan_external_dependency: "plan_external_dependency",
   implementation_manifest: "implementation_manifest",
@@ -296,7 +296,7 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
   }));
 }
 
-const PLAN_PHASE_FILTERS = {
+const WORK_ITEM_FILTERS = {
   phase_number: { nullable: false },
   name: { nullable: false },
   phase_type: { nullable: false },
@@ -308,13 +308,13 @@ const PLAN_PHASE_FILTERS = {
   critical_path_sequence: { nullable: true },
 };
 
-function queryPlanPhase(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM plan_phase";
+function queryWorkItem(db, { iteration_id, ids, filters = {}, include_related = false }) {
+  let sql = "SELECT * FROM work_item";
   const clauses = [];
   const params = [];
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, PLAN_PHASE_FILTERS, "plan_phase");
+  const f = applyFilters(filters, WORK_ITEM_FILTERS, "work_item");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -323,45 +323,20 @@ function queryPlanPhase(db, { iteration_id, ids, filters = {}, include_related =
   return results.map((p) => ({
     ...p,
     requirements: db
-      .prepare("SELECT requirement_id, priority, notes FROM plan_phase_requirement WHERE plan_phase_id = ?")
+      .prepare("SELECT requirement_id, priority, notes FROM work_item_requirement WHERE work_item_id = ?")
       .all(p.id)
       .map((x) => x.priority || x.notes
         ? { requirement_id: x.requirement_id, priority: x.priority, notes: x.notes }
         : x.requirement_id),
     components: db
-      .prepare("SELECT component_id FROM plan_phase_component WHERE plan_phase_id = ?")
+      .prepare("SELECT component_id FROM work_item_component WHERE work_item_id = ?")
       .all(p.id)
       .map((x) => x.component_id),
     entry_criteria: (() => { try { return JSON.parse(p.entry_criteria || '[]'); } catch { return p.entry_criteria; } })(),
     exit_criteria: (() => { try { return JSON.parse(p.exit_criteria || '[]'); } catch { return p.exit_criteria; } })(),
-    api_endpoints: db
-      .prepare("SELECT http_method, route, description FROM plan_phase_api_endpoint WHERE plan_phase_id = ?")
-      .all(p.id),
-    db_changes: db
-      .prepare("SELECT id, migration_name, description, tables FROM plan_phase_db_change WHERE plan_phase_id = ?")
-      .all(p.id)
-      .map((dc) => ({
-        ...dc,
-        tables: (() => { try { return JSON.parse(dc.tables || '[]'); } catch { return dc.tables; } })(),
-      })),
     risks: db
-      .prepare("SELECT risk, mitigation FROM plan_phase_risk WHERE plan_phase_id = ?")
+      .prepare("SELECT risk, mitigation FROM work_item_risk WHERE work_item_id = ?")
       .all(p.id),
-    flows: db
-      .prepare("SELECT flow_id FROM plan_phase_flow WHERE plan_phase_id = ?")
-      .all(p.id)
-      .map((x) => x.flow_id),
-    screens: db
-      .prepare("SELECT screen_id FROM plan_phase_screen WHERE plan_phase_id = ?")
-      .all(p.id)
-      .map((x) => x.screen_id),
-    dependencies: db
-      .prepare("SELECT related_phase_id AS depends_on_phase_id, reason FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'dependency'")
-      .all(p.id),
-    parallel_with: db
-      .prepare("SELECT related_phase_id AS can_parallel_with_id FROM plan_phase_relationship WHERE plan_phase_id = ? AND dependency_type = 'parallel'")
-      .all(p.id)
-      .map((x) => x.can_parallel_with_id),
     checkpoint_focus: (() => { try { return JSON.parse(p.checkpoint_focus || '[]'); } catch { return p.checkpoint_focus; } })(),
   }));
 }
@@ -389,7 +364,7 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
     total_phases: (() => {
         if (!o.iteration_id) return 0;
         return db.prepare(
-          "SELECT COUNT(*) AS cnt FROM plan_phase WHERE iteration_id = ?"
+          "SELECT COUNT(*) AS cnt FROM work_item WHERE iteration_id = ?"
         ).get(o.iteration_id).cnt;
       })(),
     risks: (() => { try { return JSON.parse(o.risks || '[]'); } catch { return o.risks; } })(),
@@ -452,7 +427,7 @@ function queryInfoArchitecture(db, { iteration_id, ids, filters = {}, include_re
 }
 
 const IMPLEMENTATION_MANIFEST_FILTERS = {
-  plan_phase_id: { nullable: false },
+  work_item_id: { nullable: false },
   status: { nullable: false },
   lines_of_code: { nullable: true },
   warnings: { nullable: true },
@@ -573,7 +548,7 @@ function queryTestReport(db, { iteration_id, ids, filters = {} }) {
 const PLAN_EXTERNAL_DEPENDENCY_FILTERS = {
   name: { nullable: false },
   description: { nullable: false },
-  plan_phase_id: { nullable: true },
+  work_item_id: { nullable: true },
   risk_level: { nullable: false },
   mitigation: { nullable: true },
 };
@@ -864,7 +839,7 @@ const QUERY_DISPATCH = {
   component: queryComponent,
   user_flow: queryUserFlow,
   screen: queryScreen,
-  plan_phase: queryPlanPhase,
+  work_item: queryWorkItem,
   plan_overview: queryPlanOverview,
   persona_addressed: queryPersonaAddressed,
   info_architecture: queryInfoArchitecture,
@@ -1032,16 +1007,16 @@ function traceabilityQuery(args) {
         .all(req.id, ...iterParam);
       if (mappings.length > 0) chain.push({ type: "addressed_by", data: mappings });
 
-      // Which plan_phase includes it
+      // Which work_item includes it
       const phases = db
         .prepare(
-          `SELECT pp.* FROM plan_phase pp
-           JOIN plan_phase_requirement ppr ON ppr.plan_phase_id = pp.id
+          `SELECT pp.* FROM work_item pp
+           JOIN work_item_requirement ppr ON ppr.work_item_id = pp.id
            WHERE ppr.requirement_id = ?` +
             (iteration_id ? " AND pp.iteration_id = ?" : "")
         )
         .all(req.id, ...iterParam);
-      if (phases.length > 0) chain.push({ type: "plan_phases", data: phases });
+      if (phases.length > 0) chain.push({ type: "work_items", data: phases });
 
       // Which components implement it
       const components = db
@@ -1264,7 +1239,7 @@ function iterationSummary(args) {
     components: countFor("component"),
     user_flows: countFor("user_flow"),
     screens: countFor("screen"),
-    plan_phases: countFor("plan_phase"),
+    work_items: countFor("work_item"),
     approved_dependencies: countFor("approved_dependency"),
     requirement_traces: countFor("requirement_trace"),
     security_audit_findings: countFor("security_audit_finding"),

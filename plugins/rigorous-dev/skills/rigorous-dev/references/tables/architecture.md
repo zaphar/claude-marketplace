@@ -196,7 +196,7 @@ Describes each interface — HTTP endpoint group, gRPC service definition, messa
 
 ### Context
 
-`component_interface` rows are the foundation for implementation contract tests and the `plan_phase_api_endpoint` entries created by the implementation_planner. When the senior_developer builds a component, the interfaces listed here define what must exist and be tested. The `type` field is free-text to accommodate diverse interface styles (REST, gRPC, event, file).
+`component_interface` rows are the foundation for implementation contract tests and the `work_item_api_endpoint` entries created by the implementation_planner. When the senior_developer builds a component, the interfaces listed here define what must exist and be tested. The `type` field is free-text to accommodate diverse interface styles (REST, gRPC, event, file).
 
 ### Column Reference
 
@@ -229,7 +229,7 @@ Records a directed dependency edge between two components: `component_id` depend
 
 ### Context
 
-The dependency graph is consumed by the implementation_planner to sequence plan phases (a component cannot be implemented before its dependencies) and by the architecture_critic to verify there are no cycles and that `external` components are not being depended on implicitly. The composite primary key prevents duplicate edges.
+The dependency graph is consumed by the implementation_planner to sequence work items (a component cannot be implemented before its dependencies) and by the architecture_critic to verify there are no cycles and that `external` components are not being depended on implicitly. The composite primary key prevents duplicate edges.
 
 ### Column Reference
 

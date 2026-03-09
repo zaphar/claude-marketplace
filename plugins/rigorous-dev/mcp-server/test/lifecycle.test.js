@@ -106,14 +106,14 @@ describe("phase_transition", () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// plan_phase_transition
+// work_item_transition
 // ───────────────────────────────────────────────────────────────
 
-describe("plan_phase_transition", () => {
-  it("transitions a plan_phase status", () => {
-    // Insert a plan_phase first
+describe("work_item_transition", () => {
+  it("transitions a work_item status", () => {
+    // Insert a work_item first
     handleWriteTool("changelog_insert", {
-      entity_type: "plan_phase",
+      entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
@@ -124,28 +124,28 @@ describe("plan_phase_transition", () => {
       },
     });
     const phases = db.prepare(
-      "SELECT id FROM plan_phase WHERE iteration_id = ?"
+      "SELECT id FROM work_item WHERE iteration_id = ?"
     ).all(seed.iteration_id);
     const ppId = phases[0].id;
 
-    const result = handleWriteTool("plan_phase_transition", {
-      plan_phase_id: ppId,
+    const result = handleWriteTool("work_item_transition", {
+      work_item_id: ppId,
       status: "implementing",
     });
     assert.strictEqual(result.status, "implementing");
 
     // Read back
-    const row = db.prepare("SELECT status FROM plan_phase WHERE id = ?").get(ppId);
+    const row = db.prepare("SELECT status FROM work_item WHERE id = ?").get(ppId);
     assert.strictEqual(row.status, "implementing");
   });
 
-  it("throws when plan_phase_id does not exist", () => {
+  it("throws when work_item_id does not exist", () => {
     assert.throws(
-      () => handleWriteTool("plan_phase_transition", {
-        plan_phase_id: 99999,
+      () => handleWriteTool("work_item_transition", {
+        work_item_id: 99999,
         status: "implementing",
       }),
-      /Plan phase 99999 not found/
+      /Work item 99999 not found/
     );
   });
 });
