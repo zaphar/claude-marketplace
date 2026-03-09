@@ -546,27 +546,30 @@ function insertRequirementTrace(db, iteration_id, revision_id, data) {
   return { entity_type: "requirement_trace", id: result.lastInsertRowid };
 }
 
-function insertArchitectureConfig(db, iteration_id, revision_id, data) {
+function insertConfig(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO architecture_config (revision_id, config_type, target, category, key, value, created_at)
-     VALUES (@revision_id, @config_type, @target, @category, @key, @value, @created_at)`
+    `INSERT INTO config (revision_id, domain, config_type, target, category, key, value, rationale, created_at)
+     VALUES (@revision_id, @domain, @config_type, @target, @category, @key, @value, @rationale, @created_at)`
   );
   for (const entry of entries) {
+    if (!entry.domain) throw new Error("config entries require a 'domain' field ('architecture' or 'ux')");
     const result = insert.run({
       revision_id,
+      domain: entry.domain,
       config_type: entry.config_type,
       target: entry.target ?? null,
       category: entry.category,
       key: entry.key,
       value: entry.value,
+      rationale: entry.rationale ?? null,
       created_at: now
     });
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "architecture_config", id: lastId };
+  return { entity_type: "config", id: lastId };
 }
 
 function insertApprovedDependency(db, iteration_id, revision_id, data) {
@@ -1711,27 +1714,7 @@ function insertDeploymentManifest(db, iteration_id, revision_id, data) {
   return { entity_type: "deployment_manifest", id: manifest_id };
 }
 
-function insertUxConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO ux_config (revision_id, config_type, category, key, value, created_at)
-     VALUES (@revision_id, @config_type, @category, @key, @value, @created_at)`
-  );
-  for (const entry of entries) {
-    const result = insert.run({
-      revision_id,
-      config_type: entry.config_type,
-      category: entry.category,
-      key: entry.key,
-      value: entry.value,
-      created_at: now
-    });
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "ux_config", id: lastId };
-}
+// (ux_config merged into insertConfig — see above)
 
 function insertInfoArchitecture(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
@@ -1824,11 +1807,11 @@ function changelogInsert(args) {
     architecture_overview: insertArchitectureOverview,
     data_entity: insertDataEntity,
     requirement_trace: insertRequirementTrace,
-    architecture_config: insertArchitectureConfig,
+    config: insertConfig,
     approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
-    ux_config: insertUxConfig,
+    // (ux_config merged into config)
     info_architecture: insertInfoArchitecture,
     persona_addressed: insertPersonaAddressed,
     ux_asset: insertUxAsset,

@@ -15,7 +15,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Project source code
-- Architecture security spec (query via `changelog_query` with entity_type: "architecture_config", filters: { "config_type": "security" })
+- Architecture security spec (query via `changelog_query` with entity_type: "config", filters: { "domain": "architecture", "config_type": "security" })
 - Architecture API spec (`api_spec.yaml`)
 - Architecture data model (query via `changelog_query` with entity_type: "data_entity")
 - Architecture components (query via `changelog_query` with entity_type: "component")

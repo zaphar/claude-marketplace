@@ -35,7 +35,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
-    - [ ] All expected architecture entities present in DB: architecture_overview, component, data_entity, adr, architecture_config, requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] All expected architecture entities present in DB: architecture_overview, component, data_entity, adr, config (domain: "architecture"), requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
     - [ ] All technical requirements mapped to architectural elements (check via `traceability_query`)
     - [ ] Technology choices documented with rationale and current research citations
     - [ ] Technology recommendations include source links (official docs, release notes, benchmarks) — not just training-data knowledge

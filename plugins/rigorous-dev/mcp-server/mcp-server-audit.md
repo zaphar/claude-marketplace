@@ -342,7 +342,7 @@ function insertArchitectureConfig(db, iteration_id, revision_id, data) {
     const result = insert.run(...);
     lastId = result.lastInsertRowid;
   }
-  return { entity_type: "architecture_config", id: lastId };
+  return { entity_type: "config", id: lastId };
 }
 ```
 
@@ -397,7 +397,7 @@ default:
   return results;
 ```
 
-For entity types without a specific `attachRelated` case (e.g., `architecture_config`, `approved_dependency`, `technology_choice`, `blocker`, `project_lesson`, etc.), the raw database rows are returned as-is. Any JSON-in-TEXT columns (like `goals`, `consequences`, `acceptance_criteria`) remain as raw JSON strings rather than parsed objects.
+For entity types without a specific `attachRelated` case (e.g., `config`, `approved_dependency`, `technology_choice`, `blocker`, `project_lesson`, etc.), the raw database rows are returned as-is. Any JSON-in-TEXT columns (like `goals`, `consequences`, `acceptance_criteria`) remain as raw JSON strings rather than parsed objects.
 
 The `include_related` flag still triggers the function, but it's a no-op for these types.
 

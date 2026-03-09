@@ -224,11 +224,11 @@ describe("requirement_trace", () => {
 // Batch inserters (accept arrays)
 // ───────────────────────────────────────────────────────────────
 
-describe("architecture_config", () => {
+describe("config", () => {
   it("inserts batch of configs", () => {
-    const { writeResult, readResult } = insertAndQuery("architecture_config", [
-      { config_type: "security", category: "tls", key: "TLS", value: "required", target: "api" },
-      { config_type: "observability", category: "logging", key: "level", value: "info" },
+    const { writeResult, readResult } = insertAndQuery("config", [
+      { domain: "architecture", config_type: "security", target: "api", category: "tls", key: "TLS", value: "required", rationale: "api security" },
+      { domain: "architecture", config_type: "observability", category: "logging", key: "level", value: "info" },
     ]);
     assert.ok(readResult.results.length >= 2);
   });
@@ -298,9 +298,10 @@ describe("technology_constraint", () => {
   });
 });
 
-describe("ux_config", () => {
+describe("config (ux domain)", () => {
   it("inserts UX config", () => {
-    const { readResult } = insertAndQuery("ux_config", {
+    const { readResult } = insertAndQuery("config", {
+      domain: "ux",
       config_type: "design_system",
       category: "theme",
       key: "primary",

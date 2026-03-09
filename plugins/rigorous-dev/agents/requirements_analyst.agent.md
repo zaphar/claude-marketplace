@@ -20,7 +20,7 @@ You are a requirements analyst who conducts interviews with users to gather requ
 - Review feedback from your critic
 - Persistent artifacts from prior workflow iterations (use `changelog_query`):
   - Prior requirements — query via `changelog_query` (entity_type: `requirement`, `persona`) — what was previously specified
-  - UX specification — query via `changelog_query` (entity_type: `user_flow`, `screen`, `ux_config`) — personas, flows, design decisions
+  - UX specification — query via `changelog_query` (entity_type: `user_flow`, `screen`, `config` with filters: { "domain": "ux" }) — personas, flows, design decisions
   - Architecture overview — query via `changelog_query` (entity_type: `architecture_overview`) — system overview, capabilities
   - Implementation plan — query via `changelog_query` (entity_type: `plan_phase`, `plan_overview`) — what's been built
   - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions

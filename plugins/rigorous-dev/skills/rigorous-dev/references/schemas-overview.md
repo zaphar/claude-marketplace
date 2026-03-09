@@ -79,7 +79,7 @@ No table carries both columns.
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `architecture_config` | backend_architect | Unified config store for security, deployment, and observability architecture (discriminated by `config_type`). |
+| `config` | backend_architect / ux_designer | Unified config store for cross-cutting concerns. Architecture domain: security, deployment, observability. UX domain: design system tokens, accessibility, responsive, feedback patterns. Discriminated by `domain` and `config_type`. |
 | `approved_dependency` | backend_architect | Vetted third-party dependencies with justification, license, health assessment. |
 | `requirement_trace` | backend_architect | REQ → COMP → ADR → SCREEN cross-references (the "why" chain). |
 | `blocker` | (any agent via orchestrator) | Cross-phase workflow blockers — raised when agents encounter issues that prevent progress. Lifecycle events with soft-delete (active when `resolved_at IS NULL`). |
@@ -99,7 +99,7 @@ No table carries both columns.
 | `screen` | ux_designer | UI screens (id: `SCREEN-XXX`). Layout, route, purpose. UI components stored as JSON array (`components` column). |
 | `screen_state` | ux_designer | State variants (loading, empty, error, populated). |
 | `screen_responsive_variant` | ux_designer | Responsive breakpoint behavior. |
-| `ux_config` | ux_designer | Unified UX config: design system tokens, accessibility, responsive, feedback patterns. Discriminated by `config_type`. |
+| `config` | ux_designer | (Shared table — see Cross-Cutting Architecture above.) UX config entries use `domain = 'ux'` and `config_type` values: `design_system`, `accessibility`, `responsive`, `feedback_pattern`. |
 | `info_architecture` | ux_designer | Navigation structure, sitemap. |
 | `persona_addressed` / `persona_addressed_flow` | ux_designer | Which personas each UX design addresses. |
 | `ux_asset` | ux_designer | Mockup/asset references. |
@@ -271,7 +271,7 @@ All 108 tables with links to their detailed design documents.
 | `adr` | [architecture](tables/architecture.md) |
 | `adr_alternative` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
-| `architecture_config` | [cross-cutting](tables/cross-cutting.md) |
+| `config` | [cross-cutting](tables/cross-cutting.md) |
 | `architecture_diagram` | [architecture](tables/architecture.md) |
 | `architecture_overview` | [architecture](tables/architecture.md) |
 | `asset_deliverable` | [implementation](tables/implementation.md) |
@@ -374,7 +374,6 @@ All 108 tables with links to their detailed design documents.
 | `user_flow_step` | [ux-design](tables/ux-design.md) |
 | `user_flow_step_branch` | [ux-design](tables/ux-design.md) |
 | `ux_asset` | [ux-design](tables/ux-design.md) |
-| `ux_config` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 108 tables across 12 domains**
+**Total: 107 tables across 12 domains**

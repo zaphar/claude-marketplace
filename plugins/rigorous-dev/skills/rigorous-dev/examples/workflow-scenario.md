@@ -203,9 +203,9 @@ The Backend Architect records modular architecture entries in the changelog DB:
 - `architecture_overview` — metadata, technology choices, linters
 - `component` entries — system components with integration test boundaries
 - `data_entity` entries — data entities and relationships
-- `architecture_config` (config_type: deployment) — deployment targets and environments
-- `architecture_config` (config_type: security) — authentication, authorization, secrets management
-- `architecture_config` (config_type: observability) — logging, metrics, tracing
+- `config` (domain: "architecture", config_type: "deployment") — deployment targets and environments
+- `config` (domain: "architecture", config_type: "security") — authentication, authorization, secrets management
+- `config` (domain: "architecture", config_type: "observability") — logging, metrics, tracing
 - `requirement_trace` entries — requirements-to-component mapping
 - `approved_dependency` entries — dependency manifest with health assessments
 - `api_spec.yaml` — OpenAPI specification (file artifact)

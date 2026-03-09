@@ -286,17 +286,19 @@ CREATE TABLE IF NOT EXISTS data_entity_relationship (
   description TEXT
 );
 
--- Unified architecture config (security, deployment, observability)
-CREATE TABLE IF NOT EXISTS architecture_config (
+-- Unified config (architecture: security/deployment/observability; ux: design_system/accessibility/responsive/feedback_pattern)
+CREATE TABLE IF NOT EXISTS config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  config_type TEXT NOT NULL CHECK(config_type IN ('security', 'deployment', 'observability')),
+  domain TEXT NOT NULL CHECK(domain IN ('architecture', 'ux')),
+  config_type TEXT NOT NULL,
   target TEXT,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
+  rationale TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, config_type, category, key)
+  UNIQUE(revision_id, domain, config_type, category, key)
 );
 
 -- Dependencies manifest
@@ -405,17 +407,7 @@ CREATE TABLE IF NOT EXISTS screen_responsive_variant (
   UNIQUE(screen_id, breakpoint)
 );
 
--- UX: unified config (design system, accessibility, responsive, feedback patterns)
-CREATE TABLE IF NOT EXISTS ux_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  config_type TEXT NOT NULL CHECK(config_type IN ('design_system', 'accessibility', 'responsive', 'feedback_pattern')),
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, config_type, category, key)
-);
+-- (ux_config has been merged into the unified `config` table — see architecture section)
 
 -- UX: information architecture
 CREATE TABLE IF NOT EXISTS info_architecture (
@@ -1332,8 +1324,7 @@ CREATE INDEX IF NOT EXISTS idx_architecture_overview_revision_id
   ON architecture_overview(revision_id);
 CREATE INDEX IF NOT EXISTS idx_data_entity_revision_id
   ON data_entity(revision_id);
-CREATE INDEX IF NOT EXISTS idx_architecture_config_revision_id
-  ON architecture_config(revision_id);
+-- Skipped: config (revision_id is leftmost in UNIQUE(revision_id, domain, config_type, category, key))
 CREATE INDEX IF NOT EXISTS idx_approved_dependency_revision_id
   ON approved_dependency(revision_id);
 -- requirement_trace revision_id covered by idx_requirement_trace_revision_id above
@@ -1343,8 +1334,7 @@ CREATE INDEX IF NOT EXISTS idx_user_flow_revision_id
   ON user_flow(revision_id);
 CREATE INDEX IF NOT EXISTS idx_screen_revision_id
   ON screen(revision_id);
-CREATE INDEX IF NOT EXISTS idx_ux_config_revision_id
-  ON ux_config(revision_id);
+-- (ux_config merged into config table — index covered by UNIQUE constraint, see above)
 CREATE INDEX IF NOT EXISTS idx_info_architecture_revision_id
   ON info_architecture(revision_id);
 CREATE INDEX IF NOT EXISTS idx_persona_addressed_revision_id

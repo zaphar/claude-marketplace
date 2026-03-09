@@ -23,13 +23,13 @@ const ENTITY_TABLE = {
   deployment_requirement: "deployment_requirement",
   operational_requirement: "operational_requirement",
   technology_constraint: "technology_constraint",
-  ux_config: "ux_config",
+  config: "config",
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
   ux_asset: "ux_asset",
   architecture_overview: "architecture_overview",
   data_entity: "data_entity",
-  architecture_config: "architecture_config",
+  // (architecture_config merged into config)
   approved_dependency: "approved_dependency",
   test_report: "test_report",
   documentation_manifest: "documentation_manifest",
@@ -1055,20 +1055,22 @@ function queryTechnologyConstraint(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const UX_CONFIG_FILTERS = {
+const CONFIG_FILTERS = {
+  domain: { nullable: false },
   config_type: { nullable: false },
   category: { nullable: false },
   key: { nullable: false },
   value: { nullable: false },
+  rationale: { nullable: true },
 };
 
-function queryUxConfig(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM ux_config";
+function queryConfig(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM config";
   const clauses = [];
   const params = [];
   if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, UX_CONFIG_FILTERS, "ux_config");
+  const f = applyFilters(filters, CONFIG_FILTERS, "config");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -1096,26 +1098,7 @@ function queryUxAsset(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const ARCHITECTURE_CONFIG_FILTERS = {
-  config_type: { nullable: false },
-  target: { nullable: true },
-  category: { nullable: false },
-  key: { nullable: false },
-  value: { nullable: false },
-};
-
-function queryArchitectureConfig(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM architecture_config";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, ARCHITECTURE_CONFIG_FILTERS, "architecture_config");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
+// (architecture_config merged into queryConfig — see above)
 
 const APPROVED_DEPENDENCY_FILTERS = {
   package: { nullable: false },
@@ -1325,9 +1308,9 @@ const QUERY_DISPATCH = {
   deployment_requirement: queryDeploymentRequirement,
   operational_requirement: queryOperationalRequirement,
   technology_constraint: queryTechnologyConstraint,
-  ux_config: queryUxConfig,
+  config: queryConfig,
   ux_asset: queryUxAsset,
-  architecture_config: queryArchitectureConfig,
+  // (architecture_config merged into config)
   approved_dependency: queryApprovedDependency,
   blocker: queryBlocker,
   project_lesson: queryProjectLesson,

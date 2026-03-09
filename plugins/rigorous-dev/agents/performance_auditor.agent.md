@@ -15,7 +15,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Project source code
-- Architecture observability spec (query via `changelog_query` with entity_type: "architecture_config", filters: { "config_type": "observability" })
+- Architecture observability spec (query via `changelog_query` with entity_type: "config", filters: { "domain": "architecture", "config_type": "observability" })
 - Architecture data model (query via `changelog_query` with entity_type: "data_entity")
 - Architecture API spec (`api_spec.yaml`)
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
