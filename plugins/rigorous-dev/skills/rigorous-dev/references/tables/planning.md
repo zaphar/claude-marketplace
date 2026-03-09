@@ -65,7 +65,7 @@ Central record for one implementation work chunk. A work item groups related dev
 - **Parent:** `iteration` via `iteration_id`.
 - **Children:** `work_item_requirement`, `work_item_component`, `work_item_risk`
 - **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
-- **Referenced by FK in:** `implementation_manifest.work_item_id`
+- **Referenced by FK in:** `plan_external_dependency.work_item_id`
 
 ### MCP tool access
 

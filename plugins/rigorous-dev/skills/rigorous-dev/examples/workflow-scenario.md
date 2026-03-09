@@ -523,7 +523,7 @@ Recorded Entities (in changelog DB):
 - architecture file artifacts (overview, data model, diagrams — committed as markdown docs)
 - api_spec.yaml (file artifact)
 - implementation_plan (phases, work items, checkpoints)
-- implementation_manifest
+- implementation_status (requirement/component status, blockers)
 - test_report
 - security_audit_findings
 - performance_audit_findings

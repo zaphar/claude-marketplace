@@ -370,23 +370,31 @@ describe("work_item with critical_path_sequence", () => {
 // ───────────────────────────────────────────────────────────────
 
 describe("implementation_manifest", () => {
-  it("inserts with files and requirement status", () => {
-    const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "work_item",
+  it("inserts requirement_status and component_status", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "impl", type: "feature", goal: "Implement" },
+      data: { id: "REQ-IMPL1", description: "Impl test req", priority: "must-have", category: "feature" },
+    });
+    handleWriteTool("changelog_insert", {
+      entity_type: "component",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "COMP-IMPL1", name: "ImplComp", purpose: "Test", type: "library" },
     });
     const { readResult } = insertAndQuery(
       "implementation_manifest",
       {
-        work_item_id: ppResult.id,
-        status: "partial",
-        files: [{ path: "src/auth.js", file_operation: "created", purpose: "Auth module" }],
+        requirement_status: [{ requirement_id: "REQ-IMPL1", status: "implemented", notes: "Done" }],
+        component_status: [{ component_id: "COMP-IMPL1", status: "complete", notes: "All good" }],
       },
       { include_related: true }
     );
-    assert.strictEqual(readResult.results[0].status, "partial");
+    assert.strictEqual(readResult.results[0].requirement_status.length, 1);
+    assert.strictEqual(readResult.results[0].requirement_status[0].status, "implemented");
+    assert.strictEqual(readResult.results[0].component_status.length, 1);
+    assert.strictEqual(readResult.results[0].component_status[0].status, "complete");
   });
 });
 

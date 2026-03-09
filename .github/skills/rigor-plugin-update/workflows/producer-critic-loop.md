@@ -46,7 +46,7 @@ A producer timeout is a signal that the work-unit was too large — not a failur
 
 3. **Decompose the remaining work.** Identify which file domains the producer didn't reach and launch focused, single-domain producer calls for each. These scoped calls are much more likely to succeed.
 
-4. **Orchestrator self-completion.** For purely mechanical remaining work — bulk sed renames, updating counts in documentation, removing table entries from lists — the orchestrator may complete these directly rather than launching another producer. Reserve producer calls for changes requiring judgment: restructuring function logic, rewriting SQL queries, updating prose descriptions. The line is: if the change is a deterministic text transformation, the orchestrator can do it; if it requires understanding intent, use a producer.
+4. **No orchestrator self-completion.** The orchestrator never edits plugin files directly — all remaining work, including mechanical transformations (bulk renames, count updates, removing table entries), goes through focused producer calls scoped to a single file domain. This keeps the orchestrator's context lean and ensures all changes are captured in the producer-critic loop.
 
 ## Phase 2: Classify & Validate (Multi-Critic)
 

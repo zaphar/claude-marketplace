@@ -678,125 +678,49 @@ function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
   return { entity_type: "plan_external_dependency", id: result.lastInsertRowid };
 }
 
-function insertImplementationManifest(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
-  const result = db
-    .prepare(
-      `INSERT INTO implementation_manifest
-         (iteration_id, work_item_id, status, lines_of_code, warnings, build_status,
-          version, document_date, requirements_version, architecture_version, language, stdout, stderr, commit_sha,
-          created_at)
-       VALUES (@iteration_id, @work_item_id, @status, @lines_of_code, @warnings, @build_status,
-               @version, @document_date, @requirements_version, @architecture_version, @language, @stdout, @stderr, @commit_sha,
-               @created_at)`
-    )
-    .run({
-      iteration_id,
-      work_item_id: data.work_item_id,
-      status: data.status,
-      lines_of_code: data.lines_of_code ?? null,
-      warnings: data.warnings ?? 0,
-      build_status: data.build_status ?? null,
-      version: meta?.version ?? data.version ?? null,
-      document_date: meta?.document_date ?? data.document_date ?? null,
-      requirements_version: meta?.requirements_version ?? data.requirements_version ?? null,
-      architecture_version: meta?.architecture_version ?? data.architecture_version ?? null,
-      language: meta?.language ?? data.language ?? null,
-      stdout: data.stdout ?? null,
-      stderr: data.stderr ?? null,
-      commit_sha: meta?.commit_sha ?? data.commit_sha ?? null,
-      created_at: now
-    });
-  const manifest_id = result.lastInsertRowid;
+function insertImplementationManifest(db, iteration_id, _revision_id, data) {
+  let lastId;
 
-  const insertFile = db.prepare(
-    "INSERT INTO implementation_file (manifest_id, path, file_operation, purpose, component_id) VALUES (@manifest_id, @path, @file_operation, @purpose, @component_id)"
-  );
-  const insertFileReq = db.prepare(
-    "INSERT OR IGNORE INTO implementation_file_requirement (file_id, requirement_id) VALUES (@file_id, @requirement_id)"
-  );
-  for (const f of data.files ?? []) {
-    const fileResult = insertFile.run({
-      manifest_id,
-      path: f.path,
-      file_operation: f.file_operation,
-      purpose: f.purpose ?? null,
-      component_id: f.component_id ?? null
-    });
-    for (const req_id of f.requirements ?? []) {
-      insertFileReq.run({ file_id: fileResult.lastInsertRowid, requirement_id: req_id });
-    }
-  }
-
+  // Requirement statuses
   const insertReqStatus = db.prepare(
-    "INSERT OR REPLACE INTO implementation_requirement_status (manifest_id, requirement_id, status, notes) VALUES (@manifest_id, @requirement_id, @status, @notes)"
+    "INSERT OR REPLACE INTO implementation_requirement_status (iteration_id, requirement_id, status, notes) VALUES (@iteration_id, @requirement_id, @status, @notes)"
   );
   for (const rs of data.requirement_status ?? []) {
-    insertReqStatus.run({ manifest_id, requirement_id: rs.requirement_id, status: rs.status, notes: rs.notes ?? null });
+    const result = insertReqStatus.run({ iteration_id, requirement_id: rs.requirement_id, status: rs.status, notes: rs.notes ?? null });
+    lastId = result.lastInsertRowid;
   }
 
+  // Component statuses
   const insertCompStatus = db.prepare(
-    "INSERT OR REPLACE INTO implementation_component_status (manifest_id, component_id, status, notes) VALUES (@manifest_id, @component_id, @status, @notes)"
+    "INSERT OR REPLACE INTO implementation_component_status (iteration_id, component_id, status, notes) VALUES (@iteration_id, @component_id, @status, @notes)"
   );
   for (const cs of data.component_status ?? []) {
-    insertCompStatus.run({ manifest_id, component_id: cs.component_id, status: cs.status, notes: cs.notes ?? null });
+    const result = insertCompStatus.run({ iteration_id, component_id: cs.component_id, status: cs.status, notes: cs.notes ?? null });
+    lastId = result.lastInsertRowid;
   }
 
-  const insertEndpoint = db.prepare(
-    "INSERT INTO implementation_api_endpoint (manifest_id, route, http_method, status) VALUES (@manifest_id, @route, @http_method, @status)"
-  );
-  const insertEndpointReq = db.prepare(
-    "INSERT OR IGNORE INTO implementation_api_endpoint_requirement (endpoint_id, requirement_id) VALUES (@endpoint_id, @requirement_id)"
-  );
-  for (const ep of data.api_endpoints ?? []) {
-    const epResult = insertEndpoint.run({ manifest_id, route: ep.route, http_method: ep.http_method, status: ep.status });
-    for (const req_id of ep.requirements ?? []) {
-      insertEndpointReq.run({ endpoint_id: epResult.lastInsertRowid, requirement_id: req_id });
-    }
-  }
-
+  // Blockers
   const insertBlocker = db.prepare(
-    "INSERT INTO implementation_blocker (manifest_id, description, severity, recommendation, needs_escalation) VALUES (@manifest_id, @description, @severity, @recommendation, @needs_escalation)"
+    "INSERT INTO implementation_blocker (iteration_id, description, severity, recommendation, needs_escalation) VALUES (@iteration_id, @description, @severity, @recommendation, @needs_escalation)"
   );
   const insertBlockerReq = db.prepare(
     "INSERT OR IGNORE INTO implementation_blocker_requirement (blocker_id, requirement_id) VALUES (@blocker_id, @requirement_id)"
   );
   for (const blocker of data.blockers ?? []) {
     const blockerResult = insertBlocker.run({
-      manifest_id,
+      iteration_id,
       description: blocker.description,
       severity: blocker.severity,
       recommendation: blocker.recommendation ?? null,
       needs_escalation: blocker.needs_escalation ? 1 : 0
     });
+    lastId = blockerResult.lastInsertRowid;
     for (const req_id of blocker.requirements ?? []) {
       insertBlockerReq.run({ blocker_id: blockerResult.lastInsertRowid, requirement_id: req_id });
     }
   }
 
-  const insertDepAdded = db.prepare(
-    "INSERT INTO implementation_dependency_added (manifest_id, name, version, purpose, license) VALUES (@manifest_id, @name, @version, @purpose, @license)"
-  );
-  for (const dep of data.dependencies_added ?? []) {
-    insertDepAdded.run({ manifest_id, name: dep.name, version: dep.version, purpose: dep.purpose, license: dep.license ?? null });
-  }
-
-  const insertDbMigration = db.prepare(
-    "INSERT INTO implementation_db_migration (manifest_id, name, description, status) VALUES (@manifest_id, @name, @description, @status)"
-  );
-  for (const mig of data.db_migrations ?? []) {
-    insertDbMigration.run({ manifest_id, name: mig.name, description: mig.description ?? null, status: mig.status });
-  }
-
-  const insertChecklistItem = db.prepare(
-    "INSERT INTO implementation_review_checklist (manifest_id, check_name, passed) VALUES (@manifest_id, @check_name, @passed)"
-  );
-  for (const item of data.review_checklist ?? []) {
-    insertChecklistItem.run({ manifest_id, check_name: item.check_name, passed: item.passed ? 1 : 0 });
-  }
-
-  return { entity_type: "implementation_manifest", id: manifest_id };
+  return { entity_type: "implementation_manifest", id: lastId };
 }
 
 function insertProjectContext(db, iteration_id, _revision_id, data) {

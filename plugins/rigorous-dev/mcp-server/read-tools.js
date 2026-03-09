@@ -15,7 +15,7 @@ const ENTITY_TABLE = {
   work_item: "work_item",
   plan_overview: "plan_overview",
   plan_external_dependency: "plan_external_dependency",
-  implementation_manifest: "implementation_manifest",
+  implementation_manifest: "implementation_requirement_status",
   requirement_trace: "requirement_trace",
   project_context: "project_context",
   data_exchange: "data_exchange",
@@ -426,56 +426,42 @@ function queryInfoArchitecture(db, { iteration_id, ids, filters = {}, include_re
   }));
 }
 
-const IMPLEMENTATION_MANIFEST_FILTERS = {
-  work_item_id: { nullable: false },
-  status: { nullable: false },
-  lines_of_code: { nullable: true },
-  warnings: { nullable: true },
-  build_status: { nullable: true },
-  version: { nullable: true },
-  document_date: { nullable: true },
-  requirements_version: { nullable: true },
-  architecture_version: { nullable: true },
-  language: { nullable: true },
-  commit_sha: { nullable: true },
-};
+const IMPLEMENTATION_MANIFEST_FILTERS = {};
 
 function queryImplementationManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM implementation_manifest";
+  // No parent implementation_manifest table — gather iteration_ids from the surviving child tables
+  let sql = "SELECT DISTINCT iteration_id FROM implementation_requirement_status";
   const clauses = [];
   const params = [];
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, IMPLEMENTATION_MANIFEST_FILTERS, "implementation_manifest");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
+
+  // Also check blockers and component status for iterations that have those but no requirement status
+  const iterationIds = new Set(
+    db.prepare(sql).all(...params).map(r => r.iteration_id)
+  );
+  const blockerIterations = db.prepare(
+    "SELECT DISTINCT iteration_id FROM implementation_blocker" + (iteration_id != null ? " WHERE iteration_id = ?" : "")
+  ).all(...(iteration_id != null ? [iteration_id] : []));
+  for (const r of blockerIterations) iterationIds.add(r.iteration_id);
+  const compIterations = db.prepare(
+    "SELECT DISTINCT iteration_id FROM implementation_component_status" + (iteration_id != null ? " WHERE iteration_id = ?" : "")
+  ).all(...(iteration_id != null ? [iteration_id] : []));
+  for (const r of compIterations) iterationIds.add(r.iteration_id);
+
+  const results = [...iterationIds].map(iid => ({ iteration_id: iid }));
   if (!include_related) return results;
+
   return results.map((m) => {
-    const files = db
-      .prepare("SELECT * FROM implementation_file WHERE manifest_id = ?")
-      .all(m.id)
-      .map((fi) => ({
-        ...fi,
-        requirements: db
-          .prepare("SELECT requirement_id FROM implementation_file_requirement WHERE file_id = ?")
-          .all(fi.id)
-          .map((x) => x.requirement_id),
-      }));
-    const api_endpoints = db
-      .prepare("SELECT * FROM implementation_api_endpoint WHERE manifest_id = ?")
-      .all(m.id)
-      .map((ep) => ({
-        ...ep,
-        requirements: db
-          .prepare("SELECT requirement_id FROM implementation_api_endpoint_requirement WHERE endpoint_id = ?")
-          .all(ep.id)
-          .map((x) => x.requirement_id),
-      }));
+    const requirement_status = db
+      .prepare("SELECT * FROM implementation_requirement_status WHERE iteration_id = ?")
+      .all(m.iteration_id);
+    const component_status = db
+      .prepare("SELECT * FROM implementation_component_status WHERE iteration_id = ?")
+      .all(m.iteration_id);
     const blockers = db
-      .prepare("SELECT * FROM implementation_blocker WHERE manifest_id = ?")
-      .all(m.id)
+      .prepare("SELECT * FROM implementation_blocker WHERE iteration_id = ?")
+      .all(m.iteration_id)
       .map((b) => ({
         ...b,
         requirements: db
@@ -485,27 +471,9 @@ function queryImplementationManifest(db, { iteration_id, ids, filters = {}, incl
       }));
     return {
       ...m,
-      files_created: files.filter((fi) => fi.file_operation === "created").length,
-      files_modified: files.filter((fi) => fi.file_operation === "modified").length,
-      files_deleted: files.filter((fi) => fi.file_operation === "deleted").length,
-      files,
-      requirement_status: db
-        .prepare("SELECT * FROM implementation_requirement_status WHERE manifest_id = ?")
-        .all(m.id),
-      component_status: db
-        .prepare("SELECT * FROM implementation_component_status WHERE manifest_id = ?")
-        .all(m.id),
-      api_endpoints,
-      dependencies_added: db
-        .prepare("SELECT * FROM implementation_dependency_added WHERE manifest_id = ?")
-        .all(m.id),
-      db_migrations: db
-        .prepare("SELECT * FROM implementation_db_migration WHERE manifest_id = ?")
-        .all(m.id),
+      requirement_status,
+      component_status,
       blockers,
-      review_checklist: db
-        .prepare("SELECT * FROM implementation_review_checklist WHERE manifest_id = ?")
-        .all(m.id),
     };
   });
 }

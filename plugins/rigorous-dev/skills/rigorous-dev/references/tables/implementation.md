@@ -1,6 +1,6 @@
 # Implementation Domain — Table Design Reference
 
-This document covers the 14 tables that record output produced during the **implementation phase** (senior_developer) and the **test-writing step** (test_writer). It includes all files created or modified, per-requirement and per-component status, API endpoints built, dependencies added, database migrations run, blockers encountered, VCS commits, and intermediate assets.
+This document covers the 6 tables that record output produced during the **implementation phase** (senior_developer) and related cross-cutting tracking. It includes per-requirement and per-component implementation status, blockers encountered, VCS commits, and intermediate assets.
 
 **Producers:** `senior_developer`, `test_writer`
 **Validator:** `senior_developer_critic`
@@ -10,172 +10,53 @@ This document covers the 14 tables that record output produced during the **impl
 
 ## Table of Contents
 
-1. [implementation_manifest](#1-implementation_manifest)
-2. [implementation_file](#2-implementation_file)
-3. [implementation_file_requirement](#3-implementation_file_requirement)
-4. [implementation_requirement_status](#4-implementation_requirement_status)
-5. [implementation_component_status](#5-implementation_component_status)
-6. [implementation_api_endpoint](#6-implementation_api_endpoint)
-7. [implementation_api_endpoint_requirement](#7-implementation_api_endpoint_requirement)
-8. [implementation_dependency_added](#8-implementation_dependency_added)
-9. [implementation_db_migration](#9-implementation_db_migration)
-10. [implementation_blocker](#10-implementation_blocker)
-11. [implementation_blocker_requirement](#11-implementation_blocker_requirement)
-12. [implementation_review_checklist](#12-implementation_review_checklist)
-13. [vcs_commit](#13-vcs_commit)
-14. [intermediate_asset](#14-intermediate_asset)
+1. [implementation_requirement_status](#1-implementation_requirement_status)
+2. [implementation_component_status](#2-implementation_component_status)
+3. [implementation_blocker](#3-implementation_blocker)
+4. [implementation_blocker_requirement](#4-implementation_blocker_requirement)
+5. [vcs_commit](#5-vcs_commit)
+6. [intermediate_asset](#6-intermediate_asset)
 
 ---
 
-## 1. `implementation_manifest`
+## 1. `implementation_requirement_status`
 
 ### Purpose
 
-The root record for one sub-phase of implementation work. Every time the `senior_developer` completes a plan sub-phase it writes exactly one manifest row summarising the outcome: overall status, total lines of code, warning count, and build result. All other implementation tables hang off this row.
+Records the implementation progress of each requirement as assessed by the senior_developer. This is the canonical source of truth for "is REQ-042 done?" from the implementation perspective.
 
 ### Context
 
-The implementation phase is divided into sub-phases that mirror `work_item` rows. `work_item_id` references the `work_item(id)` that was just executed. A manifest is written even when work is partial or blocked so that the critic can inspect what was and was not done.
+Written per iteration. A requirement may appear across iterations; later rows supersede earlier ones. The QA engineer consults this table to determine what has been built and what still needs testing. Uses `INSERT OR REPLACE` on the `UNIQUE(iteration_id, requirement_id)` constraint so re-inserting during the same iteration updates the existing row.
 
 ### Columns
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this manifest belongs to. |
-| `work_item_id` | INTEGER | NO | — | FK → `work_item(id)` | Plan phase that was implemented. |
-| `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
-| `lines_of_code` | INTEGER | YES | NULL | — | Total non-blank, non-comment lines added/changed; NULL if not measured. |
-| `warnings` | INTEGER | YES | 0 | — | Build/lint warning count at time of submission. |
-| `build_status` | TEXT | YES | NULL | CHECK IN ('success','failure') | Result of the build step; NULL if build was not run. |
-| `version` | TEXT | YES | NULL | — | Version string for this manifest (e.g. `1.0.0`). Formerly in `implementation_manifest_metadata`. |
-| `document_date` | TEXT | YES | NULL | — | Creation timestamp (agent-supplied). Formerly `created` in `implementation_manifest_metadata`. |
-| `requirements_version` | TEXT | YES | NULL | — | Version of the requirements document in scope. Formerly in `implementation_manifest_metadata`. |
-| `architecture_version` | TEXT | YES | NULL | — | Version of the architecture document in scope. Formerly in `implementation_manifest_metadata`. |
-| `language` | TEXT | YES | NULL | — | Primary programming language used (e.g. `TypeScript`, `Python`). Formerly in `implementation_manifest_metadata`. |
-| `stdout` | TEXT | YES | NULL | — | Raw stdout from the build/implementation process. |
-| `stderr` | TEXT | YES | NULL | — | Raw stderr from the build/implementation process. |
-| `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA at time of submission; cross-reference with `vcs_commit`. Formerly in `implementation_manifest_metadata`. |
-| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
-
-### Relationships
-
-- **Parent:** `iteration` (via `iteration_id`).
-- **Children:** `implementation_file`, `implementation_requirement_status`, `implementation_component_status`, `implementation_api_endpoint`, `implementation_dependency_added`, `implementation_db_migration`, `implementation_blocker`, `implementation_review_checklist`
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, and review_checklist are inserted in the same call via nested arrays in `data`. Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `stdout`, `stderr`, `commit_sha`) are passed as flat fields or via a backward-compatible `metadata` object. |
-| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach all child tables (files with their requirements, requirement_status, component_status, api_endpoints with their requirements, dependencies_added, db_migrations, blockers with their requirements, review_checklist). Metadata columns are returned as flat fields on the manifest row. |
-| Iteration summary | `iteration_summary` | Returns counts of commits and deliverables alongside phase data; does not enumerate manifest fields directly. |
-
----
-
-## 2. `implementation_file`
-
-### Purpose
-
-Records each individual file that was created, modified, or deleted during a sub-phase. Provides per-file traceability — which component owns the file and what was the intent behind touching it.
-
-### Context
-
-Written as children of `implementation_manifest`. One row per file path per manifest. The `component_id` links to the architecture component responsible for this file, enabling QA to know which components are affected by each file change.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
-| `path` | TEXT | NO | — | — | Repository-relative file path (e.g. `src/api/users.ts`). |
-| `file_operation` | TEXT | NO | — | CHECK IN ('created','modified','deleted') | What happened to this file. |
-| `purpose` | TEXT | YES | NULL | — | Human-readable explanation of why this file was touched. |
-| `component_id` | TEXT | YES | NULL | FK → `component(id)` | Architecture component this file belongs to (e.g. `COMP-001`). |
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-- **Sibling FK:** `component` (via `component_id`)
-- **Children:** `implementation_file_requirement`
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.files[]` in the `implementation_manifest` call. Each element includes `path`, `file_operation`, `purpose`, `component_id`, and `requirements[]`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; file rows are returned as nested children, each with a `requirements` array. |
-
----
-
-## 3. `implementation_file_requirement`
-
-### Purpose
-
-Join table connecting each implementation file to the requirements it helps satisfy. Enables the QA engineer to ask "which files implement REQ-042?" and the critic to verify coverage.
-
-### Context
-
-Many files implement multiple requirements; a single requirement is typically spread across multiple files. This M:N join captures both directions. Populated as part of the `implementation_manifest` insert when `requirements[]` is provided per file entry.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `file_id` | INTEGER | NO | — | FK → `implementation_file(id)`, PK part | The file. |
-| `requirement_id` | TEXT | NO | — | FK → `requirement(id)`, PK part | The requirement (e.g. `REQ-007`). |
-
-**Primary Key:** `(file_id, requirement_id)` — composite, prevents duplicate links.
-
-### Relationships
-
-- **Parents:** `implementation_file` (via `file_id`), `requirement` (via `requirement_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Populated automatically from `data.files[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE` to avoid duplicate constraint errors. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; file rows include a nested `requirements` array of requirement IDs from this join table. |
-
----
-
-## 4. `implementation_requirement_status`
-
-### Purpose
-
-Records the implementation progress of each requirement as assessed by the senior_developer at the end of a sub-phase. This is the canonical source of truth for "is REQ-042 done?" from the implementation perspective.
-
-### Context
-
-Written per manifest. A requirement may appear in multiple manifests across sub-phases; later rows supersede earlier ones. The QA engineer consults this table — alongside `implementation_file_requirement` — to determine what has been built and what still needs testing.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Which sub-phase this status was recorded in. |
-| `requirement_id` | TEXT | NO | — | FK → `requirement(id)` | The requirement being assessed (e.g. `REQ-003`). |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this status belongs to. |
+| `requirement_id` | TEXT | NO | — | FK → `requirement(id)` ON DELETE CASCADE | The requirement being assessed (e.g. `REQ-003`). |
 | `status` | TEXT | NO | — | CHECK IN ('implemented','partial','not_started','blocked','not_applicable') | Implementation state. |
 | `notes` | TEXT | YES | NULL | — | Explanation for non-`implemented` statuses; required when `status` is `partial` or `blocked` in practice. |
 
+**Constraints:**
+- `UNIQUE(iteration_id, requirement_id)` — one status per requirement per iteration; re-inserts update in place.
+
 ### Relationships
 
-- **Parent:** `implementation_manifest` (via `manifest_id`)
+- **Parent:** `iteration` (via `iteration_id`)
 - **Sibling FK:** `requirement` (via `requirement_id`)
 
 ### MCP Tool Access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.requirement_status[]` in the `implementation_manifest` call. Each element: `{ requirement_id, status, notes }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; requirement statuses are returned as the `requirement_status` array. |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Nested under `data.requirement_status[]`. Each element: `{ requirement_id, status, notes }`. Uses `INSERT OR REPLACE`. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach requirement_status, component_status, and blockers. |
 
 ---
 
-## 5. `implementation_component_status`
+## 2. `implementation_component_status`
 
 ### Purpose
 
@@ -183,169 +64,40 @@ Records per-component implementation progress alongside requirement status. Wher
 
 ### Context
 
-Useful for architecture-level dashboards: the critic checks that each component reaches `complete` before the phase exits. A component's status may be `partial` across sub-phases until all its files and requirements are done.
+Useful for architecture-level dashboards: the critic checks that each component reaches `complete` before the phase exits. A component's status may be `partial` across iterations until all its requirements are done. Uses `INSERT OR REPLACE` on the `UNIQUE(iteration_id, component_id)` constraint so re-inserting during the same iteration updates the existing row.
 
 ### Columns
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Sub-phase this status was recorded in. |
-| `component_id` | TEXT | NO | — | FK → `component(id)` | The architecture component (e.g. `COMP-002`). |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this status belongs to. |
+| `component_id` | TEXT | NO | — | FK → `component(id)` ON DELETE CASCADE | The architecture component (e.g. `COMP-002`). |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','not_started') | Build completion state. |
 | `notes` | TEXT | YES | NULL | — | Optional detail for partial or not_started entries. |
 
+**Constraints:**
+- `UNIQUE(iteration_id, component_id)` — one status per component per iteration; re-inserts update in place.
+
 ### Relationships
 
-- **Parent:** `implementation_manifest` (via `manifest_id`)
+- **Parent:** `iteration` (via `iteration_id`)
 - **Sibling FK:** `component` (via `component_id`)
 
 ### MCP Tool Access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.component_status[]` in the `implementation_manifest` call. Each element: `{ component_id, status, notes }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; component statuses are returned as the `component_status` array. |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Nested under `data.component_status[]`. Each element: `{ component_id, status, notes }`. Uses `INSERT OR REPLACE`. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"` with `include_related: true`; component statuses are returned as the `component_status` array. |
 
 ---
 
-## 6. `implementation_api_endpoint`
+## 3. `implementation_blocker`
 
 ### Purpose
 
-Records each HTTP API endpoint actually implemented (as opposed to planned) during a sub-phase. Allows comparison against `work_item_api_endpoint` to confirm delivery.
-
-### Context
-
-The QA engineer uses this table to know which endpoints exist and which are only stubbed, so integration tests can be scoped correctly. `stubbed` means the route exists but returns mock data; `complete` means the full logic is wired up.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
-| `route` | TEXT | NO | — | UNIQUE with (`manifest_id`, `http_method`) | URL path pattern (e.g. `/api/v1/users/:id`). |
-| `http_method` | TEXT | NO | — | UNIQUE with (`manifest_id`, `route`) | HTTP verb: GET, POST, PUT, PATCH, DELETE, etc. |
-| `status` | TEXT | NO | — | CHECK IN ('complete','stubbed','not_started') | Implementation state of this endpoint. |
-
-**Constraints:**
-- `UNIQUE(manifest_id, route, http_method)` — prevents recording the same endpoint (route + HTTP method combination) twice within a manifest.
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-- **Children:** `implementation_api_endpoint_requirement`
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.api_endpoints[]` in the `implementation_manifest` call. Each element: `{ route, http_method, status, requirements[] }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; endpoints are returned as the `api_endpoints` array, each with a nested `requirements` array. |
-
----
-
-## 7. `implementation_api_endpoint_requirement`
-
-### Purpose
-
-Join table linking implemented API endpoints to the requirements they fulfil. Enables traceability from HTTP surface to business requirements.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `endpoint_id` | INTEGER | NO | — | FK → `implementation_api_endpoint(id)`, PK part | The endpoint. |
-| `requirement_id` | TEXT | NO | — | FK → `requirement(id)`, PK part | The requirement (e.g. `REQ-011`). |
-
-**Primary Key:** `(endpoint_id, requirement_id)` — composite.
-
-### Relationships
-
-- **Parents:** `implementation_api_endpoint` (via `endpoint_id`), `requirement` (via `requirement_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Populated from `data.api_endpoints[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; endpoint rows include a nested `requirements` array of requirement IDs from this join table. |
-
----
-
-## 8. `implementation_dependency_added`
-
-### Purpose
-
-Catalogues third-party packages or libraries added to the project during implementation. Feeds into security/license audits and complements the pre-approved `approved_dependency` architecture table with what was actually used.
-
-### Context
-
-The senior_developer must record every `npm install`, `pip install`, `go get`, etc. here. This allows the critic and QA to spot unapproved dependencies and confirm all dependencies are licensed correctly.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Sub-phase in which the dependency was added. |
-| `name` | TEXT | NO | — | — | Package name (e.g. `express`, `pydantic`). |
-| `version` | TEXT | NO | — | — | Exact version pinned (e.g. `4.18.2`). |
-| `purpose` | TEXT | NO | — | — | Why this dependency was added. |
-| `license` | TEXT | YES | NULL | — | SPDX license identifier (e.g. `MIT`, `Apache-2.0`); NULL if unknown at time of entry. |
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.dependencies_added[]` in the `implementation_manifest` call. Each element: `{ name, version, purpose, license }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; dependencies are returned as the `dependencies_added` array. |
-
----
-
-## 9. `implementation_db_migration`
-
-### Purpose
-
-Tracks each database migration script created or applied during implementation. Provides the ops and QA teams with a clear list of schema changes that need to be run before the code can be deployed.
-
-### Context
-
-Migrations may be `created` (file written but not yet run), `pending` (queued for the next deploy), or `applied` (already executed against the database). This status helps QA and audit agents verify that all schema changes have been properly executed.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Sub-phase that produced this migration. |
-| `name` | TEXT | NO | — | — | Migration file name or identifier (e.g. `0012_add_users_table`). |
-| `description` | TEXT | YES | NULL | — | Human-readable summary of schema changes. |
-| `status` | TEXT | NO | — | CHECK IN ('created','applied','pending') | Lifecycle state of the migration. |
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.db_migrations[]` in the `implementation_manifest` call. Each element: `{ name, description, status }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; migrations are returned as the `db_migrations` array. |
-
----
-
-## 10. `implementation_blocker`
-
-### Purpose
-
-Records any impediment the senior_developer encountered during a sub-phase that prevented complete implementation. Blockers are the primary signal used by the senior_developer_critic to decide whether to reject a revision and escalate.
+Records any impediment the senior_developer encountered during implementation that prevented complete work. Blockers are the primary signal used by the senior_developer_critic to decide whether to reject a revision and escalate.
 
 ### Context
 
@@ -356,27 +108,27 @@ Blockers have three severity levels. `needs_escalation = 1` flags that the senio
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this blocker belongs to. |
 | `description` | TEXT | NO | — | — | Full description of the blocker. |
 | `severity` | TEXT | NO | — | CHECK IN ('critical','major','minor') | Impact level: `critical` = work cannot proceed; `major` = significant workaround needed; `minor` = inconvenience only. |
 | `recommendation` | TEXT | YES | NULL | — | Suggested resolution. |
-| `needs_escalation` | INTEGER | YES | 0 | — | Boolean (0/1). `1` means the developer believes this cannot be resolved without outside input. |
+| `needs_escalation` | INTEGER | NO | 0 | — | Boolean (0/1). `1` means the developer believes this cannot be resolved without outside input. |
 
 ### Relationships
 
-- **Parent:** `implementation_manifest` (via `manifest_id`)
+- **Parent:** `iteration` (via `iteration_id`)
 - **Children:** `implementation_blocker_requirement`
 
 ### MCP Tool Access
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.blockers[]` in the `implementation_manifest` call. Each element: `{ description, severity, recommendation, needs_escalation, requirements[] }`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; blockers are returned as the `blockers` array, each with a nested `requirements` array. |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Nested under `data.blockers[]`. Each element: `{ description, severity, recommendation, needs_escalation, requirements[] }`. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"` with `include_related: true`; blockers are returned as the `blockers` array, each with a nested `requirements` array. |
 
 ---
 
-## 11. `implementation_blocker_requirement`
+## 4. `implementation_blocker_requirement`
 
 ### Purpose
 
@@ -386,8 +138,8 @@ Join table associating each blocker with the requirements it prevents from being
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
-| `blocker_id` | INTEGER | NO | — | FK → `implementation_blocker(id)`, PK part | The blocker. |
-| `requirement_id` | TEXT | NO | — | FK → `requirement(id)`, PK part | The blocked requirement (e.g. `REQ-014`). |
+| `blocker_id` | INTEGER | NO | — | FK → `implementation_blocker(id)` ON DELETE CASCADE, PK part | The blocker. |
+| `requirement_id` | TEXT | NO | — | FK → `requirement(id)` ON DELETE CASCADE, PK part | The blocked requirement (e.g. `REQ-014`). |
 
 **Primary Key:** `(blocker_id, requirement_id)` — composite.
 
@@ -400,43 +152,11 @@ Join table associating each blocker with the requirements it prevents from being
 | Operation | Tool | Notes |
 |-----------|------|-------|
 | Insert | `changelog_insert` | Populated from `data.blockers[n].requirements[]` in the `implementation_manifest` call. Uses `INSERT OR IGNORE`. |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; blocker rows include a nested `requirements` array of requirement IDs from this join table. |
+| Query | `changelog_query` | `entity_type: "implementation_manifest"` with `include_related: true`; blocker rows include a nested `requirements` array of requirement IDs from this join table. |
 
 ---
 
-## 12. `implementation_review_checklist`
-
-### Purpose
-
-Stores the results of the senior_developer's self-review checklist at the end of each sub-phase. Functions as a structured pre-flight check before submitting to the critic.
-
-### Context
-
-Typical checklist items include: "all tests pass", "no hardcoded secrets", "API contracts match spec", "migrations are reversible". Each item is either passed (`1`) or not (`0`). The critic may reject if mandatory items are failed.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `manifest_id` | INTEGER | NO | — | FK → `implementation_manifest(id)` | Parent manifest. |
-| `check_name` | TEXT | NO | — | — | Name of the checklist item (e.g. `"all_tests_pass"`). |
-| `passed` | INTEGER | YES | 0 | — | Boolean (0/1). `1` = check passed. |
-
-### Relationships
-
-- **Parent:** `implementation_manifest` (via `manifest_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | Nested under `data.review_checklist[]` in the `implementation_manifest` call. Each element: `{ check_name, passed }`. `passed` is treated as boolean (truthy → 1, falsy → 0). |
-| Query | `changelog_query` | Query `implementation_manifest` with `include_related: true`; checklist items are returned as the `review_checklist` array. |
-
----
-
-## 13. `vcs_commit`
+## 5. `vcs_commit`
 
 ### Purpose
 
@@ -474,7 +194,7 @@ Links a Git (or Jujutsu) commit SHA to an iteration and optionally to a specific
 
 ---
 
-## 14. `intermediate_asset`
+## 6. `intermediate_asset`
 
 ### Purpose
 
@@ -513,40 +233,25 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ```
 iteration
- ├── implementation_manifest (iteration_id)
- │    ├── implementation_file (manifest_id)
- │    │    └── implementation_file_requirement (file_id, requirement_id)
- │    ├── implementation_requirement_status (manifest_id, requirement_id)
- │    ├── implementation_component_status (manifest_id, component_id)
- │    ├── implementation_api_endpoint (manifest_id)
- │    │    └── implementation_api_endpoint_requirement (endpoint_id, requirement_id)
- │    ├── implementation_dependency_added (manifest_id)
- │    ├── implementation_db_migration (manifest_id)
- │    ├── implementation_blocker (manifest_id)
- │    │    └── implementation_blocker_requirement (blocker_id, requirement_id)
- │    ├── implementation_review_checklist (manifest_id)
-iteration
+ ├── implementation_requirement_status (iteration_id, requirement_id)
+ ├── implementation_component_status (iteration_id, component_id)
+ ├── implementation_blocker (iteration_id)
+ │    └── implementation_blocker_requirement (blocker_id, requirement_id)
  ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
-iteration
  └── intermediate_asset (phase_id, iteration_id)
 ```
 
 ---
 
-## All Child Tables Fully Wired
+## Implementation Status & Blocker Tracking
 
-All 11 child tables of `implementation_manifest` are fully supported via `changelog_insert` (nested arrays in `data`) and `changelog_query` (returned when `include_related: true`). Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields on the manifest itself (or via a backward-compatible `metadata` object). No direct SQL is required.
+All 4 implementation tables (`implementation_requirement_status`, `implementation_component_status`, `implementation_blocker`, `implementation_blocker_requirement`) are inserted via `changelog_insert` with `entity_type: "implementation_manifest"`. Requirement and component status tables use `INSERT OR REPLACE` on their UNIQUE constraints, while blockers use plain `INSERT`. Querying with `include_related: true` returns all related rows grouped by iteration.
 
-| Nested key in `data` | Child table | Notes |
-|-----------------------|-------------|-------|
-| `files[]` | `implementation_file` + `implementation_file_requirement` | Each file entry accepts `requirements[]` for the join table. |
+| Nested key in `data` | Table | Notes |
+|-----------------------|-------|-------|
 | `requirement_status[]` | `implementation_requirement_status` | `{ requirement_id, status, notes }` |
 | `component_status[]` | `implementation_component_status` | `{ component_id, status, notes }` |
-| `api_endpoints[]` | `implementation_api_endpoint` + `implementation_api_endpoint_requirement` | Each endpoint accepts `requirements[]` for the join table. |
 | `blockers[]` | `implementation_blocker` + `implementation_blocker_requirement` | Each blocker accepts `requirements[]` for the join table. |
-| `dependencies_added[]` | `implementation_dependency_added` | `{ name, version, purpose, license }` |
-| `db_migrations[]` | `implementation_db_migration` | `{ name, description, status }` |
-| `review_checklist[]` | `implementation_review_checklist` | `{ check_name, passed }` |
 
 ---
 
@@ -555,9 +260,8 @@ All 11 child tables of `implementation_manifest` are fully supported via `change
 | This domain references | Via column | Why |
 |------------------------|-----------|-----|
 | `iteration` | `iteration_id` | All rows scoped to an iteration (direct FK). |
-| `iteration` | `iteration_id` | Producer-critic loop tracking (iteration-scoped). |
 | `phase` | `phase_id` | Phase-level VCS and asset scoping. |
-| `requirement` | `requirement_id` | Traceability from code to requirements. |
-| `component` | `component_id` | Traceability from code to architecture. |
+| `requirement` | `requirement_id` | Traceability from implementation status and blockers to requirements. |
+| `component` | `component_id` | Traceability from implementation status to architecture. |
 
 The QA engineer reads `implementation_requirement_status` → `requirement` (with the `acceptance_criteria` JSON column) to build the test matrix without re-reading requirements from scratch.

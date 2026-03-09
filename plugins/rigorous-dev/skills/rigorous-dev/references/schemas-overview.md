@@ -22,7 +22,7 @@ Four tables form the backbone — everything else hangs off them:
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`iteration_id` (25 entity tables):** Most entity tables carry `iteration_id` (NOT NULL, FK → `iteration`). This includes both producer-critic artifacts and iteration-scoped context tables: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`, `requirement`, `requirement_trace`, `adr`, `component`, `approved_dependency`, `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset`, `work_item`, `plan_overview`, `implementation_manifest`, `intermediate_asset`, `test_report`, `security_audit_finding`, `performance_audit_finding`.
+- **`iteration_id` (27 entity tables):** Most entity tables carry `iteration_id` (NOT NULL, FK → `iteration`). This includes both producer-critic artifacts and iteration-scoped context tables: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`, `requirement`, `requirement_trace`, `adr`, `component`, `approved_dependency`, `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset`, `work_item`, `plan_overview`, `implementation_requirement_status`, `implementation_component_status`, `implementation_blocker`, `intermediate_asset`, `test_report`, `security_audit_finding`, `performance_audit_finding`.
 - **`project_id` only (1 table):** `persona` is project-scoped — it carries `project_id` (NOT NULL, FK → `project`) and an informational `introduced_in_iteration_id` (FK → `iteration`, ON DELETE SET NULL).
 
 ## Requirements Domain
@@ -106,16 +106,9 @@ Changelog entities follow a two-tier scoping pattern:
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `implementation_manifest` | senior_developer | Per-phase implementation summary — status, files changed, tests, and version provenance metadata. |
-| `implementation_file` | senior_developer | Each file created/modified with purpose. |
-| `implementation_file_requirement` | senior_developer | File-to-requirement traceability. |
 | `implementation_requirement_status` | senior_developer | Per-requirement implementation progress. |
 | `implementation_component_status` | senior_developer | Per-component implementation progress. |
-| `implementation_api_endpoint` | senior_developer | APIs actually implemented (vs. planned). |
-| `implementation_dependency_added` | senior_developer | Dependencies added during implementation. |
-| `implementation_db_migration` | senior_developer | Migrations actually run. |
 | `implementation_blocker` / `_blocker_requirement` | senior_developer | Issues encountered and affected requirements. |
-| `implementation_review_checklist` | senior_developer | Self-review items. |
 | `vcs_commit` | (commit_link tool) | Git/jj commits linked to iterations. |
 | `intermediate_asset` | senior_developer | Build artifacts. |
 
@@ -201,7 +194,7 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 53 tables with links to their detailed design documents.
+All 45 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
@@ -214,18 +207,10 @@ All 53 tables with links to their detailed design documents.
 | `component_dependency` | [architecture](tables/architecture.md) |
 | `component_interface` | [architecture](tables/architecture.md) |
 | `data_exchange` | [requirements](tables/requirements.md) |
-| `implementation_api_endpoint` | [implementation](tables/implementation.md) |
-| `implementation_api_endpoint_requirement` | [implementation](tables/implementation.md) |
 | `implementation_blocker` | [implementation](tables/implementation.md) |
 | `implementation_blocker_requirement` | [implementation](tables/implementation.md) |
 | `implementation_component_status` | [implementation](tables/implementation.md) |
-| `implementation_db_migration` | [implementation](tables/implementation.md) |
-| `implementation_dependency_added` | [implementation](tables/implementation.md) |
-| `implementation_file` | [implementation](tables/implementation.md) |
-| `implementation_file_requirement` | [implementation](tables/implementation.md) |
-| `implementation_manifest` | [implementation](tables/implementation.md) |
 | `implementation_requirement_status` | [implementation](tables/implementation.md) |
-| `implementation_review_checklist` | [implementation](tables/implementation.md) |
 | `info_architecture` | [ux-design](tables/ux-design.md) |
 | `integration_test_boundary` | [architecture](tables/architecture.md) |
 | `intermediate_asset` | [implementation](tables/implementation.md) |
@@ -259,4 +244,4 @@ All 53 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 53 tables across 10 domains**
+**Total: 45 tables across 10 domains**

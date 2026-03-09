@@ -88,21 +88,14 @@ describe("CHECK constraints", () => {
     );
   });
 
-  it("rejects invalid implementation_manifest status", () => {
-    // Need a valid work_item_id first
-    const pp = handleWriteTool("changelog_insert", {
-      entity_type: "work_item",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "p1", type: "feature", goal: "G" },
-    });
+  it("rejects invalid implementation_requirement_status status", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
           entity_type: "implementation_manifest",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
-          data: { work_item_id: pp.id, status: "invalid" },
+          data: { requirement_status: [{ requirement_id: "REQ-001", status: "invalid" }] },
         }),
       /CHECK constraint/
     );

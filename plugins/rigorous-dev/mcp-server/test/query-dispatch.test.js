@@ -940,13 +940,7 @@ describe("queryWorkItem enrichment", () => {
 
 describe("queryImplementationManifest enrichment", () => {
   it("attaches all child data with nested requirements when include_related is true", () => {
-    // Prerequisites: work_item, requirements, component
-    const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "work_item",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "impl-phase", type: "implementation", goal: "Build it" },
-    });
+    // Prerequisites: requirements, component
     handleWriteTool("changelog_insert", {
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
@@ -966,22 +960,12 @@ describe("queryImplementationManifest enrichment", () => {
       data: { id: "COMP-IM1", name: "Core", purpose: "Core logic", type: "library" },
     });
 
-    // Insert implementation_manifest with all child data
-    const mResult = handleWriteTool("changelog_insert", {
+    // Insert implementation data (no parent manifest table — just child data)
+    handleWriteTool("changelog_insert", {
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
-        work_item_id: ppResult.id,
-        status: "complete",
-        lines_of_code: 500,
-        warnings: 2,
-        build_status: "success",
-        files: [
-          { path: "src/main.js", file_operation: "created", purpose: "Entry point", requirements: ["REQ-IM1"] },
-          { path: "src/utils.js", file_operation: "created", purpose: "Utilities" },
-          { path: "src/old.js", file_operation: "modified", purpose: "Refactored", requirements: ["REQ-IM1", "REQ-IM2"] },
-        ],
         requirement_status: [
           { requirement_id: "REQ-IM1", status: "implemented", notes: "Done" },
           { requirement_id: "REQ-IM2", status: "partial" },
@@ -989,22 +973,8 @@ describe("queryImplementationManifest enrichment", () => {
         component_status: [
           { component_id: "COMP-IM1", status: "complete", notes: "All tests pass" },
         ],
-        api_endpoints: [
-          { route: "/api/items", http_method: "GET", status: "complete", requirements: ["REQ-IM2"] },
-          { route: "/api/items", http_method: "POST", status: "stubbed" },
-        ],
-        dependencies_added: [
-          { name: "express", version: "4.18.0", purpose: "HTTP server", license: "MIT" },
-        ],
-        db_migrations: [
-          { name: "001_init", description: "Initial tables", status: "applied" },
-        ],
         blockers: [
           { description: "Missing API key", severity: "major", recommendation: "Get from admin", requirements: ["REQ-IM2"] },
-        ],
-        review_checklist: [
-          { check_name: "Tests pass", passed: true },
-          { check_name: "Linter clean", passed: false },
         ],
       },
     });
@@ -1012,28 +982,11 @@ describe("queryImplementationManifest enrichment", () => {
     // Query with include_related
     const r = handleReadTool("changelog_query", {
       entity_type: "implementation_manifest",
-      ids: [mResult.id],
+      iteration_id: seed.iteration_id,
       include_related: true,
     });
     assert.strictEqual(r.count, 1);
     const m = r.results[0];
-
-    // Computed counts
-    assert.strictEqual(m.files_created, 2);
-    assert.strictEqual(m.files_modified, 1);
-    assert.strictEqual(m.files_deleted, 0);
-
-    // Files with nested requirements
-    assert.strictEqual(m.files.length, 3);
-    const mainFile = m.files.find((f) => f.path === "src/main.js");
-    assert.ok(mainFile);
-    assert.deepStrictEqual(mainFile.requirements, ["REQ-IM1"]);
-    assert.strictEqual(mainFile.file_operation, "created");
-    assert.ok(mainFile.id); // autoincrement id
-    const oldFile = m.files.find((f) => f.path === "src/old.js");
-    assert.deepStrictEqual(oldFile.requirements.sort(), ["REQ-IM1", "REQ-IM2"]);
-    const utilsFile = m.files.find((f) => f.path === "src/utils.js");
-    assert.deepStrictEqual(utilsFile.requirements, []);
 
     // Requirement status
     assert.strictEqual(m.requirement_status.length, 2);
@@ -1046,103 +999,50 @@ describe("queryImplementationManifest enrichment", () => {
     assert.strictEqual(m.component_status[0].component_id, "COMP-IM1");
     assert.strictEqual(m.component_status[0].status, "complete");
 
-    // API endpoints with nested requirements
-    assert.strictEqual(m.api_endpoints.length, 2);
-    const getEp = m.api_endpoints.find((ep) => ep.http_method === "GET");
-    assert.deepStrictEqual(getEp.requirements, ["REQ-IM2"]);
-    const postEp = m.api_endpoints.find((ep) => ep.http_method === "POST");
-    assert.deepStrictEqual(postEp.requirements, []);
-
-    // Dependencies added
-    assert.strictEqual(m.dependencies_added.length, 1);
-    assert.strictEqual(m.dependencies_added[0].name, "express");
-    assert.strictEqual(m.dependencies_added[0].license, "MIT");
-
-    // DB migrations
-    assert.strictEqual(m.db_migrations.length, 1);
-    assert.strictEqual(m.db_migrations[0].name, "001_init");
-    assert.strictEqual(m.db_migrations[0].status, "applied");
-
     // Blockers with nested requirements
     assert.strictEqual(m.blockers.length, 1);
     assert.strictEqual(m.blockers[0].description, "Missing API key");
     assert.deepStrictEqual(m.blockers[0].requirements, ["REQ-IM2"]);
-
-    // Review checklist
-    assert.strictEqual(m.review_checklist.length, 2);
-    const testsCheck = m.review_checklist.find((c) => c.check_name === "Tests pass");
-    assert.strictEqual(testsCheck.passed, 1);
-    const lintCheck = m.review_checklist.find((c) => c.check_name === "Linter clean");
-    assert.strictEqual(lintCheck.passed, 0);
   });
 
   it("does not attach child data when include_related is false", () => {
-    const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "work_item",
+    handleWriteTool("changelog_insert", {
+      entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 2, name: "impl-no-enrich", type: "implementation", goal: "Test" },
+      data: { id: "REQ-NOREL", description: "No-relate test", priority: "must-have", category: "feature" },
     });
-    const mResult = handleWriteTool("changelog_insert", {
+    handleWriteTool("changelog_insert", {
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: {
-        work_item_id: ppResult.id,
-        status: "partial",
-        files: [{ path: "a.js", file_operation: "created" }],
-        review_checklist: [{ check_name: "Smoke test", passed: true }],
+        requirement_status: [{ requirement_id: "REQ-NOREL", status: "not_started" }],
       },
     });
     const r = handleReadTool("changelog_query", {
       entity_type: "implementation_manifest",
-      ids: [mResult.id],
+      iteration_id: seed.iteration_id,
     });
-    assert.strictEqual(r.count, 1);
+    assert.ok(r.count >= 1);
     const m = r.results[0];
-    assert.strictEqual(m.files, undefined);
-    assert.strictEqual(m.files_created, undefined);
-    assert.strictEqual(m.files_modified, undefined);
-    assert.strictEqual(m.files_deleted, undefined);
     assert.strictEqual(m.requirement_status, undefined);
     assert.strictEqual(m.component_status, undefined);
-    assert.strictEqual(m.api_endpoints, undefined);
-    assert.strictEqual(m.dependencies_added, undefined);
-    assert.strictEqual(m.db_migrations, undefined);
     assert.strictEqual(m.blockers, undefined);
-    assert.strictEqual(m.review_checklist, undefined);
   });
 
-  it("returns empty arrays for manifest with no children", () => {
-    const ppResult = handleWriteTool("changelog_insert", {
-      entity_type: "work_item",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { phase_number: 3, name: "impl-empty", type: "implementation", goal: "Empty" },
+  it("returns empty arrays for iteration with no implementation data", () => {
+    // Create a fresh iteration with no implementation data
+    const newIter = handleWriteTool("iteration_create", {
+      project_name: "Empty Impl Test",
+      project_description: "Test project",
     });
-    const mResult = handleWriteTool("changelog_insert", {
-      entity_type: "implementation_manifest",
-      iteration_id: seed.iteration_id,
-      revision_id: seed.revision_id,
-      data: { work_item_id: ppResult.id, status: "complete" },
-    });
+    // Insert a requirement_status to have at least one iteration, then query a different one
     const r = handleReadTool("changelog_query", {
       entity_type: "implementation_manifest",
-      ids: [mResult.id],
+      iteration_id: newIter.iteration_id,
       include_related: true,
     });
-    assert.strictEqual(r.count, 1);
-    const m = r.results[0];
-    assert.strictEqual(m.files_created, 0);
-    assert.strictEqual(m.files_modified, 0);
-    assert.strictEqual(m.files_deleted, 0);
-    assert.deepStrictEqual(m.files, []);
-    assert.deepStrictEqual(m.requirement_status, []);
-    assert.deepStrictEqual(m.component_status, []);
-    assert.deepStrictEqual(m.api_endpoints, []);
-    assert.deepStrictEqual(m.dependencies_added, []);
-    assert.deepStrictEqual(m.db_migrations, []);
-    assert.deepStrictEqual(m.blockers, []);
-    assert.deepStrictEqual(m.review_checklist, []);
+    assert.strictEqual(r.count, 0);
   });
 });
