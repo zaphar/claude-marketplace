@@ -40,7 +40,7 @@ These terms have precise meanings throughout all skill files. Each word has exac
 | **Change request** | The user's description of what to change, confirmed in Update Mode Step 1. |
 | **Complexity** | Simple, Moderate, or Complex. Determines the producer model. |
 | **Agent group** | One of 4 parallel schema critic partitions (Group A–D). |
-| **Decisions ledger** | Persistent file at `.scratch/<critic-name>/audit-decisions.md` recording approve/reject/skip decisions. |
+| **Decisions ledger** | The `decision` table in the audit database at `.scratch/rigor-plugin-update/audit.db`. Records approve/reject/skip decisions with optional `supersedes` links for carry-forward across audit runs. |
 | **Consolidated report** | Merged output from all agent groups. Contains the Findings Index and group details. |
 | **Orchestrator** | You, the AI running this skill. Coordinates agents and reports to the user. |
 | **Consolidator** | The `rigor_audit_consolidator` agent. Reads critic reports, inserts findings into `audit.db`, deduplicates against prior decisions, and (for schema audit) writes the consolidated report. Bridges critics and the orchestrator. |
@@ -90,7 +90,7 @@ All agents have deep embedded knowledge of the plugin's file structure, cross-re
 1. **Critic always uses Opus** — Catching subtle cross-reference bugs requires the strongest model.
 2. **Schema critic always uses Opus** — All 4 audit groups must use `model: "claude-opus-4.6"` — no exceptions.
 3. **MCP server critic always uses Opus** — Correctness auditing requires the strongest model — no exceptions.
-4. **Consolidation agent always uses Opus** — Deduplication correctness (fingerprint matching, carry-forward logic) requires the strongest model — no exceptions.
+4. **Consolidator always uses Opus** — Deduplication correctness (fingerprint matching, carry-forward logic) requires the strongest model — no exceptions.
 5. **Producer defaults to Opus** — Only use Sonnet for obviously simple, single-file changes.
 6. **Max 3 iterations** — After 3 producer-critic loops, escalate to the user.
 7. **Critics are read-only** — They never modify files.

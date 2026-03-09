@@ -24,7 +24,23 @@ Offer choices via ask_user:
 - **INTERNALS.md Accuracy only (Dimension 7)** — Verify every claim in INTERNALS.md against actual source code, surface conflicts with fix recommendations
 - **Let me specify** — User picks individual dimensions
 
-## Step 2: Launch MCP Server Critic
+## Step 2: Bootstrap Audit Database
+
+Initialize the audit database and create an audit run:
+
+```bash
+mkdir -p .scratch/rigor-plugin-update
+sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
+```
+
+Create the run record:
+
+```bash
+sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
+  "INSERT INTO audit_run (id, mode) VALUES ('<timestamp>_mcp_server_audit', 'mcp_server_audit');"
+```
+
+## Step 3: Launch MCP Server Critic
 
 Launch the `rigor_mcp_server_critic` agent (always `claude-opus-4.6`) with a scoped prompt.
 
@@ -56,28 +72,12 @@ dimensions systematically. Persist your report to .scratch/rigor-mcp-server-crit
 
 Always use `model: "claude-opus-4.6"` — no exceptions. Correctness auditing requires the strongest model.
 
-## Step 3: Bootstrap Audit Database
-
-Initialize the audit database and create an audit run:
-
-```bash
-mkdir -p .scratch/rigor-plugin-update
-sqlite3 .scratch/rigor-plugin-update/audit.db < .github/skills/rigor-plugin-update/audit-schema.sql
-```
-
-Create the run record:
-
-```bash
-sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
-  "INSERT INTO audit_run (id, mode) VALUES ('<timestamp>_mcp_server_audit', 'mcp_server_audit');"
-```
-
 ## Step 4: Consolidate Findings
 
 After the critic completes, collect the persisted report path from its output — the `.scratch/rigor-mcp-server-critic/<date>/` path it was told to write to. Do NOT read the report yourself.
 
 Launch the `rigor_audit_consolidator` agent (`claude-opus-4.6`, `mode: "sync"`) with:
-- `audit_run_id`: the run ID created in Step 3
+- `audit_run_id`: the run ID created in Step 2
 - `mode`: `mcp_server_audit`
 - `report_paths`: the single MCP server critic report path, labeled with critic name `mcp_server`
 - `db_path`: `.scratch/rigor-plugin-update/audit.db`
