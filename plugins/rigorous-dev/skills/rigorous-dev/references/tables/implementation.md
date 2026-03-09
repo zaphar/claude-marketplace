@@ -42,7 +42,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Producer-critic revision attempt. |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this manifest belongs to. |
 | `plan_phase_id` | INTEGER | NO | — | FK → `plan_phase(id)` | Plan phase that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
 | `lines_of_code` | INTEGER | YES | NULL | — | Total non-blank, non-comment lines added/changed; NULL if not measured. |
@@ -60,7 +60,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`).
 - **Children:** `implementation_file`, `implementation_requirement_status`, `implementation_component_status`, `implementation_api_endpoint`, `implementation_dependency_added`, `implementation_db_migration`, `implementation_blocker`, `implementation_review_checklist`
 
 ### MCP Tool Access
@@ -490,7 +490,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase in which it was created. |
-| `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Revision attempt that produced it. |
+| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this asset belongs to. |
 | `asset_type` | TEXT | NO | — | — | Free-form semantic type of the asset (e.g., `work_item`, `plan`, `note`, `commit_ref`, `file_ref`). |
 | `title` | TEXT | NO | — | — | Short descriptive title. |
 | `content` | TEXT | YES | NULL | — | Full content; may be NULL for `commit_ref`/`file_ref` where the identifier is in `title`. |
@@ -498,7 +498,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ### Relationships
 
-- **Parents:** `phase` (via `phase_id`), `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parents:** `phase` (via `phase_id`), `iteration` (via `iteration_id`).
 
 ### MCP Tool Access
 
@@ -512,8 +512,8 @@ Stores transient work items, notes, plans, and references that the senior_develo
 ## Entity Relationship Summary
 
 ```
-revision  (→ phase → iteration)
- ├── implementation_manifest (revision_id)
+iteration
+ ├── implementation_manifest (iteration_id)
  │    ├── implementation_file (manifest_id)
  │    │    └── implementation_file_requirement (file_id, requirement_id)
  │    ├── implementation_requirement_status (manifest_id, requirement_id)
@@ -527,8 +527,8 @@ revision  (→ phase → iteration)
  │    ├── implementation_review_checklist (manifest_id)
 iteration
  ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
-revision  (→ phase → iteration)
- └── intermediate_asset (phase_id, revision_id)
+iteration
+ └── intermediate_asset (phase_id, iteration_id)
 ```
 
 ---
@@ -554,8 +554,8 @@ All 11 child tables of `implementation_manifest` are fully supported via `change
 
 | This domain references | Via column | Why |
 |------------------------|-----------|-----|
-| `iteration` | derived via `revision → phase → iteration` | All rows scoped to an iteration (derived, not direct FK on most tables). |
-| `revision` | `revision_id` | Producer-critic loop tracking. |
+| `iteration` | `iteration_id` | All rows scoped to an iteration (direct FK). |
+| `iteration` | `iteration_id` | Producer-critic loop tracking (iteration-scoped). |
 | `phase` | `phase_id` | Phase-level VCS and asset scoping. |
 | `requirement` | `requirement_id` | Traceability from code to requirements. |
 | `component` | `component_id` | Traceability from code to architecture. |

@@ -89,7 +89,7 @@ Record each finding individually as a separate DB row via `changelog_insert`. Do
 
 For each finding, call:
 ```
-changelog_insert(entity_type: "performance_audit_finding", iteration_id: <current>, revision_id: <current>, data: {
+changelog_insert(entity_type: "performance_audit_finding", iteration_id: <current>, data: {
   category: "database" | "memory" | "concurrency" | "api" | "frontend" | "algorithm" | "logging",
   severity: "critical" | "high" | "medium" | "low" | "informational",
   title: "<finding title>",

@@ -2,7 +2,7 @@
 
 The requirements domain captures the full output of the **requirements_analyst** agent during the requirements phase of a workflow iteration. It models the problem space before any architectural or implementation decisions are made: who the users are, what the system must do, how success is measured, what deployment environment is targeted, and what operational and technology constraints apply.
 
-Every record in this domain is scoped to an iteration — either directly (via `iteration_id`) or indirectly (via `revision_id` → phase → iteration) — meaning the full set of requirements is versioned per iteration. The one exception is `persona`, which is project-scoped (via `project_id`) since personas represent the app's users across all iterations. When the **requirements_critic** validates or rejects the analyst's output, a new revision is created and linked via `revision_id` on the relevant records. This allows the system to track how requirements evolved across critic feedback cycles without losing earlier drafts.
+Every record in this domain is scoped to an iteration via `iteration_id`, meaning the full set of requirements is versioned per iteration. The one exception is `persona`, which is project-scoped (via `project_id`) since personas represent the app's users across all iterations. When the **requirements_critic** validates or rejects the analyst's output, a new revision is created within the phase. Requirements are re-inserted with the same `iteration_id`, and the prior state is captured in `entity_snapshot`. This allows the system to track how requirements evolved across critic feedback cycles without losing earlier drafts.
 
 Downstream agents — **backend_architect**, **ux_designer**, and **implementation_planner** — all read from this domain to ensure traceability. The architect maps requirements to components and ADRs. The UX designer links requirements to user flows and screens. The implementation planner uses priorities and acceptance criteria to drive story sizing and sequencing. Nothing downstream should make an assumption about system behaviour that cannot be traced back to a record in this domain.
 
@@ -52,7 +52,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | TEXT | PRIMARY KEY | Stable identifier, typically a short slug (e.g. `"req-auth-001"`). |
-| `revision_id` | INTEGER | NOT NULL, REFERENCES revision(id) | The revision in which this requirement was last approved or changed. |
+| `iteration_id` | INTEGER | NOT NULL, REFERENCES iteration(id) ON DELETE CASCADE | The iteration this requirement belongs to. |
 | `description` | TEXT | NOT NULL | Full statement of the requirement. |
 | `rationale` | TEXT | — | Optional explanation of why this requirement exists or was prioritised as it was. |
 | `priority` | TEXT | NOT NULL, CHECK IN (`'must-have'`, `'should-have'`, `'nice-to-have'`) | MoSCoW-style priority. The implementation planner uses this to sequence work. |
@@ -62,7 +62,7 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
-- Parent: `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- Parent: `iteration` (via `iteration_id`).
 - Children: `requirement_persona` (via `requirement_id`)
 - Children: `requirement_dependency` (via `requirement_id` and `depends_on`)
 - Children: `requirement_trace` (via `requirement_id`) — cross-cutting domain

@@ -37,7 +37,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
+| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this dependency belongs to. |
 | `package` | TEXT | NOT NULL | — | — | Package name as it appears in the ecosystem registry (e.g., `express`, `com.fasterxml.jackson.core:jackson-databind`). |
 | `version_constraint` | TEXT | NULL | — | — | SemVer or ecosystem-specific version constraint (e.g., `^4.18.0`, `>=2.14.0 <3.0.0`). NULL means unconstrained (discouraged). |
 | `purpose` | TEXT | NOT NULL | — | — | One-line description of what this dependency is used for (e.g., `HTTP server framework`, `JSON serialization`). |
@@ -53,7 +53,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 
 ### Relationships
 
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **`iteration_id` → `iteration(id)`** — Scopes the dependency to an iteration.
 - **`adr_id` → `adr(id)`** — Links to the ADR that decided to adopt this dependency. This is the primary audit trail for "why are we using this package?". The `read-tools.js` `traceability_query` tool fetches approved dependencies when tracing an ADR.
 - Implementation code that uses a package should be able to look up its entry here to confirm approval and retrieve license/health data.
 
@@ -82,7 +82,6 @@ Fetch all dependencies linked to a specific ADR:
 {
   "entity_type": "approved_dependency",
   "iteration_id": 1,
-  "revision_id": 3,
   "data": {
     "package": "express",
     "version_constraint": "^4.18.0",
@@ -131,7 +130,7 @@ The `addressed_by` field is a free-text identifier that should match an existing
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
+| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` ON DELETE CASCADE | The iteration this trace belongs to. |
 | `requirement_id` | TEXT | NOT NULL | — | FK → `requirement(id)` | The requirement being addressed (e.g., `REQ-007`). |
 | `addressed_by` | TEXT | NOT NULL | — | — | Identifier of the architectural element satisfying the requirement (e.g., `COMP-002`, `POST /api/payments`, `flow-checkout`, `screen-confirmation`). |
 | `addressed_by_type` | TEXT | NOT NULL | — | CHECK(`component`, `endpoint`, `flow`, `screen`, `adr`, `technology`) | Category of the addressing element. |
@@ -140,11 +139,11 @@ The `addressed_by` field is a free-text identifier that should match an existing
 
 **`addressed_by_type` values:** Valid values are `component`, `endpoint`, `flow`, `screen`, `adr`, and `technology` (enforced by CHECK constraint). Screen-level traceability (`addressed_by_type = 'screen'`) supersedes the former `ux_requirement_mapping` table.
 
-**Uniqueness:** `UNIQUE(revision_id, requirement_id, addressed_by, addressed_by_type)` — prevents duplicate trace entries within the same revision.
+**Uniqueness:** `UNIQUE(iteration_id, requirement_id, addressed_by, addressed_by_type)` — prevents duplicate trace entries within the same iteration.
 
 ### Relationships
 
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
+- **`iteration_id` → `iteration(id)`** — Scopes the trace to an iteration.
 - **`requirement_id` → `requirement(id)`** — Hard FK to the requirements table. A trace row cannot exist without a valid requirement.
 - **`addressed_by` (soft reference)** — The `addressed_by` value conventionally matches a `component.id` (`COMP-XXX`), `user_flow.id`, or `screen.id`, but there is no database-level FK enforcing this. This is intentional: endpoints and other addressable elements do not have their own top-level tables. The `addressed_by_type` field disambiguates which table (if any) to look up.
 - The `traceability_query` tool in `read-tools.js` joins this table with `requirement`, `component`, `adr`, `user_flow`, and `screen` to build the full "why" chain for any query target.
@@ -196,7 +195,6 @@ Every requirement that is not covered by at least one `requirement_trace` row is
 {
   "entity_type": "requirement_trace",
   "iteration_id": 1,
-  "revision_id": 3,
   "data": {
     "requirement_id": "REQ-007",
     "addressed_by": "COMP-002",
@@ -211,7 +209,6 @@ Write a second mapping for the same requirement to a screen:
 {
   "entity_type": "requirement_trace",
   "iteration_id": 1,
-  "revision_id": 3,
   "data": {
     "requirement_id": "REQ-007",
     "addressed_by": "screen-payment-confirmation",
@@ -370,7 +367,7 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 
 ### Querying all cross-cutting data for an iteration
 
-All four tables can be queried by `iteration_id` using `changelog_query` — the tool resolves `revision_id`-only tables via the `entity_context` VIEW. To get the full cross-cutting picture for iteration 1:
+All four tables can be queried by `iteration_id` using `changelog_query`. To get the full cross-cutting picture for iteration 1:
 
 ```json
 { "entity_type": "approved_dependency",  "iteration_id": 1 }

@@ -35,7 +35,7 @@ The `security_audit_critic` queries all findings for the current iteration to va
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this finding |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this finding belongs to |
 | `category` | TEXT | NOT NULL | — | OWASP category or custom category (e.g., `"Injection"`, `"Broken Access Control"`, `"Dependency Audit"`) |
 | `severity` | TEXT | NOT NULL, CHECK(`critical`, `high`, `medium`, `low`, `informational`) | — | Impact severity of the finding |
 | `title` | TEXT | NOT NULL | — | Short descriptive title (e.g., `"SQL Injection in User Search"`) |
@@ -48,12 +48,12 @@ The `security_audit_critic` queries all findings for the current iteration to va
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`).
 - **Children:** none (flat table)
 
 ### MCP Tool Access
 
-**Write:** `changelog_insert` with `entity_type: "security_audit_finding"`, `iteration_id`, `revision_id`, and `data` containing: `category`, `severity`, `title`, `description`, `recommendation`, and optionally `location`, `cve`, `status`.
+**Write:** `changelog_insert` with `entity_type: "security_audit_finding"`, `iteration_id`, and `data` containing: `category`, `severity`, `title`, `description`, `recommendation`, and optionally `location`, `cve`, `status`.
 
 **Read:** `changelog_query` with `entity_type: "security_audit_finding"`. Supports filtering by `iteration_id`, `ids`, or field `filters` (e.g., `{ "severity": "critical" }`, `{ "status": "open" }`).
 
@@ -76,7 +76,7 @@ The `performance_audit_critic` queries all findings for the current iteration to
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this finding |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this finding belongs to |
 | `category` | TEXT | NOT NULL | — | Performance area (e.g., `"database"`, `"memory"`, `"concurrency"`, `"api"`, `"frontend"`, `"algorithm"`, `"logging"`) |
 | `severity` | TEXT | NOT NULL, CHECK(`critical`, `high`, `medium`, `low`, `informational`) | — | Impact severity of the finding |
 | `title` | TEXT | NOT NULL | — | Short descriptive title (e.g., `"N+1 Query in Task List Endpoint"`) |
@@ -91,12 +91,12 @@ The `performance_audit_critic` queries all findings for the current iteration to
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`).
 - **Children:** none (flat table)
 
 ### MCP Tool Access
 
-**Write:** `changelog_insert` with `entity_type: "performance_audit_finding"`, `iteration_id`, `revision_id`, and `data` containing: `category`, `severity`, `title`, `description`, `recommendation`, and optionally `location`, `metric_name`, `baseline_value`, `actual_value`, `status`.
+**Write:** `changelog_insert` with `entity_type: "performance_audit_finding"`, `iteration_id`, and `data` containing: `category`, `severity`, `title`, `description`, `recommendation`, and optionally `location`, `metric_name`, `baseline_value`, `actual_value`, `status`.
 
 **Read:** `changelog_query` with `entity_type: "performance_audit_finding"`. Supports filtering by `iteration_id`, `ids`, or field `filters` (e.g., `{ "severity": "high" }`, `{ "category": "database" }`, `{ "status": "open" }`).
 
@@ -105,12 +105,12 @@ The `performance_audit_critic` queries all findings for the current iteration to
 ## Entity Hierarchy
 
 ```
-revision  (→ phase → iteration)
+iteration
 ├── security_audit_finding  (1:N, flat — each finding is independent)
 └── performance_audit_finding  (1:N, flat — each finding is independent)
 ```
 
-Unlike the QA domain where all test data hangs off a single `test_report` root entity, audit findings are recorded individually. This design supports incremental recording (one finding at a time as the auditor works through each area) and direct querying (filter by severity, category, or status without navigating a parent entity). Neither table carries a direct `iteration_id` column — the iteration is derived via the `revision → phase → iteration` chain (or the `entity_context` VIEW). The MCP tools accept `iteration_id` as a query-level filter parameter, resolving it internally.
+Unlike the QA domain where all test data hangs off a single `test_report` root entity, audit findings are recorded individually. This design supports incremental recording (one finding at a time as the auditor works through each area) and direct querying (filter by severity, category, or status without navigating a parent entity). Both tables carry a direct `iteration_id` column. The MCP tools accept `iteration_id` as a query-level filter parameter.
 
 ---
 
@@ -118,8 +118,8 @@ Unlike the QA domain where all test data hangs off a single `test_report` root e
 
 | Operation | Tool | Key Parameters |
 |-----------|------|----------------|
-| Record a security finding | `changelog_insert` | `entity_type: "security_audit_finding"`, `iteration_id`, `revision_id`, `data` |
-| Record a performance finding | `changelog_insert` | `entity_type: "performance_audit_finding"`, `iteration_id`, `revision_id`, `data` |
+| Record a security finding | `changelog_insert` | `entity_type: "security_audit_finding"`, `iteration_id`, `data` |
+| Record a performance finding | `changelog_insert` | `entity_type: "performance_audit_finding"`, `iteration_id`, `data` |
 | Read all security findings for an iteration | `changelog_query` | `entity_type: "security_audit_finding"`, `iteration_id` |
 | Read all performance findings for an iteration | `changelog_query` | `entity_type: "performance_audit_finding"`, `iteration_id` |
 | Filter by severity | `changelog_query` | `entity_type: "security_audit_finding"`, `filters: { "severity": "critical" }` |
@@ -133,6 +133,6 @@ Unlike the QA domain where all test data hangs off a single `test_report` root e
 | Phase | `qa` | `audit` |
 | Producer | `qa_engineer` | `security_auditor` / `performance_auditor` |
 | Method | Automated tools (test runners) | Manual expert code review |
-| Provenance | Aggregate report with stdout/stderr | Independent entity with own `revision_id` (iteration derived via revision → phase → iteration) |
+| Provenance | Aggregate report with stdout/stderr | Independent entity with own `iteration_id` |
 | Scope | Verifies requirements are met | Finds issues requirements didn't anticipate |
 | Status tracking | Report-level status (pass/fail/blocked) | `status` column tracks resolution lifecycle |

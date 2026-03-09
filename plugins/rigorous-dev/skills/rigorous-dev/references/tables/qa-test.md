@@ -32,7 +32,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this report. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration that produced this report. |
 | `total_tests` | INTEGER | NOT NULL | `0` | Total number of tests executed |
 | `passed_count` | INTEGER | NOT NULL | `0` | Count of tests that passed |
 | `failed` | INTEGER | NOT NULL | `0` | Count of tests that failed |
@@ -53,7 +53,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`).
 - **No children.** All detailed test data (coverage, suites, findings, benchmarks, blockers, recommendations) is captured in the test runner's `stdout`/`stderr` output rather than in separate database tables.
 
 ### MCP Tool Access

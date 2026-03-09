@@ -285,7 +285,7 @@ When loading an agent, provide context:
 - If revision > 0: feedback from previous critic review (via `revision_history`)
 
 **For Critic Agents:**
-- Current revision's data (via `changelog_query` filtered by revision_id)
+- Current revision's data (via `changelog_query` filtered by iteration_id)
 - Current revision number (from `revision_history`)
 - Prior feedback (if revision > 1, from `revision_history`)
 
@@ -411,7 +411,7 @@ Findings from both audits are combined for the remediation threshold:
 
 **Artifact Storage:**
 
-Auditors record their findings directly to the changelog database via `changelog_insert` — each finding is a separate `security_audit_finding` or `performance_audit_finding` row with full provenance (`iteration_id`, `revision_id`). There are no file-based audit reports.
+Auditors record their findings directly to the changelog database via `changelog_insert` — each finding is a separate `security_audit_finding` or `performance_audit_finding` row with full provenance (`iteration_id`). There are no file-based audit reports.
 
 **Phase Completion:**
 
@@ -686,7 +686,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `data_exchange`, `nonfunctional_requirement`, `blocker`, `project_lesson`, `persona`, and `adr_decision`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration. Inputs: `entity_type`, `iteration_id`, `revision_id` (accepted but ignored for all entity types except `vcs_commit`), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status

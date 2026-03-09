@@ -210,7 +210,7 @@ revision_create({
 })
 ```
 
-Record the returned `revision_id` — all `changelog_insert` calls for this phase use it.
+Record the returned `revision_id` — use it when calling `revision_update` to approve the revision after entity inserts.
 
 #### 5c. Insert Entities
 
@@ -220,7 +220,6 @@ For each entity extracted for this phase, call `changelog_insert`:
 changelog_insert({
   entity_type: "<entity_type>",
   iteration_id: <current_iteration_id>,
-  revision_id: <import_revision_id>,
   data: { <extracted_entity_fields> }
 })
 ```
@@ -238,7 +237,6 @@ After all entities for this phase are inserted, create `requirement_trace` entri
 changelog_insert({
   entity_type: "requirement_trace",
   iteration_id: <current_iteration_id>,
-  revision_id: <import_revision_id>,
   data: {
     source_id: "<entity_id>",
     target_id: "<related_entity_id>",

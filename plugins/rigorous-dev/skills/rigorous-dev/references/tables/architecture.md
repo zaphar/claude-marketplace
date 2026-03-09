@@ -28,14 +28,14 @@ The central record for each Architecture Decision Record. An ADR captures a sing
 
 ### Context
 
-ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current revision (with the iteration derived via revision → phase → iteration), so the full evolution of any decision across critic feedback rounds is preserved. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `research_sources` JSON column is the key enabler of the "why are we using X?" traceability query.
+ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current iteration (via `iteration_id`), so the full evolution of any decision across critic feedback rounds is preserved via `entity_snapshot`. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `research_sources` JSON column is the key enabler of the "why are we using X?" traceability query.
 
 ### Column Reference
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `ADR-XXX` (e.g., `ADR-001`). Assigned by the backend_architect. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this ADR belongs to. |
 | `title` | TEXT | NOT NULL | — | Short, imperative title describing the decision (e.g., "Use PostgreSQL for primary datastore"). |
 | `status` | TEXT | NOT NULL, CHECK(`status` IN `'proposed'`, `'accepted'`, `'deprecated'`, `'superseded'`) | — | Lifecycle state. `proposed` = under consideration; `accepted` = ratified; `deprecated` = no longer relevant but not replaced; `superseded` = replaced by another ADR (see `superseded_by`). |
 | `date` | TEXT | — | NULL | ISO-8601 date the decision was made (e.g., `2024-01-15`). Optional; set when a formal decision date is recorded. |
@@ -48,7 +48,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`), `adr` self-reference (via `superseded_by`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`), `adr` self-reference (via `superseded_by`).
 - **Children:** `adr_alternative`, `adr_decision`
 - **Referenced by:** `approved_dependency.adr_id` (third-party dependencies may cite a backing ADR)
 
@@ -58,7 +58,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 
 ```
 # Write
-changelog_insert  entity_type="adr"  { id, iteration_id, revision_id, title, status, date, context, superseded_by }
+changelog_insert  entity_type="adr"  { id, iteration_id, title, status, date, context, superseded_by }
 
 # Record formal decision (after alternatives are evaluated)
 changelog_insert  entity_type="adr_decision"  { adr_id, alternative_id, rationale }
@@ -162,7 +162,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `COMP-XXX` (e.g., `COMP-001`). Assigned by the backend_architect. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this component belongs to. |
 | `name` | TEXT | NOT NULL | — | Short, descriptive name (e.g., "Auth Service", "PostgreSQL Primary", "Payment Gateway"). |
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
 | `type` | TEXT | NOT NULL | — | Free-form classification of the component. Canonical values (by convention): `api` = HTTP/RPC boundary; `service` = internal service with no direct external exposure; `worker` = async/background processor; `database` = persistent data store; `cache` = volatile data store; `queue` = message broker; `external` = third-party dependency outside system boundary; `library` = shared code, not a process. Custom values are allowed for project-specific component types. |
@@ -171,7 +171,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 
 ### Relationships
 
-- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` (via `iteration_id`).
 - **Children:** `component_interface`, `component_dependency` (both sides), `integration_test_boundary` (both sides)
 - **Referenced by:** `requirement_trace.addressed_by` (when `addressed_by_type = 'component'`), `implementation_component_status.component_id`
 
@@ -179,7 +179,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 
 ```
 # Write
-changelog_insert  entity_type="component"  { id, iteration_id, revision_id, name, purpose, type }
+changelog_insert  entity_type="component"  { id, iteration_id, name, purpose, type }
 
 # Read
 changelog_query   entity_type="component"  [iteration_id=N]

@@ -4,7 +4,7 @@ These four tables form the backbone of the entire data model. Every other table 
 
 The core spine is write-once and append-forward. The project row is created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
 
-Every changelog entity in the system — requirements, ADRs, components, test cases, and so on — carries a required `revision_id` (NOT NULL) to record exactly when and why it was produced. Some tables that model iteration-scoped context (e.g., `project_context`, `data_exchange`, `nonfunctional_requirement`) carry a direct `iteration_id` instead. No table carries both columns — tables with `revision_id` derive their iteration through the `revision → phase → iteration` chain (or via the `entity_context` VIEW). This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
+Every changelog entity in the system — requirements, ADRs, components, test cases, and so on — carries a required `iteration_id` (NOT NULL, FK → `iteration`) to scope it to a specific iteration. The one exception is `persona`, which is project-scoped via `project_id`. This makes the full provenance of any artifact queryable: which iteration requested it and which phase produced it.
 
 ---
 
@@ -38,7 +38,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Purpose:** A single change-request cycle within a project. Each time new work is requested — a new feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered sequentially.
 
-**Context:** Created by `iteration_create`. An iteration encompasses all eight phases and their revision attempts. Changelog entities reference the iteration either directly (via `iteration_id` for context tables) or indirectly (via `revision_id → phase → iteration` for producer-critic artifacts). Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
+**Context:** Created by `iteration_create`. An iteration encompasses all eight phases and their revision attempts. Changelog entities reference the iteration directly via `iteration_id`. Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -98,7 +98,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Purpose:** A single producer-critic loop attempt within a phase. When a producer agent generates output for a phase, a revision row is created. The critic agent then reviews it and records a verdict (`approved` or `rejected`) along with feedback text. If rejected, a new revision is created for the next attempt.
 
-**Context:** Revisions are the mechanism that enforces quality gates. The full revision chain for any phase shows every draft, the feedback that was given, and the final approved version. Changelog entities that are produced during a specific revision attempt carry the `revision_id` so that approved output can be distinguished from earlier drafts.
+**Context:** Revisions are the mechanism that enforces quality gates. The full revision chain for any phase shows every draft, the feedback that was given, and the final approved version.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -113,7 +113,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Relationships:**
 - Parent: `phase` (via `phase_id`)
-- Referenced by: changelog entity tables (via `revision_id`, NOT NULL)
+- Referenced by: none — `revision` is a lifecycle audit trail record; no entity tables carry a FK to it
 
 **Produced by:** `revision_create`
 **Updated by:** `revision_update` (records critic verdict, feedback, and `reviewed_at`)
@@ -126,22 +126,20 @@ The six primary entity tables with TEXT primary keys — `persona`, `requirement
 ### How it works
 
 1. When a producer agent creates entities during a revision, they are inserted normally.
-2. If the critic rejects the revision and a new revision is created, the producer re-inserts only the entities that need changes. The UPSERT updates the existing row in place, setting `revision_id` to the new revision and `updated_at` to the current timestamp. (Exception: `persona` is project-scoped and does not carry `revision_id` — upserts update the name, description, and other fields but not provenance columns.)
-3. Entities that don't need changes keep their original `revision_id` — they are carried forward implicitly.
+2. If the critic rejects the revision and a new revision is created, the producer re-inserts only the entities that need changes. The UPSERT updates the existing row in place and sets `updated_at` to the current timestamp. (Exception: `persona` is project-scoped and does not carry `iteration_id` — upserts update the name, description, and other fields but not provenance columns.)
+3. Entities that don't need changes keep their original state — they are carried forward implicitly.
 4. When the critic approves a revision, the phase transitions to `completed`. All entities in that iteration for the completed phase are considered **current and valid**.
 
 ### Querying current state
 
-To query current entities for a given iteration (using the `entity_context` VIEW to derive iteration from revision):
+To query current entities for a given iteration:
 ```sql
-SELECT r.* FROM requirement r
-JOIN entity_context ec ON ec.revision_id = r.revision_id
-WHERE ec.iteration_id = ?;
+SELECT * FROM requirement WHERE iteration_id = ?;
 ```
 
-### What `revision_id` means on an entity
+### What `iteration_id` means on an entity
 
-The `revision_id` on an entity records **provenance** — which revision last created or modified this entity. It does NOT determine validity. Validity is determined at the phase level: if the phase has an approved revision (or status `completed`), all entities for that phase's iteration are valid.
+The `iteration_id` on an entity records **scope** — which iteration this entity belongs to. Validity is determined at the phase level: if the phase has an approved revision (or status `completed`), all entities for that phase's iteration are valid.
 
 ### The `updated_at` column
 

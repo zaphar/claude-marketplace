@@ -50,7 +50,7 @@ Central record for one implementation work chunk. A phase groups related develop
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables as `plan_phase_id`. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The planning revision that produced this phase. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this plan phase belongs to. |
 | `phase_number` | INTEGER | NOT NULL | — | Sequential number (1, 2, 3…). Human-readable ordering identifier. Dependency tables reference phases by surrogate `id` rather than this field. Must be unique within an iteration (enforced by application logic). |
 | `name` | TEXT | NOT NULL | — | Short descriptive name (e.g., "Auth Module", "API Endpoints — User Service"). |
 | `type` | TEXT | NOT NULL | — | Free-form label describing the kind of work (e.g., `feature`, `infrastructure`). |
@@ -67,7 +67,7 @@ Central record for one implementation work chunk. A phase groups related develop
 
 ### Relationships
 
-- **Parent:** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` via `iteration_id`.
 - **Children:** `plan_phase_requirement`, `plan_phase_component`, `plan_phase_flow`, `plan_phase_screen`, `plan_phase_api_endpoint`, `plan_phase_db_change`, `plan_phase_relationship`, `plan_phase_risk`
 - **JSON arrays:** `entry_criteria`, `exit_criteria`, `checkpoint_focus` (inline on this table)
 - **Referenced by FK in:** `plan_phase_relationship.related_phase_id`, `implementation_manifest.plan_phase_id`
@@ -390,7 +390,7 @@ One row per planning revision: the high-level summary of the entire implementati
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` ON DELETE CASCADE | — | The iteration this plan belongs to. |
 | `strategy` | TEXT | NOT NULL | — | Overall implementation strategy (e.g., "Bottom-up: build data layer first, then service layer, then API, then UI"). |
 | `rationale` | TEXT | NOT NULL | — | Explanation of why the architecture was broken into phases this way. |
 | `phase_one_approach` | TEXT | nullable | — | Specific description of how Phase 1 begins, what it sets up, and why it comes first. |
@@ -400,7 +400,7 @@ One row per planning revision: the high-level summary of the entire implementati
 
 ### Relationships
 
-- **Parent:** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- **Parent:** `iteration` via `iteration_id`.
 - **JSON arrays:** `assumptions`, `risks` (inline on this table)
 
 ### MCP tool access

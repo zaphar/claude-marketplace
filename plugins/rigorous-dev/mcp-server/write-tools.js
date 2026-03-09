@@ -221,10 +221,10 @@ function insertRequirement(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "requirement", data.id);
 
   db.prepare(
-    `INSERT INTO requirement (id, revision_id, description, rationale, priority, category, acceptance_criteria, created_at)
-     VALUES (@id, @revision_id, @description, @rationale, @priority, @category, @acceptance_criteria, @created_at)
+    `INSERT INTO requirement (id, iteration_id, description, rationale, priority, category, acceptance_criteria, created_at)
+     VALUES (@id, @iteration_id, @description, @rationale, @priority, @category, @acceptance_criteria, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
+       iteration_id = excluded.iteration_id,
        description = excluded.description,
        rationale = excluded.rationale,
        priority = excluded.priority,
@@ -233,7 +233,7 @@ function insertRequirement(db, iteration_id, revision_id, data) {
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    iteration_id,
     description: data.description,
     rationale: data.rationale ?? null,
     priority: data.priority,
@@ -270,10 +270,10 @@ function insertAdr(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "adr", data.id);
 
   db.prepare(
-    `INSERT INTO adr (id, revision_id, title, status, date, context, superseded_by, consequences, research_sources, created_at)
-     VALUES (@id, @revision_id, @title, @status, @date, @context, @superseded_by, @consequences, @research_sources, @created_at)
+    `INSERT INTO adr (id, iteration_id, title, status, date, context, superseded_by, consequences, research_sources, created_at)
+     VALUES (@id, @iteration_id, @title, @status, @date, @context, @superseded_by, @consequences, @research_sources, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
+       iteration_id = excluded.iteration_id,
        title = excluded.title,
        status = excluded.status,
        date = excluded.date,
@@ -284,7 +284,7 @@ function insertAdr(db, iteration_id, revision_id, data) {
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    iteration_id,
     title: data.title,
     status: data.status ?? "proposed",
     date: data.date ?? null,
@@ -337,17 +337,17 @@ function insertComponent(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "component", data.id);
 
   db.prepare(
-    `INSERT INTO component (id, revision_id, name, purpose, component_type, created_at)
-     VALUES (@id, @revision_id, @name, @purpose, @component_type, @created_at)
+    `INSERT INTO component (id, iteration_id, name, purpose, component_type, created_at)
+     VALUES (@id, @iteration_id, @name, @purpose, @component_type, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
+       iteration_id = excluded.iteration_id,
        name = excluded.name,
        purpose = excluded.purpose,
        component_type = excluded.component_type,
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    iteration_id,
     name: data.name,
     purpose: data.purpose,
     component_type: data.type,
@@ -377,10 +377,10 @@ function insertComponent(db, iteration_id, revision_id, data) {
   }
 
   const insertReq = db.prepare(
-    "INSERT OR IGNORE INTO requirement_trace (revision_id, requirement_id, addressed_by, addressed_by_type) VALUES (@revision_id, @requirement_id, @addressed_by, 'component')"
+    "INSERT OR IGNORE INTO requirement_trace (iteration_id, requirement_id, addressed_by, addressed_by_type) VALUES (@iteration_id, @requirement_id, @addressed_by, 'component')"
   );
   for (const req_id of data.requirements_addressed ?? []) {
-    insertReq.run({ revision_id, requirement_id: req_id, addressed_by: data.id });
+    insertReq.run({ iteration_id, requirement_id: req_id, addressed_by: data.id });
   }
 
   const insertBoundary = db.prepare(
@@ -404,7 +404,7 @@ function insertRequirementTrace(db, iteration_id, revision_id, data) {
     );
   }
   // Code-level existence validation for types with backing tables
-  const iterClause = "revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = @iteration_id)";
+  const iterClause = "iteration_id = @iteration_id";
   if (data.addressed_by_type === "component") {
     const exists = db
       .prepare(`SELECT 1 FROM component WHERE id = @addressed_by AND ${iterClause}`)
@@ -446,11 +446,11 @@ function insertRequirementTrace(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO requirement_trace (revision_id, requirement_id, addressed_by, addressed_by_type, notes, created_at)
-       VALUES (@revision_id, @requirement_id, @addressed_by, @addressed_by_type, @notes, @created_at)`
+      `INSERT INTO requirement_trace (iteration_id, requirement_id, addressed_by, addressed_by_type, notes, created_at)
+       VALUES (@iteration_id, @requirement_id, @addressed_by, @addressed_by_type, @notes, @created_at)`
     )
     .run({
-      revision_id,
+      iteration_id,
       requirement_id: data.requirement_id,
       addressed_by: data.addressed_by,
       addressed_by_type: data.addressed_by_type,
@@ -466,12 +466,12 @@ function insertApprovedDependency(db, iteration_id, revision_id, data) {
   let lastId;
   const insert = db.prepare(
     `INSERT INTO approved_dependency
-       (revision_id, package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
-     VALUES (@revision_id, @package, @version_constraint, @purpose, @justification, @adr_id, @license, @category, @maintenance_activity, @community_adoption, @transitive_deps, @single_maintainer_risk, @created_at)`
+       (iteration_id, package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
+     VALUES (@iteration_id, @package, @version_constraint, @purpose, @justification, @adr_id, @license, @category, @maintenance_activity, @community_adoption, @transitive_deps, @single_maintainer_risk, @created_at)`
   );
   for (const entry of entries) {
     const result = insert.run({
-      revision_id,
+      iteration_id,
       package: entry.package,
       version_constraint: entry.version_constraint ?? null,
       purpose: entry.purpose,
@@ -495,10 +495,10 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "user_flow", data.id);
 
   db.prepare(
-    `INSERT INTO user_flow (id, revision_id, name, goal, persona_id, entry_point, success_state, data_dependencies, created_at)
-     VALUES (@id, @revision_id, @name, @goal, @persona_id, @entry_point, @success_state, @data_dependencies, @created_at)
+    `INSERT INTO user_flow (id, iteration_id, name, goal, persona_id, entry_point, success_state, data_dependencies, created_at)
+     VALUES (@id, @iteration_id, @name, @goal, @persona_id, @entry_point, @success_state, @data_dependencies, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
+       iteration_id = excluded.iteration_id,
        name = excluded.name,
        goal = excluded.goal,
        persona_id = excluded.persona_id,
@@ -508,7 +508,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    iteration_id,
     name: data.name,
     goal: data.goal,
     persona_id: data.persona_id ?? null,
@@ -548,10 +548,10 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   }
 
   const insertReq = db.prepare(
-    "INSERT OR IGNORE INTO requirement_trace (revision_id, requirement_id, addressed_by, addressed_by_type) VALUES (@revision_id, @requirement_id, @addressed_by, 'flow')"
+    "INSERT OR IGNORE INTO requirement_trace (iteration_id, requirement_id, addressed_by, addressed_by_type) VALUES (@iteration_id, @requirement_id, @addressed_by, 'flow')"
   );
   for (const req_id of data.requirements_addressed ?? []) {
-    insertReq.run({ revision_id, requirement_id: req_id, addressed_by: data.id });
+    insertReq.run({ iteration_id, requirement_id: req_id, addressed_by: data.id });
   }
 
   return { entity_type: "user_flow", id: data.id, updated: !!existed };
@@ -562,10 +562,10 @@ function insertScreen(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "screen", data.id);
 
   db.prepare(
-    `INSERT INTO screen (id, revision_id, name, purpose, wireframe_path, mockup_path, components, created_at)
-     VALUES (@id, @revision_id, @name, @purpose, @wireframe_path, @mockup_path, @components, @created_at)
+    `INSERT INTO screen (id, iteration_id, name, purpose, wireframe_path, mockup_path, components, created_at)
+     VALUES (@id, @iteration_id, @name, @purpose, @wireframe_path, @mockup_path, @components, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
+       iteration_id = excluded.iteration_id,
        name = excluded.name,
        purpose = excluded.purpose,
        wireframe_path = excluded.wireframe_path,
@@ -574,7 +574,7 @@ function insertScreen(db, iteration_id, revision_id, data) {
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    iteration_id,
     name: data.name,
     purpose: data.purpose,
     wireframe_path: data.wireframe_path ?? null,
@@ -591,11 +591,11 @@ function insertPlanPhase(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_phase (revision_id, phase_number, name, phase_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, created_at)
-       VALUES (@revision_id, @phase_number, @name, @phase_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @created_at)`
+      `INSERT INTO plan_phase (iteration_id, phase_number, name, phase_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, created_at)
+       VALUES (@iteration_id, @phase_number, @name, @phase_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @created_at)`
     )
     .run({
-      revision_id,
+      iteration_id,
       phase_number: data.phase_number,
       name: data.name,
       phase_type: data.type,
@@ -687,11 +687,11 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_overview (revision_id, strategy, rationale, phase_one_approach, assumptions, risks, created_at)
-       VALUES (@revision_id, @strategy, @rationale, @phase_one_approach, @assumptions, @risks, @created_at)`
+      `INSERT INTO plan_overview (iteration_id, strategy, rationale, phase_one_approach, assumptions, risks, created_at)
+       VALUES (@iteration_id, @strategy, @rationale, @phase_one_approach, @assumptions, @risks, @created_at)`
     )
     .run({
-      revision_id,
+      iteration_id,
       strategy: data.strategy,
       rationale: data.rationale,
       phase_one_approach: data.phase_one_approach ?? null,
@@ -727,15 +727,15 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO implementation_manifest
-         (revision_id, plan_phase_id, status, lines_of_code, warnings, build_status,
+         (iteration_id, plan_phase_id, status, lines_of_code, warnings, build_status,
           version, document_date, requirements_version, architecture_version, language, stdout, stderr, commit_sha,
           created_at)
-       VALUES (@revision_id, @plan_phase_id, @status, @lines_of_code, @warnings, @build_status,
+       VALUES (@iteration_id, @plan_phase_id, @status, @lines_of_code, @warnings, @build_status,
                @version, @document_date, @requirements_version, @architecture_version, @language, @stdout, @stderr, @commit_sha,
                @created_at)`
     )
     .run({
-      revision_id,
+      iteration_id,
       plan_phase_id: data.plan_phase_id,
       status: data.status,
       lines_of_code: data.lines_of_code ?? null,
@@ -923,12 +923,12 @@ function insertIntermediateAsset(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO intermediate_asset (phase_id, revision_id, asset_type, title, content, created_at)
-       VALUES (@phase_id, @revision_id, @asset_type, @title, @content, @created_at)`
+      `INSERT INTO intermediate_asset (phase_id, iteration_id, asset_type, title, content, created_at)
+       VALUES (@phase_id, @iteration_id, @asset_type, @title, @content, @created_at)`
     )
     .run({
       phase_id: data.phase_id ?? null,
-      revision_id,
+      iteration_id,
       asset_type: data.asset_type,
       title: data.title,
       content: data.content ?? null,
@@ -968,10 +968,10 @@ function insertProjectLesson(db, iteration_id, _revision_id, data) {
 function insertSecurityAuditFinding(db, iteration_id, revision_id, data) {
   const result = db.prepare(
     `INSERT INTO security_audit_finding
-       (revision_id, category, severity, title, description, location, recommendation, cve, status)
-     VALUES (@revision_id, @category, @severity, @title, @description, @location, @recommendation, @cve, @status)`
+       (iteration_id, category, severity, title, description, location, recommendation, cve, status)
+     VALUES (@iteration_id, @category, @severity, @title, @description, @location, @recommendation, @cve, @status)`
   ).run({
-    revision_id,
+    iteration_id,
     category: data.category,
     severity: data.severity,
     title: data.title,
@@ -987,10 +987,10 @@ function insertSecurityAuditFinding(db, iteration_id, revision_id, data) {
 function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
   const result = db.prepare(
     `INSERT INTO performance_audit_finding
-       (revision_id, category, severity, title, description, location, metric_name, baseline_value, actual_value, recommendation, status)
-     VALUES (@revision_id, @category, @severity, @title, @description, @location, @metric_name, @baseline_value, @actual_value, @recommendation, @status)`
+       (iteration_id, category, severity, title, description, location, metric_name, baseline_value, actual_value, recommendation, status)
+     VALUES (@iteration_id, @category, @severity, @title, @description, @location, @metric_name, @baseline_value, @actual_value, @recommendation, @status)`
   ).run({
-    revision_id,
+    iteration_id,
     category: data.category,
     severity: data.severity,
     title: data.title,
@@ -1011,13 +1011,13 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   const result = db
     .prepare(
       `INSERT INTO test_report
-         (revision_id, total_tests, passed_count, failed, skipped,
+         (iteration_id, total_tests, passed_count, failed, skipped,
           coverage_line, coverage_branch, coverage_function,
           duration_seconds, status,
           stdout, stderr,
           version, document_date, requirements_version, architecture_version, commit_sha,
           created_at)
-       VALUES (@revision_id, @total_tests, @passed_count, @failed, @skipped,
+       VALUES (@iteration_id, @total_tests, @passed_count, @failed, @skipped,
                @coverage_line, @coverage_branch, @coverage_function,
                @duration_seconds, @status,
                @stdout, @stderr,
@@ -1025,7 +1025,7 @@ function insertTestReport(db, iteration_id, revision_id, data) {
                @created_at)`
     )
     .run({
-      revision_id,
+      iteration_id,
       total_tests: data.total_tests ?? 0,
       passed_count: data.passed_count ?? 0,
       failed: data.failed ?? 0,
@@ -1053,12 +1053,12 @@ function insertInfoArchitecture(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO info_architecture (revision_id, category, key, value, parent_id, created_at)
-     VALUES (@revision_id, @category, @key, @value, @parent_id, @created_at)`
+    `INSERT INTO info_architecture (iteration_id, category, key, value, parent_id, created_at)
+     VALUES (@iteration_id, @category, @key, @value, @parent_id, @created_at)`
   );
   for (const entry of entries) {
     const result = insert.run({
-      revision_id,
+      iteration_id,
       category: entry.category,
       key: entry.key,
       value: entry.value,
@@ -1072,10 +1072,10 @@ function insertInfoArchitecture(db, iteration_id, revision_id, data) {
 
 function insertPersonaAddressed(db, iteration_id, revision_id, data) {
   const result = db.prepare(
-    `INSERT INTO persona_addressed (revision_id, persona_id, goal, how_addressed)
-     VALUES (@revision_id, @persona_id, @goal, @how_addressed)`
+    `INSERT INTO persona_addressed (iteration_id, persona_id, goal, how_addressed)
+     VALUES (@iteration_id, @persona_id, @goal, @how_addressed)`
   ).run({
-    revision_id,
+    iteration_id,
     persona_id: data.persona_id,
     goal: data.goal,
     how_addressed: data.how_addressed
@@ -1092,17 +1092,17 @@ function insertPersonaAddressed(db, iteration_id, revision_id, data) {
   return { entity_type: "persona_addressed", id: persona_addressed_id };
 }
 
-function insertUxAsset(db, iteration_id, revision_id, data) {
+function insertUxAsset(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO ux_asset (revision_id, name, path, asset_type, screen_id, description, created_at)
-     VALUES (@revision_id, @name, @path, @asset_type, @screen_id, @description, @created_at)`
+    `INSERT INTO ux_asset (iteration_id, name, path, asset_type, screen_id, description, created_at)
+     VALUES (@iteration_id, @name, @path, @asset_type, @screen_id, @description, @created_at)`
   );
   for (const entry of entries) {
     const result = insert.run({
-      revision_id,
+      iteration_id,
       name: entry.name,
       path: entry.path,
       asset_type: entry.type,

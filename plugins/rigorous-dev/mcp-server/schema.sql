@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS project (
 -- sequentially.
 -- Context: Created by iteration_create. An iteration encompasses all nine phases and their revision
 -- attempts. Changelog entities reference the iteration either directly (via iteration_id for
--- context tables) or indirectly (via revision_id → phase → iteration for producer-critic
+-- context tables) or directly (via iteration_id on producer-critic
 -- artifacts). Closing an iteration (status closed) signals that the work shipped and a new request
 -- cycle can begin.
 CREATE TABLE IF NOT EXISTS iteration (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS phase (
 -- for the next attempt.
 -- Context: Revisions are the mechanism that enforces quality gates. The full revision chain for any
 -- phase shows every draft, the feedback that was given, and the final approved version. Changelog
--- entities that are produced during a specific revision attempt carry the revision_id so that
+-- entities that are produced during a specific revision attempt carry the iteration_id so that
 -- approved output can be distinguished from earlier drafts.
 CREATE TABLE IF NOT EXISTS revision (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,12 +86,6 @@ CREATE TABLE IF NOT EXISTS revision (
   critic_feedback TEXT,
   reviewed_at TEXT
 );
-
--- Convenience VIEW: derive iteration context from revision_id
-CREATE VIEW IF NOT EXISTS entity_context AS
-SELECT r.id AS revision_id, p.id AS phase_id, p.iteration_id, p.name AS phase_name
-FROM revision r
-JOIN phase p ON r.phase_id = p.id;
 
 -- ============================================================
 -- CHANGELOG ENTRIES: append-only record of all decisions
@@ -134,7 +128,7 @@ CREATE TABLE IF NOT EXISTS persona (
 -- the implementation_planner uses priority to sequence work.
 CREATE TABLE IF NOT EXISTS requirement (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   rationale TEXT,
   priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
@@ -258,13 +252,13 @@ CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
 -- stored inline as JSON arrays in the consequences and research_sources columns.
 -- Context: ADRs are the backbone of architectural traceability. Every major technology choice,
 -- structural pattern, or integration strategy that required deliberation should have an ADR. adr
--- rows reference the current revision (with the iteration derived via revision → phase →
--- iteration), so the full evolution of any decision across critic feedback rounds is preserved. The
+-- rows carry iteration_id directly, so the full evolution of any decision across critic feedback
+-- rounds is preserved. The
 -- superseded_by self-reference creates a chain of record when an earlier decision is replaced. The
 -- research_sources JSON column is the key enabler of the "why are we using X?" traceability query.
 CREATE TABLE IF NOT EXISTS adr (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
   date TEXT, -- ISO 8601 date, e.g. "2026-03-08"
@@ -323,7 +317,7 @@ CREATE TABLE IF NOT EXISTS adr_decision (
 -- implementation_component_status.
 CREATE TABLE IF NOT EXISTS component (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   component_type TEXT NOT NULL,
@@ -394,7 +388,7 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
 -- only one active maintainer — a supply-chain risk factor worth surfacing explicitly.
 CREATE TABLE IF NOT EXISTS approved_dependency (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   package TEXT NOT NULL,
   version_constraint TEXT,
   purpose TEXT NOT NULL,
@@ -407,7 +401,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
   transitive_deps INTEGER,
   single_maintainer_risk INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, package)
+  UNIQUE(iteration_id, package)
 );
 
 -- Traceability: unified requirement → design-element mapping
@@ -427,14 +421,14 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
 -- component, endpoint, flow, screen, adr, and technology.
 CREATE TABLE IF NOT EXISTS requirement_trace (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   addressed_by TEXT NOT NULL,
   addressed_by_type TEXT NOT NULL
     CHECK(addressed_by_type IN ('component', 'flow', 'screen', 'adr', 'endpoint', 'technology')),
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, requirement_id, addressed_by, addressed_by_type)
+  UNIQUE(iteration_id, requirement_id, addressed_by, addressed_by_type)
 );
 
 -- UX: user flows
@@ -448,7 +442,7 @@ CREATE TABLE IF NOT EXISTS requirement_trace (
 -- flows when assigning UI work to plan phases.
 CREATE TABLE IF NOT EXISTS user_flow (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   goal TEXT NOT NULL,
   persona_id TEXT REFERENCES persona(id) ON DELETE SET NULL,
@@ -507,7 +501,7 @@ CREATE TABLE IF NOT EXISTS user_flow_error_state (
 -- screen requires. The implementation_planner references screen_id in plan_phase_screen.
 CREATE TABLE IF NOT EXISTS screen (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   purpose TEXT NOT NULL,
   wireframe_path TEXT,
@@ -529,7 +523,7 @@ CREATE INDEX IF NOT EXISTS idx_screen_name ON screen(name);
 -- are reachable from the IA root.
 CREATE TABLE IF NOT EXISTS info_architecture (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
@@ -547,12 +541,12 @@ CREATE TABLE IF NOT EXISTS info_architecture (
 -- persona_addressed_flow, closing the traceability chain: persona → addressed by → flows.
 CREATE TABLE IF NOT EXISTS persona_addressed (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   persona_id TEXT NOT NULL REFERENCES persona(id) ON DELETE CASCADE,
   goal TEXT NOT NULL,
   how_addressed TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, persona_id)
+  UNIQUE(iteration_id, persona_id)
 );
 
 -- Domain: ux-design
@@ -578,7 +572,7 @@ CREATE TABLE IF NOT EXISTS persona_addressed_flow (
 -- specific screen (e.g., a global icon set, a prototype video) leave screen_id NULL.
 CREATE TABLE IF NOT EXISTS ux_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   asset_type TEXT NOT NULL,
@@ -602,7 +596,7 @@ CREATE TABLE IF NOT EXISTS ux_asset (
 -- t-shirt size estimate used by the senior_developer to gauge effort before starting.
 CREATE TABLE IF NOT EXISTS plan_phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_number INTEGER NOT NULL,
   name TEXT NOT NULL,
   phase_type TEXT NOT NULL,
@@ -616,7 +610,7 @@ CREATE TABLE IF NOT EXISTS plan_phase (
   checkpoint_focus JSON NOT NULL DEFAULT '[]',
   critical_path_sequence INTEGER, -- NULL = not on critical path; non-NULL = sequence order
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, name)
+  UNIQUE(iteration_id, name)
 );
 
 -- Domain: planning
@@ -760,14 +754,14 @@ CREATE TABLE IF NOT EXISTS plan_phase_risk (
 -- stored inline as JSON arrays.
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   strategy TEXT NOT NULL,
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
   assumptions JSON NOT NULL DEFAULT '[]',
   risks JSON, -- [{risk, mitigation, work_item_number}] — plan-wide strategic risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id)
+  UNIQUE(iteration_id)
 );
 
 -- Implementation plan: external dependencies
@@ -803,7 +797,7 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
 -- when work is partial or blocked so that the critic can inspect what was and was not done.
 CREATE TABLE IF NOT EXISTS implementation_manifest (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   plan_phase_id INTEGER NOT NULL REFERENCES plan_phase(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
   lines_of_code INTEGER,
@@ -1009,7 +1003,7 @@ CREATE TABLE IF NOT EXISTS vcs_commit (
 CREATE TABLE IF NOT EXISTS intermediate_asset (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   asset_type TEXT NOT NULL,
   title TEXT NOT NULL,
   content TEXT,
@@ -1029,7 +1023,7 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
 -- not complete.
 CREATE TABLE IF NOT EXISTS test_report (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   total_tests INTEGER NOT NULL DEFAULT 0,
   passed_count INTEGER NOT NULL DEFAULT 0,
   failed INTEGER NOT NULL DEFAULT 0,
@@ -1063,7 +1057,7 @@ CREATE TABLE IF NOT EXISTS test_report (
 -- to validate completeness, accuracy, and actionability.
 CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
   title TEXT NOT NULL,
@@ -1088,7 +1082,7 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
 -- actionability.
 CREATE TABLE IF NOT EXISTS performance_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
   title TEXT NOT NULL,
@@ -1226,66 +1220,66 @@ CREATE INDEX IF NOT EXISTS idx_impl_api_endpoint_req_requirement_id
   ON implementation_api_endpoint_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_blocker_requirement_requirement_id
   ON implementation_blocker_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_requirement_trace_revision_id
-  ON requirement_trace(revision_id);
+CREATE INDEX IF NOT EXISTS idx_requirement_trace_iteration_id
+  ON requirement_trace(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_addressed_by
   ON requirement_trace(addressed_by_type, addressed_by);
 
 -- ------------------------------------------------------------
--- revision_id — provenance FK on every entity table
+-- iteration_id — provenance FK on every entity table
 -- ------------------------------------------------------------
 
 -- Requirements domain
 CREATE INDEX IF NOT EXISTS idx_persona_project_id
   ON persona(project_id);
-CREATE INDEX IF NOT EXISTS idx_requirement_revision_id
-  ON requirement(revision_id);
+CREATE INDEX IF NOT EXISTS idx_requirement_iteration_id
+  ON requirement(iteration_id);
 
 -- Architecture domain
-CREATE INDEX IF NOT EXISTS idx_adr_revision_id
-  ON adr(revision_id);
-CREATE INDEX IF NOT EXISTS idx_component_revision_id
-  ON component(revision_id);
-CREATE INDEX IF NOT EXISTS idx_approved_dependency_revision_id
-  ON approved_dependency(revision_id);
--- requirement_trace revision_id covered by idx_requirement_trace_revision_id above
+CREATE INDEX IF NOT EXISTS idx_adr_iteration_id
+  ON adr(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_component_iteration_id
+  ON component(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_approved_dependency_iteration_id
+  ON approved_dependency(iteration_id);
+-- requirement_trace iteration_id covered by idx_requirement_trace_iteration_id above
 
 -- UX design domain
-CREATE INDEX IF NOT EXISTS idx_user_flow_revision_id
-  ON user_flow(revision_id);
-CREATE INDEX IF NOT EXISTS idx_screen_revision_id
-  ON screen(revision_id);
-CREATE INDEX IF NOT EXISTS idx_info_architecture_revision_id
-  ON info_architecture(revision_id);
-CREATE INDEX IF NOT EXISTS idx_persona_addressed_revision_id
-  ON persona_addressed(revision_id);
-CREATE INDEX IF NOT EXISTS idx_ux_asset_revision_id
-  ON ux_asset(revision_id);
+CREATE INDEX IF NOT EXISTS idx_user_flow_iteration_id
+  ON user_flow(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_screen_iteration_id
+  ON screen(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_info_architecture_iteration_id
+  ON info_architecture(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_persona_addressed_iteration_id
+  ON persona_addressed(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_ux_asset_iteration_id
+  ON ux_asset(iteration_id);
 
 -- Planning domain
-CREATE INDEX IF NOT EXISTS idx_plan_phase_revision_id
-  ON plan_phase(revision_id);
--- Skipped: plan_overview (revision_id is the UNIQUE key)
+CREATE INDEX IF NOT EXISTS idx_plan_phase_iteration_id
+  ON plan_phase(iteration_id);
+-- Skipped: plan_overview (iteration_id is the UNIQUE key)
 
 -- Implementation domain
-CREATE INDEX IF NOT EXISTS idx_implementation_manifest_revision_id
-  ON implementation_manifest(revision_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_manifest_iteration_id
+  ON implementation_manifest(iteration_id);
 
 -- QA domain
-CREATE INDEX IF NOT EXISTS idx_test_report_revision_id
-  ON test_report(revision_id);
+CREATE INDEX IF NOT EXISTS idx_test_report_iteration_id
+  ON test_report(iteration_id);
 
 -- Audit domain
-CREATE INDEX IF NOT EXISTS idx_security_audit_finding_revision_id
-  ON security_audit_finding(revision_id);
-CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_revision_id
-  ON performance_audit_finding(revision_id);
+CREATE INDEX IF NOT EXISTS idx_security_audit_finding_iteration_id
+  ON security_audit_finding(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_iteration_id
+  ON performance_audit_finding(iteration_id);
 
 -- Documentation domain
 
 -- Cross-cutting domain
-CREATE INDEX IF NOT EXISTS idx_intermediate_asset_revision_id
-  ON intermediate_asset(revision_id);
+CREATE INDEX IF NOT EXISTS idx_intermediate_asset_iteration_id
+  ON intermediate_asset(iteration_id);
 
 -- ------------------------------------------------------------
 -- phase_id — FK to phase(id)

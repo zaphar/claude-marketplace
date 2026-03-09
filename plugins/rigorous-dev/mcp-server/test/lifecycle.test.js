@@ -124,7 +124,7 @@ describe("plan_phase_transition", () => {
       },
     });
     const phases = db.prepare(
-      "SELECT id FROM plan_phase WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"
+      "SELECT id FROM plan_phase WHERE iteration_id = ?"
     ).all(seed.iteration_id);
     const ppId = phases[0].id;
 

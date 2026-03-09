@@ -21,7 +21,7 @@ The UX design domain is organised into five sub-areas:
 | **UX Configuration** | `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
 
-Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin rows to the exact producer-critic loop that created them. The iteration is derived via the `revision → phase → iteration` foreign-key chain (or via the `entity_context` VIEW).
+Every primary table carries `iteration_id` (NOT NULL, FK → `iteration`) to scope rows to the iteration that produced them.
 
 ---
 
@@ -38,7 +38,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical flow identifier, e.g. `FLOW-001`. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this flow. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this flow. |
 | `name` | TEXT | NOT NULL | — | Short human-readable name, e.g. "User Registration". |
 | `goal` | TEXT | NOT NULL | — | The user's objective for completing this flow. |
 | `persona_id` | TEXT | FK → `persona(id)` | NULL | Primary persona this flow is designed for. |
@@ -138,7 +138,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical screen identifier, e.g. `SCREEN-001`. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this screen. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this screen. |
 | `name` | TEXT | NOT NULL | — | Screen name, e.g. "Dashboard". Must match `user_flow_step.surface` references. |
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
@@ -180,7 +180,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this record. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this record. |
 | `persona_id` | TEXT | NOT NULL, FK → `persona(id)` | — | The persona being addressed. |
 | `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the persona's goals JSON array). |
 | `how_addressed` | TEXT | NOT NULL | — | How the UX design meets this goal. |
@@ -231,7 +231,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this asset. |
+| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this asset. |
 | `name` | TEXT | NOT NULL | — | Human-readable asset name, e.g. "Dashboard Default Wireframe". |
 | `path` | TEXT | NOT NULL | — | Relative file path from the project root. |
 | `asset_type` | TEXT | NOT NULL | — | Asset category (e.g., `wireframe`, `mockup`, `prototype`, `icon`, `image`, `video`). |
@@ -282,7 +282,7 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 2. **Surface referenced by name, not FK.** `user_flow_step.surface` stores a surface name string (typically a screen name for UI apps) rather than a `screen_id` FK. This allows steps to reference screens before the screen row is formally created, supporting iterative design. The column is nullable to accommodate API-only and CLI applications where there is no visual screen. The trade-off is that name consistency must be enforced by the `ux_critic`, not the database.
 
-3. **Append-only revision model.** No UX rows are updated in place. When the `ux_critic` rejects a design, a new `revision` is created and the `ux_designer` inserts fresh rows with the new `revision_id`. All prior revisions remain queryable.
+3. **Append-only revision model.** No UX rows are updated in place. When the `ux_critic` rejects a design, a new revision is created and the `ux_designer` inserts fresh rows under the same `iteration_id`. All prior revisions remain queryable.
 
 4. **Flat key-value for info_architecture.** The `info_architecture` table uses a `category / key / value` pattern rather than typed columns. This makes it extensible without schema changes — new navigation categories can be added freely. The table adds `parent_id` to support a tree structure within this flat scheme.
 

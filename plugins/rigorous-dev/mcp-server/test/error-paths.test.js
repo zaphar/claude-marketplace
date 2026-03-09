@@ -131,13 +131,13 @@ describe("changelog_insert FK violations", () => {
     assert.strictEqual(result.entity_type, "persona");
   });
 
-  it("rejects requirement with non-existent revision_id", () => {
+  it("rejects requirement with non-existent iteration_id", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
           entity_type: "requirement",
-          iteration_id: seed.iteration_id,
-          revision_id: 99999,
+          iteration_id: 99999,
+          revision_id: seed.revision_id,
           data: { id: "REQ-1", description: "X", priority: "must-have", category: "functional" },
         }),
       /FOREIGN KEY/

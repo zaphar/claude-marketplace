@@ -22,11 +22,8 @@ Four tables form the backbone — everything else hangs off them:
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`revision_id` only (17 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
-- **`iteration_id` only (8 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`.
+- **`iteration_id` (25 entity tables):** Most entity tables carry `iteration_id` (NOT NULL, FK → `iteration`). This includes both producer-critic artifacts and iteration-scoped context tables: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`, `requirement`, `requirement_trace`, `adr`, `component`, `approved_dependency`, `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset`, `plan_phase`, `plan_overview`, `implementation_manifest`, `intermediate_asset`, `test_report`, `security_audit_finding`, `performance_audit_finding`.
 - **`project_id` only (1 table):** `persona` is project-scoped — it carries `project_id` (NOT NULL, FK → `project`) and an informational `introduced_in_iteration_id` (FK → `iteration`, ON DELETE SET NULL).
-
-No table carries both `revision_id` and `iteration_id`.
 
 ## Requirements Domain
 
@@ -191,7 +188,7 @@ Documentation quality is enforced by the `documentation_critic` reviewing commit
 
 1. **Pragmatic normalization** — Core entities and M:N relationships use proper tables with foreign keys. Simple 1:N string lists (goals, criteria, triggers, steps, etc.) are stored as JSON arrays on the parent row, avoiding unnecessary child tables while keeping data self-contained and queryable via `JSON_EACH()`.
 2. **Append-only** — Revisions are never deleted or overwritten. New revisions create new rows. Full history preserved.
-3. **Traceability** — Every entity carries either `revision_id` (producer-critic entities, with iteration derived via revision → phase → iteration) or `iteration_id` (iteration-scoped entities). The `entity_context` VIEW bridges revision to iteration for convenient querying. You can always answer "who produced this, when, and in response to what feedback."
+3. **Traceability** — Every entity carries `iteration_id` (FK → `iteration`) for direct iteration scoping. The one exception is `persona`, which is project-scoped via `project_id`. You can always answer "who produced this, when, and in response to what feedback."
 4. **Idempotent DDL** — All tables use `CREATE TABLE IF NOT EXISTS` so the schema can be re-applied safely.
 5. **UTC timestamps in ISO 8601** — All timestamp columns use `TEXT` type. The DDL declares `DEFAULT (datetime('now'))` as a fallback, but application code explicitly sets timestamps via JavaScript's `new Date().toISOString()`, producing full ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ`). Timestamps are always UTC. Columns auto-populated on insert (e.g., `created_at`) are set explicitly by handler code; columns set later (e.g., `resolved_at` on blockers) use the same `toISOString()` format. No `DATETIME` or `INTEGER` (epoch) types are used — all temporal values are human-readable UTC text.
 

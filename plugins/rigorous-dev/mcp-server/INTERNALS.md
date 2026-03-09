@@ -18,7 +18,7 @@ Persistence layer mechanics for the rigorous-dev MCP server.
 
 **Return values.** `.run()` returns `{ changes, lastInsertRowid }`. The codebase chains parent→child inserts via `lastInsertRowid` — for example, `iterationCreate` captures the iteration ID from the insert result and uses it for all subsequent phase inserts.
 
-**Named parameters.** `@param` syntax, bound via an object. `write-tools.js` uses `@named` parameters exclusively — every `.run()` and `.get()` call passes an object (e.g., `{ id, revision_id, name }`). `read-tools.js` uses positional (`?`) parameters exclusively — individual `queryXxx` functions build their own queries with positional placeholders and pass values as arrays. The two files never mix styles (which SQLite does not allow in a single statement).
+**Named parameters.** `@param` syntax, bound via an object. `write-tools.js` uses `@named` parameters exclusively — every `.run()` and `.get()` call passes an object (e.g., `{ id, iteration_id, name }`). `read-tools.js` uses positional (`?`) parameters exclusively — individual `queryXxx` functions build their own queries with positional placeholders and pass values as arrays. The two files never mix styles (which SQLite does not allow in a single statement).
 
 ## 2. Database Initialization (db.js)
 
@@ -124,17 +124,16 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 64 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
-- **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."
 - **`requirement_id`** indexes on junction/mapping tables — requirements are the most cross-referenced entity.
 - **`plan_phase_id`** on child tables — parent→child joins.
-- **Single-column indexes** on `requirement_trace(requirement_id)`, `(revision_id)`, and `(addressed_by_type)`.
+- **Single-column indexes** on `requirement_trace(requirement_id)`, `(iteration_id)`, and `(addressed_by_type)`.
 - **Explicit skip comments** where a column is already leftmost in a PK or UNIQUE constraint that SQLite auto-indexes (e.g., `component_dependency.component_id` is leftmost in its composite PK, so no separate index is needed).
 
 ## 9. Adding a New Entity Type (Checklist)
 
 Adding a new entity type requires synchronized changes in 4+ files:
 
-1. **`schema.sql`** — `CREATE TABLE` with FKs to `iteration(id)` and `revision(id)` + `CREATE INDEX` for `iteration_id` and `revision_id` + any child/junction tables + their indexes.
+1. **`schema.sql`** — `CREATE TABLE` with FK to `iteration(id)` + `CREATE INDEX` for `iteration_id` + any child/junction tables + their indexes.
 2. **`write-tools.js`** — Write an `insertXxx()` function + add the case to the `changelogInsert` dispatch `handlers` object.
 3. **`read-tools.js`** — Add to `ENTITY_TABLE` mapping (this automatically populates `VALID_ENTITY_TYPES`, which is derived as `Object.keys(ENTITY_TABLE)`) + write a `queryXxx` function with a hardcoded `FILTERS` spec and optional `include_related` enrichment + register it in `QUERY_DISPATCH`.
 4. **Table documentation** — Add or update the relevant `skills/rigorous-dev/references/tables/<domain>.md`.
