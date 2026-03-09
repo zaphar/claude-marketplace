@@ -129,6 +129,6 @@ Note: The `Implementation Phasing` section is NOT included in the initial consol
 
 Enter the **Findings Review & Implementation Workflow** (see `workflows/findings-review.md`) starting at **Step B: Interactive Review** (the Findings Index is already loaded in the database from Step 4).
 
-The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report) → execution with progress reporting.
+The shared workflow handles: interactive approve/reject/skip review → dependency analysis → implementation plan (appended to the consolidated report only if 3+ fixes are approved) → execution with progress reporting.
 
 If the user chooses to fix issues, each fix goes through the full **Producer-Critic Loop** (see `workflows/producer-critic-loop.md`). The schema critic identifies findings; the producer-critic loop implements fixes.

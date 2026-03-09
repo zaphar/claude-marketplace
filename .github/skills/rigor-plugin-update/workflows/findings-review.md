@@ -6,7 +6,7 @@ This shared workflow is used by any mode that produces multiple findings (Schema
 
 **Document scope varies by mode:**
 - **Update Mode** — The workflow applies when a change request is decomposed into multiple work-units. Phasing and progress are tracked in-conversation. Single changes go straight through the Producer-Critic Loop without this workflow.
-- **Schema Audit Mode** — findings are recorded in the `finding` table and decisions in the `decision` table. Raw critic reports remain in `.scratch/` for reference.
+- **Schema Audit Mode** — findings are recorded in the `finding` table and decisions in the `decision` table. Raw critic reports remain in `.scratch/` for reference. The implementation plan is only generated if the user approves 3+ fixes.
 - **Deep Audit Mode** — critics create raw reports in `.scratch/`. The consolidation agent records structured findings into the database from the raw reports. The implementation plan is only generated if the user approves 3+ fixes.
 - **MCP Server Audit Mode** — the critic creates a raw report in `.scratch/`. The consolidation agent records structured findings into the database. The implementation plan is only generated if the user approves 3+ fixes.
 - **Q&A Mode** — findings are presented inline in the conversation. The conversation itself is the record.

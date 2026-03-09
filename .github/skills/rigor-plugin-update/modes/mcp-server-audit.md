@@ -1,4 +1,4 @@
-# Mode 5: MCP Server Audit Mode
+# Mode 4: MCP Server Audit Mode
 
 Triggered when the user asks to audit, review, or analyze the MCP server code specifically (e.g., "audit the MCP server", "review mcp-server code quality", "check the MCP server for bugs").
 
