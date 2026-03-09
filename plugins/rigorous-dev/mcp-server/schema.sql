@@ -345,8 +345,6 @@ CREATE TABLE IF NOT EXISTS component_dependency (
   PRIMARY KEY (component_id, depends_on)
 );
 
--- requirement_trace: unified traceability — see requirement_trace table below
-
 -- Domain: architecture
 -- Purpose: Identifies the interaction points between components where integration tests are
 -- mandatory. Each row names a source component, a target component, the type of boundary being
@@ -365,34 +363,6 @@ CREATE TABLE IF NOT EXISTS integration_test_boundary (
   correct_behavior TEXT NOT NULL,
   UNIQUE(component_id, target_component_id, boundary_type)
 );
-
--- Unified config (architecture: security/deployment/observability; ux: design_system/accessibility/responsive/feedback_pattern)
--- Domain: cross-cutting
--- Purpose: Unified key/value store for cross-cutting configuration across both architecture and UX
--- domains. Each row captures one configuration decision or setting — for example, an authentication
--- scheme, a deployment scaling policy, a logging format, a design system colour token, or an
--- accessibility setting. The domain column classifies each row as architecture or ux, and the
--- config_type column further discriminates the concern within that domain.
--- Context: Architecture-domain entries are written by backend_architect during the architecture
--- phase. UX-domain entries are written by ux_designer during the ux_design phase. Security entries
--- are driven by nonfunctional_requirement rows with type = 'technology' and security implications.
--- Deployment entries are driven by nonfunctional_requirement rows with type = 'deployment'.
--- Observability entries are driven by nonfunctional_requirement rows with type = 'operational'. UX
--- entries are driven by design requirements and accessibility standards.
-CREATE TABLE IF NOT EXISTS config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  domain TEXT NOT NULL CHECK(domain IN ('architecture', 'ux')),
-  config_type TEXT NOT NULL,
-  target TEXT,
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  rationale TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(revision_id, domain, config_type, category, key)
-);
-
 -- Dependencies manifest
 -- Domain: cross-cutting
 -- Purpose: The vetted third-party dependency manifest. Every external library, package, or SDK that
@@ -543,42 +513,6 @@ CREATE TABLE IF NOT EXISTS screen (
 );
 
 CREATE INDEX IF NOT EXISTS idx_screen_name ON screen(name);
-
--- Domain: ux-design
--- Purpose: A named UI state variant of a screen. Captures how the screen looks and behaves when it
--- is in a particular condition (loading, empty, error, etc.). Each state may optionally have its
--- own wireframe.
--- Context: The ux_designer must define at minimum a default state. The ux_critic checks that
--- screens with data dependencies include loading and empty states, and that action-bearing screens
--- include an error state. The senior_developer implements each state as a conditional render
--- branch.
-CREATE TABLE IF NOT EXISTS screen_state (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT,
-  wireframe_path TEXT,
-  UNIQUE(screen_id, name)
-);
-
--- Domain: ux-design
--- Purpose: Describes how a screen layout changes at a specific responsive breakpoint. Captures
--- breakpoint-specific wireframes and prose descriptions of layout adjustments (e.g., "sidebar
--- collapses to hamburger menu at mobile breakpoint").
--- Context: One row per breakpoint per screen. Breakpoint names should align with values defined in
--- config (domain: ux, config_type responsive). The ux_critic validates that screens either have
--- responsive variants for all defined breakpoints or explicitly omit them with justification.
-CREATE TABLE IF NOT EXISTS screen_responsive_variant (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  screen_id TEXT NOT NULL REFERENCES screen(id) ON DELETE CASCADE,
-  breakpoint TEXT NOT NULL,
-  wireframe_path TEXT,
-  layout_changes TEXT,
-  UNIQUE(screen_id, breakpoint)
-);
-
--- (ux_config has been merged into the unified `config` table — see architecture section)
-
 -- UX: information architecture
 -- Domain: ux-design
 -- Purpose: Captures the information architecture of the application: site map, navigation
@@ -634,7 +568,7 @@ CREATE TABLE IF NOT EXISTS persona_addressed_flow (
 -- videos. Provides a canonical inventory of design files and their locations, optionally linked to
 -- a specific screen.
 -- Context: The ux_designer registers every file it produces. wireframe_path and mockup_path on
--- screen and screen_state rows should correspond to path values in this table. The ux_critic
+-- screen rows should correspond to path values in this table. The ux_critic
 -- verifies that all referenced paths have corresponding ux_asset entries. Assets not tied to a
 -- specific screen (e.g., a global icon set, a prototype video) leave screen_id NULL.
 CREATE TABLE IF NOT EXISTS ux_asset (
@@ -869,33 +803,6 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
 );
-
--- Implementation plan: metadata
--- Domain: planning
--- Purpose: Version and provenance record for the implementation plan. Records what version of the
--- requirements, architecture, and UX specifications the plan was produced from, the plan's own
--- version string, and its lifecycle status.
--- Context: One row per planning revision. Inserted by implementation_planner when producing a plan.
--- The status field tracks the plan through its lifecycle: draft (just produced), review (submitted
--- to critic), approved (critic accepted). requirements_version, architecture_version, and
--- ux_specification_version capture the source document versions so that, if any upstream artifact
--- changes, the plan can be identified as potentially stale. implementation_plan_critic updates
--- status to approved or leaves feedback that triggers a new revision (which creates a new row with
--- status: 'draft').
-CREATE TABLE IF NOT EXISTS plan_metadata (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  version TEXT NOT NULL,
-  document_date TEXT NOT NULL,
-  document_updated TEXT,
-  status TEXT NOT NULL CHECK(status IN ('draft', 'review', 'approved')),
-  requirements_version TEXT NOT NULL,
-  architecture_version TEXT NOT NULL,
-  ux_specification_version TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 -- Implementation manifests (per sub-phase)
 -- Domain: implementation
 -- Purpose: The root record for one sub-phase of implementation work. Every time the
@@ -918,6 +825,8 @@ CREATE TABLE IF NOT EXISTS implementation_manifest (
   requirements_version TEXT,
   architecture_version TEXT,
   language TEXT,
+  stdout TEXT,
+  stderr TEXT,
   commit_sha TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -1117,27 +1026,6 @@ CREATE TABLE IF NOT EXISTS intermediate_asset (
   content TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- Asset deliverables: files committed to VCS
--- Domain: implementation
--- Purpose: Records files that have been committed to VCS as finished deliverables. Where
--- intermediate_asset captures in-progress work, asset_deliverable captures the permanent artefacts:
--- source code, tests, documentation, diagrams, toolchain configs.
--- Context: The asset_type field categorises the deliverable (e.g., source code, tests,
--- documentation). file_path is the repository-relative path. commit_sha ties the deliverable to the
--- specific commit that introduced it, enabling the iteration_summary tool to surface "what was
--- shipped" without querying VCS directly.
-CREATE TABLE IF NOT EXISTS asset_deliverable (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  phase_id INTEGER REFERENCES phase(id) ON DELETE SET NULL,
-  asset_type TEXT NOT NULL,
-  file_path TEXT NOT NULL,
-  description TEXT,
-  commit_sha TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 -- ============================================================
 -- QA & TEST TABLES
 -- ============================================================
@@ -1162,6 +1050,8 @@ CREATE TABLE IF NOT EXISTS test_report (
   coverage_function REAL,
   duration_seconds REAL,
   status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'blocked')),
+  stdout TEXT,
+  stderr TEXT,
   version TEXT,
   document_date TEXT, -- ISO 8601 date (YYYY-MM-DD)
   requirements_version TEXT,
@@ -1169,165 +1059,6 @@ CREATE TABLE IF NOT EXISTS test_report (
   commit_sha TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- Domain: qa-test
--- Purpose: Records whether each requirement has been exercised by the test suite. Provides per-
--- requirement test traceability at the requirement level (as opposed to per-criterion detail in
--- test_acceptance_criterion_result).
--- Context: The qa_engineer creates one row per requirement. The qa_critic cross-checks this list
--- against the full requirement set in requirement to detect untested requirements. This table
--- confirms that all must_have requirements have at least a pass or partial coverage status.
-CREATE TABLE IF NOT EXISTS test_requirement_coverage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'partial', 'not_tested')),
-  UNIQUE(report_id, requirement_id)
-);
-
--- Domain: qa-test
--- Purpose: Records the pass/fail status of a single acceptance criterion for a given requirement
--- coverage entry. This is the finest level of requirement traceability in the test domain.
--- Context: Each requirement has one or more acceptance criteria (stored as the acceptance_criteria
--- JSON array on the requirement table). The qa_engineer must produce a result row for every
--- criterion. Unverified criteria appear as not_tested. The criterion text is copied from the source
--- requirement to make the report self-contained.
-CREATE TABLE IF NOT EXISTS test_acceptance_criterion_result (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  coverage_id INTEGER NOT NULL REFERENCES test_requirement_coverage(id) ON DELETE CASCADE,
-  criterion TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'not_tested')),
-  notes TEXT,
-  test_ids JSON NOT NULL DEFAULT '[]',
-  UNIQUE(coverage_id, criterion)
-);
-
--- Domain: qa-test
--- Purpose: Groups test cases into named suites by their testing type. Each suite belongs to exactly
--- one test report and contains one or more test cases.
--- Context: The qa_engineer organizes test cases into suites reflecting the testing strategy (unit
--- tests, integration tests, end-to-end, security scans, performance benchmarks). Suites are the
--- second level of the hierarchy: test_report → test_suite → test_case.
-CREATE TABLE IF NOT EXISTS test_suite (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  suite_type TEXT NOT NULL,
-  UNIQUE(report_id, name)
-);
-
--- Domain: qa-test
--- Purpose: Stores the result of a single test case execution, including its status, timing, and any
--- failure diagnostics.
--- Context: Each test_case belongs to a suite. The test_id is the canonical identifier used by the
--- test runner (e.g., "auth.login.valid_credentials"). Flaky tests (intermittently passing/failing)
--- are captured with the flaky status and a retry_count. Full stack traces are preserved to support
--- root-cause analysis.
-CREATE TABLE IF NOT EXISTS test_case (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  suite_id INTEGER NOT NULL REFERENCES test_suite(id) ON DELETE CASCADE,
-  test_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'skipped', 'flaky')),
-  duration_ms REAL,
-  error_message TEXT,
-  stack_trace TEXT,
-  retry_count INTEGER,
-  UNIQUE(suite_id, test_id)
-);
-
--- Domain: qa-test
--- Purpose: Many-to-many bridge table linking test cases to the requirements they verify. Enables
--- requirement-centric queries ("which test cases cover REQ-042?") and test-centric queries ("what
--- requirements does this test verify?").
--- Context: The qa_engineer populates this for each test case that directly verifies a requirement.
--- Together with test_requirement_coverage and test_acceptance_criterion_result, this forms the full
--- traceability chain: requirement ↔ test case ↔ test suite ↔ test report.
-CREATE TABLE IF NOT EXISTS test_case_requirement (
-  test_case_id INTEGER NOT NULL REFERENCES test_case(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  PRIMARY KEY (test_case_id, requirement_id)
-);
-
--- Domain: qa-test
--- Purpose: Records a security issue discovered during the QA phase, either from a vulnerability
--- scanner or a dependency audit tool.
--- Context: The qa_engineer runs security tooling (e.g., SAST scanners, npm audit, pip-audit) and
--- records each finding here. Critical or high severity findings typically populate the test_blocker
--- table as well.
-CREATE TABLE IF NOT EXISTS test_security_finding (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  tool TEXT,
-  severity TEXT CHECK(severity IN ('critical', 'high', 'medium', 'low', 'informational')), -- NULL when severity not yet triaged
-  description TEXT NOT NULL,
-  location TEXT,
-  recommendation TEXT NOT NULL,
-  package TEXT,
-  advisory TEXT
-);
-
--- Domain: qa-test
--- Purpose: Stores a measured performance metric alongside its target threshold and a pass/fail
--- verdict. One row per benchmark measurement.
--- Context: The qa_engineer runs benchmarks defined by performance requirements (from the
--- requirement table with category = 'performance'). Each metric (e.g., p95 response time,
--- throughput) is recorded with its actual value, the threshold from the requirement, and whether it
--- passed. Failed benchmarks typically become blockers.
-CREATE TABLE IF NOT EXISTS test_performance_benchmark (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  metric TEXT NOT NULL,
-  measured_value REAL NOT NULL,
-  unit TEXT NOT NULL,
-  threshold REAL,
-  status TEXT CHECK(status IN ('pass', 'fail')), -- NULL when benchmark not yet evaluated
-  UNIQUE(report_id, name)
-);
-
--- Domain: qa-test
--- Purpose: Records an issue that prevents the test report from achieving a pass status. Each
--- blocker has a severity level and an optional recommendation for resolution.
--- Context: The qa_engineer creates blocker rows for critical failures, unresolved security
--- findings, or missing test coverage that disqualify the build from passing. The qa_critic
--- validates that every fail status in test_requirement_coverage has a corresponding blocker.
-CREATE TABLE IF NOT EXISTS test_blocker (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
-  recommendation TEXT
-);
-
--- Domain: qa-test
--- Purpose: Many-to-many bridge linking blockers to the requirements they affect. Identifies
--- exactly which requirements are at risk due to each blocker.
--- Context: When a blocker is related to a specific requirement (e.g., a failed functional test for
--- REQ-012), the qa_engineer records that link here. A blocker may affect multiple requirements; a
--- requirement may be referenced by multiple blockers.
-CREATE TABLE IF NOT EXISTS test_blocker_requirement (
-  blocker_id INTEGER NOT NULL REFERENCES test_blocker(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  PRIMARY KEY (blocker_id, requirement_id)
-);
-
--- Domain: qa-test
--- Purpose: Captures QA improvement suggestions that are not blocking but should be addressed in
--- future iterations. Categorized and prioritized for easy triage.
--- Context: The qa_engineer and qa_critic identify weaknesses in the test suite (gaps in coverage,
--- reliability issues, missing performance benchmarks, etc.) and record them here. Unlike blockers,
--- recommendations do not prevent progress — they are suggestions for future improvement.
-CREATE TABLE IF NOT EXISTS test_recommendation (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  report_id INTEGER NOT NULL REFERENCES test_report(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  description TEXT NOT NULL,
-  priority TEXT NOT NULL CHECK(priority IN ('high', 'medium', 'low'))
-);
-
 -- ============================================================
 -- AUDIT PHASE TABLES
 -- ============================================================
@@ -1339,9 +1070,7 @@ CREATE TABLE IF NOT EXISTS test_recommendation (
 -- OWASP category or code area.
 -- Context: The security_auditor performs a deep code-level security audit (OWASP Top 10, data flow
 -- tracing, dependency audit, configuration review) and records each finding individually via
--- changelog_insert. This differs from test_security_finding in the QA domain: QA findings come from
--- automated scanners during testing, while audit findings come from manual expert code review
--- during the audit phase. The security_audit_critic queries all findings for the current iteration
+-- changelog_insert. Audit findings come from manual expert code review during the audit phase. The security_audit_critic queries all findings for the current iteration
 -- to validate completeness, accuracy, and actionability.
 CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1364,8 +1093,7 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
 -- incrementally as they complete each performance area.
 -- Context: The performance_auditor performs a deep code-level performance audit (database queries,
 -- memory patterns, concurrency, API design, algorithm analysis) and records each finding
--- individually via changelog_insert. This differs from test_performance_benchmark in the QA domain:
--- QA benchmarks measure against defined thresholds from requirements, while audit findings identify
+-- individually via changelog_insert. Audit findings identify
 -- code-level anti-patterns and bottlenecks regardless of requirements. The performance_audit_critic
 -- queries all findings for the current iteration to validate completeness, evidence backing, and
 -- actionability.
@@ -1384,141 +1112,6 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'deferred')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- Documentation manifest
--- Domain: documentation
--- Purpose: The root aggregate for a documentation pass. One row is created per changelog_insert
--- call with entity_type = "documentation_manifest". It records the overall status (complete /
--- partial / blocked), a count of documents created, total pages, and accessibility compliance.
--- Context: Every other documentation table references this row. The manifest ties documentation
--- artifacts back to a specific revision via revision_id (NOT NULL), so the full history of
--- documentation revisions is preserved. The iteration is derived via the revision → phase →
--- iteration chain (or via the entity_context VIEW). The documentation_critic reads this row (and
--- its children) to validate coverage and quality; it then calls revision_update with a verdict of
--- approved or rejected.
-CREATE TABLE IF NOT EXISTS documentation_manifest (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'blocked')),
-  total_pages INTEGER,
-  accessibility_compliant INTEGER NOT NULL DEFAULT 0,
-  version TEXT,
-  document_date TEXT, -- ISO 8601 date (YYYY-MM-DD)
-  requirements_version TEXT,
-  architecture_version TEXT,
-  implementation_version TEXT,
-  format TEXT CHECK(format IN ('markdown', 'html', 'pdf', 'docusaurus', 'mkdocs', 'other')), -- NULL when format not yet decided
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Domain: documentation
--- Purpose: A flexible key/value store for named documentation sections within a manifest. Examples
--- include entries like category = "readme", key = "installation", value = "..." or category =
--- "api", key = "authentication", value = "...". The path field records the file path where this
--- section lives on disk.
--- Context: The documentation_master uses this table to enumerate every discrete section of the
--- documentation suite — README sections, API doc sections, guides, changelogs, etc. The
--- documentation_critic scans these records to verify section coverage against the requirements and
--- feature list.
-CREATE TABLE IF NOT EXISTS documentation_section (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  key TEXT NOT NULL,
-  value TEXT NOT NULL,
-  path TEXT,
-  UNIQUE(manifest_id, category, key)
-);
-
--- Domain: documentation
--- Purpose: Records a documentation entry for a single feature of the product. Captures where the
--- feature's documentation lives (path) and whether it includes concrete examples and screenshots.
--- Child rows in documentation_feature_requirement link each feature documentation to the
--- requirements it satisfies.
--- Context: The documentation_master creates one row per documented feature. This allows the
--- documentation_critic to verify that every user-facing feature has documentation at a known path,
--- with examples where required. The includes_examples and includes_screenshots flags are used in
--- accessibility and quality checks.
-CREATE TABLE IF NOT EXISTS documentation_feature (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  path TEXT NOT NULL,
-  includes_examples INTEGER NOT NULL DEFAULT 0,
-  includes_screenshots INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(manifest_id, name)
-);
-
--- Domain: documentation
--- Purpose: A many-to-many join table linking documented features to the requirements they satisfy.
--- Enables bidirectional traceability: given a feature, find its requirements; given a requirement,
--- find which features document it.
--- Context: The documentation_master populates this after recording each documentation_feature. The
--- documentation_critic uses it to verify that all must_have requirements appear in at least one
--- feature's documentation. The requirement_id is a TEXT foreign key matching the REQ-XXX
--- identifiers from the requirement table.
-CREATE TABLE IF NOT EXISTS documentation_feature_requirement (
-  feature_id INTEGER NOT NULL REFERENCES documentation_feature(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  PRIMARY KEY (feature_id, requirement_id)
-);
-
--- Domain: documentation
--- Purpose: Records per-requirement documentation coverage status. One row per requirement that the
--- documentation_master assessed. Records whether the requirement is documented (documented flag),
--- whether it is user-facing, and any free-form notes. The paths JSON array lists the actual file
--- paths where coverage appears.
--- Context: This table is the primary coverage report used by the documentation_critic. A
--- requirement with documented = 0 is a gap. user_facing = 1 flags requirements that must appear in
--- end-user documentation (guides, README) rather than internal developer docs. The notes field
--- captures reasons for non-coverage (e.g., "internal implementation detail, no user doc needed").
-CREATE TABLE IF NOT EXISTS documentation_requirement_coverage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
-  requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  documented INTEGER NOT NULL DEFAULT 0,
-  user_facing INTEGER NOT NULL DEFAULT 0,
-  notes TEXT,
-  paths JSON NOT NULL DEFAULT '[]',
-  UNIQUE(manifest_id, requirement_id)
-);
-
--- Domain: documentation
--- Purpose: Catalogs generated documentation assets — diagrams, screenshots, videos, code samples,
--- and other media — that are referenced within the documentation. Each row records the asset's file
--- path, type, human-readable description, and accessibility alt text.
--- Context: The documentation_master creates one row per asset it generates or references. The
--- alt_text field is specifically required for accessibility compliance (accessibility_compliant = 1
--- on the manifest). The documentation_critic checks that all assets of type screenshot or diagram
--- have non-null alt_text. The asset_type CHECK constraint enforces a closed vocabulary aligned with
--- the output formats the workflow supports.
-CREATE TABLE IF NOT EXISTS documentation_asset (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
-  path TEXT NOT NULL,
-  asset_type TEXT NOT NULL CHECK(asset_type IN ('screenshot', 'diagram', 'video', 'code-sample', 'other')),
-  description TEXT,
-  alt_text TEXT,
-  UNIQUE(manifest_id, path)
-);
-
--- Domain: documentation
--- Purpose: Records the results of named verification checks run against the documentation. Each row
--- is a single check (e.g., "all_requirements_documented", "links_valid", "examples_compile") with a
--- boolean passed flag. The full set of rows for a manifest forms the documentation quality gate.
--- Context: The documentation_critic populates this table (or the documentation_master self-
--- validates and the critic confirms). A manifest is ready for release only when all critical checks
--- have passed = 1. The check names are free-form strings, giving flexibility to add new checks
--- without schema changes. The documentation_critic's rejection feedback will reference specific
--- failed check names from this table.
-CREATE TABLE IF NOT EXISTS documentation_review_checklist (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  manifest_id INTEGER NOT NULL REFERENCES documentation_manifest(id) ON DELETE CASCADE,
-  check_name TEXT NOT NULL,
-  passed INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(manifest_id, check_name)
-);
-
 -- ============================================================
 -- BLOCKER: cross-phase workflow blockers raised by agents
 -- ============================================================
@@ -1564,31 +1157,6 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 );
 
 -- ============================================================
--- ENTITY SNAPSHOT: JSON history of entity changes across revisions
--- ============================================================
-
--- Domain: cross-cutting
--- Purpose: Preserves the full change history of entities without complicating the main entity
--- tables. Before an UPSERT overwrites an entity, the old state is captured as a JSON snapshot in
--- this table.
--- Context: Enables querying change history for specific entities while keeping the main entity
--- tables clean and current. Supports the ability to see how any entity evolved across critic
--- feedback cycles within an iteration.
-CREATE TABLE IF NOT EXISTS entity_snapshot (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  -- soft FK: entity_type must match a key in ENTITY_TABLE (read-tools.js)
-  entity_type TEXT NOT NULL, -- e.g. 'requirement', 'adr', 'component', 'screen', 'user_flow', 'plan_phase', etc.
-  source_id TEXT NOT NULL,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
-  snapshot JSON NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(entity_type, source_id, revision_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
-  ON entity_snapshot(entity_type, source_id);
-
--- ============================================================
 -- INDEXES: high-frequency FK column lookups
 -- ============================================================
 -- Naming: idx_<table>_<column> (single), idx_<table>_<col1>_<col2> (composite)
@@ -1605,27 +1173,22 @@ CREATE INDEX IF NOT EXISTS idx_entity_snapshot_lookup
 CREATE INDEX IF NOT EXISTS idx_nonfunctional_requirement_iteration_id
   ON nonfunctional_requirement(iteration_id);
 
-
 -- Planning domain
 -- Skipped: plan_external_dependency (iteration_id is leftmost in UNIQUE(iteration_id, name))
 
-
 -- Cross-cutting domain
 -- Skipped: vcs_commit (iteration_id is leftmost in UNIQUE(iteration_id, commit_sha))
-CREATE INDEX IF NOT EXISTS idx_asset_deliverable_iteration_id
-  ON asset_deliverable(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_blocker_iteration_id
   ON blocker(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_project_lesson_iteration_id
   ON project_lesson(iteration_id);
 
 -- ------------------------------------------------------------
--- manifest_id — child tables of implementation_manifest,
---   documentation_manifest
--- Skipped: implementation_requirement_status, implementation_component_status,
---   documentation_requirement_coverage (manifest_id is leftmost in UNIQUE)
--- Skipped: implementation_dependency_added, implementation_db_migration,
---   documentation_section (manifest_id is leftmost in UNIQUE added for dedup)
+-- manifest_id — child tables of implementation_manifest
+-- Skipped: implementation_requirement_status, implementation_component_status
+--   (manifest_id is leftmost in UNIQUE)
+-- Skipped: implementation_dependency_added, implementation_db_migration
+--   (manifest_id is leftmost in UNIQUE added for dedup)
 -- ------------------------------------------------------------
 
 -- Implementation manifest children
@@ -1636,29 +1199,6 @@ CREATE INDEX IF NOT EXISTS idx_implementation_blocker_manifest_id
   ON implementation_blocker(manifest_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_review_checklist_manifest_id
   ON implementation_review_checklist(manifest_id);
-
--- Documentation manifest children
-CREATE INDEX IF NOT EXISTS idx_documentation_feature_manifest_id
-  ON documentation_feature(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_documentation_asset_manifest_id
-  ON documentation_asset(manifest_id);
-CREATE INDEX IF NOT EXISTS idx_documentation_review_checklist_manifest_id
-  ON documentation_review_checklist(manifest_id);
-
--- ------------------------------------------------------------
--- report_id — child tables of test_report
--- Skipped: test_requirement_coverage (report_id is leftmost in UNIQUE)
--- Skipped: test_suite (report_id is leftmost in UNIQUE(report_id, name))
--- ------------------------------------------------------------
-
-CREATE INDEX IF NOT EXISTS idx_test_security_finding_report_id
-  ON test_security_finding(report_id);
-CREATE INDEX IF NOT EXISTS idx_test_performance_benchmark_report_id
-  ON test_performance_benchmark(report_id);
-CREATE INDEX IF NOT EXISTS idx_test_blocker_report_id
-  ON test_blocker(report_id);
-CREATE INDEX IF NOT EXISTS idx_test_recommendation_report_id
-  ON test_recommendation(report_id);
 
 -- ------------------------------------------------------------
 -- plan_phase_id — child tables of plan_phase
@@ -1704,16 +1244,6 @@ CREATE INDEX IF NOT EXISTS idx_impl_api_endpoint_req_requirement_id
   ON implementation_api_endpoint_requirement(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_blocker_requirement_requirement_id
   ON implementation_blocker_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_test_requirement_coverage_requirement_id
-  ON test_requirement_coverage(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_test_case_requirement_requirement_id
-  ON test_case_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_test_blocker_requirement_requirement_id
-  ON test_blocker_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_documentation_feature_requirement_requirement_id
-  ON documentation_feature_requirement(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_doc_requirement_coverage_requirement_id
-  ON documentation_requirement_coverage(requirement_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_revision_id
   ON requirement_trace(revision_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_trace_addressed_by
@@ -1734,7 +1264,6 @@ CREATE INDEX IF NOT EXISTS idx_adr_revision_id
   ON adr(revision_id);
 CREATE INDEX IF NOT EXISTS idx_component_revision_id
   ON component(revision_id);
--- Skipped: config (revision_id is leftmost in UNIQUE(revision_id, domain, config_type, category, key))
 CREATE INDEX IF NOT EXISTS idx_approved_dependency_revision_id
   ON approved_dependency(revision_id);
 -- requirement_trace revision_id covered by idx_requirement_trace_revision_id above
@@ -1744,7 +1273,6 @@ CREATE INDEX IF NOT EXISTS idx_user_flow_revision_id
   ON user_flow(revision_id);
 CREATE INDEX IF NOT EXISTS idx_screen_revision_id
   ON screen(revision_id);
--- (ux_config merged into config table — index covered by UNIQUE constraint, see above)
 CREATE INDEX IF NOT EXISTS idx_info_architecture_revision_id
   ON info_architecture(revision_id);
 CREATE INDEX IF NOT EXISTS idx_persona_addressed_revision_id
@@ -1756,8 +1284,6 @@ CREATE INDEX IF NOT EXISTS idx_ux_asset_revision_id
 CREATE INDEX IF NOT EXISTS idx_plan_phase_revision_id
   ON plan_phase(revision_id);
 -- Skipped: plan_overview (revision_id is the UNIQUE key)
-CREATE INDEX IF NOT EXISTS idx_plan_metadata_revision_id
-  ON plan_metadata(revision_id);
 
 -- Implementation domain
 CREATE INDEX IF NOT EXISTS idx_implementation_manifest_revision_id
@@ -1774,14 +1300,10 @@ CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_revision_id
   ON performance_audit_finding(revision_id);
 
 -- Documentation domain
-CREATE INDEX IF NOT EXISTS idx_documentation_manifest_revision_id
-  ON documentation_manifest(revision_id);
 
 -- Cross-cutting domain
 CREATE INDEX IF NOT EXISTS idx_intermediate_asset_revision_id
   ON intermediate_asset(revision_id);
-CREATE INDEX IF NOT EXISTS idx_entity_snapshot_revision_id
-  ON entity_snapshot(revision_id);
 
 -- ------------------------------------------------------------
 -- phase_id — FK to phase(id)
@@ -1793,8 +1315,6 @@ CREATE INDEX IF NOT EXISTS idx_vcs_commit_phase_id
   ON vcs_commit(phase_id);
 CREATE INDEX IF NOT EXISTS idx_intermediate_asset_phase_id
   ON intermediate_asset(phase_id);
-CREATE INDEX IF NOT EXISTS idx_asset_deliverable_phase_id
-  ON asset_deliverable(phase_id);
 
 -- ------------------------------------------------------------
 -- persona_id — FK to persona(id)
@@ -1826,8 +1346,6 @@ CREATE INDEX IF NOT EXISTS idx_implementation_component_status_component_id
 
 -- ------------------------------------------------------------
 -- screen_id — FK to screen(id)
--- Skipped: screen_state, screen_responsive_variant
---   (screen_id is leftmost in their UNIQUE constraints)
 -- ------------------------------------------------------------
 
 CREATE INDEX IF NOT EXISTS idx_ux_asset_screen_id
@@ -1892,10 +1410,6 @@ CREATE INDEX IF NOT EXISTS idx_user_flow_step_branch_step_id
 -- plan_phase_relationship.related_phase_id → plan_phase(id)
 CREATE INDEX IF NOT EXISTS idx_plan_phase_relationship_related_phase_id
   ON plan_phase_relationship(related_phase_id);
-
--- test_acceptance_criterion_result.coverage_id → test_requirement_coverage(id)
-CREATE INDEX IF NOT EXISTS idx_test_acceptance_criterion_result_coverage_id
-  ON test_acceptance_criterion_result(coverage_id);
 
 -- blocker.phase_name — composite FK (iteration_id, phase_name) → phase(iteration_id, name)
 CREATE INDEX IF NOT EXISTS idx_blocker_phase_name

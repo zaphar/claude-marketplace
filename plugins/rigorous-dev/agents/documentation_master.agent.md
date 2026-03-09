@@ -19,8 +19,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Architecture components (query via `changelog_query`, entity_type: "component") — for component documentation
 - Architecture API spec (`api_spec.yaml`) — for API reference generation
 - Architecture data model (read the committed data model markdown document) — for data documentation
-- Architecture deployment (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "deployment" }) — for operator docs
-- Architecture observability (query via `changelog_query`, entity_type: "config", filters: { "domain": "architecture", "config_type": "observability" }) — for monitoring docs
+- Architecture deployment — committed as markdown documentation (e.g., `docs/architecture/deployment.md`) — for operator docs
+- Architecture observability — committed as markdown documentation (e.g., `docs/architecture/observability.md`) — for monitoring docs
 - Implementation entries (query via `changelog_query`)
 - Codebase
 - Glossary from requirements specification
@@ -93,14 +93,12 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 **Produces:**
 
-- Documentation manifest in YAML format stored in the changelog DB via `changelog_insert`
-- Documentation files in markdown format
-- The manifest must show:
-    - Documentation scope determination (which categories apply, which were skipped with reasoning)
-    - All documents created with paths
-    - Requirements coverage (which REQ-XXX documented where)
-    - Verification status
-    - Assets created (screenshots, diagrams)
+- Documentation files in markdown format committed to the repository
+- Documentation scope determination (which categories apply, which were skipped with reasoning) — committed as part of a documentation index file
+- All documents created with paths
+- Requirements coverage (which REQ-XXX documented where)
+- Verification status
+- Assets created (screenshots, diagrams)
 
 **Artifact Organization:**
 
@@ -111,7 +109,7 @@ Organize documentation files into subdirectories by audience within your phase d
 - `sdk/` — library/SDK reference (if applicable)
 - `operator/` — deployment guide, runbooks, monitoring
 - `developer/` — architecture overview, contributing guide, ADR index
-- Primary manifest artifact (stored in changelog DB; query via `changelog_query` with entity_type: "documentation_manifest") — not a file at the phase directory root
+- Documentation quality is enforced by the documentation_critic reviewing committed files — no DB tracking needed
 
 **Handoff:**
 

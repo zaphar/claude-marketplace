@@ -203,9 +203,10 @@ The Backend Architect records modular architecture entries in the changelog DB a
 - Architecture overview — committed as a markdown document (e.g., `docs/architecture/overview.md`)
 - `component` entries — system components with integration test boundaries
 - Data model — committed as a markdown document (e.g., `docs/architecture/data-model.md`)
-- `config` (domain: "architecture", config_type: "deployment") — deployment targets and environments
-- `config` (domain: "architecture", config_type: "security") — authentication, authorization, secrets management
-- `config` (domain: "architecture", config_type: "observability") — logging, metrics, tracing
+- Architecture configuration — committed as markdown documents:
+  - deployment targets and environments (e.g., `docs/architecture/deployment.md`)
+  - authentication, authorization, secrets management (e.g., `docs/architecture/security.md`)
+  - logging, metrics, tracing (e.g., `docs/architecture/observability.md`)
 - `requirement_trace` entries — requirements-to-component mapping
 - `approved_dependency` entries — dependency manifest with health assessments and `category` for technology grouping
 - `api_spec.yaml` — OpenAPI specification (file artifact)
@@ -526,7 +527,6 @@ Recorded Entities (in changelog DB):
 - test_report
 - security_audit_findings
 - performance_audit_findings
-- documentation_manifest
 
 🎉 Workflow Complete!
 ```

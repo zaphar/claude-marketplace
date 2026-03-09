@@ -130,27 +130,13 @@ The six primary entity tables with TEXT primary keys — `persona`, `requirement
 3. Entities that don't need changes keep their original `revision_id` — they are carried forward implicitly.
 4. When the critic approves a revision, the phase transitions to `completed`. All entities in that iteration for the completed phase are considered **current and valid**.
 
-### Snapshot history
-
-Before an UPSERT overwrites an entity, the old state is captured as a JSON snapshot in the `entity_snapshot` table. This preserves the full change history without complicating the main entity tables.
+### Querying current state
 
 To query current entities for a given iteration (using the `entity_context` VIEW to derive iteration from revision):
 ```sql
 SELECT r.* FROM requirement r
 JOIN entity_context ec ON ec.revision_id = r.revision_id
 WHERE ec.iteration_id = ?;
-```
-
-To query change history for a specific entity:
-```sql
-SELECT * FROM entity_snapshot
-WHERE entity_type = 'requirement' AND source_id = 'req-auth-001'
-ORDER BY id ASC;
-```
-
-Or use `changelog_query` with `history: true`:
-```json
-{ "entity_type": "requirement", "ids": ["req-auth-001"], "history": true }
 ```
 
 ### What `revision_id` means on an entity

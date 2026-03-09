@@ -156,7 +156,7 @@ Use these tools for artifact management:
 - `revision_history` — Check how many revisions have occurred for a given phase
 
 **VCS-tracked deliverables** (source code, documentation files, diagrams) remain as files in the repository.
-Use `commit_link` to associate VCS commits with iterations and `asset_deliverable` entries to track what was produced.
+Use `commit_link` to associate VCS commits with iterations.
 
 ### 5. Phase Transitions
 
@@ -687,8 +687,7 @@ You have access to:
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `system_io`, `nonfunctional_requirement`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
-- **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data. Set history=true to see how entities changed across revisions.
-  - `history` (boolean, optional): If true, returns change history from `entity_snapshot` instead of current state. Shows how entities evolved across revisions. Use with `ids` to see history for specific entities.
+- **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration

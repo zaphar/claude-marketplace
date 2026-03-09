@@ -30,7 +30,6 @@ Each plan phase records what to build (components, endpoints, DB migrations), wh
 | [`plan_overview`](#plan_overview) | High-level strategy and rationale for a plan |
 | [`plan_overview_risk`](#plan_overview_risk) | Plan-wide risks and mitigations |
 | [`plan_external_dependency`](#plan_external_dependency) | External systems or services the plan depends on |
-| [`plan_metadata`](#plan_metadata) | Plan versioning and source document references |
 
 ---
 
@@ -495,48 +494,6 @@ Records external systems, services, or teams that the implementation plan depend
 
 ---
 
-## `plan_metadata`
-
-### Purpose
-
-Version and provenance record for the implementation plan. Records what version of the requirements, architecture, and UX specifications the plan was produced from, the plan's own version string, and its lifecycle status.
-
-### Context
-
-- One row per planning revision. Inserted by `implementation_planner` when producing a plan.
-- The `status` field tracks the plan through its lifecycle: `draft` (just produced), `review` (submitted to critic), `approved` (critic accepted).
-- `requirements_version`, `architecture_version`, and `ux_specification_version` capture the source document versions so that, if any upstream artifact changes, the plan can be identified as potentially stale.
-- `implementation_plan_critic` updates `status` to `approved` or leaves feedback that triggers a new revision (which creates a new row with `status: 'draft'`).
-
-### Columns
-
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The revision that produced this plan version. |
-| `title` | TEXT | NOT NULL | — | Human-readable plan title (e.g., "Implementation Plan — Invoice Generation Feature"). |
-| `version` | TEXT | NOT NULL | — | Semantic version string of this plan (e.g., `1.0.0`, `1.1.0`). |
-| `document_date` | TEXT | NOT NULL | — | Human-readable creation date (e.g., `2024-01-15`). Distinct from `created_at`. Aligns with peer manifest tables. |
-| `document_updated` | TEXT | nullable | — | Human-readable date of last update, if the plan has been revised. Aligns with peer manifest tables. |
-| `status` | TEXT | NOT NULL, CHECK(`draft` \| `review` \| `approved`) | — | Lifecycle status. `draft` = just produced; `review` = submitted to critic; `approved` = critic accepted. |
-| `requirements_version` | TEXT | NOT NULL | — | Version of the requirements document this plan was based on. |
-| `architecture_version` | TEXT | NOT NULL | — | Version of the architecture document this plan was based on. |
-| `ux_specification_version` | TEXT | NOT NULL | — | Version of the UX specification this plan was based on. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation (machine-generated, unlike `document_date`). |
-
-### Relationships
-
-- **Parent:** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-
-### MCP tool access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "plan_metadata"` |
-| Query | `changelog_query` | `entity_type: "plan_metadata"` — filter by `iteration_id` |
-
----
-
 ## Entity Relationship Summary
 
 ```
@@ -560,8 +517,7 @@ iteration ───────────────────────�
 │   ├─ plan_phase_relationship (FK → plan_phase(id), discriminated)   │
 │   └─ plan_phase_risk         (1:N)                                │
 │                                                                    │
-├─ plan_external_dependency  (1:N)                                  │
-└─ plan_metadata             (version + status)                     │
+└─ plan_external_dependency  (1:N)                                  │
 ```
 
 ## Cross-domain references

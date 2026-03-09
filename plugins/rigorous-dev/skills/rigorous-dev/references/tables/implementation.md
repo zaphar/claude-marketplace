@@ -1,6 +1,6 @@
 # Implementation Domain — Table Design Reference
 
-This document covers the 15 tables that record output produced during the **implementation phase** (senior_developer) and the **test-writing step** (test_writer). It includes all files created or modified, per-requirement and per-component status, API endpoints built, dependencies added, database migrations run, blockers encountered, VCS commits, and intermediate/deliverable assets.
+This document covers the 14 tables that record output produced during the **implementation phase** (senior_developer) and the **test-writing step** (test_writer). It includes all files created or modified, per-requirement and per-component status, API endpoints built, dependencies added, database migrations run, blockers encountered, VCS commits, and intermediate assets.
 
 **Producers:** `senior_developer`, `test_writer`
 **Validator:** `senior_developer_critic`
@@ -24,7 +24,6 @@ This document covers the 15 tables that record output produced during the **impl
 12. [implementation_review_checklist](#12-implementation_review_checklist)
 13. [vcs_commit](#13-vcs_commit)
 14. [intermediate_asset](#14-intermediate_asset)
-15. [asset_deliverable](#15-asset_deliverable)
 
 ---
 
@@ -54,6 +53,8 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | `requirements_version` | TEXT | YES | NULL | — | Version of the requirements document in scope. Formerly in `implementation_manifest_metadata`. |
 | `architecture_version` | TEXT | YES | NULL | — | Version of the architecture document in scope. Formerly in `implementation_manifest_metadata`. |
 | `language` | TEXT | YES | NULL | — | Primary programming language used (e.g. `TypeScript`, `Python`). Formerly in `implementation_manifest_metadata`. |
+| `stdout` | TEXT | YES | NULL | — | Raw stdout from the build/implementation process. |
+| `stderr` | TEXT | YES | NULL | — | Raw stderr from the build/implementation process. |
 | `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA at time of submission; cross-reference with `vcs_commit`. Formerly in `implementation_manifest_metadata`. |
 | `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
 
@@ -66,7 +67,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 
 | Operation | Tool | Notes |
 |-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, and review_checklist are inserted in the same call via nested arrays in `data`. Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `commit_sha`) are passed as flat fields or via a backward-compatible `metadata` object. |
+| Insert | `changelog_insert` | `entity_type: "implementation_manifest"`. Child rows for files, requirement statuses, component statuses, api_endpoints, blockers, dependencies_added, db_migrations, and review_checklist are inserted in the same call via nested arrays in `data`. Metadata fields (`version`, `document_date`, `requirements_version`, `architecture_version`, `language`, `stdout`, `stderr`, `commit_sha`) are passed as flat fields or via a backward-compatible `metadata` object. |
 | Query | `changelog_query` | `entity_type: "implementation_manifest"`, filter by `iteration_id`. Pass `include_related: true` to attach all child tables (files with their requirements, requirement_status, component_status, api_endpoints with their requirements, dependencies_added, db_migrations, blockers with their requirements, review_checklist). Metadata columns are returned as flat fields on the manifest row. |
 | Iteration summary | `iteration_summary` | Returns counts of commits and deliverables alongside phase data; does not enumerate manifest fields directly. |
 
@@ -508,42 +509,6 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ---
 
-## 15. `asset_deliverable`
-
-### Purpose
-
-Records files that have been committed to VCS as finished deliverables. Where `intermediate_asset` captures in-progress work, `asset_deliverable` captures the permanent artefacts: source code, tests, documentation, diagrams, toolchain configs.
-
-### Context
-
-The `asset_type` field categorises the deliverable (e.g., source code, tests, documentation). `file_path` is the repository-relative path. `commit_sha` ties the deliverable to the specific commit that introduced it, enabling the `iteration_summary` tool to surface "what was shipped" without querying VCS directly.
-
-### Columns
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Iteration this deliverable was produced in. |
-| `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase that produced the deliverable. |
-| `asset_type` | TEXT | NO | — | — | Free-form category of deliverable (e.g., `architecture_diagram`, `data_model`, `interface`, `ux_design_system`, `source_code`, `toolchain`, `test`, `documentation`). |
-| `file_path` | TEXT | NO | — | — | Repository-relative path to the committed file (e.g. `src/api/users.ts`). |
-| `description` | TEXT | YES | NULL | — | Brief explanation of what this file contains. |
-| `commit_sha` | TEXT | YES | NULL | — | VCS commit SHA that introduced this file; cross-reference with `vcs_commit`. |
-| `created_at` | TEXT | NO | `(datetime('now'))` | ISO 8601 | Timestamp set by the MCP server on insert. |
-
-### Relationships
-
-- **Parents:** `iteration` (via `iteration_id`), `phase` (via `phase_id`)
-
-### MCP Tool Access
-
-| Operation | Tool | Notes |
-|-----------|------|-------|
-| Insert | `changelog_insert` | `entity_type: "asset_deliverable"`. Fields: `phase_id`, `asset_type`, `file_path`, `description`, `commit_sha`. |
-| Query | `iteration_summary` | Returns all deliverables under the `deliverables` array (fields: `asset_type`, `file_path`, `description`, `commit_sha`, `created_at`). Also available via `changelog_query`. |
-
----
-
 ## Entity Relationship Summary
 
 ```
@@ -562,7 +527,6 @@ revision  (→ phase → iteration)
  │    ├── implementation_review_checklist (manifest_id)
 iteration
  ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
- ├── asset_deliverable (iteration_id, phase_id)
 revision  (→ phase → iteration)
  └── intermediate_asset (phase_id, revision_id)
 ```

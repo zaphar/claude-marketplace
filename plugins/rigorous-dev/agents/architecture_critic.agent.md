@@ -35,7 +35,8 @@ tools: Read, Grep, Glob, Bash
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
-    - [ ] All expected architecture entities present in DB: component, adr, config (domain: "architecture"), requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] Architecture configuration (security, deployment, observability) committed as markdown documents
     - [ ] Architecture narrative committed as a markdown document — overview, style, communication patterns, and design principles
     - [ ] Architecture diagrams committed as repository files (at minimum one component-level diagram)
     - [ ] Data model committed as a markdown document — entities, attributes, relationships, and cardinality

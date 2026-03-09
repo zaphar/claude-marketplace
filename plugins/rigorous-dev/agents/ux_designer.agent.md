@@ -103,7 +103,7 @@ Work in two phases — **validate direction early** before investing in all scre
 **Artifact Organization:**
 - `design-system/` — design system HTML and assets
 - `mockups/` — screen mockups as HTML (e.g., `dashboard.html`, `settings.html`)
-- UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen", or "config" with filters: { "domain": "ux" })
+- UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen")
 - DOES NOT: Write implementation code or design backend architecture
 
 **Handoff:** Submitted to **UX Critic**. On approval, consumed by Backend Architect. Obtain stakeholder sign-off before architecture phase.

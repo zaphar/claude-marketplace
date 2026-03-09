@@ -14,26 +14,21 @@ const ENTITY_TABLE = {
   plan_phase: "plan_phase",
   plan_overview: "plan_overview",
   plan_external_dependency: "plan_external_dependency",
-  plan_metadata: "plan_metadata",
   implementation_manifest: "implementation_manifest",
   requirement_trace: "requirement_trace",
   project_context: "project_context",
   system_io: "system_io",
   nonfunctional_requirement: "nonfunctional_requirement",
-  config: "config",
   info_architecture: "info_architecture",
   persona_addressed: "persona_addressed",
   ux_asset: "ux_asset",
-  // (architecture_config merged into config)
   approved_dependency: "approved_dependency",
   test_report: "test_report",
-  documentation_manifest: "documentation_manifest",
   blocker: "blocker",
   project_lesson: "project_lesson",
   security_audit_finding: "security_audit_finding",
   performance_audit_finding: "performance_audit_finding",
   intermediate_asset: "intermediate_asset",
-  asset_deliverable: "asset_deliverable",
   vcs_commit: "vcs_commit",
 };
 
@@ -78,7 +73,7 @@ function applyFilters(filters, knownFilters, entityType) {
 }
 
 // ---------------------------------------------------------------------------
-// Per-entity query functions -- complex types (16)
+// Per-entity query functions -- complex types (12)
 // Filter-only stubs for Phase 1; enrichment added in Phase 2.
 // ---------------------------------------------------------------------------
 
@@ -284,12 +279,6 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
   return results.map((s) => ({
     ...s,
     components: (() => { try { return JSON.parse(s.components || '[]'); } catch { return s.components; } })(),
-    states: db
-      .prepare("SELECT name, description, wireframe_path FROM screen_state WHERE screen_id = ?")
-      .all(s.id),
-    responsive_variants: db
-      .prepare("SELECT breakpoint, wireframe_path, layout_changes FROM screen_responsive_variant WHERE screen_id = ?")
-      .all(s.id),
   }));
 }
 
@@ -552,7 +541,7 @@ const TEST_REPORT_FILTERS = {
   commit_sha: { nullable: true },
 };
 
-function queryTestReport(db, { iteration_id, ids, filters = {}, include_related = false }) {
+function queryTestReport(db, { iteration_id, ids, filters = {} }) {
   let sql = "SELECT * FROM test_report";
   const clauses = [];
   const params = [];
@@ -562,134 +551,11 @@ function queryTestReport(db, { iteration_id, ids, filters = {}, include_related 
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
-  return results.map((r) => {
-    // test_requirement_coverage → criterion_results → test_ids
-    const coverage = db
-      .prepare("SELECT * FROM test_requirement_coverage WHERE report_id = ?")
-      .all(r.id)
-      .map((cov) => {
-        const criteria = db
-          .prepare("SELECT * FROM test_acceptance_criterion_result WHERE coverage_id = ?")
-          .all(cov.id)
-          .map((cr) => ({
-            ...cr,
-            test_ids: (() => { try { return JSON.parse(cr.test_ids || '[]'); } catch { return cr.test_ids; } })(),
-          }));
-        return { ...cov, criteria };
-      });
-    // test_suite → test_case → test_case_requirement
-    const suites = db
-      .prepare("SELECT * FROM test_suite WHERE report_id = ?")
-      .all(r.id)
-      .map((s) => ({
-        ...s,
-        cases: db
-          .prepare("SELECT * FROM test_case WHERE suite_id = ?")
-          .all(s.id)
-          .map((tc) => ({
-            ...tc,
-            requirements: db
-              .prepare("SELECT requirement_id FROM test_case_requirement WHERE test_case_id = ?")
-              .all(tc.id)
-              .map((x) => x.requirement_id),
-          })),
-      }));
-    // test_blocker → test_blocker_requirement
-    const blockers = db
-      .prepare("SELECT * FROM test_blocker WHERE report_id = ?")
-      .all(r.id)
-      .map((b) => ({
-        ...b,
-        requirements: db
-          .prepare("SELECT requirement_id FROM test_blocker_requirement WHERE blocker_id = ?")
-          .all(b.id)
-          .map((x) => x.requirement_id),
-      }));
-    return {
-      ...r,
-      coverage,
-      suites,
-      security_findings: db
-        .prepare("SELECT * FROM test_security_finding WHERE report_id = ?")
-        .all(r.id),
-      performance_benchmarks: db
-        .prepare("SELECT * FROM test_performance_benchmark WHERE report_id = ?")
-        .all(r.id),
-      blockers,
-      recommendations: db
-        .prepare("SELECT * FROM test_recommendation WHERE report_id = ?")
-        .all(r.id),
-    };
-  });
-}
-
-const DOCUMENTATION_MANIFEST_FILTERS = {
-  status: { nullable: false },
-  total_pages: { nullable: true },
-  accessibility_compliant: { nullable: true },
-  version: { nullable: true },
-  document_date: { nullable: true },
-  requirements_version: { nullable: true },
-  architecture_version: { nullable: true },
-  implementation_version: { nullable: true },
-  format: { nullable: true },
-};
-
-function queryDocumentationManifest(db, { iteration_id, ids, filters = {}, include_related = false }) {
-  let sql = "SELECT * FROM documentation_manifest";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, DOCUMENTATION_MANIFEST_FILTERS, "documentation_manifest");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
-  return results.map((m) => {
-    // documentation_feature → documentation_feature_requirement
-    const features = db
-      .prepare("SELECT * FROM documentation_feature WHERE manifest_id = ?")
-      .all(m.id)
-      .map((feat) => ({
-        ...feat,
-        requirements: db
-          .prepare("SELECT requirement_id FROM documentation_feature_requirement WHERE feature_id = ?")
-          .all(feat.id)
-          .map((x) => x.requirement_id),
-      }));
-    // documentation_requirement_coverage (with inline paths)
-    const coverage = db
-      .prepare("SELECT * FROM documentation_requirement_coverage WHERE manifest_id = ?")
-      .all(m.id)
-      .map((cov) => ({
-        ...cov,
-        paths: (() => { try { return JSON.parse(cov.paths || '[]'); } catch { return cov.paths; } })(),
-      }));
-    const sections = db
-      .prepare("SELECT * FROM documentation_section WHERE manifest_id = ?")
-      .all(m.id);
-    return {
-      ...m,
-      documents_created: sections.length,
-      sections,
-      features,
-      coverage,
-      assets: db
-        .prepare("SELECT * FROM documentation_asset WHERE manifest_id = ?")
-        .all(m.id),
-      verification: db
-        .prepare("SELECT * FROM documentation_review_checklist WHERE manifest_id = ?")
-        .all(m.id),
-    };
-  });
+  return db.prepare(sql).all(...params);
 }
 
 // ---------------------------------------------------------------------------
-// Per-entity query functions -- simple types (21)
+// Per-entity query functions -- simple types
 // Complete implementations, no enrichment needed.
 // ---------------------------------------------------------------------------
 
@@ -708,30 +574,6 @@ function queryPlanExternalDependency(db, { iteration_id, ids, filters = {} }) {
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PLAN_EXTERNAL_DEPENDENCY_FILTERS, "plan_external_dependency");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
-const PLAN_METADATA_FILTERS = {
-  title: { nullable: false },
-  version: { nullable: false },
-  document_date: { nullable: false },
-  status: { nullable: false },
-  requirements_version: { nullable: false },
-  architecture_version: { nullable: false },
-  ux_specification_version: { nullable: false },
-  document_updated: { nullable: true },
-};
-
-function queryPlanMetadata(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM plan_metadata";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, PLAN_METADATA_FILTERS, "plan_metadata");
   clauses.push(...f.clauses);
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
@@ -820,28 +662,6 @@ function queryNonfunctionalRequirement(db, { iteration_id, ids, filters = {} }) 
   return db.prepare(sql).all(...params);
 }
 
-const CONFIG_FILTERS = {
-  domain: { nullable: false },
-  config_type: { nullable: false },
-  category: { nullable: false },
-  key: { nullable: false },
-  value: { nullable: false },
-  rationale: { nullable: true },
-};
-
-function queryConfig(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM config";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, CONFIG_FILTERS, "config");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
 const UX_ASSET_FILTERS = {
   name: { nullable: false },
   path: { nullable: false },
@@ -862,8 +682,6 @@ function queryUxAsset(db, { iteration_id, ids, filters = {} }) {
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   return db.prepare(sql).all(...params);
 }
-
-// (architecture_config merged into queryConfig — see above)
 
 const APPROVED_DEPENDENCY_FILTERS = {
   package: { nullable: false },
@@ -1004,27 +822,6 @@ function queryIntermediateAsset(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
-const ASSET_DELIVERABLE_FILTERS = {
-  phase_id: { nullable: true },
-  asset_type: { nullable: false },
-  file_path: { nullable: false },
-  description: { nullable: true },
-  commit_sha: { nullable: true },
-};
-
-function queryAssetDeliverable(db, { iteration_id, ids, filters = {} }) {
-  let sql = "SELECT * FROM asset_deliverable";
-  const clauses = [];
-  const params = [];
-  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
-  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, ASSET_DELIVERABLE_FILTERS, "asset_deliverable");
-  clauses.push(...f.clauses);
-  params.push(...f.params);
-  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
-  return db.prepare(sql).all(...params);
-}
-
 const VCS_COMMIT_FILTERS = {
   phase_id: { nullable: true },
   commit_sha: { nullable: false },
@@ -1061,23 +858,18 @@ const QUERY_DISPATCH = {
   info_architecture: queryInfoArchitecture,
   implementation_manifest: queryImplementationManifest,
   test_report: queryTestReport,
-  documentation_manifest: queryDocumentationManifest,
   plan_external_dependency: queryPlanExternalDependency,
-  plan_metadata: queryPlanMetadata,
   requirement_trace: queryRequirementTrace,
   project_context: queryProjectContext,
   system_io: querySystemIo,
   nonfunctional_requirement: queryNonfunctionalRequirement,
-  config: queryConfig,
   ux_asset: queryUxAsset,
-  // (architecture_config merged into config)
   approved_dependency: queryApprovedDependency,
   blocker: queryBlocker,
   project_lesson: queryProjectLesson,
   security_audit_finding: querySecurityAuditFinding,
   performance_audit_finding: queryPerformanceAuditFinding,
   intermediate_asset: queryIntermediateAsset,
-  asset_deliverable: queryAssetDeliverable,
   vcs_commit: queryVcsCommit,
 };
 
@@ -1093,31 +885,12 @@ function changelogQuery(args) {
     ids,
     filters,
     include_related = false,
-    history = false,
   } = args;
 
   if (!QUERY_DISPATCH[entity_type]) {
     throw new Error(
       `Unknown entity_type: "${entity_type}". Valid types: ${Object.keys(QUERY_DISPATCH).join(", ")}`
     );
-  }
-
-  // History mode: query entity_snapshot table for change history
-  if (history) {
-    let sql = `SELECT * FROM entity_snapshot WHERE entity_type = ?`;
-    const params = [entity_type];
-    if (ids && ids.length > 0) {
-      sql += ` AND source_id IN (${ids.map(() => "?").join(", ")})`;
-      params.push(...ids);
-    }
-    sql += ` ORDER BY id ASC`;
-    const snapshots = db.prepare(sql).all(...params);
-    // Parse snapshot JSON for convenience
-    const results = snapshots.map((s) => ({
-      ...s,
-      snapshot: (() => { try { return JSON.parse(s.snapshot); } catch { return {}; } })(),
-    }));
-    return { entity_type, history: true, results, count: results.length };
   }
 
   try {
@@ -1490,13 +1263,7 @@ function iterationSummary(args) {
     .prepare("SELECT commit_sha, message, created_at FROM vcs_commit WHERE iteration_id = ? ORDER BY created_at")
     .all(iteration_id);
 
-  const deliverables = db
-    .prepare(
-      "SELECT asset_type, file_path, description, commit_sha, created_at FROM asset_deliverable WHERE iteration_id = ? ORDER BY created_at"
-    )
-    .all(iteration_id);
-
-  return { iteration, phases, decisions, commits, deliverables };
+  return { iteration, phases, decisions, commits };
 }
 
 // ---------------------------------------------------------------------------
@@ -1578,12 +1345,6 @@ export const READ_TOOLS = [
             "If true, attach child/related table data (acceptance criteria, interfaces, etc.). More tokens but complete data.",
           default: false,
         },
-        history: {
-          type: "boolean",
-          description:
-            "If true, return change history from entity_snapshot instead of current state. Shows how entities evolved across revisions. Use with ids to see history for specific entities.",
-          default: false,
-        },
       },
       required: ["entity_type"],
     },
@@ -1641,7 +1402,7 @@ export const READ_TOOLS = [
   {
     name: "iteration_summary",
     description:
-      "Summarize what an iteration produced: phases with status, decision counts per entity type, VCS commits, and asset deliverables.",
+      "Summarize what an iteration produced: phases with status, decision counts per entity type, and VCS commits.",
     inputSchema: {
       type: "object",
       properties: {

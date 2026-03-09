@@ -17,8 +17,8 @@ The UX design domain is organised into five sub-areas:
 | Sub-area | Tables |
 |---|---|
 | **User Flows** | `user_flow`, `user_flow_step`, `user_flow_step_branch`, `user_flow_error_state` |
-| **Screens** | `screen`, `screen_state`, `screen_responsive_variant` |
-| **UX Configuration** | `config` (domain: `ux`, discriminated by `config_type`: `design_system`, `accessibility`, `responsive`, `feedback_pattern`), `info_architecture` |
+| **Screens** | `screen` |
+| **UX Configuration** | `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
 
 Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin rows to the exact producer-critic loop that created them. The iteration is derived via the `revision → phase → iteration` foreign-key chain (or via the `entity_context` VIEW).
@@ -171,8 +171,6 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
 **Relationships:**
-- Has many `screen_state`
-- Has many `screen_responsive_variant`
 - JSON array: `components` (inline on this table)
 - Referenced by `user_flow_step.surface` (by name, not by FK)
 - Referenced by `ux_asset.screen_id`
@@ -189,114 +187,6 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 - **Write:** `changelog_insert` with `entity_type: "screen"`. Pass `components`, `states`, and `responsive_variants` arrays in `data` — all child rows inserted atomically.
 - **Read:** `changelog_query` with `entity_type: "screen"`. Use `include_related: true` to get `components`, `states`, and `responsive_variants` expanded inline.
 - **Trace:** `traceability_query` with `target_type: "screen"` to find flows that reference this screen and requirements satisfied by those flows.
-
----
-
-### `screen_state`
-
-**Purpose:** A named UI state variant of a screen. Captures how the screen looks and behaves when it is in a particular condition (loading, empty, error, etc.). Each state may optionally have its own wireframe.
-
-**Context:** The `ux_designer` must define at minimum a `default` state. The `ux_critic` checks that screens with data dependencies include `loading` and `empty` states, and that action-bearing screens include an `error` state. The `senior_developer` implements each state as a conditional render branch.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `screen_id` | TEXT | NOT NULL, FK → `screen(id)`, part of UNIQUE(screen_id, name) | — | Parent screen. |
-| `name` | TEXT | NOT NULL, part of UNIQUE(screen_id, name) | — | State name. Allowed values: `default`, `loading`, `empty`, `error`, `success`, `session_expired`, `forced`, `editing`, `reviewing`, `search_results`, `complete`. |
-| `description` | TEXT | — | NULL | What this state looks like and when it appears. |
-| `wireframe_path` | TEXT | — | NULL | Path to a wireframe specific to this state. |
-
-**Relationships:**
-- Belongs to `screen`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `screen` via the `states` array.
-- **Read:** Returned as the `states` array when querying `screen` with `include_related: true`.
-
----
-
-### `screen_responsive_variant`
-
-**Purpose:** Describes how a screen layout changes at a specific responsive breakpoint. Captures breakpoint-specific wireframes and prose descriptions of layout adjustments (e.g., "sidebar collapses to hamburger menu at mobile breakpoint").
-
-**Context:** One row per breakpoint per screen. Breakpoint names should align with values defined in `config` (domain: `ux`, config_type `responsive`). The `ux_critic` validates that screens either have responsive variants for all defined breakpoints or explicitly omit them with justification.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `screen_id` | TEXT | NOT NULL, FK → `screen(id)`, part of UNIQUE(screen_id, breakpoint) | — | Parent screen. |
-| `breakpoint` | TEXT | NOT NULL, part of UNIQUE(screen_id, breakpoint) | — | Breakpoint label, e.g. `mobile`, `tablet`, `desktop`. Should match a breakpoint defined in `config` (domain: `ux`, config_type `responsive`). |
-| `wireframe_path` | TEXT | — | NULL | Path to a wireframe for this breakpoint. |
-| `layout_changes` | TEXT | — | NULL | Prose description of what changes at this breakpoint. |
-
-**Relationships:**
-- Belongs to `screen`
-
-**MCP tool access:**
-- **Write:** Inserted automatically as part of `changelog_insert` for `screen` via the `responsive_variants` array.
-- **Read:** Returned as the `responsive_variants` array when querying `screen` with `include_related: true`.
-
----
-
-## UX Configuration
-
-### `config` (domain: `ux`)
-
-**Purpose:** The UX domain's entries in the unified `config` table. Stores all UX configuration: design system tokens, accessibility settings, responsive layout definitions, and feedback patterns. UX entries use `domain = 'ux'` and a `config_type` discriminator to distinguish the four concerns.
-
-**Context:** Rows are grouped first by `config_type` (one of `design_system`, `accessibility`, `responsive`, `feedback_pattern`) and then by `category` / `key` within each type. This table is shared with the architecture domain (which uses `domain = 'architecture'`). The `ux_critic` validates coverage across config types — at minimum: colours/typography/spacing for `design_system`, WCAG level for `accessibility`, breakpoints for `responsive`, and loading/error/success for `feedback_pattern`. The `senior_developer` reads these rows to implement token files, accessibility tooling, responsive grid systems, and shared feedback components.
-
-**Config types and typical categories:**
-
-| `config_type` | Typical categories | Example keys |
-|---|---|---|
-| `design_system` | `colors`, `typography`, `spacing`, `elevation`, `component_library` | `primary`, `heading_1`, `base_unit` |
-| `accessibility` | `wcag`, `focus_management`, `aria`, `keyboard`, `motion` | `target_level`, `focus_ring_style` |
-| `responsive` | `breakpoints`, `grid`, `typography`, `touch_targets` | `mobile`, `tablet`, `columns_desktop` |
-| `feedback_pattern` | `loading`, `success`, `error`, `empty_state`, `confirmation` | `global_spinner`, `inline_field_error`, `toast_success` |
-
-**Columns:** See [cross-cutting.md — config](cross-cutting.md#config) for the full column reference. UX entries always set `domain = 'ux'`.
-
-**Relationships:**
-- Belongs to `revision` (iteration derived via revision → phase → iteration)
-- No FK children — flat store
-- Informally referenced by `screen_responsive_variant.breakpoint` (config_type `responsive`, no enforced FK)
-
-**MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "config"`. Accepts a single object or an array of `{ domain: "ux", config_type, category, key, value }` objects — all rows are inserted in one call. Both `domain` and `config_type` fields are required on every entry.
-- **Read:** `changelog_query` with `entity_type: "config"`. Filter by `iteration_id` and `filters: { domain: "ux", config_type: "design_system" }` to retrieve a specific config type. Add `filters: { domain: "ux", config_type: "accessibility", category: "wcag" }` for finer-grained queries.
-
----
-
-### `info_architecture`
-
-**Purpose:** Captures the information architecture of the application: site map, navigation hierarchy, route structure, content groupings, and labelling decisions. Rows form a tree via the `parent_id` self-reference.
-
-**Context:** The `ux_designer` builds the IA before or in parallel with screen design, ensuring that navigation flows match the site map. The `backend_architect` reads top-level IA nodes to confirm routing strategy aligns with the frontend navigation tree. The `ux_critic` checks that all screens are reachable from the IA root.
-
-**Columns:**
-
-| Column | Type | Constraints | Default | Description |
-|---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this node. |
-| `category` | TEXT | NOT NULL | — | Node type, e.g. `navigation`, `route`, `content_group`, `label`. |
-| `key` | TEXT | NOT NULL | — | Node identifier, e.g. `main_nav_dashboard`, `/settings/profile`. |
-| `value` | TEXT | NOT NULL | — | Node description or label, e.g. "Dashboard", "User profile settings page". |
-| `parent_id` | INTEGER | FK → `info_architecture(id)` | NULL | Parent node for hierarchical nesting. NULL = root node. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
-
-**Relationships:**
-- Belongs to `revision` (iteration derived via revision → phase → iteration)
-- Self-referential tree via `parent_id` → `info_architecture(id)`
-
-**MCP tool access:**
-- **Write:** `changelog_insert` with `entity_type: "info_architecture"`. Accepts a single object or an array of `{ category, key, value, parent_id }` objects. Set `parent_id` to an existing `info_architecture` row ID for nested nodes, or omit for root nodes.
-- **Read:** `changelog_query` with `entity_type: "info_architecture"`. Use `include_related: true` to attach direct `children` for each node. For the full tree, use `filters: { parent_id: null }` to get root nodes with their children, then recurse as needed.
 
 ---
 
@@ -357,7 +247,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 
 **Purpose:** A registry of all UX artefact files: wireframes, mockups, prototypes, icons, images, and videos. Provides a canonical inventory of design files and their locations, optionally linked to a specific screen.
 
-**Context:** The `ux_designer` registers every file it produces. `wireframe_path` and `mockup_path` on `screen` and `screen_state` rows should correspond to `path` values in this table. The `ux_critic` verifies that all referenced paths have corresponding `ux_asset` entries. Assets not tied to a specific screen (e.g., a global icon set, a prototype video) leave `screen_id` NULL.
+**Context:** The `ux_designer` registers every file it produces. `wireframe_path` and `mockup_path` on `screen` rows should correspond to `path` values in this table. The `ux_critic` verifies that all referenced paths have corresponding `ux_asset` entries. Assets not tied to a specific screen (e.g., a global icon set, a prototype video) leave `screen_id` NULL.
 
 **Columns:**
 
@@ -395,9 +285,6 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 | `user_flow_step_branch` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `user_flow_error_state` | via `user_flow` | via `user_flow` | Not directly addressable |
 | `screen` | ✅ `entity_type: "screen"` | ✅ `entity_type: "screen"` | `include_related: true` expands states, responsive variants; `components` is a JSON column |
-| `screen_state` | via `screen` | via `screen` | Not directly addressable |
-| `screen_responsive_variant` | via `screen` | via `screen` | Not directly addressable |
-| `config` (ux) | ✅ `entity_type: "config"` | ✅ `entity_type: "config"` | Accepts single or array of `{ domain: "ux", config_type, category, key, value }`. Filter by `domain` and `config_type`. |
 | `info_architecture` | ✅ `entity_type: "info_architecture"` | ✅ `entity_type: "info_architecture"` | `include_related: true` attaches direct `children`; supports `parent_id` for tree nesting |
 | `persona_addressed` | ✅ `entity_type: "persona_addressed"` | ✅ `entity_type: "persona_addressed"` | `include_related: true` expands `flows`; pass `flows` array in data for atomic child insert |
 | `persona_addressed_flow` | via `persona_addressed` | via `persona_addressed` | Not directly addressable |
@@ -415,12 +302,12 @@ The `traceability_query` tool supports `target_type: "flow"` and `target_type: "
 
 ## Key Design Decisions
 
-1. **Two insertion strategies.** `user_flow` and `screen` use transactional `changelog_insert` handlers with UPSERT semantics that atomically insert parent + all child rows. The flat config table (`config` with domain: "ux", `info_architecture`) uses a batch-insert handler that accepts a single object or an array of key-value entries. `persona_addressed` uses a parent-child handler that atomically inserts the parent row and its `persona_addressed_flow` children.
+1. **Two insertion strategies.** `user_flow` and `screen` use transactional `changelog_insert` handlers with UPSERT semantics that atomically insert parent + all child rows. The flat `info_architecture` table uses a batch-insert handler that accepts a single object or an array of key-value entries. `persona_addressed` uses a parent-child handler that atomically inserts the parent row and its `persona_addressed_flow` children.
 
 2. **Surface referenced by name, not FK.** `user_flow_step.surface` stores a surface name string (typically a screen name for UI apps) rather than a `screen_id` FK. This allows steps to reference screens before the screen row is formally created, supporting iterative design. The column is nullable to accommodate API-only and CLI applications where there is no visual screen. The trade-off is that name consistency must be enforced by the `ux_critic`, not the database.
 
 3. **Append-only revision model.** No UX rows are updated in place. When the `ux_critic` rejects a design, a new `revision` is created and the `ux_designer` inserts fresh rows with the new `revision_id`. All prior revisions remain queryable.
 
-4. **Flat key-value for config.** The unified `config` table and `info_architecture` use a `category / key / value` pattern rather than typed columns. This makes them extensible without schema changes — new token categories can be added freely. The `config` table uses a `domain` column to distinguish architecture from UX entries, and a `config_type` discriminator to further classify entries within each domain. The `info_architecture` table adds `parent_id` to support a tree structure within this flat scheme.
+4. **Flat key-value for info_architecture.** The `info_architecture` table uses a `category / key / value` pattern rather than typed columns. This makes it extensible without schema changes — new navigation categories can be added freely. The table adds `parent_id` to support a tree structure within this flat scheme.
 
 5. **Screen and flow traceability via `requirement_trace`.** UX requirement coverage — both screen-level and flow-level — is now consolidated into the cross-cutting `requirement_trace` table using `addressed_by_type = 'screen'` or `addressed_by_type = 'flow'`, giving a single unified traceability chain across all artifact types. See [cross-cutting.md](cross-cutting.md#requirement_trace) for details.

@@ -14,8 +14,7 @@ tools: Read, Grep, Glob, Bash
 
 **Inputs:**
 
-- Test report from QA Engineer
-- Data model: Test report entries (validated on insert via `changelog_insert`)
+- Test report from QA Engineer (includes stdout/stderr from test runs)
 - Test suite code (E2E and developer-written unit/integration tests)
 - Requirements specification (for acceptance criteria verification)
 - Implementation plan (phase indexes with E2E and integration test scenarios)
@@ -27,7 +26,6 @@ tools: Read, Grep, Glob, Bash
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Verify all acceptance criteria have test coverage
 - Verify coverage thresholds are met
 - Assess test quality against established criteria

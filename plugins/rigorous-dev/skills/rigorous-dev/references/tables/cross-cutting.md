@@ -11,136 +11,10 @@ These tables are written during the architecture phase after components and ADRs
 
 ## Table of Contents
 
-1. [config](#config)
-2. [approved_dependency](#approved_dependency)
-3. [requirement_trace](#requirement_trace)
-4. [blocker](#blocker)
-5. [project_lesson](#project_lesson)
-6. [entity_snapshot](#entity_snapshot)
-
----
-
-## config
-
-### Purpose
-
-Unified key/value store for cross-cutting configuration across both architecture and UX domains. Each row captures one configuration decision or setting — for example, an authentication scheme, a deployment scaling policy, a logging format, a design system colour token, or an accessibility setting. The `domain` column classifies each row as `architecture` or `ux`, and the `config_type` column further discriminates the concern within that domain.
-
-This is intentionally a key/value store rather than a strongly-typed table so that the schema does not need to change as new concerns emerge. The `domain` selects the top-level domain, `config_type` classifies the concern, `category` groups related decisions within that concern, and `key`/`value` carry the substance.
-
-### Context
-
-Architecture-domain entries are written by `backend_architect` during the architecture phase. UX-domain entries are written by `ux_designer` during the ux_design phase. Security entries are driven by `nonfunctional_requirement` rows with `type = 'technology'` and security implications. Deployment entries are driven by `nonfunctional_requirement` rows with `type = 'deployment'`. Observability entries are driven by `nonfunctional_requirement` rows with `type = 'operational'`. UX entries are driven by design requirements and accessibility standards.
-
-**domain = architecture:**
-
-| config_type | Common categories | Description |
-|---|---|---|
-| `security` | `authentication`, `authorization`, `data_protection`, `secrets_management`, `network`, `audit_logging`, `compliance` | Security architecture decisions |
-| `deployment` | `containerization`, `orchestration`, `scaling`, `networking`, `storage`, `ci_cd`, `secrets` | Deployment architecture decisions |
-| `observability` | `logging`, `metrics`, `tracing`, `alerting`, `health_checks`, `dashboards` | Observability architecture decisions |
-
-**domain = ux:**
-
-| config_type | Common categories | Description |
-|---|---|---|
-| `design_system` | `colors`, `typography`, `spacing`, `elevation`, `component_library` | Design system tokens |
-| `accessibility` | `wcag`, `focus_management`, `aria`, `keyboard`, `motion` | Accessibility settings |
-| `responsive` | `breakpoints`, `grid`, `typography`, `touch_targets` | Responsive layout definitions |
-| `feedback_pattern` | `loading`, `success`, `error`, `empty_state`, `confirmation` | UX feedback patterns |
-
-### Column Reference
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | The producer–critic revision that created this row. |
-| `domain` | TEXT | NOT NULL | — | CHECK IN (`architecture`, `ux`) | Top-level domain discriminator. |
-| `config_type` | TEXT | NOT NULL | — | — | Concern discriminator within the domain (e.g., `security`, `deployment`, `design_system`, `accessibility`). |
-| `category` | TEXT | NOT NULL | — | — | Logical grouping within the config_type (e.g., `authentication`, `containerization`, `colors`, `wcag`). |
-| `key` | TEXT | NOT NULL | — | — | Setting name within the category (e.g., `scheme`, `runtime`, `primary`, `target_level`). |
-| `value` | TEXT | NOT NULL | — | — | Setting value (e.g., `JWT`, `Docker`, `#3B82F6`, `AA`). |
-| `rationale` | TEXT | YES | NULL | — | Optional justification for this config entry. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of row insertion. |
-
-### Relationships
-
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `requirement_trace` or by reading upstream requirement tables that share the same iteration.
-- Architecture security entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'technology'` and security implications.
-- Architecture deployment entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'deployment'`.
-- Architecture observability entries are conceptually downstream of `nonfunctional_requirement` rows with `type = 'operational'`.
-- UX entries are informally referenced by `screen_responsive_variant.breakpoint` (config_type `responsive`, no enforced FK).
-
-### MCP Tool Access
-
-**Read all architecture security config** (`changelog_query`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "filters": { "domain": "architecture", "config_type": "security" }
-}
-```
-
-**Read architecture deployment config** (`changelog_query`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "filters": { "domain": "architecture", "config_type": "deployment" }
-}
-```
-
-**Read architecture observability config by category** (`changelog_query`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "filters": { "domain": "architecture", "config_type": "observability", "category": "tracing" }
-}
-```
-
-**Read all UX design system config** (`changelog_query`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "filters": { "domain": "ux", "config_type": "design_system" }
-}
-```
-
-**Write architecture security entry** (`changelog_insert`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "revision_id": 3,
-  "data": {
-    "domain": "architecture",
-    "config_type": "security",
-    "category": "authentication",
-    "key": "scheme",
-    "value": "JWT with RS256, 15-minute access tokens, 7-day refresh tokens"
-  }
-}
-```
-
-**Write UX accessibility entry** (`changelog_insert`):
-```json
-{
-  "entity_type": "config",
-  "iteration_id": 1,
-  "revision_id": 5,
-  "data": {
-    "domain": "ux",
-    "config_type": "accessibility",
-    "category": "wcag",
-    "key": "target_level",
-    "value": "AA"
-  }
-}
-```
+1. [approved_dependency](#approved_dependency)
+2. [requirement_trace](#requirement_trace)
+3. [blocker](#blocker)
+4. [project_lesson](#project_lesson)
 
 ---
 
@@ -353,7 +227,7 @@ Write a second mapping for the same requirement to a screen:
 
 ### Purpose
 
-Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`, `test_blocker`) which are stored within their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
+Records workflow blockers raised by any agent (producer or critic) when they encounter issues that prevent progress. Unlike domain-specific blockers (`implementation_blocker`) which are stored within their respective manifests, the `blocker` table is a cross-cutting lifecycle table that captures escalation events from any phase.
 
 Blockers use soft-delete semantics: active blockers have `resolved_at IS NULL`. When a blocker is addressed, `blocker_resolve` sets `resolved_at` and optionally records resolution notes.
 
@@ -492,90 +366,17 @@ Like `blocker`, `project_lesson` does not carry a `revision_id` column — lesso
 
 ---
 
-## entity_snapshot
-
-### Purpose
-
-Stores before-update JSON snapshots of entity rows for audit trail and change history. When a TEXT-PK entity (e.g., `persona`, `requirement`, `adr`, `component`, `screen`, `user_flow`) is updated via UPSERT during a new revision, the `snapshotIfExists` helper in `write-tools.js` captures the complete previous row as a JSON blob before overwriting it. This creates a full revision-by-revision history of how entities evolve across producer-critic cycles.
-
-Unlike most entity tables, `entity_snapshot` is never written directly by agents or via `changelog_insert`. It is populated automatically by the MCP server's internal UPSERT machinery. Agents read snapshots via `changelog_query` with `history: true`.
-
-### Context
-
-Populated automatically by the `snapshotIfExists()` helper in `write-tools.js` whenever a TEXT-PK entity is re-inserted during a new revision. The helper runs a `SELECT *` on the existing row, serialises it to JSON, and inserts it into `entity_snapshot` before the `ON CONFLICT ... DO UPDATE` overwrites the current state.
-
-The `entity_type` column is a **polymorphic discriminator**: its value must match a key in the `ENTITY_TABLE` map in `read-tools.js` (which maps entity type names to their database table names). This is enforced at the application level, not via a SQL CHECK constraint, because the set of valid entity types is defined in code and may evolve. See the DDL comment on `entity_snapshot.entity_type` in `schema.sql` and the `VALID_ENTITY_TYPES` export in `read-tools.js` for the canonical set.
-
-### Column Reference
-
-| Column | Type | Nullable | Default | Constraints | Description |
-|--------|------|----------|---------|-------------|-------------|
-| `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `entity_type` | TEXT | NOT NULL | — | — | Polymorphic discriminator: the table name of the snapshotted entity (e.g., `'requirement'`, `'adr'`, `'component'`, `'screen'`). Must match a key in `ENTITY_TABLE` (read-tools.js) — see DDL comment in `schema.sql`. |
-| `source_id` | TEXT | NOT NULL | — | — | The primary key value of the snapshotted entity (e.g., `'REQ-001'`, `'ADR-003'`). Polymorphic reference — the target table is determined by `entity_type`. |
-| `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` ON DELETE CASCADE | The new revision that triggered the snapshot — i.e., the revision whose UPSERT overwrote this entity's previous state. |
-| `snapshot` | JSON | NOT NULL | — | — | Complete JSON serialization of the entity row as it existed immediately before the update. |
-| `created_at` | TEXT | NOT NULL | `(datetime('now'))` | — | ISO 8601 timestamp of snapshot creation. |
-
-### Relationships
-
-- **`revision_id` → `revision(id)`** — Links the snapshot to the revision whose UPSERT triggered it. ON DELETE CASCADE ensures snapshots are cleaned up if the revision is deleted.
-- **`(entity_type, source_id)`** — Composite lookup (indexed via `idx_entity_snapshot_lookup`) but not a formal FK, since entity types span multiple tables with different PK types.
-- No `iteration_id` column — the iteration can be derived by joining through `revision.phase_id → phase.iteration_id`.
-
-### Indexes
-
-| Index | Columns | Purpose |
-|-------|---------|---------|
-| `idx_entity_snapshot_lookup` | `(entity_type, source_id)` | Fast lookup of all snapshots for a given entity across revisions. |
-
-### MCP Tool Access
-
-**Write:** Not directly writable. Snapshots are created automatically by the MCP server during TEXT-PK entity UPSERTs. There is no `changelog_insert` handler for `entity_snapshot`.
-
-**Read** (`changelog_query` with `history: true`):
-```json
-{
-  "entity_type": "requirement",
-  "history": true,
-  "ids": ["REQ-001"]
-}
-```
-
-This returns all snapshots for `REQ-001` from the `entity_snapshot` table, showing how the requirement evolved across revisions.
-
-**Read all snapshots for an entity type:**
-```json
-{
-  "entity_type": "adr",
-  "history": true
-}
-```
-
----
-
 ## Common Patterns
 
-### Querying all cross-cutting config for an iteration
+### Querying all cross-cutting data for an iteration
 
-All five tables can be queried by `iteration_id` using `changelog_query` — the tool resolves `revision_id`-only tables via the `entity_context` VIEW. To get the full cross-cutting picture for iteration 1:
+All four tables can be queried by `iteration_id` using `changelog_query` — the tool resolves `revision_id`-only tables via the `entity_context` VIEW. To get the full cross-cutting picture for iteration 1:
 
 ```json
-{ "entity_type": "config",               "iteration_id": 1 }
 { "entity_type": "approved_dependency",  "iteration_id": 1 }
 { "entity_type": "requirement_trace", "iteration_id": 1 }
 { "entity_type": "blocker",             "iteration_id": 1 }
 { "entity_type": "project_lesson",      "iteration_id": 1 }
-```
-
-To query a specific domain and config_type within config:
-
-```json
-{ "entity_type": "config", "iteration_id": 1, "filters": { "domain": "architecture", "config_type": "security" } }
-{ "entity_type": "config", "iteration_id": 1, "filters": { "domain": "architecture", "config_type": "deployment" } }
-{ "entity_type": "config", "iteration_id": 1, "filters": { "domain": "architecture", "config_type": "observability" } }
-{ "entity_type": "config", "iteration_id": 1, "filters": { "domain": "ux", "config_type": "design_system" } }
-{ "entity_type": "config", "iteration_id": 1, "filters": { "domain": "ux", "config_type": "accessibility" } }
 ```
 
 ### Detecting unaddressed requirements

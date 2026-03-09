@@ -182,21 +182,13 @@ function revisionUpdate(args) {
 // ---------------------------------------------------------------------------
 
 // Snapshot helper: captures old row as JSON before an upsert overwrites it
-function snapshotIfExists(db, table, entityType, entityId, newRevisionId) {
-  const existing = db.prepare(`SELECT * FROM ${table} WHERE id = @id`).get({ id: entityId });
-  if (existing) {
-    const now = new Date().toISOString();
-    db.prepare(
-      `INSERT OR IGNORE INTO entity_snapshot (entity_type, source_id, revision_id, snapshot, created_at)
-       VALUES (@entity_type, @source_id, @revision_id, @snapshot, @created_at)`
-    ).run({ entity_type: entityType, source_id: entityId, revision_id: newRevisionId, snapshot: JSON.stringify(existing), created_at: now });
-  }
-  return existing;
+function existsForUpsert(db, table, entityId) {
+  return db.prepare(`SELECT 1 FROM ${table} WHERE id = @id`).get({ id: entityId });
 }
 
 function insertPersona(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "persona", "persona", data.id, revision_id);
+  const existed = existsForUpsert(db, "persona", data.id);
 
   db.prepare(
     `INSERT INTO persona (id, revision_id, name, description, technical_level, frequency_of_use, goals, created_at)
@@ -226,7 +218,7 @@ function insertPersona(db, iteration_id, revision_id, data) {
 
 function insertRequirement(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "requirement", "requirement", data.id, revision_id);
+  const existed = existsForUpsert(db, "requirement", data.id);
 
   db.prepare(
     `INSERT INTO requirement (id, revision_id, description, rationale, priority, category, acceptance_criteria, created_at)
@@ -275,7 +267,7 @@ function insertRequirement(db, iteration_id, revision_id, data) {
 
 function insertAdr(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "adr", "adr", data.id, revision_id);
+  const existed = existsForUpsert(db, "adr", data.id);
 
   db.prepare(
     `INSERT INTO adr (id, revision_id, title, status, date, context, decision, rationale, superseded_by, consequences, research_sources, created_at)
@@ -327,7 +319,7 @@ function insertAdr(db, iteration_id, revision_id, data) {
 
 function insertComponent(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "component", "component", data.id, revision_id);
+  const existed = existsForUpsert(db, "component", data.id);
 
   db.prepare(
     `INSERT INTO component (id, revision_id, name, purpose, component_type, created_at)
@@ -453,32 +445,6 @@ function insertRequirementTrace(db, iteration_id, revision_id, data) {
   return { entity_type: "requirement_trace", id: result.lastInsertRowid };
 }
 
-function insertConfig(db, iteration_id, revision_id, data) {
-  const entries = Array.isArray(data) ? data : [data];
-  const now = new Date().toISOString();
-  let lastId;
-  const insert = db.prepare(
-    `INSERT INTO config (revision_id, domain, config_type, target, category, key, value, rationale, created_at)
-     VALUES (@revision_id, @domain, @config_type, @target, @category, @key, @value, @rationale, @created_at)`
-  );
-  for (const entry of entries) {
-    if (!entry.domain) throw new Error("config entries require a 'domain' field ('architecture' or 'ux')");
-    const result = insert.run({
-      revision_id,
-      domain: entry.domain,
-      config_type: entry.config_type,
-      target: entry.target ?? null,
-      category: entry.category,
-      key: entry.key,
-      value: entry.value,
-      rationale: entry.rationale ?? null,
-      created_at: now
-    });
-    lastId = result.lastInsertRowid;
-  }
-  return { entity_type: "config", id: lastId };
-}
-
 function insertApprovedDependency(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
@@ -511,7 +477,7 @@ function insertApprovedDependency(db, iteration_id, revision_id, data) {
 
 function insertUserFlow(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "user_flow", "user_flow", data.id, revision_id);
+  const existed = existsForUpsert(db, "user_flow", data.id);
 
   db.prepare(
     `INSERT INTO user_flow (id, revision_id, name, goal, persona_id, entry_point, success_state, data_dependencies, created_at)
@@ -583,7 +549,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
 
 function insertScreen(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
-  const existed = snapshotIfExists(db, "screen", "screen", data.id, revision_id);
+  const existed = existsForUpsert(db, "screen", data.id);
 
   db.prepare(
     `INSERT INTO screen (id, revision_id, name, purpose, wireframe_path, mockup_path, components, created_at)
@@ -607,30 +573,6 @@ function insertScreen(db, iteration_id, revision_id, data) {
     created_at: now,
     updated_at: now
   });
-
-  if (existed) {
-    db.prepare("DELETE FROM screen_state WHERE screen_id = @screen_id").run({ screen_id: data.id });
-    db.prepare("DELETE FROM screen_responsive_variant WHERE screen_id = @screen_id").run({ screen_id: data.id });
-  }
-
-  const insertState = db.prepare(
-    "INSERT INTO screen_state (screen_id, name, description, wireframe_path) VALUES (@screen_id, @name, @description, @wireframe_path)"
-  );
-  for (const state of data.states ?? []) {
-    insertState.run({ screen_id: data.id, name: state.name, description: state.description ?? null, wireframe_path: state.wireframe_path ?? null });
-  }
-
-  const insertVariant = db.prepare(
-    "INSERT INTO screen_responsive_variant (screen_id, breakpoint, wireframe_path, layout_changes) VALUES (@screen_id, @breakpoint, @wireframe_path, @layout_changes)"
-  );
-  for (const variant of data.responsive_variants ?? []) {
-    insertVariant.run({
-      screen_id: data.id,
-      breakpoint: variant.breakpoint,
-      wireframe_path: variant.wireframe_path ?? null,
-      layout_changes: variant.layout_changes ?? null
-    });
-  }
 
   return { entity_type: "screen", id: data.id, updated: !!existed };
 }
@@ -775,28 +717,6 @@ function insertPlanExternalDependency(db, iteration_id, _revision_id, data) {
   return { entity_type: "plan_external_dependency", id: result.lastInsertRowid };
 }
 
-function insertPlanMetadata(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      `INSERT INTO plan_metadata (revision_id, title, version, document_date, document_updated, status, requirements_version, architecture_version, ux_specification_version, created_at)
-       VALUES (@revision_id, @title, @version, @document_date, @document_updated, @status, @requirements_version, @architecture_version, @ux_specification_version, @created_at)`
-    )
-    .run({
-      revision_id,
-      title: data.title,
-      version: data.version,
-      document_date: data.document_date,
-      document_updated: data.document_updated ?? null,
-      status: data.status,
-      requirements_version: data.requirements_version,
-      architecture_version: data.architecture_version,
-      ux_specification_version: data.ux_specification_version,
-      created_at: now
-    });
-  return { entity_type: "plan_metadata", id: result.lastInsertRowid };
-}
-
 function insertImplementationManifest(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
@@ -804,10 +724,10 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
     .prepare(
       `INSERT INTO implementation_manifest
          (revision_id, plan_phase_id, status, lines_of_code, warnings, build_status,
-          version, document_date, requirements_version, architecture_version, language, commit_sha,
+          version, document_date, requirements_version, architecture_version, language, stdout, stderr, commit_sha,
           created_at)
        VALUES (@revision_id, @plan_phase_id, @status, @lines_of_code, @warnings, @build_status,
-               @version, @document_date, @requirements_version, @architecture_version, @language, @commit_sha,
+               @version, @document_date, @requirements_version, @architecture_version, @language, @stdout, @stderr, @commit_sha,
                @created_at)`
     )
     .run({
@@ -822,6 +742,8 @@ function insertImplementationManifest(db, iteration_id, revision_id, data) {
       requirements_version: meta?.requirements_version ?? data.requirements_version ?? null,
       architecture_version: meta?.architecture_version ?? data.architecture_version ?? null,
       language: meta?.language ?? data.language ?? null,
+      stdout: data.stdout ?? null,
+      stderr: data.stderr ?? null,
       commit_sha: meta?.commit_sha ?? data.commit_sha ?? null,
       created_at: now
     });
@@ -1011,25 +933,6 @@ function insertIntermediateAsset(db, iteration_id, revision_id, data) {
   return { entity_type: "intermediate_asset", id: result.lastInsertRowid };
 }
 
-function insertAssetDeliverable(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      `INSERT INTO asset_deliverable (iteration_id, phase_id, asset_type, file_path, description, commit_sha, created_at)
-       VALUES (@iteration_id, @phase_id, @asset_type, @file_path, @description, @commit_sha, @created_at)`
-    )
-    .run({
-      iteration_id,
-      phase_id: data.phase_id ?? null,
-      asset_type: data.asset_type,
-      file_path: data.file_path,
-      description: data.description ?? null,
-      commit_sha: data.commit_sha ?? null,
-      created_at: now
-    });
-  return { entity_type: "asset_deliverable", id: result.lastInsertRowid };
-}
-
 function insertWorkflowBlocker(db, iteration_id, _revision_id, data) {
   const result = db.prepare(
     `INSERT INTO blocker (iteration_id, phase_name, description, severity, raised_by)
@@ -1107,11 +1010,13 @@ function insertTestReport(db, iteration_id, revision_id, data) {
          (revision_id, total_tests, passed_count, failed, skipped,
           coverage_line, coverage_branch, coverage_function,
           duration_seconds, status,
+          stdout, stderr,
           version, document_date, requirements_version, architecture_version, commit_sha,
           created_at)
        VALUES (@revision_id, @total_tests, @passed_count, @failed, @skipped,
                @coverage_line, @coverage_branch, @coverage_function,
                @duration_seconds, @status,
+               @stdout, @stderr,
                @version, @document_date, @requirements_version, @architecture_version, @commit_sha,
                @created_at)`
     )
@@ -1126,6 +1031,8 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       coverage_function: data.coverage_function ?? null,
       duration_seconds: data.duration_seconds ?? null,
       status: data.status,
+      stdout: data.stdout ?? null,
+      stderr: data.stderr ?? null,
       version: meta?.version ?? data.version ?? null,
       document_date: meta?.document_date ?? data.document_date ?? null,
       requirements_version: meta?.requirements_version ?? data.requirements_version ?? null,
@@ -1133,260 +1040,9 @@ function insertTestReport(db, iteration_id, revision_id, data) {
       commit_sha: meta?.commit_sha ?? data.commit_sha ?? null,
       created_at: now
     });
-  const report_id = result.lastInsertRowid;
 
-  // -- test_requirement_coverage (1:N) --
-  //    → test_acceptance_criterion_result (1:N per coverage)
-  const insertCoverage = db.prepare(
-    `INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (@report_id, @requirement_id, @status)
-     ON CONFLICT(report_id, requirement_id) DO UPDATE SET status = excluded.status
-     RETURNING id`
-  );
-  const deleteStaleCriteria = db.prepare(
-    "DELETE FROM test_acceptance_criterion_result WHERE coverage_id = ?"
-  );
-  const insertCriterionResult = db.prepare(
-    "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes, test_ids) VALUES (@coverage_id, @criterion, @status, @notes, @test_ids)"
-  );
-  for (const cov of data.coverage ?? []) {
-    const covRow = insertCoverage.get({ report_id, requirement_id: cov.requirement_id, status: cov.status });
-    const coverage_id = covRow.id;
-    deleteStaleCriteria.run(coverage_id);
-    for (const cr of cov.criteria ?? []) {
-      insertCriterionResult.run({
-        coverage_id,
-        criterion: cr.criterion,
-        status: cr.status,
-        notes: cr.notes ?? null,
-        test_ids: JSON.stringify(cr.test_ids ?? [])
-      });
-    }
-  }
-
-  // -- test_suite (1:N) --
-  //    → test_case (1:N per suite)
-  //      → test_case_requirement (M:N per case)
-  const insertSuite = db.prepare(
-    "INSERT INTO test_suite (report_id, name, suite_type) VALUES (@report_id, @name, @suite_type)"
-  );
-  const insertCase = db.prepare(
-    `INSERT INTO test_case
-       (suite_id, test_id, name, description, status, duration_ms,
-        error_message, stack_trace, retry_count)
-     VALUES (@suite_id, @test_id, @name, @description, @status, @duration_ms,
-             @error_message, @stack_trace, @retry_count)`
-  );
-  const insertCaseReq = db.prepare(
-    "INSERT OR IGNORE INTO test_case_requirement (test_case_id, requirement_id) VALUES (@test_case_id, @requirement_id)"
-  );
-  for (const suite of data.suites ?? []) {
-    const suiteResult = insertSuite.run({ report_id, name: suite.name, suite_type: suite.type });
-    const suite_id = suiteResult.lastInsertRowid;
-    for (const tc of suite.cases ?? []) {
-      const caseResult = insertCase.run({
-        suite_id,
-        test_id: tc.test_id,
-        name: tc.name,
-        description: tc.description ?? null,
-        status: tc.status,
-        duration_ms: tc.duration_ms ?? null,
-        error_message: tc.error_message ?? null,
-        stack_trace: tc.stack_trace ?? null,
-        retry_count: tc.retry_count ?? null
-      });
-      for (const req_id of tc.requirements ?? []) {
-        insertCaseReq.run({ test_case_id: caseResult.lastInsertRowid, requirement_id: req_id });
-      }
-    }
-  }
-
-  // -- test_security_finding (1:N) --
-  const insertSecFinding = db.prepare(
-    `INSERT INTO test_security_finding
-       (report_id, category, tool, severity, description, location,
-        recommendation, package, advisory)
-     VALUES (@report_id, @category, @tool, @severity, @description, @location,
-             @recommendation, @package, @advisory)`
-  );
-  for (const sf of data.security_findings ?? []) {
-    insertSecFinding.run({
-      report_id,
-      category: sf.category,
-      tool: sf.tool ?? null,
-      severity: sf.severity ?? null,
-      description: sf.description,
-      location: sf.location ?? null,
-      recommendation: sf.recommendation,
-      package: sf.package ?? null,
-      advisory: sf.advisory ?? null
-    });
-  }
-
-  // -- test_performance_benchmark (1:N) --
-  const insertBenchmark = db.prepare(
-    `INSERT INTO test_performance_benchmark
-       (report_id, name, metric, measured_value, unit, threshold, status)
-     VALUES (@report_id, @name, @metric, @measured_value, @unit, @threshold, @status)`
-  );
-  for (const pb of data.performance_benchmarks ?? []) {
-    insertBenchmark.run({
-      report_id,
-      name: pb.name,
-      metric: pb.metric,
-      measured_value: pb.measured_value,
-      unit: pb.unit,
-      threshold: pb.threshold ?? null,
-      status: pb.status ?? null
-    });
-  }
-
-  // -- test_blocker (1:N) --
-  //    → test_blocker_requirement (M:N per blocker)
-  const insertBlocker = db.prepare(
-    "INSERT INTO test_blocker (report_id, description, severity, recommendation) VALUES (@report_id, @description, @severity, @recommendation)"
-  );
-  const insertBlockerReq = db.prepare(
-    "INSERT OR IGNORE INTO test_blocker_requirement (blocker_id, requirement_id) VALUES (@blocker_id, @requirement_id)"
-  );
-  for (const blocker of data.blockers ?? []) {
-    const blockerResult = insertBlocker.run({
-      report_id,
-      description: blocker.description,
-      severity: blocker.severity,
-      recommendation: blocker.recommendation ?? null
-    });
-    for (const req_id of blocker.requirements ?? []) {
-      insertBlockerReq.run({ blocker_id: blockerResult.lastInsertRowid, requirement_id: req_id });
-    }
-  }
-
-  // -- test_recommendation (1:N) --
-  const insertRecommendation = db.prepare(
-    "INSERT INTO test_recommendation (report_id, category, description, priority) VALUES (@report_id, @category, @description, @priority)"
-  );
-  for (const rec of data.recommendations ?? []) {
-    insertRecommendation.run({ report_id, category: rec.category, description: rec.description, priority: rec.priority });
-  }
-
-  return { entity_type: "test_report", id: report_id };
+  return { entity_type: "test_report", id: result.lastInsertRowid };
 }
-
-function insertDocumentationManifest(db, iteration_id, revision_id, data) {
-  const now = new Date().toISOString();
-  const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
-  const result = db
-    .prepare(
-      `INSERT INTO documentation_manifest
-         (revision_id, status, total_pages,
-          accessibility_compliant,
-          version, document_date, requirements_version,
-          architecture_version, implementation_version, format,
-          created_at)
-       VALUES (@revision_id, @status, @total_pages,
-               @accessibility_compliant,
-               @version, @document_date, @requirements_version,
-               @architecture_version, @implementation_version, @format,
-               @created_at)`
-    )
-    .run({
-      revision_id,
-      status: data.status,
-      total_pages: data.total_pages ?? null,
-      accessibility_compliant: data.accessibility_compliant ?? 0,
-      version: meta?.version ?? data.version ?? null,
-      document_date: meta?.document_date ?? data.document_date ?? null,
-      requirements_version: meta?.requirements_version ?? data.requirements_version ?? null,
-      architecture_version: meta?.architecture_version ?? data.architecture_version ?? null,
-      implementation_version: meta?.implementation_version ?? data.implementation_version ?? null,
-      format: meta?.format ?? data.format ?? null,
-      created_at: now
-    });
-  const manifest_id = result.lastInsertRowid;
-
-  // -- documentation_section (1:N) --
-  const insertSection = db.prepare(
-    `INSERT INTO documentation_section
-       (manifest_id, category, key, value, path)
-     VALUES (@manifest_id, @category, @key, @value, @path)`
-  );
-  for (const sec of data.sections ?? []) {
-    insertSection.run({
-      manifest_id,
-      category: sec.category,
-      key: sec.key,
-      value: sec.value,
-      path: sec.path ?? null
-    });
-  }
-
-  // -- documentation_feature (1:N) --
-  //    → documentation_feature_requirement (M:N per feature)
-  const insertFeature = db.prepare(
-    `INSERT INTO documentation_feature
-       (manifest_id, name, path, includes_examples, includes_screenshots)
-     VALUES (@manifest_id, @name, @path, @includes_examples, @includes_screenshots)`
-  );
-  const insertFeatureReq = db.prepare(
-    "INSERT OR IGNORE INTO documentation_feature_requirement (feature_id, requirement_id) VALUES (@feature_id, @requirement_id)"
-  );
-  for (const feat of data.features ?? []) {
-    const featResult = insertFeature.run({
-      manifest_id,
-      name: feat.name,
-      path: feat.path,
-      includes_examples: feat.includes_examples ? 1 : 0,
-      includes_screenshots: feat.includes_screenshots ? 1 : 0
-    });
-    for (const req_id of feat.requirements ?? []) {
-      insertFeatureReq.run({ feature_id: featResult.lastInsertRowid, requirement_id: req_id });
-    }
-  }
-
-  // -- documentation_requirement_coverage (1:N) --
-  const insertCoverage = db.prepare(
-    `INSERT OR REPLACE INTO documentation_requirement_coverage
-       (manifest_id, requirement_id, documented, user_facing, notes, paths)
-     VALUES (@manifest_id, @requirement_id, @documented, @user_facing, @notes, @paths)`
-  );
-  for (const cov of data.coverage ?? []) {
-    insertCoverage.run({
-      manifest_id,
-      requirement_id: cov.requirement_id,
-      documented: cov.documented ? 1 : 0,
-      user_facing: cov.user_facing ? 1 : 0,
-      notes: cov.notes ?? null,
-      paths: JSON.stringify(cov.paths ?? [])
-    });
-  }
-
-  // -- documentation_asset (1:N) --
-  const insertAsset = db.prepare(
-    `INSERT INTO documentation_asset
-       (manifest_id, path, asset_type, description, alt_text)
-     VALUES (@manifest_id, @path, @asset_type, @description, @alt_text)`
-  );
-  for (const asset of data.assets ?? []) {
-    insertAsset.run({
-      manifest_id,
-      path: asset.path,
-      asset_type: asset.type,
-      description: asset.description ?? null,
-      alt_text: asset.alt_text ?? null
-    });
-  }
-
-  // -- documentation_review_checklist (1:N) --
-  const insertVerification = db.prepare(
-    "INSERT INTO documentation_review_checklist (manifest_id, check_name, passed) VALUES (@manifest_id, @check_name, @passed)"
-  );
-  for (const v of data.verification ?? []) {
-    insertVerification.run({ manifest_id, check_name: v.check_name, passed: v.passed ? 1 : 0 });
-  }
-
-  return { entity_type: "documentation_manifest", id: manifest_id };
-}
-
-// (ux_config merged into insertConfig — see above)
 
 function insertInfoArchitecture(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
@@ -1476,31 +1132,26 @@ function changelogInsert(args) {
     adr: insertAdr,
     component: insertComponent,
     requirement_trace: insertRequirementTrace,
-    config: insertConfig,
     approved_dependency: insertApprovedDependency,
     user_flow: insertUserFlow,
     screen: insertScreen,
-    // (ux_config merged into config)
     info_architecture: insertInfoArchitecture,
     persona_addressed: insertPersonaAddressed,
     ux_asset: insertUxAsset,
     plan_phase: insertPlanPhase,
     plan_overview: insertPlanOverview,
     plan_external_dependency: insertPlanExternalDependency,
-    plan_metadata: insertPlanMetadata,
     implementation_manifest: insertImplementationManifest,
     project_context: insertProjectContext,
     system_io: insertSystemIo,
     nonfunctional_requirement: insertNonfunctionalRequirement,
     vcs_commit: insertVcsCommit,
     intermediate_asset: insertIntermediateAsset,
-    asset_deliverable: insertAssetDeliverable,
     blocker: insertWorkflowBlocker,
     project_lesson: insertProjectLesson,
     security_audit_finding: insertSecurityAuditFinding,
     performance_audit_finding: insertPerformanceAuditFinding,
     test_report: insertTestReport,
-    documentation_manifest: insertDocumentationManifest,
   };
 
   const handler = handlers[entity_type];

@@ -14,8 +14,8 @@ tools: Read, Grep, Glob, Bash
 
 **Inputs:**
 
-- Documentation manifest from Documentation Master
-- Data model: Documentation entries (validated on insert via `changelog_insert`)
+- Documentation files from Documentation Master
+- Documentation scope determination and index from Documentation Master
 - Documentation files
 - Requirements specification (for coverage verification)
 - Glossary from requirements specification
@@ -27,7 +27,6 @@ tools: Read, Grep, Glob, Bash
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
 - Do not run builds or tests — those are already verified by prior phases
-- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - Verify scope determination is reasonable (categories marked applicable/skipped)
 - Verify all user-facing requirements have documentation coverage
 - Verify accuracy against code and specifications
@@ -103,7 +102,7 @@ tools: Read, Grep, Glob, Bash
 
 **Context Management:**
 
-- **Read the documentation manifest in full** — it's your primary review target.
+- **Read the documentation index and files in full** — they're your primary review target.
 - **Read documentation files one category at a time.** Complete the review for user guide, then move to API docs, etc.
 - **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `api_spec.yaml` only when reviewing API docs).
 - **Read source code selectively.** Spot-check 2-3 code samples per doc category against actual source. Don't read the entire codebase.

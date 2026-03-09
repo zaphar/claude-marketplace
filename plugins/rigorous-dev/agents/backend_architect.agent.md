@@ -72,7 +72,7 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular DB entries, each validated by DB constraints on insert:
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `config` (domain: "architecture"), `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 - Architecture narrative (overview, principles) — committed as a markdown document (e.g., `docs/architecture/overview.md`), NOT stored in the database
 - Architecture diagrams — committed as files (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
 - Data model design — committed as a markdown document (e.g., `docs/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database

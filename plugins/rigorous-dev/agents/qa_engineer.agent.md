@@ -75,6 +75,7 @@ When tests fail:
 **Produces:**
 
 - Test report in YAML format stored in the changelog DB via `changelog_insert`
+- The report includes `stdout` and `stderr` fields capturing test runner output
 - Unified traceability matrix (requirement → UX screen → architecture component → source code → test ID)
 - Test suite code integrated into the codebase
 - The report must show:

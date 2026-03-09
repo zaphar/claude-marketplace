@@ -26,7 +26,7 @@ Records a single security vulnerability or concern discovered during the audit p
 
 ### Context
 
-The `security_auditor` performs a deep code-level security audit (OWASP Top 10, data flow tracing, dependency audit, configuration review) and records each finding individually via `changelog_insert`. This differs from `test_security_finding` in the QA domain: QA findings come from automated scanners during testing, while audit findings come from manual expert code review during the audit phase.
+The `security_auditor` performs a deep code-level security audit (OWASP Top 10, data flow tracing, dependency audit, configuration review) and records each finding individually via `changelog_insert`. Audit findings come from manual expert code review during the audit phase.
 
 The `security_audit_critic` queries all findings for the current iteration to validate completeness, accuracy, and actionability.
 
@@ -67,7 +67,7 @@ Records a single performance bottleneck, anti-pattern, or optimization opportuni
 
 ### Context
 
-The `performance_auditor` performs a deep code-level performance audit (database queries, memory patterns, concurrency, API design, algorithm analysis) and records each finding individually via `changelog_insert`. This differs from `test_performance_benchmark` in the QA domain: QA benchmarks measure against defined thresholds from requirements, while audit findings identify code-level anti-patterns and bottlenecks regardless of requirements.
+The `performance_auditor` performs a deep code-level performance audit (database queries, memory patterns, concurrency, API design, algorithm analysis) and records each finding individually via `changelog_insert`. Audit findings identify code-level anti-patterns and bottlenecks regardless of requirements.
 
 The `performance_audit_critic` queries all findings for the current iteration to validate completeness, evidence backing, and actionability.
 
@@ -126,13 +126,13 @@ Unlike the QA domain where all test data hangs off a single `test_report` root e
 | Filter by status | `changelog_query` | `entity_type: "performance_audit_finding"`, `filters: { "status": "open" }` |
 | Check overall audit phase status | `iteration_summary` | `iteration_id` — shows audit phase completion and approval |
 
-## Distinction from QA Domain Tables
+## Distinction from QA Domain
 
-| Aspect | QA (`test_security_finding` / `test_performance_benchmark`) | Audit (`security_audit_finding` / `performance_audit_finding`) |
+| Aspect | QA (`test_report`) | Audit (`security_audit_finding` / `performance_audit_finding`) |
 |--------|-----|------|
 | Phase | `qa` | `audit` |
 | Producer | `qa_engineer` | `security_auditor` / `performance_auditor` |
-| Method | Automated tools (scanners, benchmarks) | Manual expert code review |
-| Provenance | Child of `test_report` (no own `revision_id`) | Independent entity with own `revision_id` (iteration derived via revision → phase → iteration) |
+| Method | Automated tools (test runners) | Manual expert code review |
+| Provenance | Aggregate report with stdout/stderr | Independent entity with own `revision_id` (iteration derived via revision → phase → iteration) |
 | Scope | Verifies requirements are met | Finds issues requirements didn't anticipate |
-| Status tracking | No status column | `status` column tracks resolution lifecycle |
+| Status tracking | Report-level status (pass/fail/blocked) | `status` column tracks resolution lifecycle |

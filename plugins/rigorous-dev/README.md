@@ -269,7 +269,7 @@ The Documentation Master creates:
 - Deployment guides
 - Architecture documentation
 
-Output: Documentation manifest stored in `.claude/rigorous-dev.db`
+Output: Documentation files committed to repository
 
 ### Release Workflow
 
@@ -383,7 +383,7 @@ All decisions, artifacts, and transitions are stored as structured rows. No YAML
 - `changelog_update` — update mutable fields on existing changelog entities (e.g. status transitions for audit findings and ADRs)
 
 **Read tools** (agents call these to query state):
-- `changelog_query` — query the changelog with optional filters. Set `history: true` to view how entities evolved across revisions via `entity_snapshot`
+- `changelog_query` — query the changelog with optional filters
 - `traceability_query` — trace requirements through to implementation and tests
 - `revision_history` — view producer-critic history for a phase
 - `iteration_summary` — summarize the current or a past iteration

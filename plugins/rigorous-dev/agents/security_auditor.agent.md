@@ -15,7 +15,7 @@ tools: Read, Grep, Glob, Bash
 **Inputs:**
 
 - Project source code
-- Architecture security spec (query via `changelog_query` with entity_type: "config", filters: { "domain": "architecture", "config_type": "security" })
+- Architecture security spec — committed as markdown documentation (e.g., `docs/architecture/security.md`)
 - Architecture API spec (`api_spec.yaml`)
 - Architecture data model (read the committed data model markdown document, e.g., `docs/architecture/data-model.md`)
 - Architecture components (query via `changelog_query` with entity_type: "component")
