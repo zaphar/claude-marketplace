@@ -183,7 +183,7 @@ function snapshotIfExists(db, table, entityType, entityId, newRevisionId) {
   if (existing) {
     const now = new Date().toISOString();
     db.prepare(
-      `INSERT INTO entity_snapshot (entity_type, source_id, revision_id, snapshot, created_at)
+      `INSERT OR IGNORE INTO entity_snapshot (entity_type, source_id, revision_id, snapshot, created_at)
        VALUES (@entity_type, @source_id, @revision_id, @snapshot, @created_at)`
     ).run({ entity_type: entityType, source_id: entityId, revision_id: newRevisionId, snapshot: JSON.stringify(existing), created_at: now });
   }
