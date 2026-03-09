@@ -21,7 +21,7 @@ The UX design domain is organised into five sub-areas:
 | **UX Configuration** | `ux_config` (discriminated by `config_type`: `design_system`, `accessibility`, `responsive`, `feedback_pattern`), `info_architecture` |
 | **Traceability & Assets** | `persona_addressed`, `persona_addressed_flow`, `ux_asset` |
 
-Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT NULL) to pin rows to the exact producer-critic loop that created them.
+Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin rows to the exact producer-critic loop that created them. The iteration is derived via the `revision → phase → iteration` foreign-key chain (or via the `entity_context` VIEW).
 
 ---
 
@@ -38,8 +38,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical flow identifier, e.g. `FLOW-001`. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this flow. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this flow. |
 | `name` | TEXT | NOT NULL | — | Short human-readable name, e.g. "User Registration". |
 | `goal` | TEXT | NOT NULL | — | The user's objective for completing this flow. |
 | `persona_id` | TEXT | FK → `persona(id)` | NULL | Primary persona this flow is designed for. |
@@ -162,8 +161,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | TEXT | PRIMARY KEY | — | Canonical screen identifier, e.g. `SCREEN-001`. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this screen. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this screen. |
 | `name` | TEXT | NOT NULL | — | Screen name, e.g. "Dashboard". Must match `user_flow_step.surface` references. |
 | `purpose` | TEXT | NOT NULL | — | What this screen enables the user to do. |
 | `wireframe_path` | TEXT | — | NULL | Relative path to the default wireframe file. |
@@ -266,8 +264,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this entry. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this entry. |
 | `config_type` | TEXT | NOT NULL, CHECK IN (`design_system`, `accessibility`, `responsive`, `feedback_pattern`) | — | Discriminator for the type of UX configuration. |
 | `category` | TEXT | NOT NULL | — | Grouping within the config type, e.g. `colors`, `wcag`, `breakpoints`, `loading`. |
 | `key` | TEXT | NOT NULL | — | Config key within the category. |
@@ -275,7 +272,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
-- Belongs to `iteration` / `revision`
+- Belongs to `revision` (iteration derived via revision → phase → iteration)
 - No FK children — flat store
 - Informally referenced by `screen_responsive_variant.breakpoint` (config_type `responsive`, no enforced FK)
 
@@ -296,8 +293,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this node. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this node. |
 | `category` | TEXT | NOT NULL | — | Node type, e.g. `navigation`, `route`, `content_group`, `label`. |
 | `key` | TEXT | NOT NULL | — | Node identifier, e.g. `main_nav_dashboard`, `/settings/profile`. |
 | `value` | TEXT | NOT NULL | — | Node description or label, e.g. "Dashboard", "User profile settings page". |
@@ -305,7 +301,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
-- Belongs to `iteration` / `revision`
+- Belongs to `revision` (iteration derived via revision → phase → iteration)
 - Self-referential tree via `parent_id` → `info_architecture(id)`
 
 **MCP tool access:**
@@ -327,15 +323,14 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this record. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this record. |
 | `persona_id` | TEXT | NOT NULL, FK → `persona(id)` | — | The persona being addressed. |
 | `goal` | TEXT | NOT NULL | — | The persona goal this addresses (may paraphrase the persona's goals JSON array). |
 | `how_addressed` | TEXT | NOT NULL | — | How the UX design meets this goal. |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of row creation. |
 
 **Relationships:**
-- Belongs to `iteration` / `revision`
+- Belongs to `revision` (iteration derived via revision → phase → iteration)
 - References `persona`
 - Has many `persona_addressed_flow`
 
@@ -355,9 +350,8 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `persona_addressed_id` | INTEGER | NOT NULL, FK → `persona_addressed(id)`, part of UNIQUE(persona_addressed_id, flow_id) | — | Parent persona-addressed record. |
-| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)`, part of UNIQUE(persona_addressed_id, flow_id) | — | A flow that delivers the addressed goal. |
+| `persona_addressed_id` | INTEGER | NOT NULL, FK → `persona_addressed(id)`, part of PRIMARY KEY(persona_addressed_id, flow_id) | — | Parent persona-addressed record. |
+| `flow_id` | TEXT | NOT NULL, FK → `user_flow(id)`, part of PRIMARY KEY(persona_addressed_id, flow_id) | — | A flow that delivers the addressed goal. |
 
 **Relationships:**
 - Belongs to `persona_addressed`
@@ -380,22 +374,21 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | Column | Type | Constraints | Default | Description |
 |---|---|---|---|---|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration that produced this asset. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision within the iteration. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Revision that produced this asset. |
 | `name` | TEXT | NOT NULL | — | Human-readable asset name, e.g. "Dashboard Default Wireframe". |
 | `path` | TEXT | NOT NULL | — | Relative file path from the project root. |
-| `type` | TEXT | NOT NULL, CHECK(`type` IN (`wireframe`, `mockup`, `prototype`, `icon`, `image`, `video`)) | — | Asset category. |
+| `asset_type` | TEXT | NOT NULL | — | Asset category (e.g., `wireframe`, `mockup`, `prototype`, `icon`, `image`, `video`). |
 | `screen_id` | TEXT | FK → `screen(id)` | NULL | Screen this asset belongs to, if applicable. |
 | `description` | TEXT | — | NULL | Optional notes about the asset. |
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp set at insert time. |
 
 **Relationships:**
-- Belongs to `iteration` / `revision`
+- Belongs to `revision` (iteration derived via revision → phase → iteration)
 - Optionally belongs to `screen`
 
 **MCP tool access:**
 - **Write:** `changelog_insert` with `entity_type: "ux_asset"`. Accepts a single object or an array of `{ name, path, type, screen_id?, description? }` objects.
-- **Read:** `changelog_query` with `entity_type: "ux_asset"`. Filter by `iteration_id` and optionally `filters: { type: "wireframe" }` or `filters: { screen_id: "SCREEN-001" }` to retrieve specific asset types or screen-specific assets.
+- **Read:** `changelog_query` with `entity_type: "ux_asset"`. Optionally use `filters: { asset_type: "wireframe" }` or `filters: { screen_id: "SCREEN-001" }` to retrieve specific asset types or screen-specific assets.
 
 ---
 
@@ -418,7 +411,7 @@ Every table carries `iteration_id` (mandatory) and `revision_id` (required/NOT N
 | `info_architecture` | ✅ `entity_type: "info_architecture"` | ✅ `entity_type: "info_architecture"` | `include_related: true` attaches direct `children`; supports `parent_id` for tree nesting |
 | `persona_addressed` | ✅ `entity_type: "persona_addressed"` | ✅ `entity_type: "persona_addressed"` | `include_related: true` expands `flows`; pass `flows` array in data for atomic child insert |
 | `persona_addressed_flow` | via `persona_addressed` | via `persona_addressed` | Not directly addressable |
-| `ux_asset` | ✅ `entity_type: "ux_asset"` | ✅ `entity_type: "ux_asset"` | Accepts single or array; filter by `type` or `screen_id` |
+| `ux_asset` | ✅ `entity_type: "ux_asset"` | ✅ `entity_type: "ux_asset"` | Accepts single or array; filter by `asset_type` or `screen_id` |
 | _(screen traceability)_ | — | — | Now via `requirement_trace` with `addressed_by_type = 'screen'` (see [cross-cutting.md](cross-cutting.md#requirement_trace)) |
 
 ### `traceability_query` integration

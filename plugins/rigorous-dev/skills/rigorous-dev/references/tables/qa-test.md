@@ -43,7 +43,6 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this report belongs to |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that created this report. |
 | `total_tests` | INTEGER | NOT NULL | `0` | Total number of tests executed |
 | `passed_count` | INTEGER | NOT NULL | `0` | Count of tests that passed |
@@ -63,7 +62,7 @@ The `qa_engineer` creates exactly one `test_report` per iteration (possibly revi
 
 ### Relationships
 
-- **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `test_requirement_coverage` (1:N), `test_suite` (1:N), `test_security_finding` (1:N), `test_performance_benchmark` (1:N), `test_blocker` (1:N), `test_recommendation` (1:N)
 
 ### MCP Tool Access

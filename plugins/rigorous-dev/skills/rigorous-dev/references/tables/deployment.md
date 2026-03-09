@@ -9,7 +9,7 @@
 
 The deployment domain captures the full output of the Release Engineer agent. It is the most table-heavy domain (17 tables) because deployment configuration has many orthogonal concerns that must be modelled independently: CI/CD pipeline topology, per-environment configuration, build artifact inventory, code signing, local distribution channels (Homebrew, apt, Winget), secrets inventory, health checks, alerting wiring, operational runbooks, and release review checklists.
 
-All 17 tables hang off a single `deployment_manifest` row, which is in turn scoped to an `iteration` and optionally a `revision`. The Release Critic validates the manifest and all child data before the release phase is closed.
+All 17 tables hang off a single `deployment_manifest` row, which is scoped to a `revision` (the iteration is derived via the revision → phase → iteration chain). The Release Critic validates the manifest and all child data before the release phase is closed.
 
 ### Table Hierarchy
 
@@ -63,8 +63,7 @@ deployment_manifest
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Referenced by all child tables. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Links to the workflow iteration this release covers. |
-| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Links to the specific producer-critic revision attempt. |
+| `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | Links to the specific producer-critic revision attempt. Iteration is derived via revision → phase → iteration. |
 | `status` | TEXT | NOT NULL, CHECK IN (`ready`, `not_ready`, `blocked`) | — | Overall release readiness. `blocked` means hard blockers prevent deployment. |
 | `targets` | TEXT | NOT NULL | `'[]'` | JSON array of deployment target strings (e.g., `["private-cloud", "local-executable"]`). Replaces the former `deployment_target` child table. |
 | `blockers` | TEXT | NOT NULL | `'[]'` | JSON array of blocker description strings (e.g., `["DNS records not configured"]`). When `status` is `blocked`, this array must be non-empty. Replaces the former `deployment_manifest_blocker` child table. |
@@ -77,7 +76,7 @@ deployment_manifest
 | `created_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp when the manifest was created. |
 
 **Relationships:**
-- Parent: `iteration` (via `iteration_id`), `revision` (via `revision_id`)
+- Parent: `revision` (via `revision_id`; iteration derived via revision → phase → iteration)
 - Children: all 16 remaining tables in this domain
 - JSON arrays: `targets`, `blockers` (inline on this table)
 
@@ -259,7 +258,7 @@ deployment_manifest
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
 | `manifest_id` | INTEGER | NOT NULL, FK → `deployment_manifest(id)` | — | Parent manifest. |
 | `name` | TEXT | NOT NULL | — | Artifact name (e.g., `api-server`, `cli-binary`, `installer.pkg`). |
-| `type` | TEXT | NOT NULL | — | Free-form artifact type (e.g., `container-image`, `binary`, `archive`, `package`, `installer`). Determines expected registry and signing approach. |
+| `artifact_type` | TEXT | NOT NULL | — | Free-form artifact type (e.g., `container-image`, `binary`, `archive`, `package`, `installer`). Determines expected registry and signing approach. |
 | `registry` | TEXT | — | NULL | Where the artifact is stored (e.g., `ghcr.io/org/api-server`, `s3://releases-bucket`, `pypi.org`). NULL for local builds only. |
 | `versioning` | TEXT | CHECK IN (`semantic`, `git-sha`, `timestamp`, `custom`) | NULL | Versioning strategy. NULL means no policy specified (unusual; critic should flag). |
 | `platforms` | TEXT | NOT NULL | `'[]'` | JSON array of platform target strings (e.g., `["linux/amd64", "darwin/arm64"]`). Replaces the former `deployment_artifact_platform` child table. |
@@ -456,8 +455,7 @@ deployment_manifest
 
 | This Domain | References | Via |
 |-------------|-----------|-----|
-| `deployment_manifest` | `iteration` | `iteration_id` |
-| `deployment_manifest` | `revision` | `revision_id` |
+| `deployment_manifest` | `revision` | `revision_id` (iteration derived via revision → phase → iteration) |
 | `deployment_manifest` | `implementation_manifest` (conceptually) | `implementation_version` string |
 | `deployment_env_var` (value_source=secret) | `deployment_secret` | `name` match (logical, not FK) |
 | `deployment_local_executable.platforms` | `deployment_artifact.platforms` | platform string match (logical, not FK) |
@@ -616,7 +614,11 @@ When queried via `changelog_query`, each `deployment_manifest` row is returned w
 **Full manifest read (all children):**
 ```sql
 -- Root (targets and blockers are JSON columns on the manifest itself)
-SELECT *, targets, blockers FROM deployment_manifest WHERE iteration_id = ?;
+-- Use entity_context VIEW to filter by iteration
+SELECT dm.*
+FROM deployment_manifest dm
+JOIN entity_context ec ON dm.revision_id = ec.revision_id
+WHERE ec.iteration_id = ?;
 
 -- Pipeline with config files (JSON column)
 SELECT p.id, p.platform, p.config_files
@@ -663,7 +665,8 @@ SELECT
   json_array_length(dm.blockers) AS blocker_count,
   COUNT(DISTINCT rc.id) FILTER (WHERE rc.passed = 0) AS failed_checks
 FROM deployment_manifest dm
+JOIN entity_context ec ON dm.revision_id = ec.revision_id
 LEFT JOIN deployment_review_checklist rc ON rc.manifest_id = dm.id
-WHERE dm.iteration_id = ?
+WHERE ec.iteration_id = ?
 GROUP BY dm.id;
 ```

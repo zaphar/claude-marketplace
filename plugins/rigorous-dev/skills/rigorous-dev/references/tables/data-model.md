@@ -18,19 +18,18 @@ Represents a single database entity (table, collection, model) in the target sys
 
 ### Context
 
-`data_entity` is the root of the data model sub-graph. Every entity belongs to a specific `iteration` and optionally a `revision`, providing full traceability through the producer-critic loop. Child tables `data_entity_attribute` and `data_entity_relationship` hang off this table via foreign key.
+`data_entity` is the root of the data model sub-graph. Every entity belongs to a specific `revision`, with the iteration derived via the revision → phase → iteration chain (or via the `entity_context` VIEW), providing full traceability through the producer-critic loop. Child tables `data_entity_attribute` and `data_entity_relationship` hang off this table via foreign key.
 
 ### DDL
 
 ```sql
 CREATE TABLE IF NOT EXISTS data_entity (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   revision_id  INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
   name         TEXT NOT NULL,
   description  TEXT NOT NULL,
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(iteration_id, name)
+  UNIQUE(revision_id, name)
 );
 ```
 
@@ -39,7 +38,6 @@ CREATE TABLE IF NOT EXISTS data_entity (
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. Auto-assigned on insert. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration in which this entity was designed. Scopes the entity to a specific change-request cycle. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision that produced this entity. |
 | `name` | TEXT | NOT NULL | — | The name of the database entity (e.g., `User`, `Order`, `ProductVariant`). Should match the naming convention of the target system. |
 | `description` | TEXT | NOT NULL | — | Human-readable description of what this entity represents and what it stores. |
@@ -49,12 +47,11 @@ CREATE TABLE IF NOT EXISTS data_entity (
 
 - **Has many** `data_entity_attribute` rows via `data_entity_attribute.entity_id`
 - **Has many** `data_entity_relationship` rows via `data_entity_relationship.entity_id`
-- **Belongs to** `iteration` via `iteration_id`
-- **Belongs to** `revision` via `revision_id`
+- **Belongs to** `revision` via `revision_id`. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 
 ### Notes
 
-- `UNIQUE(iteration_id, name)` ensures no duplicate entity names within an iteration. Filter by `revision_id` or the latest revision for a given iteration to get the current model.
+- `UNIQUE(revision_id, name)` ensures no duplicate entity names within a revision. Filter by `revision_id` or the latest revision for a given iteration to get the current model.
 - `name` is free-form text; casing conventions (PascalCase, snake_case) should follow what is specified in `architecture_overview` or `technology_choice`.
 
 ---

@@ -30,14 +30,13 @@ The central record for each Architecture Decision Record. An ADR captures a sing
 
 ### Context
 
-ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current iteration and revision, so the full evolution of any decision across critic feedback rounds is preserved. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `research_sources` JSON column is the key enabler of the "why are we using X?" traceability query.
+ADRs are the backbone of architectural traceability. Every major technology choice, structural pattern, or integration strategy that required deliberation should have an ADR. `adr` rows reference the current revision (with the iteration derived via revision → phase → iteration), so the full evolution of any decision across critic feedback rounds is preserved. The `superseded_by` self-reference creates a chain of record when an earlier decision is replaced. The `research_sources` JSON column is the key enabler of the "why are we using X?" traceability query.
 
 ### Column Reference
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `ADR-XXX` (e.g., `ADR-001`). Assigned by the backend_architect. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration during which this ADR was produced. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `title` | TEXT | NOT NULL | — | Short, imperative title describing the decision (e.g., "Use PostgreSQL for primary datastore"). |
 | `status` | TEXT | NOT NULL, CHECK(`status` IN `'proposed'`, `'accepted'`, `'deprecated'`, `'superseded'`) | — | Lifecycle state. `proposed` = under consideration; `accepted` = ratified; `deprecated` = no longer relevant but not replaced; `superseded` = replaced by another ADR (see `superseded_by`). |
@@ -53,7 +52,7 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 
 ### Relationships
 
-- **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`), `adr` self-reference (via `superseded_by`)
+- **Parent:** `revision` (via `revision_id`), `adr` self-reference (via `superseded_by`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `adr_alternative`
 - **Referenced by:** `approved_dependency.adr_id` (third-party dependencies may cite a backing ADR)
 
@@ -125,7 +124,6 @@ Represents a deployable or logically distinct unit of the system — an API serv
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | TEXT | PRIMARY KEY | — | Human-readable identifier, format `COMP-XXX` (e.g., `COMP-001`). Assigned by the backend_architect. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration during which this component was identified. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `name` | TEXT | NOT NULL | — | Short, descriptive name (e.g., "Auth Service", "PostgreSQL Primary", "Payment Gateway"). |
 | `purpose` | TEXT | NOT NULL | — | One-to-two sentence statement of what this component does and why it exists in the system. |
@@ -135,7 +133,7 @@ Represents a deployable or logically distinct unit of the system — an API serv
 
 ### Relationships
 
-- **Parent:** `iteration`, `revision`
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `component_interface`, `component_dependency` (both sides), `integration_test_boundary` (both sides)
 - **Referenced by:** `requirement_trace.addressed_by` (when `addressed_by_type = 'component'`), `implementation_component_status.component_id`
 
@@ -275,7 +273,6 @@ Records each language, framework, runtime, database engine, cloud service, or to
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | Iteration during which this choice was made. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `category` | TEXT | NOT NULL | — | Logical grouping for the technology (e.g., `backend-language`, `database`, `cache`, `auth`, `testing`, `ci-cd`). Free-text — no CHECK constraint. |
 | `name` | TEXT | NOT NULL | — | Technology name (e.g., `TypeScript`, `PostgreSQL 16`, `Redis`, `Jest`). |
@@ -287,7 +284,7 @@ Records each language, framework, runtime, database engine, cloud service, or to
 
 ### Relationships
 
-- **Parent:** `iteration`, `revision`
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Referenced by:** `approved_dependency` (approved third-party deps may be backed by a technology_choice category)
 
 ### Indexes
@@ -324,7 +321,6 @@ There is typically one `architecture_overview` row per iteration (created at the
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | — | Surrogate key. |
-| `iteration_id` | INTEGER | NOT NULL, FK → `iteration(id)` | — | The iteration this overview describes. |
 | `revision_id` | INTEGER | NOT NULL, FK → `revision(id)` | — | The producer-critic revision attempt that produced this row. |
 | `description` | TEXT | NOT NULL | — | Full prose description of the architecture: style, major subsystems, data flows, communication patterns, and key quality attributes being optimised for. |
 | `principles` | TEXT | NOT NULL | `'[]'` | JSON array of non-negotiable design principle strings that govern all architectural decisions in this iteration (e.g., `["Prefer async over sync for inter-service communication", "All state lives in the database"]`). Formerly stored in the `architecture_principle` child table. |
@@ -332,7 +328,7 @@ There is typically one `architecture_overview` row per iteration (created at the
 
 ### Relationships
 
-- **Parent:** `iteration`, `revision`
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `architecture_diagram`
 
 ### MCP Tool Access
@@ -431,12 +427,12 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 
 | Table | PK Type | Parent Tables | Key Constraints |
 |-------|---------|---------------|-----------------|
-| `adr` | TEXT (ADR-XXX) | `iteration`, `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
+| `adr` | TEXT (ADR-XXX) | `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
 | `adr_alternative` | INTEGER AUTO | `adr` | `pros` and `cons` nullable TEXT (JSON arrays) |
-| `component` | TEXT (COMP-XXX) | `iteration`, `revision` | `type` CHECK 8 values |
+| `component` | TEXT (COMP-XXX) | `revision` | `type` CHECK 8 values |
 | `component_interface` | INTEGER AUTO | `component` | UNIQUE(component_id, name) |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
 | `integration_test_boundary` | INTEGER AUTO | `component` × 2 | UNIQUE(component_id, target_component_id, boundary_type); `boundary_type` free-form TEXT |
-| `technology_choice` | INTEGER AUTO | `iteration`, `revision` | — |
-| `architecture_overview` | INTEGER AUTO | `iteration`, `revision` | `principles` JSON column |
+| `technology_choice` | INTEGER AUTO | `revision` | — |
+| `architecture_overview` | INTEGER AUTO | `revision` | `principles` JSON column |
 | `architecture_diagram` | INTEGER AUTO | `architecture_overview` | UNIQUE(overview_id, name) |

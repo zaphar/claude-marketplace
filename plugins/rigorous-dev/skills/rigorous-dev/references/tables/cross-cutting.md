@@ -47,7 +47,6 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | The iteration that produced this entry. Scopes the config to a specific development cycle. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | The producer–critic revision that created this row. |
 | `config_type` | TEXT | NOT NULL | — | CHECK IN (`security`, `deployment`, `observability`) | Discriminator column identifying which cross-cutting concern this entry belongs to. |
 | `target` | TEXT | YES | NULL | — | Deployment environment this setting applies to (e.g., `production`, `staging`, `all`). Primarily used for `config_type = 'deployment'`; NULL for security and observability entries unless environment-specific. |
@@ -58,9 +57,8 @@ Common `category` values: `logging`, `metrics`, `tracing`, `alerting`, `health_c
 
 ### Relationships
 
-- **`iteration_id` → `iteration(id)`** — Every config entry is anchored to an iteration, enabling architecture to evolve across iterations without overwriting history.
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
-- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `requirement_trace` or by reading upstream requirement tables that share the same `iteration_id`.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- No direct foreign keys to `requirement` or `adr`, but decisions can be correlated via `requirement_trace` or by reading upstream requirement tables that share the same iteration.
 - Security entries are conceptually downstream of `technology_constraint` rows with security implications.
 - Deployment entries are conceptually downstream of `deployment_requirement`.
 - Observability entries are conceptually downstream of `operational_requirement`.
@@ -162,7 +160,6 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate row identifier. |
-| `iteration_id` | INTEGER | NOT NULL | — | FK → `iteration(id)` | Iteration that approved this dependency. |
 | `revision_id` | INTEGER | NOT NULL | — | FK → `revision(id)` | Revision that produced this row. |
 | `package` | TEXT | NOT NULL | — | — | Package name as it appears in the ecosystem registry (e.g., `express`, `com.fasterxml.jackson.core:jackson-databind`). |
 | `version_constraint` | TEXT | NULL | — | — | SemVer or ecosystem-specific version constraint (e.g., `^4.18.0`, `>=2.14.0 <3.0.0`). NULL means unconstrained (discouraged). |
@@ -178,8 +175,7 @@ The `single_maintainer_risk` flag is a boolean (`0`/`1`) that signals whether th
 
 ### Relationships
 
-- **`iteration_id` → `iteration(id)`** — Approvals are scoped to an iteration; a dependency can be re-evaluated or updated in a later iteration.
-- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry.
+- **`revision_id` → `revision(id)`** — Traces which producer–critic round produced the entry. Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **`adr_id` → `adr(id)`** — Links to the ADR that decided to adopt this dependency. This is the primary audit trail for "why are we using this package?". The `read-tools.js` `traceability_query` tool fetches approved dependencies when tracing an ADR.
 - Implementation code that uses a package should be able to look up its entry here to confirm approval and retrieve license/health data.
 
@@ -557,7 +553,7 @@ This returns all snapshots for `REQ-001` from the `entity_snapshot` table, showi
 
 ### Querying all cross-cutting config for an iteration
 
-All five tables share the `iteration_id` anchor. To get the full cross-cutting picture for iteration 1:
+All five tables can be queried by `iteration_id` using `changelog_query` — the tool resolves `revision_id`-only tables via the `entity_context` VIEW. To get the full cross-cutting picture for iteration 1:
 
 ```json
 { "entity_type": "architecture_config",  "iteration_id": 1 }

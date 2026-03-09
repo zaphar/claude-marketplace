@@ -4,7 +4,7 @@ These four tables form the backbone of the entire data model. Every other table 
 
 The core spine is write-once and append-forward. The project row is created once and optionally closed. Iterations are opened when new work begins and closed when that work ships. Phases are created in bulk by `iteration_create` (one row per phase name, all set to `pending`) and advance through status transitions via `phase_transition`. Revisions are created at the start of each producer-critic attempt and resolved to `approved` or `rejected` by the critic agent.
 
-Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries an `iteration_id` (NOT NULL) and a required `revision_id` (NOT NULL) to record exactly when and why it was produced (except `project_context`, which is a simple key-value store with no revision tracking). This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
+Every changelog entity in the system — requirements, ADRs, components, test cases, deployment configs, and so on — carries a required `revision_id` (NOT NULL) to record exactly when and why it was produced. Some tables that model iteration-scoped context (e.g., `project_context`, `system_io`, `deployment_requirement`) carry a direct `iteration_id` instead. No table carries both columns — tables with `revision_id` derive their iteration through the `revision → phase → iteration` chain (or via the `entity_context` VIEW). This makes the full provenance of any artifact queryable: which iteration requested it, which phase produced it, and which revision attempt resulted in the approved version.
 
 ---
 
@@ -38,7 +38,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Purpose:** A single change-request cycle within a project. Each time new work is requested — a new feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered sequentially.
 
-**Context:** Created by `iteration_create`. An iteration encompasses all nine phases and their revision attempts. All changelog entities carry `iteration_id` so that every artifact can be attributed to the change cycle that produced it. Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
+**Context:** Created by `iteration_create`. An iteration encompasses all nine phases and their revision attempts. Changelog entities reference the iteration either directly (via `iteration_id` for context tables) or indirectly (via `revision_id → phase → iteration` for producer-critic artifacts). Closing an iteration (status `closed`) signals that the work shipped and a new request cycle can begin.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -50,7 +50,7 @@ Every changelog entity in the system — requirements, ADRs, components, test ca
 
 **Relationships:**
 - Parent: `project` (implicitly the single project; no FK needed)
-- Children: `phase` (via `iteration_id`), all changelog entity tables (via `iteration_id`)
+- Children: `phase` (via `iteration_id`), iteration-scoped tables (via `iteration_id`), producer-critic artifact tables (via `revision → phase → iteration`)
 
 **Indexes:**
 
@@ -134,9 +134,11 @@ The six primary entity tables with TEXT primary keys — `persona`, `requirement
 
 Before an UPSERT overwrites an entity, the old state is captured as a JSON snapshot in the `entity_snapshot` table. This preserves the full change history without complicating the main entity tables.
 
-To query current entities:
+To query current entities for a given iteration (using the `entity_context` VIEW to derive iteration from revision):
 ```sql
-SELECT * FROM requirement WHERE iteration_id = ?;
+SELECT r.* FROM requirement r
+JOIN entity_context ec ON ec.revision_id = r.revision_id
+WHERE ec.iteration_id = ?;
 ```
 
 To query change history for a specific entity:

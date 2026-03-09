@@ -43,7 +43,6 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Which iteration this belongs to. |
 | `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Producer-critic revision attempt. |
 | `plan_phase_id` | INTEGER | NO | — | FK → `plan_phase(id)` | Plan phase that was implemented. |
 | `status` | TEXT | NO | — | CHECK IN ('complete','partial','blocked') | Outcome of this sub-phase. |
@@ -60,7 +59,7 @@ The implementation phase is divided into sub-phases that mirror `plan_phase` row
 
 ### Relationships
 
-- **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `implementation_file`, `implementation_requirement_status`, `implementation_component_status`, `implementation_api_endpoint`, `implementation_dependency_added`, `implementation_db_migration`, `implementation_blocker`, `implementation_review_checklist`
 
 ### MCP Tool Access
@@ -489,7 +488,6 @@ Stores transient work items, notes, plans, and references that the senior_develo
 | Column | Type | Nullable | Default | Constraints | Description |
 |--------|------|----------|---------|-------------|-------------|
 | `id` | INTEGER | NO | autoincrement | PRIMARY KEY | Surrogate key. |
-| `iteration_id` | INTEGER | NO | — | FK → `iteration(id)` | Iteration this asset belongs to. |
 | `phase_id` | INTEGER | YES | NULL | FK → `phase(id)` | Phase in which it was created. |
 | `revision_id` | INTEGER | NO | — | FK → `revision(id)` | Revision attempt that produced it. |
 | `asset_type` | TEXT | NO | — | — | Free-form semantic type of the asset (e.g., `work_item`, `plan`, `note`, `commit_ref`, `file_ref`). |
@@ -499,7 +497,7 @@ Stores transient work items, notes, plans, and references that the senior_develo
 
 ### Relationships
 
-- **Parents:** `iteration` (via `iteration_id`), `phase` (via `phase_id`), `revision` (via `revision_id`)
+- **Parents:** `phase` (via `phase_id`), `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 
 ### MCP Tool Access
 
@@ -549,8 +547,8 @@ The `asset_type` field categorises the deliverable (e.g., source code, tests, do
 ## Entity Relationship Summary
 
 ```
-iteration
- ├── implementation_manifest (iteration_id, revision_id)
+revision  (→ phase → iteration)
+ ├── implementation_manifest (revision_id)
  │    ├── implementation_file (manifest_id)
  │    │    └── implementation_file_requirement (file_id, requirement_id)
  │    ├── implementation_requirement_status (manifest_id, requirement_id)
@@ -562,9 +560,11 @@ iteration
  │    ├── implementation_blocker (manifest_id)
  │    │    └── implementation_blocker_requirement (blocker_id, requirement_id)
  │    ├── implementation_review_checklist (manifest_id)
+iteration
  ├── vcs_commit (iteration_id, phase_id)          ← written by commit_link tool only
- ├── intermediate_asset (iteration_id, phase_id, revision_id)
- └── asset_deliverable (iteration_id, phase_id)
+ ├── asset_deliverable (iteration_id, phase_id)
+revision  (→ phase → iteration)
+ └── intermediate_asset (phase_id, revision_id)
 ```
 
 ---
@@ -590,7 +590,7 @@ All 11 child tables of `implementation_manifest` are fully supported via `change
 
 | This domain references | Via column | Why |
 |------------------------|-----------|-----|
-| `iteration` | `iteration_id` | All rows scoped to an iteration. |
+| `iteration` | derived via `revision → phase → iteration` | All rows scoped to an iteration (derived, not direct FK on most tables). |
 | `revision` | `revision_id` | Producer-critic loop tracking. |
 | `phase` | `phase_id` | Phase-level VCS and asset scoping. |
 | `requirement` | `requirement_id` | Traceability from code to requirements. |

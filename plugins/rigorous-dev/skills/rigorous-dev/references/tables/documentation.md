@@ -32,14 +32,13 @@ The root aggregate for a documentation pass. One row is created per `changelog_i
 
 ### Context
 
-Every other documentation table references this row. The manifest ties documentation artifacts back to a specific `iteration_id` and a `revision_id` (NOT NULL), so the full history of documentation revisions is preserved. The `documentation_critic` reads this row (and its children) to validate coverage and quality; it then calls `revision_update` with a verdict of `approved` or `rejected`.
+Every other documentation table references this row. The manifest ties documentation artifacts back to a specific revision via `revision_id` (NOT NULL), so the full history of documentation revisions is preserved. The iteration is derived via the `revision → phase → iteration` chain (or via the `entity_context` VIEW). The `documentation_critic` reads this row (and its children) to validate coverage and quality; it then calls `revision_update` with a verdict of `approved` or `rejected`.
 
 ### Columns
 
 | Column | Type | Nullable | Default | Constraints | Description |
 |---|---|---|---|---|---|
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate key |
-| `iteration_id` | INTEGER | NOT NULL | — | REFERENCES `iteration(id)` | Which iteration this documentation belongs to |
 | `revision_id` | INTEGER | NOT NULL | — | REFERENCES `revision(id)` | Which producer-critic revision attempt produced this. |
 | `status` | TEXT | NOT NULL | — | CHECK(`status` IN (`'complete'`, `'partial'`, `'blocked'`)) | Overall documentation completeness |
 | `total_pages` | INTEGER | NULL | — | — | Total page count across all documents (NULL if unknown) |
@@ -54,7 +53,7 @@ Every other documentation table references this row. The manifest ties documenta
 
 ### Relationships
 
-- **Parent:** `iteration` (via `iteration_id`), `revision` (via `revision_id`)
+- **Parent:** `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
 - **Children:** `documentation_section`, `documentation_feature`, `documentation_requirement_coverage`, `documentation_asset`, `documentation_review_checklist`
 
 ### MCP Tool Access
@@ -272,7 +271,7 @@ Catalogs generated documentation assets — diagrams, screenshots, videos, code 
 
 ### Context
 
-The documentation_master creates one row per asset it generates or references. The `alt_text` field is specifically required for accessibility compliance (`accessibility_compliant = 1` on the manifest). The documentation_critic checks that all assets of type `screenshot` or `diagram` have non-null `alt_text`. The `type` CHECK constraint enforces a closed vocabulary aligned with the output formats the workflow supports.
+The documentation_master creates one row per asset it generates or references. The `alt_text` field is specifically required for accessibility compliance (`accessibility_compliant = 1` on the manifest). The documentation_critic checks that all assets of type `screenshot` or `diagram` have non-null `alt_text`. The `asset_type` CHECK constraint enforces a closed vocabulary aligned with the output formats the workflow supports.
 
 ### Columns
 
@@ -281,7 +280,7 @@ The documentation_master creates one row per asset it generates or references. T
 | `id` | INTEGER | NOT NULL | autoincrement | PRIMARY KEY | Surrogate key |
 | `manifest_id` | INTEGER | NOT NULL | — | REFERENCES `documentation_manifest(id)` | Parent manifest |
 | `path` | TEXT | NOT NULL | — | — | Relative path to the asset file |
-| `type` | TEXT | NOT NULL | — | CHECK(`type` IN (`'screenshot'`, `'diagram'`, `'video'`, `'code-sample'`, `'other'`)) | Asset type |
+| `asset_type` | TEXT | NOT NULL | — | CHECK(`asset_type` IN (`'screenshot'`, `'diagram'`, `'video'`, `'code-sample'`, `'other'`)) | Asset type |
 | `description` | TEXT | NULL | — | — | Human-readable description of what the asset depicts |
 | `alt_text` | TEXT | NULL | — | — | Accessibility alt text (required for images to achieve `accessibility_compliant = 1`) |
 
@@ -294,10 +293,10 @@ The documentation_master creates one row per asset it generates or references. T
 
 Find assets missing alt text (accessibility gap):
 ```sql
-SELECT path, type, description
+SELECT path, asset_type, description
 FROM documentation_asset
 WHERE manifest_id = ?
-  AND type IN ('screenshot', 'diagram')
+  AND asset_type IN ('screenshot', 'diagram')
   AND (alt_text IS NULL OR alt_text = '');
 ```
 
@@ -362,12 +361,15 @@ SELECT
   rc.notes,
   rc.paths AS doc_paths
 FROM requirement r
+JOIN entity_context ec ON ec.revision_id = r.revision_id
 LEFT JOIN documentation_requirement_coverage rc
   ON rc.requirement_id = r.id
   AND rc.manifest_id = (
-    SELECT id FROM documentation_manifest WHERE iteration_id = ? ORDER BY id DESC LIMIT 1
+    SELECT dm.id FROM documentation_manifest dm
+    JOIN entity_context ec2 ON ec2.revision_id = dm.revision_id AND ec2.iteration_id = ?
+    ORDER BY dm.id DESC LIMIT 1
   )
-WHERE r.iteration_id = ?;
+WHERE ec.iteration_id = ?;
 ```
 
 ### Feature documentation completeness
@@ -406,5 +408,5 @@ ORDER BY passed ASC, check_name ASC;
 | `documentation_feature_requirement` | 1 per feature×requirement pair | composite PK (no duplicates) | documentation_master |
 | `documentation_requirement_coverage` | 1 per requirement assessed | — | documentation_master |
 | `documentation_requirement_coverage.paths` | JSON array per requirement | — | documentation_master |
-| `documentation_asset` | 1 per asset | `type` CHECK | documentation_master |
+| `documentation_asset` | 1 per asset | `asset_type` CHECK | documentation_master |
 | `documentation_review_checklist` | 1 per check | — | documentation_master / documentation_critic |
