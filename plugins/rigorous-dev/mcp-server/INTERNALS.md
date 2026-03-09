@@ -45,7 +45,7 @@ Three PK strategies coexist, each serving a different purpose:
 |----------|-------|--------|---------|
 | `TEXT PRIMARY KEY` | 6 | `persona`, `requirement`, `adr`, `component`, `user_flow`, `screen` | Semantic IDs (e.g., `REQ-001`, `COMP-AUTH`) — agent-friendly, stable across revisions |
 | `INTEGER PRIMARY KEY AUTOINCREMENT` | 39 | Everything else (38 AUTOINCREMENT + 1 `project` with `CHECK(id = 1)`) | Surrogate keys for internal tables |
-| Composite `PRIMARY KEY` | 12 | Junction/mapping tables | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)` |
+| Composite `PRIMARY KEY` | 13 | Junction/mapping tables + `adr_decision` | e.g., `(requirement_id, persona_id)`, `(plan_phase_id, component_id)`, `(adr_id)` |
 
 The 6 text-PK entities are handled by their individual `insertXxx` functions in `write-tools.js`, where `existsForUpsert` and the upsert write pattern only apply to these types.
 
@@ -79,7 +79,7 @@ Six insert functions accept arrays via the `Array.isArray(data) ? data : [data]`
 
 ### a. Per-Entity Query Functions (`QUERY_DISPATCH` + `applyFilters`)
 
-`changelogQuery` dispatches to one of 25 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
+`changelogQuery` dispatches to one of 26 concrete `queryXxx` functions via the `QUERY_DISPATCH` map. Each function owns its complete query logic — base SELECT, filtering, and optional enrichment.
 
 **Filter validation — `applyFilters` helper.** Each `queryXxx` function declares a hardcoded `FILTERS` spec mapping filter names to `{ nullable }` metadata. The spec key itself doubles as the SQL column name used in WHERE clauses. When the caller passes `filters`, `applyFilters` validates every key against the spec and rejects unknown keys. It then iterates the *spec's* keys (not the user-supplied keys), so no user-provided string ever becomes a SQL identifier. Nullable columns use `IS NULL` instead of `= ?` when the filter value is `null`.
 
@@ -101,7 +101,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 **CHECK constraints** are used extensively for enum columns (`status`, `priority`, `severity`, `file_operation`, etc.). See any `CHECK(... IN (...))` clause in `schema.sql`.
 
-**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~76 child foreign keys.
+**ON DELETE CASCADE** is the default FK behavior. Deleting an iteration cascades through all ~78 child foreign keys.
 
 **ON DELETE SET NULL** is used for soft references where the child should survive parent deletion:
 
@@ -109,6 +109,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 |--------|------------|-----------|
 | `adr.superseded_by` | `adr(id)` | Superseding ADR may be removed independently |
 | `approved_dependency.adr_id` | `adr(id)` | Dependency record survives ADR deletion |
+| `persona.introduced_in_iteration_id` | `iteration(id)` | Persona survives iteration deletion (project-scoped) |
 | `user_flow.persona_id` | `persona(id)` | Flow definition survives persona deletion |
 | `ux_asset.screen_id` | `screen(id)` | Asset survives screen deletion |
 | `plan_external_dependency.plan_phase_id` | `plan_phase(id)` | External dependency survives plan phase deletion |
@@ -120,7 +121,7 @@ Arrays that don't need relational querying are stored as `JSON`-typed columns (S
 
 ## 8. Index Strategy
 
-62 indexes with a clear rationale (documented in `schema.sql` comments):
+64 indexes with a clear rationale (documented in `schema.sql` comments):
 
 - **`iteration_id`** indexes on every entity table — the primary access pattern is "everything in iteration X."
 - **`revision_id`** indexes on provenance-tracking tables — "what changed in revision Y."

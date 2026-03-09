@@ -41,16 +41,16 @@ describe("FK cascade deletes", () => {
   it("deleting an iteration cascades to entity rows via revision FK", () => {
     // Insert entities that reference revision_id (which cascades from iteration → phase → revision)
     handleWriteTool("changelog_insert", {
-      entity_type: "persona",
+      entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { id: "P-1", name: "Dev", description: "Dev" },
+      data: { id: "REQ-1", description: "Test req", priority: "must-have", category: "functional" },
     });
 
     db.prepare("DELETE FROM iteration WHERE id = ?").run(seed.iteration_id);
 
-    const personas = db.prepare("SELECT COUNT(*) AS n FROM persona").get();
-    assert.strictEqual(personas.n, 0);
+    const requirements = db.prepare("SELECT COUNT(*) AS n FROM requirement").get();
+    assert.strictEqual(requirements.n, 0);
   });
 });
 

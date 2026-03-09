@@ -191,10 +191,9 @@ function insertPersona(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "persona", data.id);
 
   db.prepare(
-    `INSERT INTO persona (id, revision_id, name, description, technical_level, frequency_of_use, goals, created_at)
-     VALUES (@id, @revision_id, @name, @description, @technical_level, @frequency_of_use, @goals, @created_at)
+    `INSERT INTO persona (id, project_id, introduced_in_iteration_id, name, description, technical_level, frequency_of_use, goals, created_at)
+     VALUES (@id, @project_id, @introduced_in_iteration_id, @name, @description, @technical_level, @frequency_of_use, @goals, @created_at)
      ON CONFLICT(id) DO UPDATE SET
-       revision_id = excluded.revision_id,
        name = excluded.name,
        description = excluded.description,
        technical_level = excluded.technical_level,
@@ -203,7 +202,8 @@ function insertPersona(db, iteration_id, revision_id, data) {
        updated_at = @updated_at`
   ).run({
     id: data.id,
-    revision_id,
+    project_id: 1,
+    introduced_in_iteration_id: iteration_id ?? null,
     name: data.name,
     description: data.description,
     technical_level: data.technical_level ?? null,
@@ -270,16 +270,14 @@ function insertAdr(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "adr", data.id);
 
   db.prepare(
-    `INSERT INTO adr (id, revision_id, title, status, date, context, decision, rationale, superseded_by, consequences, research_sources, created_at)
-     VALUES (@id, @revision_id, @title, @status, @date, @context, @decision, @rationale, @superseded_by, @consequences, @research_sources, @created_at)
+    `INSERT INTO adr (id, revision_id, title, status, date, context, superseded_by, consequences, research_sources, created_at)
+     VALUES (@id, @revision_id, @title, @status, @date, @context, @superseded_by, @consequences, @research_sources, @created_at)
      ON CONFLICT(id) DO UPDATE SET
        revision_id = excluded.revision_id,
        title = excluded.title,
        status = excluded.status,
        date = excluded.date,
        context = excluded.context,
-       decision = excluded.decision,
-       rationale = excluded.rationale,
        superseded_by = excluded.superseded_by,
        consequences = excluded.consequences,
        research_sources = excluded.research_sources,
@@ -291,8 +289,6 @@ function insertAdr(db, iteration_id, revision_id, data) {
     status: data.status ?? "proposed",
     date: data.date ?? null,
     context: data.context ?? null,
-    decision: data.decision,
-    rationale: data.rationale,
     superseded_by: data.superseded_by ?? null,
     consequences: JSON.stringify(data.consequences ?? []),
     research_sources: JSON.stringify(data.research_sources ?? []),
@@ -303,6 +299,7 @@ function insertAdr(db, iteration_id, revision_id, data) {
   if (existed) {
     // Delete child rows
     db.prepare("DELETE FROM adr_alternative WHERE adr_id = @adr_id").run({ adr_id: data.id });
+    db.prepare("DELETE FROM adr_decision WHERE adr_id = @adr_id").run({ adr_id: data.id });
   }
 
   const insertAlt = db.prepare(
@@ -315,6 +312,24 @@ function insertAdr(db, iteration_id, revision_id, data) {
   }
 
   return { entity_type: "adr", id: data.id, updated: !!existed };
+}
+
+function insertAdrDecision(db, _iteration_id, _revision_id, data) {
+  db.prepare(
+    `INSERT INTO adr_decision (adr_id, alternative_id, rationale, decided_at)
+     VALUES (@adr_id, @alternative_id, @rationale, @decided_at)
+     ON CONFLICT(adr_id) DO UPDATE SET
+       alternative_id = excluded.alternative_id,
+       rationale = excluded.rationale,
+       decided_at = excluded.decided_at`
+  ).run({
+    adr_id: data.adr_id,
+    alternative_id: data.alternative_id ?? null,
+    rationale: data.rationale ?? null,
+    decided_at: data.decided_at ?? new Date().toISOString()
+  });
+
+  return { entity_type: "adr_decision", id: data.adr_id };
 }
 
 function insertComponent(db, iteration_id, revision_id, data) {
@@ -1119,6 +1134,7 @@ function changelogInsert(args) {
     persona: insertPersona,
     requirement: insertRequirement,
     adr: insertAdr,
+    adr_decision: insertAdrDecision,
     component: insertComponent,
     requirement_trace: insertRequirementTrace,
     approved_dependency: insertApprovedDependency,

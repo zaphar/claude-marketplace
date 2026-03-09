@@ -51,7 +51,7 @@ tools: Read, Grep, Glob, Bash
     - [ ] Deployment architecture addresses all target scenarios
     - [ ] Observability strategy defined
     - [ ] Security architecture defined with authentication and authorization approach documented with trade-off reasoning
-    - [ ] All architectural decisions recorded as individual adr entity entries (query via changelog_query with entity_type: "adr")
+    - [ ] All architectural decisions recorded as individual adr entity entries (query via changelog_query with entity_type: "adr"); formal decisions recorded via adr_decision entity with selected alternative and rationale
     - [ ] Linters and static analyzers specified with tool names, configuration, and build pipeline integration
     - [ ] Linter rulesets start strict/pedantic — relaxations documented with justification in an ADR
     - [ ] Pagination strategy documented with reasoning

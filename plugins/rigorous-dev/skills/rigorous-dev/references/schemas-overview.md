@@ -22,10 +22,11 @@ Four tables form the backbone — everything else hangs off them:
 
 Changelog entities follow a two-tier scoping pattern:
 
-- **`revision_id` only (18 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
+- **`revision_id` only (17 entity tables):** Most entity tables carry only `revision_id` (NOT NULL, FK → `revision`). The iteration is derived via the `revision → phase → iteration` foreign-key chain. The `entity_context` VIEW provides a convenience join for queries that need the iteration or phase from a revision ID.
 - **`iteration_id` only (8 tables):** Tables for iteration-scoped entities not tied to producer-critic revisions carry only `iteration_id` (NOT NULL, FK → `iteration`). These are: `phase`, `project_context`, `data_exchange`, `blocker`, `project_lesson`, `nonfunctional_requirement`, `plan_external_dependency`, `vcs_commit`.
+- **`project_id` only (1 table):** `persona` is project-scoped — it carries `project_id` (NOT NULL, FK → `project`) and an informational `introduced_in_iteration_id` (FK → `iteration`, ON DELETE SET NULL).
 
-No table carries both columns.
+No table carries both `revision_id` and `iteration_id`.
 
 ## Requirements Domain
 
@@ -33,7 +34,7 @@ No table carries both columns.
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Name, description, role. Goals stored as JSON array (`goals` column). |
+| `persona` | requirements_analyst | User personas (id: `PERSONA-XXX`). Project-scoped. Name, description, role. Goals stored as JSON array (`goals` column). |
 | `requirement` | requirements_analyst | Core requirements (id: `REQ-XXX`). Priority (must-have/should-have/nice-to-have), category (functional/security/performance/usability/operational/deployment), description, rationale. Acceptance criteria stored as JSON array (`acceptance_criteria` column). |
 | `requirement_persona` | requirements_analyst | Which personas each requirement serves (M:N join). |
 | `requirement_dependency` | requirements_analyst | Dependencies between requirements. |
@@ -49,8 +50,9 @@ No table carries both columns.
 
 | Table | Producer | Purpose |
 |-------|----------|---------|
-| `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context, decision, rationale. Consequences and research sources stored as JSON arrays (`consequences`, `research_sources` columns). |
+| `adr` | backend_architect | Architecture Decision Records (id: `ADR-XXX`). Status, context. Consequences and research sources stored as JSON arrays (`consequences`, `research_sources` columns). |
 | `adr_alternative` | backend_architect | Alternatives considered per ADR, with inline pros/cons (JSON arrays). |
+| `adr_decision` | backend_architect | Formal decision for an ADR — selected alternative and rationale. PK on `adr_id` enforces one decision per ADR. `alternative_id` nullable (decisions can exist without formal alternatives). |
 | `component` | backend_architect | System components (id: `COMP-XXX`). Type, responsibility, tech stack. |
 | `component_interface` | backend_architect | APIs/ports each component exposes. |
 | `component_dependency` | backend_architect | Component-to-component dependency graph (must be a DAG). |
@@ -205,12 +207,13 @@ To add new entity types:
 
 ## Alphabetical Table Index
 
-All 57 tables with links to their detailed design documents.
+All 58 tables with links to their detailed design documents.
 
 | Table | Domain |
 |-------|--------|
 | `adr` | [architecture](tables/architecture.md) |
 | `adr_alternative` | [architecture](tables/architecture.md) |
+| `adr_decision` | [architecture](tables/architecture.md) |
 | `approved_dependency` | [cross-cutting](tables/cross-cutting.md) |
 | `blocker` | [cross-cutting](tables/cross-cutting.md) |
 | `component` | [architecture](tables/architecture.md) |
@@ -267,4 +270,4 @@ All 57 tables with links to their detailed design documents.
 | `ux_asset` | [ux-design](tables/ux-design.md) |
 | `vcs_commit` | [implementation](tables/implementation.md) |
 
-**Total: 57 tables across 10 domains**
+**Total: 58 tables across 10 domains**

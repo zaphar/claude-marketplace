@@ -385,4 +385,4 @@ Query all `requirement` rows and all `requirement_trace` rows for an iteration, 
 
 ### Dependency audit trail
 
-Given a dependency, find the ADR that approved it via `approved_dependency.adr_id`, then read that ADR's context, decision, and research sources to get the full rationale chain.
+Given a dependency, find the ADR that approved it via `approved_dependency.adr_id`, then read that ADR's context and research sources. The formal decision and rationale are in the linked `adr_decision` record.

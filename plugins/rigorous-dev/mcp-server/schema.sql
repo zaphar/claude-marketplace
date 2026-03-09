@@ -101,22 +101,24 @@ JOIN phase p ON r.phase_id = p.id;
 -- Domain: requirements
 -- Purpose: Represents a user archetype — a named, described role with a defined technical level and
 -- usage frequency. Personas ground the requirements in real human context, preventing the system
--- from being designed in the abstract. Each persona is scoped to an iteration and pinned to a
--- specific revision when the requirements_critic has approved or revised the analyst's output.
+-- from being designed in the abstract. Personas are project-scoped — they represent the app's users
+-- across all iterations, not iteration-specific artifacts.
 -- Context: Produced by the requirements_analyst agent. Validated (and potentially revised) by the
 -- requirements_critic. Consumed by the ux_designer (who associates personas with user flows) and
 -- the requirements_analyst itself (who links personas to requirements via requirement_persona).
 -- Referenced downstream by user_flow.persona_id.
 CREATE TABLE IF NOT EXISTS persona (
   id TEXT PRIMARY KEY,
-  revision_id INTEGER NOT NULL REFERENCES revision(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  introduced_in_iteration_id INTEGER REFERENCES iteration(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   technical_level TEXT,
   frequency_of_use TEXT,
   goals JSON NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT
+  updated_at TEXT,
+  UNIQUE(project_id, name)
 );
 
 -- Requirements
@@ -251,8 +253,9 @@ CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
 -- Purpose: The central record for each Architecture Decision Record. An ADR captures a single
 -- significant technical decision — what was decided, why, and when — giving every future reader a
 -- permanent, auditable record of the reasoning behind the system's shape. All alternative options
--- are stored in the adr_alternative child table; consequences and research citations are stored
--- inline as JSON arrays in the consequences and research_sources columns.
+-- are stored in the adr_alternative child table; the formal decision (selected alternative +
+-- rationale) is recorded in the adr_decision child table; consequences and research citations are
+-- stored inline as JSON arrays in the consequences and research_sources columns.
 -- Context: ADRs are the backbone of architectural traceability. Every major technology choice,
 -- structural pattern, or integration strategy that required deliberation should have an ADR. adr
 -- rows reference the current revision (with the iteration derived via revision → phase →
@@ -266,8 +269,6 @@ CREATE TABLE IF NOT EXISTS adr (
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
   date TEXT, -- ISO 8601 date, e.g. "2026-03-08"
   context TEXT,
-  decision TEXT NOT NULL,
-  rationale TEXT NOT NULL,
   superseded_by TEXT REFERENCES adr(id) ON DELETE SET NULL,
   consequences JSON NOT NULL DEFAULT '[]',
   research_sources JSON NOT NULL DEFAULT '[]',
@@ -290,6 +291,22 @@ CREATE TABLE IF NOT EXISTS adr_alternative (
   option_text TEXT NOT NULL,
   pros TEXT,
   cons TEXT
+);
+
+-- Domain: architecture
+-- Purpose: Records the formal decision for an ADR — which alternative was selected and why.
+-- The primary key on adr_id enforces exactly one decision per ADR. alternative_id is nullable
+-- so that decisions can be recorded without requiring a formal alternative entry (e.g., when
+-- the decision is straightforward and no alternatives were enumerated).
+-- Context: Created by the backend_architect when an ADR reaches the "accepted" state. The
+-- rationale field explains why the chosen option was selected over its alternatives. The
+-- decided_at timestamp records when the decision was formalised.
+CREATE TABLE IF NOT EXISTS adr_decision (
+  adr_id TEXT NOT NULL REFERENCES adr(id) ON DELETE CASCADE,
+  alternative_id INTEGER REFERENCES adr_alternative(id) ON DELETE CASCADE,
+  rationale TEXT,
+  decided_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (adr_id)
 );
 
 -- Architecture Components
@@ -1144,6 +1161,8 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 -- Skipped: data_exchange (iteration_id is leftmost in UNIQUE(iteration_id, direction, name))
 CREATE INDEX IF NOT EXISTS idx_nonfunctional_requirement_iteration_id
   ON nonfunctional_requirement(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_persona_introduced_in_iteration_id
+  ON persona(introduced_in_iteration_id);
 
 -- Planning domain
 -- Skipped: plan_external_dependency (iteration_id is leftmost in UNIQUE(iteration_id, name))
@@ -1217,8 +1236,8 @@ CREATE INDEX IF NOT EXISTS idx_requirement_trace_addressed_by
 -- ------------------------------------------------------------
 
 -- Requirements domain
-CREATE INDEX IF NOT EXISTS idx_persona_revision_id
-  ON persona(revision_id);
+CREATE INDEX IF NOT EXISTS idx_persona_project_id
+  ON persona(project_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_revision_id
   ON requirement(revision_id);
 
@@ -1341,6 +1360,11 @@ CREATE INDEX IF NOT EXISTS idx_approved_dependency_adr_id
 -- ------------------------------------------------------------
 -- Remaining FK columns — one-off or small groups
 -- ------------------------------------------------------------
+
+-- adr_decision.alternative_id → adr_alternative(id)
+-- Skipped: adr_decision.adr_id (leftmost in PK)
+CREATE INDEX IF NOT EXISTS idx_adr_decision_alternative_id
+  ON adr_decision(alternative_id);
 
 -- requirement_dependency.depends_on → requirement(id)
 CREATE INDEX IF NOT EXISTS idx_requirement_dependency_depends_on

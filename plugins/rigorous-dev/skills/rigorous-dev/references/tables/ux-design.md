@@ -173,7 +173,7 @@ Every primary table carries `revision_id` (NOT NULL, FK → `revision`) to pin r
 
 **Purpose:** Documents how the UX design addresses a specific persona's goals. Each row states which persona is covered, what their goal is in this context, and how the design addresses it. Serves as the UX design's accountability record to the personas defined in requirements.
 
-**Context:** The `ux_critic` validates that every persona defined in `persona` (for the iteration) has at least one `persona_addressed` row. Each row is linked to one or more user flows via `persona_addressed_flow`, closing the traceability chain: persona → addressed by → flows.
+**Context:** The `ux_critic` validates that every persona defined in `persona` (project-scoped) has at least one `persona_addressed` row. Each row is linked to one or more user flows via `persona_addressed_flow`, closing the traceability chain: persona → addressed by → flows.
 
 **Columns:**
 

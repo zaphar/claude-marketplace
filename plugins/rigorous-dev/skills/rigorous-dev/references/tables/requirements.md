@@ -2,7 +2,7 @@
 
 The requirements domain captures the full output of the **requirements_analyst** agent during the requirements phase of a workflow iteration. It models the problem space before any architectural or implementation decisions are made: who the users are, what the system must do, how success is measured, what deployment environment is targeted, and what operational and technology constraints apply.
 
-Every record in this domain is scoped to an iteration — either directly (via `iteration_id`) or indirectly (via `revision_id` → phase → iteration) — meaning the full set of requirements is versioned per iteration. When the **requirements_critic** validates or rejects the analyst's output, a new revision is created and linked via `revision_id` on the relevant records. This allows the system to track how requirements evolved across critic feedback cycles without losing earlier drafts.
+Every record in this domain is scoped to an iteration — either directly (via `iteration_id`) or indirectly (via `revision_id` → phase → iteration) — meaning the full set of requirements is versioned per iteration. The one exception is `persona`, which is project-scoped (via `project_id`) since personas represent the app's users across all iterations. When the **requirements_critic** validates or rejects the analyst's output, a new revision is created and linked via `revision_id` on the relevant records. This allows the system to track how requirements evolved across critic feedback cycles without losing earlier drafts.
 
 Downstream agents — **backend_architect**, **ux_designer**, and **implementation_planner** — all read from this domain to ensure traceability. The architect maps requirements to components and ADRs. The UX designer links requirements to user flows and screens. The implementation planner uses priorities and acceptance criteria to drive story sizing and sequencing. Nothing downstream should make an assumption about system behaviour that cannot be traced back to a record in this domain.
 
@@ -10,15 +10,16 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 
 ## persona
 
-**Purpose:** Represents a user archetype — a named, described role with a defined technical level and usage frequency. Personas ground the requirements in real human context, preventing the system from being designed in the abstract. Each persona is scoped to an iteration and pinned to a specific revision when the requirements_critic has approved or revised the analyst's output.
+**Purpose:** Represents a user archetype — a named, described role with a defined technical level and usage frequency. Personas ground the requirements in real human context, preventing the system from being designed in the abstract. Personas are project-scoped — they represent the app's users across all iterations, not iteration-specific artifacts.
 
 **Context:** Produced by the **requirements_analyst** agent. Validated (and potentially revised) by the **requirements_critic**. Consumed by the **ux_designer** (who associates personas with user flows) and the **requirements_analyst** itself (who links personas to requirements via `requirement_persona`). Referenced downstream by `user_flow.persona_id`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | TEXT | PRIMARY KEY | Stable identifier for the persona, typically a slug (e.g. `"admin-user"`). |
-| `revision_id` | INTEGER | NOT NULL, REFERENCES revision(id) | The revision in which this persona was last approved or updated by the critic. |
-| `name` | TEXT | NOT NULL | Human-readable name of the persona (e.g. `"Operations Engineer"`). |
+| `project_id` | INTEGER | NOT NULL, REFERENCES project(id) | The project this persona belongs to. Personas are project-scoped (singleton project, always 1). |
+| `introduced_in_iteration_id` | INTEGER | REFERENCES iteration(id), ON DELETE SET NULL | Informational: the iteration in which this persona was first introduced. NULL if the iteration is deleted. |
+| `name` | TEXT | NOT NULL, part of UNIQUE(project_id, name) | Human-readable name of the persona (e.g. `"Operations Engineer"`). Unique per project. |
 | `description` | TEXT | NOT NULL | Narrative description of who this persona is, their role, and their context. |
 | `technical_level` | TEXT | — | Self-reported or inferred technical proficiency (e.g. `"beginner"`, `"intermediate"`, `"expert"`). No CHECK constraint — analyst may use domain-specific values. |
 | `frequency_of_use` | TEXT | — | How often this persona interacts with the system (e.g. `"daily"`, `"weekly"`, `"occasionally"`). |
@@ -26,8 +27,12 @@ Downstream agents — **backend_architect**, **ux_designer**, and **implementati
 | `created_at` | TEXT | NOT NULL, DEFAULT `(datetime('now'))` | ISO 8601 timestamp recording when this persona was inserted. |
 | `updated_at` | TEXT | — | ISO 8601 timestamp of the last UPSERT update. NULL if never updated after initial insert. |
 
+**Constraints:**
+- `UNIQUE(project_id, name)` — prevents duplicate persona names within the same project.
+
 **Relationships:**
-- Parent: `revision` (via `revision_id`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
+- Parent: `project` (via `project_id`). Project-scoped — not tied to a specific iteration or revision.
+- Informational: `iteration` (via `introduced_in_iteration_id`, ON DELETE SET NULL) — records provenance but does not scope the entity.
 - Children: `requirement_persona` (via `persona_id`) — links personas to requirements
 - Children: `user_flow` (via `persona_id`) — links personas to UX flows
 

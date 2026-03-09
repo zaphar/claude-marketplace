@@ -686,7 +686,7 @@ You have access to:
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
-- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `data_exchange`, `nonfunctional_requirement`, `blocker`, and `project_lesson`; all other entity tables enforce NOT NULL at the DB level), `data`
+- **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration and revision. Inputs: `entity_type`, `iteration_id`, `revision_id` (omit only for `project_context`, `data_exchange`, `nonfunctional_requirement`, `blocker`, `project_lesson`, `persona`, and `adr_decision`; all other entity tables enforce NOT NULL at the DB level), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
@@ -705,7 +705,7 @@ When you need to understand table structures — what columns exist, what constr
 - **[schemas-overview.md](references/schemas-overview.md)** — High-level overview of all tables organized by domain, plus an alphabetical index of every table in the database
 - **[tables/core.md](references/tables/core.md)** — Project, iteration, phase, revision (the spine)
 - **[tables/requirements.md](references/tables/requirements.md)** — Requirements, personas, acceptance criteria, dependencies
-- **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, interfaces
+- **[tables/architecture.md](references/tables/architecture.md)** — Components, ADRs, ADR decisions, interfaces
 - **[tables/cross-cutting.md](references/tables/cross-cutting.md)** — Security, observability configs, dependencies, traceability
 - **[tables/ux-design.md](references/tables/ux-design.md)** — User flows, screens, design system, accessibility
 - **[tables/planning.md](references/tables/planning.md)** — Plan phases, tasks, requirement mappings, risks

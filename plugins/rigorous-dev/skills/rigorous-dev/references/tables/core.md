@@ -126,7 +126,7 @@ The six primary entity tables with TEXT primary keys — `persona`, `requirement
 ### How it works
 
 1. When a producer agent creates entities during a revision, they are inserted normally.
-2. If the critic rejects the revision and a new revision is created, the producer re-inserts only the entities that need changes. The UPSERT updates the existing row in place, setting `revision_id` to the new revision and `updated_at` to the current timestamp.
+2. If the critic rejects the revision and a new revision is created, the producer re-inserts only the entities that need changes. The UPSERT updates the existing row in place, setting `revision_id` to the new revision and `updated_at` to the current timestamp. (Exception: `persona` is project-scoped and does not carry `revision_id` — upserts update the name, description, and other fields but not provenance columns.)
 3. Entities that don't need changes keep their original `revision_id` — they are carried forward implicitly.
 4. When the critic approves a revision, the phase transitions to `completed`. All entities in that iteration for the completed phase are considered **current and valid**.
 

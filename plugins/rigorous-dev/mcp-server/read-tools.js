@@ -8,6 +8,7 @@ const ENTITY_TABLE = {
   persona: "persona",
   requirement: "requirement",
   adr: "adr",
+  adr_decision: "adr_decision",
   component: "component",
   user_flow: "user_flow",
   screen: "screen",
@@ -88,7 +89,7 @@ function queryPersona(db, { iteration_id, ids, filters = {}, include_related = f
   let sql = "SELECT * FROM persona";
   const clauses = [];
   const params = [];
-  if (iteration_id != null) { clauses.push("revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)"); params.push(iteration_id); }
+  if (iteration_id != null) { clauses.push("project_id = (SELECT id FROM project LIMIT 1)"); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
   const f = applyFilters(filters, PERSONA_FILTERS, "persona");
   clauses.push(...f.clauses);
@@ -140,8 +141,6 @@ const ADR_FILTERS = {
   status: { nullable: false },
   date: { nullable: true },
   context: { nullable: true },
-  decision: { nullable: false },
-  rationale: { nullable: false },
   superseded_by: { nullable: true },
 };
 
@@ -166,13 +165,30 @@ function queryAdr(db, { iteration_id, ids, filters = {}, include_related = false
         pros: alt.pros ? (() => { try { return JSON.parse(alt.pros); } catch { return alt.pros; } })() : [],
         cons: alt.cons ? (() => { try { return JSON.parse(alt.cons); } catch { return alt.cons; } })() : [],
       }));
+    const decision = db
+      .prepare("SELECT * FROM adr_decision WHERE adr_id = ?")
+      .get(a.id) ?? null;
     return {
       ...a,
       alternatives,
+      decision,
       consequences: (() => { try { return JSON.parse(a.consequences || '[]'); } catch { return a.consequences; } })(),
       research_sources: (() => { try { return JSON.parse(a.research_sources || '[]'); } catch { return a.research_sources; } })(),
     };
   });
+}
+
+function queryAdrDecision(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM adr_decision";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) {
+    clauses.push("adr_id IN (SELECT id FROM adr WHERE revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?))");
+    params.push(iteration_id);
+  }
+  if (ids?.length) { clauses.push(`adr_id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
 }
 
 const COMPONENT_FILTERS = {
@@ -845,6 +861,7 @@ const QUERY_DISPATCH = {
   persona: queryPersona,
   requirement: queryRequirement,
   adr: queryAdr,
+  adr_decision: queryAdrDecision,
   component: queryComponent,
   user_flow: queryUserFlow,
   screen: queryScreen,
@@ -953,14 +970,14 @@ function traceabilityQuery(args) {
 
     case "technology": {
       // Technology choices are now tracked via approved_dependency (with category column)
-      // and ADRs. Find ADRs whose decision/rationale mentions the technology name,
-      // then follow to approved dependencies.
+      // and ADRs. Find ADRs whose title/context or linked adr_decision.rationale mentions
+      // the technology name, then follow to approved dependencies.
       const adrs = db
         .prepare(
-          "SELECT * FROM adr WHERE (decision LIKE ? OR rationale LIKE ?)" +
+          "SELECT * FROM adr WHERE (title LIKE ? OR context LIKE ? OR id IN (SELECT adr_id FROM adr_decision WHERE rationale LIKE ?))" +
             (iteration_id ? " AND revision_id IN (SELECT revision_id FROM entity_context WHERE iteration_id = ?)" : "")
         )
-        .all(`%${target}%`, `%${target}%`, ...iterParam);
+        .all(`%${target}%`, `%${target}%`, `%${target}%`, ...iterParam);
       if (adrs.length > 0) chain.push({ type: "related_adrs", data: adrs });
 
       // Find approved dependencies matching the technology name

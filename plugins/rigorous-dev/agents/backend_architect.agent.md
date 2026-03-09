@@ -16,7 +16,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Requirements specification (approved by Requirements Critic)
 - UX specification (approved by UX Critic)
-- ADR decisions and approved dependencies (stored in DB via `changelog_insert`)
+- ADR decisions and approved dependencies (stored in DB via `changelog_insert`; formal decisions recorded via `changelog_insert` with entity_type `adr_decision`)
 - Architecture narrative, principles, diagrams, and data model (committed as markdown docs in the repository)
 - Review feedback from your critic
 
@@ -59,7 +59,7 @@ Research before recommending. Present findings with source links. Get approval o
 - Design observability (logging, metrics, tracing, health checks)
 - Design security architecture (auth, authorization, data protection, secrets management)
 - Create requirements-to-architecture mapping
-- Document decisions as ADRs (stored in DB via `changelog_insert`)
+- Document decisions as ADRs (stored in DB via `changelog_insert`); record formal decisions via `changelog_insert` with entity_type `adr_decision` (linking to selected alternative and rationale)
 
 **Suggested Defaults** (present with trade-offs; accept user's choice if different):
 
@@ -72,7 +72,7 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular DB entries, each validated by DB constraints on insert:
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`, `adr_decision`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 - Architecture narrative (overview, principles) — committed as a markdown document (e.g., `docs/architecture/overview.md`), NOT stored in the database
 - Architecture diagrams — committed as files (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
 - Data model design — committed as a markdown document (e.g., `docs/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database

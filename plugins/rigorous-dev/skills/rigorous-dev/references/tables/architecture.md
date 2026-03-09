@@ -1,6 +1,6 @@
 # Architecture Domain — Table Reference
 
-This document covers the 6 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, and integration test boundaries that downstream agents build upon.
+This document covers the 7 tables that capture the output of the **backend_architect** agent during the architecture phase of the rigorous-dev workflow. Together they record the complete architectural decision log, system component graph, and integration test boundaries that downstream agents build upon.
 
 **Producer:** `backend_architect`
 **Critic/Validator:** `architecture_critic`
@@ -12,10 +12,11 @@ This document covers the 6 tables that capture the output of the **backend_archi
 
 1. [adr](#1-adr)
 2. [adr_alternative](#2-adr_alternative)
-3. [component](#3-component)
-4. [component_interface](#4-component_interface)
-5. [component_dependency](#5-component_dependency)
-6. [integration_test_boundary](#6-integration_test_boundary)
+3. [adr_decision](#3-adr_decision)
+4. [component](#4-component)
+5. [component_interface](#5-component_interface)
+6. [component_dependency](#6-component_dependency)
+7. [integration_test_boundary](#7-integration_test_boundary)
 
 ---
 
@@ -23,7 +24,7 @@ This document covers the 6 tables that capture the output of the **backend_archi
 
 ### Purpose
 
-The central record for each Architecture Decision Record. An ADR captures a single significant technical decision — what was decided, why, and when — giving every future reader a permanent, auditable record of the reasoning behind the system's shape. All alternative options are stored in the `adr_alternative` child table; consequences and research citations are stored inline as JSON arrays in the `consequences` and `research_sources` columns.
+The central record for each Architecture Decision Record. An ADR captures a single significant technical decision — what was decided, why, and when — giving every future reader a permanent, auditable record of the reasoning behind the system's shape. All alternative options are stored in the `adr_alternative` child table; the formal decision (selected alternative + rationale) is recorded in the `adr_decision` child table; consequences and research citations are stored inline as JSON arrays in the `consequences` and `research_sources` columns.
 
 ### Context
 
@@ -39,8 +40,6 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 | `status` | TEXT | NOT NULL, CHECK(`status` IN `'proposed'`, `'accepted'`, `'deprecated'`, `'superseded'`) | — | Lifecycle state. `proposed` = under consideration; `accepted` = ratified; `deprecated` = no longer relevant but not replaced; `superseded` = replaced by another ADR (see `superseded_by`). |
 | `date` | TEXT | — | NULL | ISO-8601 date the decision was made (e.g., `2024-01-15`). Optional; set when a formal decision date is recorded. |
 | `context` | TEXT | — | NULL | Narrative describing the forces, constraints, and background that made this decision necessary. |
-| `decision` | TEXT | NOT NULL | — | The decision itself, stated clearly and unambiguously. |
-| `rationale` | TEXT | NOT NULL | — | Why this option was chosen over the alternatives. Should reference alternatives by name and cite research sources. |
 | `superseded_by` | TEXT | FK → `adr(id)` | NULL | If `status = 'superseded'`, points to the newer ADR that replaces this one. |
 | `consequences` | TEXT | NOT NULL | `'[]'` | JSON array of consequence strings describing effects of accepting this decision (e.g., `["All services must implement circuit-breaker logic"]`). Formerly stored in the `adr_consequence` child table. |
 | `research_sources` | TEXT | NOT NULL | `'[]'` | JSON array of citation strings (URLs, paper references, etc.) that informed this decision (e.g., `["https://example.com/postgresql-benchmarks"]`). Formerly stored in the `adr_research_source` child table. Enables the "why are we using X?" traceability query. |
@@ -50,16 +49,19 @@ ADRs are the backbone of architectural traceability. Every major technology choi
 ### Relationships
 
 - **Parent:** `revision` (via `revision_id`), `adr` self-reference (via `superseded_by`). Iteration derived via revision → phase → iteration (or via `entity_context` VIEW).
-- **Children:** `adr_alternative`
+- **Children:** `adr_alternative`, `adr_decision`
 - **Referenced by:** `approved_dependency.adr_id` (third-party dependencies may cite a backing ADR)
 
-**Note:** Consequences and research sources are stored inline as JSON arrays in the `consequences` and `research_sources` columns. Formerly stored in the `adr_consequence` and `adr_research_source` child tables.
+**Note:** Consequences and research sources are stored inline as JSON arrays in the `consequences` and `research_sources` columns. Formerly stored in the `adr_consequence` and `adr_research_source` child tables. The decision statement and rationale have been moved to the `adr_decision` child table.
 
 ### MCP Tool Access
 
 ```
 # Write
-changelog_insert  entity_type="adr"  { id, iteration_id, revision_id, title, status, date, context, decision, rationale, superseded_by }
+changelog_insert  entity_type="adr"  { id, iteration_id, revision_id, title, status, date, context, superseded_by }
+
+# Record formal decision (after alternatives are evaluated)
+changelog_insert  entity_type="adr_decision"  { adr_id, alternative_id, rationale }
 
 # Update (status transitions without full re-insert)
 changelog_update  entity_type="adr"  entity_id="ADR-001"  updates={ "status": "accepted" }
@@ -106,7 +108,46 @@ The alternative-with-pros-and-cons pattern is the structured form of the classic
 
 ---
 
-## 3. `component`
+## 3. `adr_decision`
+
+### Purpose
+
+Records the formal decision for an ADR — which alternative was selected and why. The primary key on `adr_id` enforces exactly one decision per ADR. `alternative_id` is nullable so that decisions can be recorded without requiring a formal alternative entry (e.g., when the decision is straightforward and no alternatives were enumerated).
+
+### Context
+
+Created by the **backend_architect** when an ADR reaches the "accepted" state. The `rationale` field explains why the chosen option was selected over its alternatives. The `decided_at` timestamp records when the decision was formalised. When queried via `changelog_query` with `entity_type="adr"` and `include_related=true`, the decision is attached to the ADR result.
+
+### Column Reference
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `adr_id` | TEXT | NOT NULL, FK → `adr(id)`, PRIMARY KEY | — | The ADR this decision belongs to. One decision per ADR. |
+| `alternative_id` | INTEGER | FK → `adr_alternative(id)` | NULL | The selected alternative, if one was formally recorded. NULL when the decision was made without enumerated alternatives. |
+| `rationale` | TEXT | — | NULL | Why this option was chosen over the alternatives. Should reference alternatives by name and cite research sources. |
+| `decided_at` | TEXT | NOT NULL | `(datetime('now'))` | ISO-8601 timestamp of when the decision was formalised. |
+
+### Relationships
+
+- **Parent:** `adr` (via `adr_id`)
+- **Parent:** `adr_alternative` (via `alternative_id`, nullable)
+
+### MCP Tool Access
+
+```
+# Write (record a decision for an ADR)
+changelog_insert  entity_type="adr_decision"  { adr_id: "ADR-001", alternative_id: 3, rationale: "..." }
+
+# Query decisions directly
+changelog_query  entity_type="adr_decision"  [iteration_id=N] [ids=["ADR-001"]]
+
+# Also included when querying ADRs with include_related=true
+changelog_query  entity_type="adr"  include_related=true
+```
+
+---
+
+## 4. `component`
 
 ### Purpose
 
@@ -147,7 +188,7 @@ traceability_query  from="component"  id="COMP-001"   # shows requirements satis
 
 ---
 
-## 4. `component_interface`
+## 5. `component_interface`
 
 ### Purpose
 
@@ -180,7 +221,7 @@ Describes each interface — HTTP endpoint group, gRPC service definition, messa
 
 ---
 
-## 5. `component_dependency`
+## 6. `component_dependency`
 
 ### Purpose
 
@@ -217,7 +258,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]
 
 ---
 
-## 6. `integration_test_boundary`
+## 7. `integration_test_boundary`
 
 ### Purpose
 
@@ -263,7 +304,7 @@ The canonical traceability query traverses: `approved_dependency` (with `categor
 
 ```
 traceability_query  from="adr"  id="ADR-003"
-# Returns: decision, rationale, all alternatives with pros/cons, consequences, research sources
+# Returns: alternatives with pros/cons, decision (via adr_decision), consequences, research sources
 ```
 
 ### "What does component COMP-002 do and what does it need?"
@@ -303,6 +344,7 @@ changelog_query  entity_type="component"  ids=["COMP-001"]  include_related=true
 |-------|---------|---------------|-----------------|
 | `adr` | TEXT (ADR-XXX) | `revision`, self | `status` CHECK 4 values; `superseded_by` self-FK |
 | `adr_alternative` | INTEGER AUTO | `adr` | `pros` and `cons` nullable TEXT (JSON arrays) |
+| `adr_decision` | Composite (adr_id) | `adr`, `adr_alternative` | PK enforces one decision per ADR; `alternative_id` nullable |
 | `component` | TEXT (COMP-XXX) | `revision` | `type` CHECK 8 values |
 | `component_interface` | INTEGER AUTO | `component` | UNIQUE(component_id, name) |
 | `component_dependency` | Composite (component_id, depends_on) | `component` × 2 | Composite PK prevents duplicate edges |
