@@ -1261,14 +1261,19 @@ function insertTestReport(db, iteration_id, revision_id, data) {
   //    → test_acceptance_criterion_result (1:N per coverage)
   const insertCoverage = db.prepare(
     `INSERT INTO test_requirement_coverage (report_id, requirement_id, status) VALUES (@report_id, @requirement_id, @status)
-     ON CONFLICT(report_id, requirement_id) DO UPDATE SET status = excluded.status`
+     ON CONFLICT(report_id, requirement_id) DO UPDATE SET status = excluded.status
+     RETURNING id`
+  );
+  const deleteStaleCriteria = db.prepare(
+    "DELETE FROM test_acceptance_criterion_result WHERE coverage_id = ?"
   );
   const insertCriterionResult = db.prepare(
     "INSERT INTO test_acceptance_criterion_result (coverage_id, criterion, status, notes, test_ids) VALUES (@coverage_id, @criterion, @status, @notes, @test_ids)"
   );
   for (const cov of data.coverage ?? []) {
-    const covResult = insertCoverage.run({ report_id, requirement_id: cov.requirement_id, status: cov.status });
-    const coverage_id = covResult.lastInsertRowid;
+    const covRow = insertCoverage.get({ report_id, requirement_id: cov.requirement_id, status: cov.status });
+    const coverage_id = covRow.id;
+    deleteStaleCriteria.run(coverage_id);
     for (const cr of cov.criteria ?? []) {
       insertCriterionResult.run({
         coverage_id,
