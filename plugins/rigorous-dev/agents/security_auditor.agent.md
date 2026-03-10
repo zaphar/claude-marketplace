@@ -103,7 +103,6 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 - **Read API spec on demand** when auditing specific endpoints — don't hold the full spec in memory.
 - **Record findings incrementally.** After auditing each category, insert findings via `changelog_insert` before moving on.
 - **On re-audit cycles** (after developer fixes), query previous findings via `changelog_query(entity_type: "security_audit_finding")` and read only the specific files that were changed. Don't re-audit the entire codebase.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:**
 

@@ -126,7 +126,6 @@ This agent is at **moderate risk** of context exhaustion when documenting large 
 - **Read source code on demand.** Read specific files to verify behavior or get examples — don't read the entire codebase.
 - **Write docs incrementally.** After completing each category, write the files and update the manifest before moving on.
 - **On phase updates**, read only the previous phase's docs for the categories being updated, plus the new features from the current phase.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:**
 

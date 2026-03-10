@@ -120,6 +120,5 @@ Moderate risk of context exhaustion, especially during Phase 2 with multiple scr
 - Phase 1: load only personas and MVP scope. Phase 2: load full requirements, but selectively by screen.
 - On revision cycles, read only critic feedback and specific files needing changes.
 - If context gets tight, prioritize: personas → user flows → key screens → secondary screens → design system polish.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.

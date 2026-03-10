@@ -16,7 +16,6 @@ tools: Read, Grep, Glob, Bash
 
 - The plugin's schema (`plugins/rigorous-dev/mcp-server/schema.sql`) as ground truth
 - MCP server handlers (`write-tools.js`, `read-tools.js`) for code-level evidence
-- Table documentation (`references/tables/*.md`, `references/schemas-overview.md`)
 - Agent files (`agents/*.agent.md`) for entity type usage
 - Optional: specific audit categories to focus on (if not specified, run all 20)
 
@@ -67,11 +66,6 @@ grep 'REFERENCES' plugins/rigorous-dev/mcp-server/schema.sql
 **Discover all indexes:**
 ```bash
 grep 'CREATE INDEX' plugins/rigorous-dev/mcp-server/schema.sql
-```
-
-**Discover table documentation files:**
-```bash
-ls plugins/rigorous-dev/skills/rigorous-dev/references/tables/
 ```
 
 Use these discovery results as the source of truth for ALL audit analysis below.

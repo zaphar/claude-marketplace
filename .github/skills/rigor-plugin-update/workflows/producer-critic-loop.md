@@ -30,7 +30,7 @@ When a work-unit is large or complex enough to risk timeout, **pre-decompose it 
 1. **Schema** (`schema.sql`) — DDL changes must land first; everything else depends on table structure.
 2. **Write handlers** (`write-tools.js`) — Insert/upsert logic depends on the schema.
 3. **Read handlers** (`read-tools.js`) — Query logic depends on the schema.
-4. **Documentation** (table docs, `schemas-overview.md`, `INTERNALS.md`, agent/skill/command docs) — Docs describe the final code state, so they come last.
+4. **Documentation** (agent/skill/command docs) — Docs describe the final code state, so they come last.
 
 Each sub-task gets its own focused producer call. The critics review the aggregate result after all sub-tasks complete.
 
@@ -55,8 +55,8 @@ After the producer (or all N producers in a batch) completes, it reports its sum
 | Files Modified | Critic Agent |
 |---|---|
 | Agent files, SKILL.md, README, commands, plugin.json | `rigor_consistency_critic` |
-| schema.sql, references/tables/*.md, schemas-overview.md | `rigor_schema_critic` |
-| mcp-server/*.js, mcp-server/test/*, INTERNALS.md | `rigor_mcp_server_critic` |
+| schema.sql | `rigor_schema_critic` |
+| mcp-server/*.js, mcp-server/test/* | `rigor_mcp_server_critic` |
 
 A single change can touch one, two, or all three domains. Select **every** critic whose file patterns match at least one modified file.
 

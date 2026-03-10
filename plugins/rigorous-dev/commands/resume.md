@@ -84,16 +84,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 **If phase status is "in_progress":**
 - Load the producer agent for that phase (continue work)
-
-**Phase-to-Agent Mapping:**
-- `requirements` → `rigorous-dev:requirements_analyst`
-- `ux_design` → `rigorous-dev:ux_designer`
-- `architecture` → `rigorous-dev:backend_architect`
-- `planning` → `rigorous-dev:implementation_planner`
-- `implementation` → Query `work_item` for first row with `status != 'completed'` ordered by `phase_number`:
-  - If that row's `status` is `"test_writing"` or `"pending"` → `rigorous-dev:test_writer`
-  - If that row's `status` is `"implementing"` → `rigorous-dev:senior_developer`
-- `documentation` → `rigorous-dev:documentation_master`
+- Refer to the phase-to-agent mapping in SKILL.md §3 (Agent Loading)
 
 **If phase status is "completed":**
 - Should not happen; workflow should have advanced to next phase

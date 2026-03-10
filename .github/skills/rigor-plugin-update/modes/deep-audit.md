@@ -79,7 +79,7 @@ Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performa
 
 Agent 6 — MCP Server Critic prompt:
 Perform a full 7-dimension MCP server audit of the rigorous-dev plugin: Correctness, Data Integrity,
-Error Handling, Protocol Compliance, Patterns, Test Coverage, INTERNALS.md Accuracy.
+Error Handling, Protocol Compliance, Patterns, Test Coverage, Schema Header Accuracy.
 Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MANDATORY.
 ```

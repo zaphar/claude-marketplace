@@ -16,23 +16,18 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 | Entity types | `grep -A 30 'const ENTITY_TABLE' plugins/rigorous-dev/mcp-server/read-tools.js` |
 | Plugin-phases | `grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js` |
 | DB tables | `grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql` |
-| Table docs | `ls plugins/rigorous-dev/skills/rigorous-dev/references/tables/` |
 | SKILL.md agent tables | `grep -A 20 'Producer Agent.*Critic Agent' plugins/rigorous-dev/skills/rigorous-dev/SKILL.md` |
 | TEXT-PK entity tables | `grep -A 5 'TEXT_PK_TYPES' plugins/rigorous-dev/mcp-server/read-tools.js` |
 | Full schema for a table | `grep -A 30 'CREATE TABLE <table_name>' plugins/rigorous-dev/mcp-server/schema.sql` |
 | Table relationships | `grep 'REFERENCES' plugins/rigorous-dev/mcp-server/schema.sql` |
 | MCP tool parameters | Read the relevant tool handler in `write-tools.js` or `read-tools.js` |
-| Table documentation | Read `plugins/rigorous-dev/skills/rigorous-dev/references/tables/<domain>.md` |
-| MCP server internals | Read `plugins/rigorous-dev/mcp-server/INTERNALS.md` |
+| Data model overview | Read the header block in `plugins/rigorous-dev/mcp-server/schema.sql` (design principles, domain map, new-entity checklist) |
 
 **Key reference files for data model questions:**
-- `plugins/rigorous-dev/mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, and foreign keys. When in doubt, this file wins.
-- `plugins/rigorous-dev/skills/rigorous-dev/references/schemas-overview.md` — Human-readable data model overview. Summarizes every domain, lists all tables with their producer agent and purpose, and links to detailed per-domain docs. **Start here** for data model questions, then drill into schema.sql for specifics.
-- `plugins/rigorous-dev/skills/rigorous-dev/references/tables/` — Per-domain detailed table documentation (core.md, requirements.md, architecture.md, ux-design.md, planning.md, implementation.md, documentation.md, qa-test.md, deployment.md, cross-cutting.md, data-model.md)
+- `plugins/rigorous-dev/mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys, and inline comments (`-- Domain:`, `-- Purpose:`, `-- Context:`). Also contains a header block with design principles, domain map (all 45 tables by domain), and a new-entity checklist.
 - `plugins/rigorous-dev/mcp-server/write-tools.js` — Write tool handlers (shows what parameters each tool accepts and what it does)
 - `plugins/rigorous-dev/mcp-server/read-tools.js` — Read tool handlers (shows query logic, entity type mappings, TEXT-PK types)
 - `plugins/rigorous-dev/mcp-server/db.js` — Database initialization (WAL mode, foreign keys)
-- `plugins/rigorous-dev/mcp-server/INTERNALS.md` — Persistence layer mechanics: better-sqlite3 patterns, PK strategies, write/read patterns, index strategy, and the entity type addition checklist. **Read this** before modifying handler code.
 
 **Capabilities:**
 - Trace cross-references: "What agents reference tool X?" → grep agent files for the tool name

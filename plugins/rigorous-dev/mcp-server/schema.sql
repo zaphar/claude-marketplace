@@ -1,5 +1,75 @@
 -- Rigorous-dev changelog database schema
--- Replaces YAML-based artifact storage with normalized SQLite
+-- All artifacts produced during the rigorous development workflow are stored in
+-- a normalized SQLite changelog database. This DDL is auto-applied on first run.
+--
+-- Database location: .claude/rigorous-dev.db
+-- Engine: better-sqlite3 (synchronous), WAL mode, foreign keys enforced
+--
+-- ============================================================
+-- DESIGN PRINCIPLES
+-- ============================================================
+--
+-- 1. Pragmatic normalization — Core entities and M:N relationships use proper
+--    tables with FKs. Simple 1:N string lists (goals, criteria, etc.) are stored
+--    as JSON arrays on the parent row, avoiding unnecessary child tables while
+--    keeping data self-contained and queryable via JSON_EACH().
+--
+-- 2. Append-only — Revisions are never deleted or overwritten. New revisions
+--    create new rows. Full history is preserved.
+--
+-- 3. Traceability — Every entity carries iteration_id (FK → iteration) for
+--    direct iteration scoping. The one exception is persona, which is
+--    project-scoped via project_id.
+--
+-- 4. Idempotent DDL — All tables use CREATE TABLE IF NOT EXISTS so the schema
+--    can be re-applied safely.
+--
+-- 5. UTC timestamps in ISO 8601 — All timestamp columns use TEXT type. App code
+--    sets timestamps via new Date().toISOString(). No DATETIME or INTEGER epoch.
+--
+-- ============================================================
+-- DOMAIN MAP (10 domains, 45 tables)
+-- ============================================================
+--
+-- Core (spine):       project, iteration, phase, revision
+-- Requirements:       persona, requirement, requirement_persona,
+--                     requirement_dependency, project_context, data_exchange,
+--                     nonfunctional_requirement
+-- Architecture:       adr, adr_alternative, adr_decision, component,
+--                     component_interface, component_dependency,
+--                     integration_test_boundary
+-- Cross-cutting:      approved_dependency, requirement_trace, blocker,
+--                     project_lesson
+-- UX Design:          user_flow, user_flow_step, user_flow_error_state, screen,
+--                     info_architecture, persona_addressed,
+--                     persona_addressed_flow, ux_asset
+-- Planning:           work_item, work_item_requirement, work_item_component,
+--                     work_item_risk, plan_overview, plan_external_dependency
+-- Implementation:     implementation_requirement_status,
+--                     implementation_component_status, implementation_blocker,
+--                     implementation_blocker_requirement, vcs_commit,
+--                     intermediate_asset
+-- QA/Test:            test_report
+-- Audit:              security_audit_finding, performance_audit_finding
+-- Documentation:      (no tables — docs are file artifacts reviewed by critic)
+--
+-- Each table below is tagged with its domain in a "-- Domain:" comment.
+-- Agents interact with tables via MCP tools (changelog_insert, changelog_query),
+-- not by reading this file directly.
+--
+-- ============================================================
+-- ADDING A NEW ENTITY TYPE (checklist)
+-- ============================================================
+--
+-- 1. schema.sql  — CREATE TABLE with FK to iteration(id) + CREATE INDEX for
+--                  iteration_id + any child/junction tables + their indexes
+-- 2. write-tools.js — Write an insertXxx() function + add the case to the
+--                     changelogInsert dispatch handlers object
+-- 3. read-tools.js  — Add to ENTITY_TABLE mapping + write a queryXxx function
+--                     with FILTERS spec + register in QUERY_DISPATCH
+-- 4. test/         — Add or update tests (entities.test.js, query-dispatch.test.js,
+--                    reads.test.js, and others as needed)
+--
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 

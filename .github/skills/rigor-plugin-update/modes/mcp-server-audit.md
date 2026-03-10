@@ -7,7 +7,7 @@ Triggered when the user asks to audit, review, or analyze the MCP server code sp
 Determine audit scope based on the user's request:
 
 - **Full audit** — Run all 7 audit dimensions. Use when the user says "audit the MCP server", "full code audit", or doesn't specify dimensions.
-- **Focused audit** — Run specific dimensions. Use when the user asks about a specific concern (e.g., "check for SQL injection" → Dimension 1, "are the tool schemas complete?" → Dimension 4, "what's the test coverage?" → Dimension 6, "is INTERNALS.md up to date?" → Dimension 7).
+- **Focused audit** — Run specific dimensions. Use when the user asks about a specific concern (e.g., "check for SQL injection" → Dimension 1, "are the tool schemas complete?" → Dimension 4, "what's the test coverage?" → Dimension 6, "is the schema header accurate?" → Dimension 7).
 
 If scope is ambiguous, ask the user:
 
@@ -16,12 +16,12 @@ The MCP server critic has 7 audit dimensions. Would you like me to run all of th
 ```
 
 Offer choices via ask_user:
-- **Full audit (all 7 dimensions)** — Correctness, Data Integrity, Error Handling, MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage, INTERNALS.md Accuracy
+- **Full audit (all 7 dimensions)** — Correctness, Data Integrity, Error Handling, MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage, Schema Header Accuracy
 - **Correctness only (Dimension 1)** — SQL injection, transaction safety, parameter binding, FK ordering, edge cases
 - **Data Integrity only (Dimension 2)** — Entity type sync, TEXT_PK consistency, schema↔code column alignment, JSON round-trip safety
 - **Protocol Compliance only (Dimension 4)** — SDK deprecation, tool schema completeness, response format, tool routing coverage
 - **Test Coverage only (Dimension 6)** — Untested entity types, error paths, read paths, snapshot/history
-- **INTERNALS.md Accuracy only (Dimension 7)** — Verify every claim in INTERNALS.md against actual source code, surface conflicts with fix recommendations
+- **Schema Header Accuracy only (Dimension 7)** — Verify every claim in schema.sql header against actual source code, surface conflicts with fix recommendations
 - **Let me specify** — User picks individual dimensions
 
 ## Step 2: Bootstrap Audit Database
@@ -50,10 +50,10 @@ Launch the `rigor_mcp_server_critic` agent (always `claude-opus-4.6`) with a sco
 Perform a full audit of the rigorous-dev MCP server at plugins/rigorous-dev/mcp-server/.
 
 Run all 7 audit dimensions — Correctness, Data Integrity & Consistency, Error Handling & Robustness,
-MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage Gaps, and INTERNALS.md Documentation
+MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage Gaps, and Schema Header Documentation
 Accuracy — against the complete server codebase.
 
-Start by reading INTERNALS.md, then run all discovery commands, then work through each dimension
+Start by reading the schema.sql header, then run all discovery commands, then work through each dimension
 systematically. Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 ```
 
@@ -66,7 +66,7 @@ Run ONLY these audit dimensions:
 - Dimension N: [name]
 - Dimension M: [name]
 
-Start by reading INTERNALS.md, then run all discovery commands, then work through the specified
+Start by reading the schema.sql header, then run all discovery commands, then work through the specified
 dimensions systematically. Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 ```
 

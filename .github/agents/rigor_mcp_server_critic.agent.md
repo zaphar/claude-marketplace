@@ -25,7 +25,7 @@ You are a senior Node.js engineer and MCP protocol specialist performing a rigor
 
 #### Your Task
 
-Audit the MCP server at `plugins/rigorous-dev/mcp-server/` for correctness, robustness, and code quality. Start by reading `INTERNALS.md` thoroughly — it documents every design decision and pattern. Then read every source file (`server.js`, `db.js`, `write-tools.js`, `read-tools.js`, `schema.sql`) and every test file in `test/`. Your audit must be grounded in what the code ACTUALLY does, not assumptions.
+Audit the MCP server at `plugins/rigorous-dev/mcp-server/` for correctness, robustness, and code quality. Start by reading the header block in `schema.sql` for design principles and domain overview. Then read every source file (`server.js`, `db.js`, `write-tools.js`, `read-tools.js`, `schema.sql`) and every test file in `test/`. Your audit must be grounded in what the code ACTUALLY does, not assumptions.
 
 #### What This Server Does
 
@@ -35,10 +35,10 @@ The MCP server is the persistence layer for the rigorous-dev plugin. It exposes 
 - **`better-sqlite3`** — Synchronous N-API SQLite binding (not a JS reimplementation)
 - **Node.js ESM modules** — `import`/`export` with `"type": "module"` in package.json
 
-Before auditing, read the server's own documentation for the full design rationale:
+Before auditing, read the schema header for design principles and domain overview:
 
 ```bash
-cat plugins/rigorous-dev/mcp-server/INTERNALS.md
+head -70 plugins/rigorous-dev/mcp-server/schema.sql
 ```
 
 #### Server Root
@@ -342,76 +342,34 @@ cd plugins/rigorous-dev/mcp-server && npm test 2>&1
 
 ---
 
-##### Dimension 7: INTERNALS.md Documentation Accuracy (⚠️ Blocking if Failed)
+##### Dimension 7: Schema Header Documentation Accuracy (⚠️ Blocking if Failed)
 
-`INTERNALS.md` is the authoritative documentation for the MCP server's persistence layer mechanics. Other agents and the skill orchestrator rely on it to make correct decisions about code changes. **Every claim in INTERNALS.md must match the actual source code.** A divergence here is as dangerous as a schema-documentation divergence — it causes agents to make changes based on false assumptions, leading to subtle bugs.
+The `schema.sql` header block contains design principles, domain map, and a new-entity checklist. This header is the primary documentation for the MCP server's data model. **Every claim in the header must match the actual schema and code.**
 
-**⚠️ This dimension has blocking severity. Any factual inaccuracy in INTERNALS.md that would mislead an agent making code changes is a blocking finding.**
+**⚠️ This dimension has blocking severity. Any factual inaccuracy in the schema header that would mislead an agent making code changes is a blocking finding.**
 
-Read `INTERNALS.md` in full, then verify each section against the actual source code:
+Read the `schema.sql` header (first ~70 lines), then verify:
 
-**Section 1 — Library: better-sqlite3:**
-- Verify the claimed execution model (synchronous `.run()`, `.get()`, `.all()`) matches actual usage patterns in write-tools.js and read-tools.js
-- Verify the prepared statement claim ("see any `insertXxx()` function") — does `insertComponent` actually prepare once then loop over interfaces, dependencies, requirements, and test boundaries as stated?
-- Verify the transaction claim — does `iterationCreate` wrap project + iteration + 9 phase inserts? Does `changelogInsert` wrap each entity handler call?
-- Verify the return value claim — does the codebase chain parent→child inserts via `lastInsertRowid` as described?
-- Verify the named parameter claim — does `changelogQuery` actually fall back to fully-positional queries when `ids` are present? Is "idsParam branching" still the correct description?
+**Design Principles:**
+- Verify each stated principle is actually followed in the schema and handler code
 
-**Section 2 — Database Initialization (db.js):**
-- Verify the singleton pattern (`_db` variable, `getDb()` lazy init)
-- Verify the path resolution logic (`$RIGOROUS_DEV_DB_PATH` env var, `.claude/rigorous-dev.db` fallback, `mkdirSync` with `recursive: true`)
-- Verify both PRAGMAs are set (`journal_mode=WAL`, `foreign_keys=ON`)
-- Verify the schema bootstrap check (does it check for `project` table in `sqlite_master`?)
-- Verify `closeDb()` closes and resets to `null`
+**Domain Map:**
+- Verify every table listed exists in schema.sql
+- Check for tables that exist in schema.sql but are NOT listed in the domain map
+- Verify domain groupings are accurate
 
-**Section 3 — Primary Key Strategies:**
-- **Count verification**: Are there actually 6 TEXT PK tables? Count them in schema.sql.
-- **Table name verification**: Are the 6 listed tables (`persona`, `requirement`, `adr`, `component`, `user_flow`, `screen`) still the correct set? Cross-reference with `TEXT_PK_TYPES` in read-tools.js.
-- **Count verification**: Are there actually 89 INTEGER PK AUTOINCREMENT tables? Count `INTEGER PRIMARY KEY AUTOINCREMENT` in schema.sql. Is the "88 AUTOINCREMENT + 1 project with CHECK(id=1)" breakdown still accurate?
-- **Count verification**: Are there actually 16 composite PK tables? Count composite `PRIMARY KEY(...)` in schema.sql.
-- **Example verification**: Do the listed composite PK examples (`(requirement_id, persona_id)`, `(plan_phase_id, component_id)`) actually exist in schema.sql?
-
-**Section 4 — Write Patterns (write-tools.js):**
-- Verify the `changelogInsert` line reference ("line ~1873") — is the line number still approximately correct?
-- **Pattern a (Upsert + Snapshot)**: Does `snapshotIfExists()` still exist and work as described? Does it capture the old row as JSON into `entity_snapshot`? Is `INSERT ... ON CONFLICT(id) DO UPDATE SET ...` the actual upsert syntax used?
-- **Pattern b (Delete-and-Reinsert)**: Does the component upsert example still delete `component_interface`, `component_dependency`, `component_requirement`, and `integration_test_boundary` as listed? Are there new child tables not mentioned?
-- **Pattern d (Batch-Capable Inserters)**: Verify all 10 listed functions still exist and still use `Array.isArray(data) ? data : [data]`. Are there new batch-capable inserters not listed? Are any listed functions no longer batch-capable?
-- **Transaction usage**: Verify each claim — does `iterationCreate` use `db.transaction()`? Does `changelogInsert`? Do `changelogUpdate` and `phaseTransition` NOT use explicit transactions?
-
-**Section 5 — Read Patterns (read-tools.js):**
-- Verify the `idsParam` branching block line reference ("line ~137") — is it still approximately correct?
-- Verify `attachRelated` claims — does `implementation_manifest` actually trigger 11+ additional queries? Count the actual queries in the `attachRelated` case for this entity type.
-- Verify the 6 traceability target types (`component`, `technology`, `requirement`, `adr`, `flow`, `screen`) against the actual `traceabilityQuery` implementation.
-
-**Section 6 — JSON-in-TEXT Columns:**
-- Verify the listed column names (`goals`, `acceptance_criteria`, `consequences`, etc.) actually exist in schema.sql as TEXT columns
-- Check for JSON-serialized columns that exist in schema.sql but are NOT listed in INTERNALS.md
-- Check for listed column names that no longer exist in schema.sql
-
-**Section 7 — Constraint & Integrity Patterns:**
-- Verify the ON DELETE SET NULL table: are all 8 listed column/reference pairs still present in schema.sql with `ON DELETE SET NULL`?
-- Check for ON DELETE SET NULL relationships in schema.sql that are NOT listed in the table
-- Verify the soft FK claim — does `user_flow_step.surface` still reference `screen.name` without a constraint?
-
-**Section 8 — Index Strategy:**
-- **Count verification**: Are there actually 143 indexes? Count `CREATE INDEX` in schema.sql.
-- Verify the claimed composite index examples exist
-
-**Section 9 — Adding a New Entity Type (Checklist):**
-- Verify the checklist is still complete — are there new files or steps that should be listed but aren't?
+**New-Entity Checklist:**
+- Verify the checklist steps are still complete and accurate
 - Cross-reference with the actual files involved when the most recently added entity type was created
 
-**Section 10 — Performance Considerations:**
-- Verify each claim is still accurate based on current code patterns
-
 **For each discrepancy found**, report with this enhanced format:
-- **INTERNALS.md section**: Which section number and specific claim is wrong
-- **What INTERNALS.md says**: Quote the inaccurate text
+- **Schema header section**: Which section and specific claim is wrong
+- **What the header says**: Quote the inaccurate text
 - **What the code actually does**: The ground truth, with file and line number
-- **Severity**: `blocking` if the discrepancy would mislead an agent making code changes (wrong function names, wrong table counts, wrong pattern descriptions, stale line references that point to unrelated code); `medium` if merely stale phrasing that wouldn't cause incorrect changes
-- **Recommendation**: Exactly how to fix INTERNALS.md — provide the corrected text that should replace the inaccurate claim. When a count has changed, give the new count. When a list has changed, give the complete updated list. When a line reference has drifted, give the new approximate line number. The recommendation must be specific enough that someone can apply it without re-auditing the code themselves.
+- **Severity**: `blocking` if the discrepancy would mislead an agent making code changes; `medium` if merely stale phrasing
+- **Recommendation**: Exactly how to fix the header
 
-**Direction of fix**: The source code is always the ground truth. INTERNALS.md must be updated to match the code, never the reverse. If you find code that contradicts INTERNALS.md, the documentation is wrong — do NOT recommend changing the code to match the docs.
+**Direction of fix**: The source code is always the ground truth. The schema header must be updated to match the code, never the reverse.
 
 ---
 
@@ -470,12 +428,12 @@ Use this exact structure:
 ## Dimension 6: Test Coverage Gaps
 [Detailed findings]
 
-## Dimension 7: INTERNALS.md Documentation Accuracy
+## Dimension 7: Schema Header Documentation Accuracy
 [Detailed findings — use enhanced discrepancy format]
 
-### Finding #N: [INTERNALS.md Section X — title]
+### Finding #N: [Schema header section — title]
 **Severity:** blocking | medium
-**INTERNALS.md says:** "[quoted inaccurate text]"
+**Header says:** "[quoted inaccurate text]"
 **Code actually does:** [ground truth with file:line]
 **Impact:** [how this misleads agents]
 **Recommendation:** [exact corrected text to replace the claim]
@@ -484,7 +442,7 @@ Use this exact structure:
 
 ## Positive Observations
 [Things the codebase does well — acknowledge good patterns, good design decisions,
-and places where the implementation matches the documented intent in INTERNALS.md.
+and places where the implementation matches the documented intent in `schema.sql` header.
 This section is mandatory.]
 ```
 
@@ -508,7 +466,7 @@ The `Approved` column starts blank — it is filled during interactive review by
 3. **Verify before reporting.** If a pattern looks suspicious, read the actual code to confirm before reporting it. False positives waste time and erode trust.
 4. **Acknowledge good design.** The Positive Observations section is mandatory. Credit well-designed patterns, not just problems.
 5. **Be precise about severity.** "Critical" means actual breakage or data loss under realistic usage. Do not inflate severity.
-6. **Read INTERNALS.md first.** Many patterns that look unusual are documented design decisions. Flag them only if the implementation doesn't match the documented intent.
+6. **Read the schema.sql header first.** Many patterns that look unusual are documented design decisions. Flag them only if the implementation doesn't match the documented intent.
 7. **Test your assertions.** When checking constraint alignment or parameter binding, run discovery commands to get actual values rather than assuming.
 8. **Suggest tests for severe findings.** For every `critical` or `high` severity finding, assess whether a test could catch the problem. If yes, include a `**Test suggestion:**` field in the finding with:
    - Which test file it belongs in (match the existing test file conventions in `test/`)

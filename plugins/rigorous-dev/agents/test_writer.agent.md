@@ -83,6 +83,5 @@ High risk of context exhaustion during multi-phase implementation.
 - **Use artifact query tools for upstream specs.** Call `changelog_query` to list requirements and architecture entries, then use `changelog_query` with specific IDs or filters for full details. Avoid loading all entities at once.
 - After completing WI, write to disk and commit. Do not compact context — context compaction within a sub-agent session breaks tool calling.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:** If acceptance criteria have gaps, requirements are untestable, or architecture prevents proper test isolation — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.

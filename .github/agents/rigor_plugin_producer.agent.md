@@ -78,11 +78,6 @@ grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js
 grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql
 ```
 
-**Discover table documentation:**
-```bash
-ls plugins/rigorous-dev/skills/rigorous-dev/references/tables/
-```
-
 **Discover SKILL.md agent tables:**
 ```bash
 grep -A 20 'Producer Agent.*Critic Agent' plugins/rigorous-dev/skills/rigorous-dev/SKILL.md
@@ -104,9 +99,6 @@ These conventions are structural and rarely change:
 | `agents/` | `*.agent.md` | Agent personality files with YAML frontmatter |
 | `commands/` | `*.md` | Slash command definitions with YAML frontmatter |
 | `skills/rigorous-dev/` | `SKILL.md` | Main orchestration skill |
-| `skills/rigorous-dev/references/` | `*.md` | Reference documentation for agents |
-| `skills/rigorous-dev/references/tables/` | `*.md` | Per-domain DB table documentation |
-| `skills/rigorous-dev/examples/` | `*` | Example files for agents |
 | `mcp-server/` | `*.js`, `schema.sql` | MCP server implementation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata |
 
@@ -121,7 +113,7 @@ tools: Read, Grep, Glob, Bash           # Critics: read-only tools
 tools: Read, Grep, Glob, Bash, Edit, Write  # Producers: include Edit, Write
 ---
 ```
-Body structure follows `references/agent-templates.md`:
+Body structure:
 - `### Agent Name` (H3 header)
 - `**Personality:**` — 1-line character traits
 - `**Role:**` — producer or critic, which phase
@@ -171,18 +163,16 @@ These are the consistency relationships you MUST maintain. Use discovery results
 
 6. **DB entity types ↔ Agent instructions:** Entity types discovered from `ENTITY_TABLE` in `read-tools.js` are the canonical set. Any `entity_type` value referenced in agent instructions must exist in that set.
 
-7. **DB table/column names ↔ Agent instructions ↔ `references/tables/`:** Column names referenced in agent instructions must match `schema.sql`. Table docs in `references/tables/` must match actual tables.
+7. **DB table/column names ↔ Agent instructions:** Column names referenced in agent instructions must match `schema.sql`.
 
-8. **Schema documentation ↔ `schema.sql` (source of truth):** `schema.sql` is always the authoritative definition of the database. The human-readable documentation in `references/schemas-overview.md` and `references/tables/*.md` must match `schema.sql` exactly. Any divergence — missing tables, wrong column names, incorrect constraints, outdated descriptions — is a **blocking issue** that must be fixed as part of the change or surfaced to the user immediately.
+8. **Schema documentation ↔ `schema.sql` (source of truth):** `schema.sql` is always the authoritative definition of the database (DDL, inline comments, header block with domain map). Any divergence in agent instructions or other docs is a **blocking issue** that must be fixed as part of the change or surfaced to the user immediately.
 
 #### Data Model Architecture (Stable)
 
 The plugin stores all workflow state and decisions in a SQLite database at `.claude/rigorous-dev.db` (WAL mode, foreign keys enabled). The schema is defined in `mcp-server/schema.sql`. **Agents never access the database directly** — all reads and writes go through MCP tools exposed by the MCP server registered in `.mcp.json`.
 
-**Schema documentation layers (from ground truth to human-readable):**
-1. `mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys.
-2. `skills/rigorous-dev/references/schemas-overview.md` — Data model overview. Summarizes every domain, lists all tables with producer agent and purpose, links to detailed docs.
-3. `skills/rigorous-dev/references/tables/*.md` — Per-domain detailed table documentation (core.md, requirements.md, architecture.md, ux-design.md, planning.md, implementation.md, documentation.md, qa-test.md, deployment.md, cross-cutting.md, data-model.md).
+**Schema documentation layers:**
+1. `mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys, and inline comments (`-- Domain:`, `-- Purpose:`, `-- Context:`). Also contains a header block with design principles, domain map (all tables by domain), and a new-entity checklist.
 
 **Core Spine (4 tables — hierarchy is stable, discover actual phase names from `PHASES` array):**
 ```
@@ -200,7 +190,7 @@ Core spine tools (discover actual tool names, but the pattern is stable):
 
 **Changelog Entity Tables:**
 
-Every entity carries `iteration_id` and `revision_id` (both NOT NULL) for full provenance. Discover actual entity types and tables via the discovery commands in Step 0. Tables are organized by domain and documented in `references/tables/`.
+Every entity carries `iteration_id` and `revision_id` (both NOT NULL) for full provenance. Discover actual entity types and tables via the discovery commands in Step 0. Tables are organized by domain (see the domain map in `schema.sql` header).
 
 **Entity Versioning:** Some entity tables use TEXT primary keys with UPSERT semantics — re-inserting during a new revision updates in place and captures the old state in `entity_snapshot`. Discover which tables use this model via the `TEXT_PK_TYPES` discovery command.
 
@@ -216,11 +206,8 @@ Every entity carries `iteration_id` and `revision_id` (both NOT NULL) for full p
 2. Add/modify tool handlers in `write-tools.js` and/or `read-tools.js`
 3. Update the `ENTITY_TABLE` mapping in `read-tools.js` if adding a new entity type
 4. Update the `PHASES` array in `write-tools.js` if adding a new phase
-5. Update `references/schemas-overview.md` to reflect the change
-6. Update the corresponding `references/tables/*.md` documentation
-7. Update any agent instructions that reference the changed tables/columns/tools
-8. Re-run discovery commands to confirm the new state
-9. Verify that `schemas-overview.md` and `references/tables/*.md` match `schema.sql` — divergence is a blocking issue
+5. Update any agent instructions that reference the changed tables/columns/tools
+6. Re-run discovery commands to confirm the new state
 
 #### Workflow
 

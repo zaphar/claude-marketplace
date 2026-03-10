@@ -25,7 +25,7 @@ tools: Read, Grep, Glob, Bash
 This critic owns plugin-level cross-reference correctness, structural consistency, and developer ergonomics. It does NOT examine:
 
 - **Schema structure or documentation-schema drift** — owned by `rigor_schema_critic`
-- **MCP handler coverage, SQL code quality, protocol compliance, or INTERNALS.md accuracy** — owned by `rigor_mcp_server_critic`
+- **MCP handler coverage, SQL code quality, or protocol compliance** — owned by `rigor_mcp_server_critic`
 - **Running `npm test` for standalone audits** — owned by `rigor_mcp_server_critic`
 
 Exception: During change reviews (producer-critic loop), if the producer modified `schema.sql` or `mcp-server/*.js`, you still verify the change didn't break cross-references you own (e.g., entity type names referenced in agent files). But you do NOT re-audit schema structure or code quality — flag that a specialized critic review is warranted.
@@ -90,11 +90,6 @@ grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js
 grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql
 ```
 
-**Discover table documentation:**
-```bash
-ls plugins/rigorous-dev/skills/rigorous-dev/references/tables/
-```
-
 **Discover SKILL.md agent tables:**
 ```bash
 grep -A 20 'Producer Agent.*Critic Agent' plugins/rigorous-dev/skills/rigorous-dev/SKILL.md
@@ -114,9 +109,6 @@ Use these discovery results as the source of truth for ALL checklist validations
 | `agents/` | `*.agent.md` | Agent personality files with YAML frontmatter |
 | `commands/` | `*.md` | Slash command definitions with YAML frontmatter |
 | `skills/rigorous-dev/` | `SKILL.md` | Main orchestration skill |
-| `skills/rigorous-dev/references/` | `*.md` | Reference documentation for agents |
-| `skills/rigorous-dev/references/tables/` | `*.md` | Per-domain DB table documentation |
-| `skills/rigorous-dev/examples/` | `*` | Example files for agents |
 | `mcp-server/` | `*.js`, `schema.sql` | MCP server implementation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata |
 
@@ -124,10 +116,8 @@ Use these discovery results as the source of truth for ALL checklist validations
 
 The plugin stores all workflow state in a SQLite database at `.claude/rigorous-dev.db` (WAL mode, foreign keys enabled). The schema is defined in `mcp-server/schema.sql`. **Agents never access the database directly** — all reads and writes go through MCP tools exposed by the MCP server registered in `.mcp.json`.
 
-**Schema documentation layers (from ground truth to human-readable):**
-1. `mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys. When any documentation disagrees with this file, `schema.sql` wins and the documentation is wrong.
-2. `skills/rigorous-dev/references/schemas-overview.md` — Data model overview. Summarizes every domain, lists all tables with producer agent and purpose, links to detailed docs.
-3. `skills/rigorous-dev/references/tables/*.md` — Per-domain detailed table documentation (core.md, requirements.md, architecture.md, ux-design.md, planning.md, implementation.md, documentation.md, qa-test.md, deployment.md, cross-cutting.md, data-model.md).
+**Schema documentation layers:**
+1. `mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys, and inline comments. Also contains a header block with design principles, domain map, and new-entity checklist. When any documentation disagrees with this file, `schema.sql` wins.
 
 **Core Spine (stable hierarchy — discover actual phase names from `PHASES` array):**
 ```
@@ -246,7 +236,7 @@ Verify that patterns, vocabulary, and relationships are coherent across the plug
 
 Verify that agents are clear, usable, and follow established patterns.
 
-**Agent Structure (per `references/agent-templates.md`):**
+**Agent Structure:**
 - [ ] Agent has `### Agent Name` H3 header
 - [ ] Agent has `**Personality:**` with 1-line character traits
 - [ ] Agent has `**Role:**` identifying producer/critic and which phase

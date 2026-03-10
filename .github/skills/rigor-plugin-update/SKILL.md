@@ -103,5 +103,4 @@ All agents have deep embedded knowledge of the plugin's file structure, cross-re
 14. **Report progress** — At the start of each work-unit, report done/in-progress/remaining counts.
 15. **All audit outputs use the Findings Index format** — See `workflows/findings-review.md` for the canonical structure. **Do NOT improvise report formats.**
 16. **Schema documentation divergence is blocking** — `schema.sql` is the source of truth. Mismatches in docs are blocking issues.
-17. **INTERNALS.md divergence is blocking** — Source code is the ground truth. If INTERNALS.md makes claims that disagree with the actual code, INTERNALS.md must be updated. Never change code to match stale documentation.
-18. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.
+17. **Read the instruction files** — Always read the relevant mode file and workflow files before executing. Do not rely on memory or summaries of their contents.

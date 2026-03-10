@@ -96,6 +96,5 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 - Read UX selectively (flows and traceability, not design system or mockups).
 - Record each architecture entry as you complete its topic (write `api_spec.yaml` separately).
 - Research one technology at a time; write ADR before researching next.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
 **Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
