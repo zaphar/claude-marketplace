@@ -6,7 +6,7 @@ import { closeDb, getDb } from "../db.js";
  * @returns {import("better-sqlite3").Database}
  */
 export function freshDb() {
-  process.env.RIGOROUS_DEV_DB_PATH = ":memory:";
+  process.env.RIGOR_DB_PATH = ":memory:";
   closeDb();
   return getDb();
 }

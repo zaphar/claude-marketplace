@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,10 +16,15 @@ export function getDb() {
   if (_db) return _db;
 
   const dbPath =
-    process.env.RIGOROUS_DEV_DB_PATH ||
+    process.env.RIGOR_DB_PATH ||
     path.join(process.cwd(), ".claude", "rigor.db");
 
   mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  const oldDbPath = path.join(process.cwd(), ".claude", "rigorous-dev.db");
+  if (!existsSync(dbPath) && existsSync(oldDbPath)) {
+    renameSync(oldDbPath, dbPath);
+  }
 
   const db = new Database(dbPath);
 
