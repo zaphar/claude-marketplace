@@ -336,4 +336,24 @@ describe("changelog_update", () => {
       /does not support/
     );
   });
+
+  it("sets updated_at when updating adr status", () => {
+    handleWriteTool("changelog_insert", {
+      entity_type: "adr",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "ADR-UPD", title: "Test ADR", status: "proposed" },
+    });
+    const before = db.prepare("SELECT updated_at FROM adr WHERE id = 'ADR-UPD'").get();
+    assert.strictEqual(before.updated_at, null);
+
+    handleWriteTool("changelog_update", {
+      entity_type: "adr",
+      entity_id: "ADR-UPD",
+      updates: { status: "accepted" },
+    });
+    const after = db.prepare("SELECT status, updated_at FROM adr WHERE id = 'ADR-UPD'").get();
+    assert.strictEqual(after.status, "accepted");
+    assert.ok(after.updated_at, "updated_at should be set after changelog_update");
+  });
 });

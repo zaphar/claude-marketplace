@@ -1054,6 +1054,7 @@ function changelogUpdate(args) {
     adr: {
       table: "adr",
       statuses: ["proposed", "accepted", "deprecated", "superseded"],
+      hasUpdatedAt: true,
     },
   };
 
@@ -1079,6 +1080,11 @@ function changelogUpdate(args) {
 
   if (setClauses.length === 0) {
     throw new Error("No valid fields provided in updates");
+  }
+
+  if (config.hasUpdatedAt) {
+    setClauses.push("updated_at = @now");
+    params.now = new Date().toISOString();
   }
 
   const sql = `UPDATE ${config.table} SET ${setClauses.join(", ")} WHERE id = @entity_id`;
