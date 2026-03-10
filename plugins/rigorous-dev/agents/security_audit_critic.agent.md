@@ -77,3 +77,34 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 - If the same audit gaps persist after 3 revision cycles, pause and report the recurring gaps to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If the auditor's findings appear fundamentally inaccurate (multiple spot-checks fail), pause and tell the user the audit quality is insufficient.
+
+**`changelog_insert` data structures:**
+
+**project_lesson** (when you identify a significant pattern or anti-pattern):
+```
+changelog_insert(entity_type: "project_lesson", iteration_id: <id>, data: {
+  phase_name: "audit",         // required: current phase name
+  category: "pattern",         // required: "pattern" | "anti-pattern" | "convention" | "risk" | "decision" | "process"
+  lesson: "...",               // required: the lesson text
+  recurring: 1                 // optional: 1 if observed before, 0 (default) if new
+})
+```
+
+**blocker** (for Escalation after 3 revision cycles):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "audit",         // required
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "security-audit-critic"  // required: agent name
+})
+```
+
+**`changelog_update`** — only `status` is updatable; supported entity types:
+```
+changelog_update(entity_type: "security_audit_finding", entity_id: <id>, updates: { status: "false-positive" })
+// security_audit_finding statuses: "open" | "resolved" | "accepted" | "false-positive"
+
+changelog_update(entity_type: "adr", entity_id: <id>, updates: { status: "accepted" })
+// adr statuses: "proposed" | "accepted" | "deprecated" | "superseded"
+```

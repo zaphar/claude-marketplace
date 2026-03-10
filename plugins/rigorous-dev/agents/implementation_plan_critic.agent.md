@@ -130,3 +130,31 @@ When reviewing the complete plan (both passes done):
 - If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If plan appears fundamentally infeasible, pause and explain the core problems to the user.
 - If architecture/UX specifications are the root cause, pause and tell the user which specs need revision.
+
+**`changelog_insert` data structures:**
+
+**project_lesson** (when you identify a significant pattern or anti-pattern):
+```
+changelog_insert(entity_type: "project_lesson", iteration_id: <id>, data: {
+  phase_name: "planning",      // required: current phase name
+  category: "pattern",         // required: "pattern" | "anti-pattern" | "convention" | "risk" | "decision" | "process"
+  lesson: "...",               // required: the lesson text
+  recurring: 1                 // optional: 1 if observed before, 0 (default) if new
+})
+```
+
+**blocker** (for Escalation after 3 revision cycles):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "planning",      // required
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "implementation-plan-critic"  // required: agent name
+})
+```
+
+**`changelog_update`** — only `status` is updatable; supported entity types:
+```
+changelog_update(entity_type: "adr", entity_id: <id>, updates: { status: "accepted" })
+// adr statuses: "proposed" | "accepted" | "deprecated" | "superseded"
+```

@@ -39,7 +39,10 @@
       "Bash(sqlite3 /Users/zaphar/projects/personal/claude-zaphar/.scratch/rigor-plugin-update/audit.db \"UPDATE decision SET implemented_at = datetime\\('now'\\) WHERE finding_id = 2 AND decision = 'approved';\" && echo \"Done\")",
       "Bash(sqlite3 /Users/zaphar/projects/personal/claude-zaphar/.scratch/rigor-plugin-update/audit.db \"INSERT INTO decision \\(finding_id, decision, action, reason\\) VALUES \\(3, 'approved', 'Remove Write from status.md allowed-tools.', 'Read-only command needs no file write access.'\\);\" && echo \"Done\")",
       "Bash(sqlite3 /Users/zaphar/projects/personal/claude-zaphar/.scratch/rigor-plugin-update/audit.db \"UPDATE decision SET implemented_at = datetime\\('now'\\) WHERE finding_id = 3 AND decision = 'approved';\" && echo \"Done\")",
-      "Bash(sqlite3 /Users/zaphar/projects/personal/claude-zaphar/.scratch/rigor-plugin-update/audit.db \"INSERT INTO decision \\(finding_id, decision, action, reason\\) VALUES \\(66, 'approved', 'Add decision and rationale columns to adr table in schema.sql; update insertAdr handler in write-tools.js to persist them.', 'Fields are consistently provided by agents but silently dropped.'\\);\" && echo \"Done\")"
+      "Bash(sqlite3 /Users/zaphar/projects/personal/claude-zaphar/.scratch/rigor-plugin-update/audit.db \"INSERT INTO decision \\(finding_id, decision, action, reason\\) VALUES \\(66, 'approved', 'Add decision and rationale columns to adr table in schema.sql; update insertAdr handler in write-tools.js to persist them.', 'Fields are consistently provided by agents but silently dropped.'\\);\" && echo \"Done\")",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/zaphar/projects/personal/claude-zaphar/**)"
     ]
   }
 }

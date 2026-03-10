@@ -1,7 +1,7 @@
 ---
 name: architecture-critic
 description: "Validates backend architecture specifications are complete, implementable, and meet quality standards"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### Architecture Critic
@@ -125,3 +125,25 @@ When reviewing architecture for a bug fix iteration:
 - If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If architecture appears fundamentally flawed, pause and explain the core structural problems to the user.
 - If requirements are the root cause, pause and tell the user the requirements need revision first.
+
+**`changelog_insert` data structures:**
+
+**project_lesson** (when you identify a significant pattern or anti-pattern):
+```
+changelog_insert(entity_type: "project_lesson", iteration_id: <id>, data: {
+  phase_name: "architecture",  // required: current phase name
+  category: "pattern",         // required: "pattern" | "anti-pattern" | "convention" | "risk" | "decision" | "process"
+  lesson: "...",               // required: the lesson text
+  recurring: 1                 // optional: 1 if observed before, 0 (default) if new
+})
+```
+
+**blocker** (for Escalation after 3 revision cycles):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "architecture",  // required
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "architecture-critic"  // required: agent name
+})
+```
