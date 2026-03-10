@@ -280,14 +280,16 @@ function insertAdr(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "adr", data.id);
 
   db.prepare(
-    `INSERT INTO adr (id, iteration_id, title, status, date, context, superseded_by, consequences, research_sources, created_at)
-     VALUES (@id, @iteration_id, @title, @status, @date, @context, @superseded_by, @consequences, @research_sources, @created_at)
+    `INSERT INTO adr (id, iteration_id, title, status, date, context, decision, rationale, superseded_by, consequences, research_sources, created_at)
+     VALUES (@id, @iteration_id, @title, @status, @date, @context, @decision, @rationale, @superseded_by, @consequences, @research_sources, @created_at)
      ON CONFLICT(id) DO UPDATE SET
        iteration_id = excluded.iteration_id,
        title = excluded.title,
        status = excluded.status,
        date = excluded.date,
        context = excluded.context,
+       decision = excluded.decision,
+       rationale = excluded.rationale,
        superseded_by = excluded.superseded_by,
        consequences = excluded.consequences,
        research_sources = excluded.research_sources,
@@ -299,6 +301,8 @@ function insertAdr(db, iteration_id, revision_id, data) {
     status: data.status ?? "proposed",
     date: data.date ?? null,
     context: data.context ?? null,
+    decision: data.decision ?? null,
+    rationale: data.rationale ?? null,
     superseded_by: data.superseded_by ?? null,
     consequences: JSON.stringify(data.consequences ?? []),
     research_sources: JSON.stringify(data.research_sources ?? []),

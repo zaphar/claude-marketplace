@@ -331,6 +331,8 @@ CREATE TABLE IF NOT EXISTS adr (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
+  decision TEXT, -- the decision that was made, e.g. "Adopt", "Reject", "Deprecate"
+  rationale TEXT, -- the reasoning behind the decision
   date TEXT, -- ISO 8601 date, e.g. "2026-03-08"
   context TEXT,
   superseded_by TEXT REFERENCES adr(id) ON DELETE SET NULL,
