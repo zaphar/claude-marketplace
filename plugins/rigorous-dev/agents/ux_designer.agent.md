@@ -123,6 +123,75 @@ Moderate risk of context exhaustion, especially during Phase 2 with multiple scr
 
 **Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 
+**`changelog_insert` data structures:**
+
+**user_flow** — one per call:
+```
+changelog_insert(entity_type: "user_flow", iteration_id: <id>, data: {
+  id: "FLOW-001",              // required: sequential ID
+  name: "...",                 // required
+  goal: "...",                 // required
+  persona_id: "PERSONA-001",   // optional
+  entry_point: "...",          // optional
+  success_state: "...",        // optional
+  data_dependencies: ["..."],  // optional array
+  error_states: [              // optional array
+    { condition: "...", recovery: "..." }
+  ],
+  steps: [                     // optional array
+    {
+      step_number: 1,          // required within step
+      action: "...",           // required within step
+      surface: "SCREEN-001",   // optional
+      is_decision_point: false,// optional
+      branches: [{ condition: "...", next_step: 2 }]  // optional
+    }
+  ],
+  requirements_addressed: ["REQ-001"]  // optional: auto-creates requirement_trace rows
+})
+```
+
+**screen** — one per call:
+```
+changelog_insert(entity_type: "screen", iteration_id: <id>, data: {
+  id: "SCREEN-001",            // required: sequential ID
+  name: "...",                 // required
+  purpose: "...",              // required
+  wireframe_path: "...",       // optional
+  mockup_path: "mockups/dashboard.html",  // optional
+  components: ["Button", "DataTable"]     // optional: component names used on this screen
+})
+```
+
+**info_architecture** — single object or array:
+```
+changelog_insert(entity_type: "info_architecture", iteration_id: <id>, data: [
+  { category: "navigation", key: "main-nav",   value: "Primary navigation", parent_id: null },
+  { category: "navigation", key: "nav-item-1", value: "Dashboard", parent_id: <returned-id> }
+  // category, key, value are all required; parent_id optional for hierarchical entries
+])
+```
+
+**persona_addressed** — one per call:
+```
+changelog_insert(entity_type: "persona_addressed", iteration_id: <id>, data: {
+  persona_id: "PERSONA-001",   // required
+  goal: "...",                 // required: the persona goal being addressed
+  how_addressed: "...",        // required: how the UX design addresses it
+  flows: ["FLOW-001"]          // optional: flow IDs that implement this
+})
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "ux_design",     // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "ux-designer"     // required: agent name
+})
+```
+
 **`ux_asset` insertion data structure** — use these exact field names:
 ```
 changelog_insert(entity_type: "ux_asset", iteration_id: <id>, data: [

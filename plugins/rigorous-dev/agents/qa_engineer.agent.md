@@ -113,3 +113,37 @@ This agent is at **moderate risk** of context exhaustion during testing of large
 - If tests consistently fail after 3 developer remediation attempts, pause and tell the user which failures persist. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If requirements are untestable as written, pause and describe why. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If architecture makes testing impossible, pause and describe the issue. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**`changelog_insert` data structures:**
+
+**test_report** — one per QA run:
+```
+changelog_insert(entity_type: "test_report", iteration_id: <id>, data: {
+  status: "pass",              // required: "pass" | "fail" | "blocked"
+  total_tests: 42,             // optional (defaults to 0)
+  passed_count: 40,            // optional
+  failed: 2,                   // optional
+  skipped: 0,                  // optional
+  coverage_line: 87.5,         // optional: percentage as float
+  coverage_branch: 75.0,       // optional: percentage as float
+  coverage_function: 90.0,     // optional: percentage as float
+  duration_seconds: 12.3,      // optional
+  stdout: "...",               // optional: test runner output
+  stderr: "...",               // optional
+  version: "1.0.0",            // optional
+  document_date: "2025-01-01", // optional
+  requirements_version: "...", // optional
+  architecture_version: "...", // optional
+  commit_sha: "abc123"         // optional
+})
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "qa",            // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "qa-engineer"     // required: agent name
+})
+```

@@ -98,3 +98,92 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 - Research one technology at a time; write ADR before researching next.
 
 **Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**`changelog_insert` data structures:**
+
+**adr** — one per call:
+```
+changelog_insert(entity_type: "adr", iteration_id: <id>, data: {
+  id: "ADR-001",               // required: sequential ID
+  title: "...",                // required
+  status: "proposed",          // optional: "proposed" | "accepted" | "deprecated" | "superseded"; default "proposed"
+  context: "...",              // optional: problem being decided
+  decision: "...",             // optional: the decision made
+  rationale: "...",            // optional
+  date: "2025-01-01",          // optional: ISO 8601
+  consequences: ["..."],       // optional array
+  research_sources: ["..."],   // optional array of URLs/citations
+  superseded_by: "ADR-002",    // optional
+  alternatives_considered: [   // optional array; also accepted as "alternatives"
+    { option_text: "...", pros: ["..."], cons: ["..."] }
+  ]
+})
+```
+
+**adr_decision** — one per ADR to record the chosen alternative:
+```
+changelog_insert(entity_type: "adr_decision", iteration_id: <id>, data: {
+  adr_id: "ADR-001",           // required
+  alternative_id: <int>,       // optional: DB id of the chosen adr_alternative row
+  rationale: "...",            // optional
+  decided_at: "2025-01-01T..." // optional: defaults to now
+})
+```
+
+**component** — one per call:
+```
+changelog_insert(entity_type: "component", iteration_id: <id>, data: {
+  id: "COMP-001",              // required: sequential ID
+  name: "...",                 // required
+  purpose: "...",              // required
+  type: "api-server",          // required — NOTE: field is "type", NOT "component_type"
+  interfaces: [                // optional array
+    { name: "...", type: "http", description: "..." }
+    // NOTE: interface field is "type", NOT "interface_type"
+  ],
+  dependencies: ["COMP-002"],  // optional: component IDs this depends on
+  requirements_addressed: ["REQ-001"],  // optional: auto-creates requirement_trace rows
+  integration_test_boundaries: [        // optional
+    { target_component_id: "COMP-002", boundary_type: "...", correct_behavior: "..." }
+  ]
+})
+```
+
+**approved_dependency** — single object or array:
+```
+changelog_insert(entity_type: "approved_dependency", iteration_id: <id>, data: [
+  {
+    package: "express",          // required
+    purpose: "...",              // required
+    justification: "...",        // required
+    version_constraint: "^4",    // optional
+    adr_id: "ADR-001",           // optional
+    license: "MIT",              // optional
+    category: "backend-framework", // optional: logical group e.g. "database", "ci-cd"
+    maintenance_activity: "...", // optional
+    community_adoption: "...",   // optional
+    transitive_deps: "...",      // optional
+    single_maintainer_risk: 0    // optional: 0 or 1
+  }
+])
+```
+
+**requirement_trace** — for explicit endpoint/technology/adr traces (component inserts auto-create component traces):
+```
+changelog_insert(entity_type: "requirement_trace", iteration_id: <id>, data: {
+  requirement_id: "REQ-001",   // required
+  addressed_by: "...",         // required: ID or name of the addressing element
+  addressed_by_type: "endpoint", // required: "component" | "flow" | "screen" | "adr" | "endpoint" | "technology"
+  notes: "..."                 // optional
+})
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "architecture",  // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "backend-architect"  // required: agent name
+})
+```

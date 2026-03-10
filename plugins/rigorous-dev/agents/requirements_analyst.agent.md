@@ -142,3 +142,77 @@ A **blocker** is different from a **risk**. A risk is a tension or trade-off wor
 - If needed information is missing and the user cannot provide it, pause and ask for clarification. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If requirements scope appears to exceed reasonable bounds, pause and tell the user the scope is too large and recommend prioritization. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If constraints make requirements unachievable, pause and tell the user which constraints conflict with which requirements. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**`changelog_insert` data structures:**
+
+**persona** — one per call:
+```
+changelog_insert(entity_type: "persona", iteration_id: <id>, data: {
+  id: "PERSONA-001",           // required: sequential ID
+  name: "...",                 // required
+  description: "...",          // required
+  technical_level: "...",      // optional
+  frequency_of_use: "...",     // optional
+  goals: ["...", "..."]        // optional array
+})
+```
+
+**requirement** — one per call:
+```
+changelog_insert(entity_type: "requirement", iteration_id: <id>, data: {
+  id: "REQ-001",               // required: sequential ID
+  description: "...",          // required
+  priority: "must-have",       // required: "must-have" | "should-have" | "nice-to-have"
+  category: "...",             // required: e.g. "authentication", "data-model"
+  rationale: "...",            // optional
+  acceptance_criteria: ["..."],// optional array
+  personas: ["PERSONA-001"],   // optional: linked persona IDs
+  depends_on: ["REQ-002"]      // optional: prerequisite requirement IDs
+})
+```
+
+**project_context** — single object or array:
+```
+changelog_insert(entity_type: "project_context", iteration_id: <id>, data: [
+  { key: "problem_statement", value: "...", category: "context" },
+  { key: "assumption_1",      value: "...", category: "assumption" }
+  // key and value are required; category is optional
+])
+```
+
+**data_exchange** — single object or array:
+```
+changelog_insert(entity_type: "data_exchange", iteration_id: <id>, data: [
+  {
+    direction: "input",        // required: "input" | "output"
+    name: "...",               // required
+    description: "...",        // required
+    source: "...",             // optional
+    destination: "...",        // optional
+    data_format: "..."         // optional
+  }
+])
+```
+
+**nonfunctional_requirement** — single object or array:
+```
+changelog_insert(entity_type: "nonfunctional_requirement", iteration_id: <id>, data: [
+  {
+    nfr_type: "deployment",    // required: "deployment" | "operational" | "technology"
+    item: "...",               // required: the NFR description
+    category: "...",           // optional: sub-category
+    value: "...",              // optional: threshold or target value
+    notes: "..."               // optional
+  }
+])
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "requirements",  // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "requirements-analyst"  // required: agent name
+})
+```

@@ -109,3 +109,13 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 - If critical vulnerabilities are found that require immediate attention, pause and tell the user immediately. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If the security architecture itself is fundamentally flawed (not just the implementation), pause and tell the user the architecture needs revision. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If the same vulnerabilities persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**blocker** data structure (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "audit",         // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "security-auditor"// required: agent name
+})
+```

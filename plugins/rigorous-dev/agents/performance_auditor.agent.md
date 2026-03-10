@@ -135,3 +135,13 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 
 - If critical performance issues are found that indicate a fundamental architectural problem (e.g., wrong database choice for the access pattern, synchronous architecture where async is needed), pause and tell the user the architecture may need revision. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If the same performance issues persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**blocker** data structure (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "audit",           // required: current phase name
+  description: "...",            // required
+  severity: "critical",          // required: "critical" | "major" | "minor"
+  raised_by: "performance-auditor"  // required: agent name
+})
+```

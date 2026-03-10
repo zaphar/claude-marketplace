@@ -91,3 +91,54 @@ High risk of context exhaustion during multi-phase implementation.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
 
 **Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
+
+**`changelog_insert` data structures:**
+
+**implementation_manifest** — one per WI completion:
+```
+changelog_insert(entity_type: "implementation_manifest", iteration_id: <id>, data: {
+  requirement_status: [        // optional array
+    {
+      requirement_id: "REQ-001",
+      status: "implemented",   // "implemented" | "partial" | "not_started" | "blocked" | "not_applicable"
+      notes: "..."             // optional
+    }
+  ],
+  component_status: [          // optional array
+    {
+      component_id: "COMP-001",
+      status: "complete",      // "complete" | "partial" | "not_started"
+      notes: "..."             // optional
+    }
+  ],
+  blockers: [                  // optional array
+    {
+      description: "...",
+      severity: "critical",    // "critical" | "major" | "minor"
+      recommendation: "...",   // optional
+      needs_escalation: false, // optional
+      requirements: ["REQ-001"]// optional: affected requirement IDs
+    }
+  ]
+})
+```
+
+**intermediate_asset** — for handoff context between producer and critic:
+```
+changelog_insert(entity_type: "intermediate_asset", iteration_id: <id>, data: {
+  asset_type: "plan",          // required: "commit_ref" | "file_ref" | "work_item" | "plan" | "note"
+  title: "...",                // required
+  content: "...",              // optional: text content
+  phase_id: <int>              // optional
+})
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "implementation", // required: current phase name
+  description: "...",           // required
+  severity: "critical",         // required: "critical" | "major" | "minor"
+  raised_by: "senior-developer" // required: agent name
+})
+```

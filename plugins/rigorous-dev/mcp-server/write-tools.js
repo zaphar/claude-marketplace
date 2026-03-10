@@ -364,7 +364,7 @@ function insertComponent(db, iteration_id, revision_id, data) {
     iteration_id,
     name: data.name,
     purpose: data.purpose,
-    component_type: data.type,
+    component_type: data.type ?? data.component_type,
     created_at: now,
     updated_at: now
   });
@@ -380,7 +380,7 @@ function insertComponent(db, iteration_id, revision_id, data) {
     "INSERT INTO component_interface (component_id, name, interface_type, description) VALUES (@component_id, @name, @interface_type, @description)"
   );
   for (const iface of data.interfaces ?? []) {
-    insertIface.run({ component_id: data.id, name: iface.name, interface_type: iface.type, description: iface.description ?? null });
+    insertIface.run({ component_id: data.id, name: iface.name, interface_type: iface.type ?? iface.interface_type, description: iface.description ?? null });
   }
 
   const insertDep = db.prepare(

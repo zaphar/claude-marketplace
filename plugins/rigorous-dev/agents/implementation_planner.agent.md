@@ -119,3 +119,65 @@ This agent is at **high risk** of context exhaustion.
 *Pass 2:* Work one phase at a time. Use `changelog_query` to load only the specific requirements, components, and flows needed per WI. Write each WI immediately. If context exhausts, continue from first phase missing WI files.
 
 **Escalation:** If specs have gaps/conflicts, scope is too large (>10 phases), or circular dependencies exist — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**`changelog_insert` data structures:**
+
+**plan_overview** — one per iteration:
+```
+changelog_insert(entity_type: "plan_overview", iteration_id: <id>, data: {
+  strategy: "...",             // required
+  rationale: "...",            // required
+  phase_one_approach: "...",   // optional
+  assumptions: ["..."],        // optional array
+  risks: [                     // optional array
+    { risk: "...", mitigation: "...", work_item_number: 1 }
+  ]
+})
+```
+
+**work_item** — one per call:
+```
+changelog_insert(entity_type: "work_item", iteration_id: <id>, data: {
+  phase_number: 1,             // required: which phase this WI belongs to
+  name: "...",                 // required
+  work_type: "feature",        // required: e.g. "feature" | "infrastructure" | "foundation"
+  goal: "...",                 // required
+  complexity: "M",             // optional: "XS" | "S" | "M" | "L" | "XL"
+  review_checkpoint: false,    // optional: true if this WI is a review checkpoint
+  notes: "...",                // optional
+  entry_criteria: ["..."],     // optional array
+  exit_criteria: ["..."],      // optional array
+  checkpoint_focus: ["..."],   // optional array
+  critical_path_sequence: 1,   // optional: position on critical path (null if not on it)
+  work_order: 1,               // optional: explicit execution order
+  risks: [                     // optional array
+    { risk: "...", mitigation: "..." }
+  ],
+  requirements: [              // optional: linked requirements
+    "REQ-001",                 // can be plain string ID...
+    { requirement_id: "REQ-002", priority: "must-have", notes: "..." }  // ...or object
+  ],
+  components: ["COMP-001"]     // optional: component IDs this WI touches
+})
+```
+
+**plan_external_dependency** — one per call:
+```
+changelog_insert(entity_type: "plan_external_dependency", iteration_id: <id>, data: {
+  name: "...",                 // required
+  description: "...",          // required
+  work_item_id: <int>,         // optional: DB id of the affected work_item row
+  risk_level: "medium",        // required: "low" | "medium" | "high" | "critical"
+  mitigation: "..."            // optional
+})
+```
+
+**blocker** (for Escalation):
+```
+changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+  phase_name: "planning",      // required: current phase name
+  description: "...",          // required
+  severity: "critical",        // required: "critical" | "major" | "minor"
+  raised_by: "implementation-planner"  // required: agent name
+})
+```
