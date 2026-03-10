@@ -1,7 +1,7 @@
 ---
 name: ux-critic
 description: "Validates that UX specifications are complete, usable, accessible, and meet quality standards"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert, mcp__rigor-db__changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__rigor-db__changelog_update, rigor-db/changelog_update
 ---
 
 ### UX Critic

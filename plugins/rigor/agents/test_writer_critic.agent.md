@@ -1,7 +1,7 @@
 ---
 name: test-writer-critic
 description: "Validates test completeness and that tests are in failing (red) state before implementation"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert, mcp__rigor-db__changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__rigor-db__changelog_update, rigor-db/changelog_update
 ---
 
 ### Test Writer Critic

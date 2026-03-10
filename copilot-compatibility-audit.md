@@ -65,6 +65,18 @@ All six built-in tool names used across the 20 rigor agents (`Read`, `Grep`, `Gl
 | **`SKILL.md` structure** | ✅ Identical | YAML frontmatter (`name`, `description`) + markdown body — same format ([Creating agent skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-skills)) |
 | **Skill directory convention** | ✅ Works | `skills/workflow/SKILL.md` follows the required pattern |
 
+### Subagent MCP Access
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| **Subagents inherit session tools** | ✅ Confirmed | VS Code docs: "Subagents use the same tools and AI model as the main session" ([Custom agents in VS Code — Using subagents](https://code.visualstudio.com/docs/copilot/customization/custom-agents)). GitHub docs: "Your custom agent will have access to MCP server tools that have been configured in both its agent profile and/or the repository settings" ([Custom agents configuration](https://docs.github.com/en/copilot/reference/custom-agents-configuration)). |
+| **`tools:` acts as allowlist** | ⚠️ Gated by Risk 2 | VS Code docs: "tools: A list of tool or tool set names that are available for this custom agent" and "If a given tool is not available when using the custom agent, it is ignored" ([Agent tools in VS Code](https://code.visualstudio.com/docs/copilot/agents/agent-tools)). GitHub docs: "The `tools` list filters the set of tools that are made available to the agent" and "A specific list (`tools: [...]`) enables only those tools" ([Custom agents configuration](https://docs.github.com/en/copilot/reference/custom-agents-configuration#tools-processing)). MCP tools must be **explicitly listed** in the agent's `tools:` frontmatter to be accessible. |
+| **MCP tool naming format** | ⚠️ Gated by Risk 2 | GitHub docs: "Tool names from specific MCP servers can be prefixed with the server name followed by a `/`. For example, `some-mcp-server/some-tool`" and "You can also explicitly enable all tools from a specific MCP server using `some-mcp-server/*`" ([Custom agents configuration — Tools](https://docs.github.com/en/copilot/reference/custom-agents-configuration#tools)). The Claude `mcp__server__tool` format is **not listed** in the tool aliases table — only built-in tools have Claude→Copilot mappings. "All unrecognized tool names are ignored." |
+
+Plugin-level MCP servers (from `.mcp.json`) are loaded at the session level. Subagents share the session's tool set — they get their own context window but inherit all available tools. **However**, the `tools:` frontmatter acts as an allowlist: only tools explicitly listed are available to the agent. If an MCP tool isn't listed, it's not accessible even though the server is running.
+
+The rigor agents DO list their MCP tools — but using the Claude `mcp__rigor-db__*` format. The VS Code docs show the Copilot format is `<server-name>/*` or `<server-name>/tool_name`. If Copilot doesn't recognize the Claude naming format, the MCP tool entries are silently ignored per the docs ("If a given tool is not available... it is ignored"), effectively leaving the agents with **no MCP access**. This makes subagent MCP access fully dependent on **Risk 2** below.
+
 ### Data Storage
 
 | Component | Status | Evidence |

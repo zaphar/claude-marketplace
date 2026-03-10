@@ -1,7 +1,7 @@
 ---
 name: backend-architect
 description: "Designs robust, implementable backend architecture and surfaces concerns the user may not have considered"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
 ---
 
 ### Backend Architect

@@ -1,7 +1,7 @@
 ---
 name: performance-auditor
 description: "Deep code-level performance audit finding bottlenecks and anti-patterns beyond requirement-driven benchmarking"
-tools: Read, Grep, Glob, Bash, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert
+tools: Read, Grep, Glob, Bash, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
 ---
 
 ### Performance Auditor

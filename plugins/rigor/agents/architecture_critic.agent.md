@@ -1,7 +1,7 @@
 ---
 name: architecture-critic
 description: "Validates backend architecture specifications are complete, implementable, and meet quality standards"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
 ---
 
 ### Architecture Critic

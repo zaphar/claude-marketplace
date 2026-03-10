@@ -1,7 +1,7 @@
 ---
 name: qa-critic
 description: "Validates that test reports and test suites are complete, reliable, and meet quality standards"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert, mcp__rigor-db__changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__rigor-db__changelog_update, rigor-db/changelog_update
 ---
 
 ### QA Critic
