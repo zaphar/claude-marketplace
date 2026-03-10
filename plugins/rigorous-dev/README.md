@@ -18,7 +18,7 @@ Each phase uses a **producer-critic pattern**: a producer agent creates artifact
 
 ```
 /plugin marketplace add https://dev.zaphar.net/zaphar/claude-zaphar
-/plugin install rigorous-dev@claude-zaphar
+/plugin install rigor@claude-zaphar
 ```
 
 ### Local Marketplace Install
@@ -31,7 +31,7 @@ Then inside Claude Code:
 
 ```
 /plugin marketplace add /path/to/claude-zaphar
-/plugin install rigorous-dev@claude-zaphar
+/plugin install rigor@claude-zaphar
 ```
 
 ### Using `--plugin-dir`
@@ -45,19 +45,19 @@ Loads the plugin for the current session without installing.
 ## Commands
 
 **Development Workflow:**
-- `/rigorous-dev:start` — Initialize a new workflow
-- `/rigorous-dev:onboard` — Bootstrap from an existing codebase
-- `/rigorous-dev:resume` — Resume an existing workflow
-- `/rigorous-dev:status` — Display current progress
-- `/rigorous-dev:skip-to <phase>` — Skip to a specific phase (advanced)
-- `/rigorous-dev:close` — Close the current iteration
-- `/rigorous-dev:import` — Import existing data (requirements, design specs, etc.)
-- `/rigorous-dev:new-iteration` — Start a new iteration from a closed workflow
+- `/rigor:start` — Initialize a new workflow
+- `/rigor:onboard` — Bootstrap from an existing codebase
+- `/rigor:resume` — Resume an existing workflow
+- `/rigor:status` — Display current progress
+- `/rigor:skip-to <phase>` — Skip to a specific phase (advanced)
+- `/rigor:close` — Close the current iteration
+- `/rigor:import` — Import existing data (requirements, design specs, etc.)
+- `/rigor:new-iteration` — Start a new iteration from a closed workflow
 
 **Release Workflow:**
-- `/rigorous-dev:start-release` — Start QA and audit
-- `/rigorous-dev:resume-release` — Resume release workflow
-- `/rigorous-dev:release-status` — Display release progress
+- `/rigor:start-release` — Start QA and audit
+- `/rigor:resume-release` — Resume release workflow
+- `/rigor:release-status` — Display release progress
 
 ## Directory Structure
 
@@ -71,7 +71,8 @@ rigorous-dev/
     ├── write-tools.js               # Write tools (changelog_insert, phase_transition, etc.)
     ├── read-tools.js                # Read tools (changelog_query, traceability_query, etc.)
     ├── db.js                        # Database initialization
-    └── server.js                    # MCP server entry point
+    ├── server.js                    # MCP server entry point
+    └── package.json                 # Node dependencies
 ```
 
 ## Customization
@@ -84,7 +85,7 @@ rigorous-dev/
 
 ## Troubleshooting
 
-- **"No project found"** — Run `/rigorous-dev:start` to initialize
+- **"No project found"** — Run `/rigor:start` to initialize
 - **"Database error"** — Ensure `mcp-server/node_modules` is installed (`cd mcp-server && npm install`)
 - **"Too many iterations"** — After 3 producer-critic cycles, you'll be prompted for guidance
 
