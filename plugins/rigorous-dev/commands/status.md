@@ -2,7 +2,6 @@
 description: Display current workflow status and progress
 allowed-tools:
   - Read
-  - Write
   - Bash
 ---
 
