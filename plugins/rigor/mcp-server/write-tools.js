@@ -17,7 +17,7 @@ const PHASES = [
 // ---------------------------------------------------------------------------
 
 function iterationCreate(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { project_name, critic_model } = args;
   const now = new Date().toISOString();
 
@@ -65,7 +65,7 @@ function iterationCreate(args) {
 }
 
 function phaseTransition(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const {
     iteration_id,
     phase_name,
@@ -118,7 +118,7 @@ function phaseTransition(args) {
 }
 
 function workItemTransition(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { work_item_id, status } = args;
 
   const row = db.prepare("SELECT id, phase_number, name, status FROM work_item WHERE id = @work_item_id").get({ work_item_id });
@@ -132,7 +132,7 @@ function workItemTransition(args) {
 }
 
 function revisionCreate(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { phase_id, producer_agent } = args;
   const now = new Date().toISOString();
 
@@ -160,7 +160,7 @@ function revisionCreate(args) {
 }
 
 function revisionUpdate(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { revision_id, status, critic_agent, critic_feedback } = args;
   const now = new Date().toISOString();
 
@@ -1002,7 +1002,7 @@ function insertUxAsset(db, iteration_id, _revision_id, data) {
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { entity_type, revision_id, data } = args;
 
   // Derive iteration_id from revision_id (for handlers that still need it)
@@ -1053,7 +1053,7 @@ function changelogInsert(args) {
 }
 
 function changelogUpdate(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { entity_type, entity_id, updates } = args;
 
   const ALLOWED_TYPES = {
@@ -1112,7 +1112,7 @@ function changelogUpdate(args) {
 }
 
 function commitLink(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { iteration_id, work_item_id, revision_id, commit_sha, message } = args;
   const now = new Date().toISOString();
 
@@ -1127,7 +1127,7 @@ function commitLink(args) {
 }
 
 function projectUpdate(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { status, closed_at, notes, critic_model } = args;
   const now = new Date().toISOString();
 
@@ -1149,7 +1149,7 @@ function projectUpdate(args) {
 }
 
 function blockerResolve(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { blocker_id, resolution_notes } = args;
   const now = new Date().toISOString();
 
@@ -1165,7 +1165,7 @@ function blockerResolve(args) {
 }
 
 function iterationClose(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { iteration_id, notes } = args;
 
   const run = db.transaction(() => {
@@ -1369,6 +1369,15 @@ export const WRITE_TOOLS = [
     },
   },
 ];
+
+// Inject project_root into every tool schema
+for (const tool of WRITE_TOOLS) {
+  tool.inputSchema.properties = {
+    project_root: { type: "string", description: "Absolute path to the project root directory" },
+    ...tool.inputSchema.properties,
+  };
+  tool.inputSchema.required = ["project_root", ...(tool.inputSchema.required ?? [])];
+}
 
 // ---------------------------------------------------------------------------
 // Dispatch

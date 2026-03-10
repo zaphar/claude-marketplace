@@ -22,6 +22,8 @@ Skip directly to a specific phase in the workflow. **Use with caution** - skippi
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Check for Project State
 
 Call `project_status` to check whether a project exists in the DB:

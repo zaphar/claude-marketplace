@@ -20,6 +20,8 @@ Start the release workflow to run pre-release verification: QA testing and secur
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Check for Dev Workflow State
 
 Call `project_status` to check whether a dev workflow exists:

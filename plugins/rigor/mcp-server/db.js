@@ -12,16 +12,16 @@ let _db = null;
  * Get or initialize the SQLite database.
  * @returns {import("better-sqlite3").Database}
  */
-export function getDb() {
+export function getDb(projectRoot) {
   if (_db) return _db;
 
   const dbPath =
     process.env.RIGOR_DB_PATH ||
-    path.join(process.cwd(), ".claude", "rigor.db");
+    path.join(projectRoot, ".claude", "rigor.db");
 
   mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  const oldDbPath = path.join(process.cwd(), ".claude", "rigorous-dev.db");
+  const oldDbPath = path.join(projectRoot, ".claude", "rigorous-dev.db");
   if (!existsSync(dbPath) && existsSync(oldDbPath)) {
     renameSync(oldDbPath, dbPath);
   }

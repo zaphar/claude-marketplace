@@ -21,6 +21,8 @@ Close the current workflow iteration, marking it as completed (or partially comp
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Check for Project State
 
 Call `project_status` to check whether a project exists in the DB:

@@ -529,6 +529,8 @@ Keep the user informed at phase transitions and escalations. Use emojis for quic
 
 ## Available Tools
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 You have access to:
 - **Read** - Read agent files and VCS-tracked source files
 - **Write** - Create/update VCS-tracked files (source code, documentation, diagrams)

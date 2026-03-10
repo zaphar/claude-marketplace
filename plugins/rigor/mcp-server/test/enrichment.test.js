@@ -19,6 +19,7 @@ describe("queryRequirement enrichment", () => {
   it("attaches acceptance_criteria, personas, and depends_on when include_related is true", () => {
     // Create prerequisite persona
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -26,6 +27,7 @@ describe("queryRequirement enrichment", () => {
     });
     // Create dependency requirement
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -33,6 +35,7 @@ describe("queryRequirement enrichment", () => {
     });
     // Create main requirement with acceptance criteria, persona links, and dependency
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -47,6 +50,7 @@ describe("queryRequirement enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       ids: ["REQ-1"],
       include_related: true,
@@ -69,6 +73,7 @@ describe("queryRequirement enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -82,6 +87,7 @@ describe("queryRequirement enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       ids: ["REQ-NOENRICH"],
     });
@@ -94,12 +100,14 @@ describe("queryRequirement enrichment", () => {
 
   it("returns empty arrays for requirement with no personas or dependencies", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-EMPTY", description: "Bare", priority: "nice-to-have", category: "functional" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       ids: ["REQ-EMPTY"],
       include_related: true,
@@ -118,6 +126,7 @@ describe("queryRequirement enrichment", () => {
 describe("queryAdr enrichment", () => {
   it("attaches alternatives with pros/cons, consequences, and research_sources when include_related is true", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -135,6 +144,7 @@ describe("queryAdr enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       ids: ["ADR-1"],
       include_related: true,
@@ -161,6 +171,7 @@ describe("queryAdr enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -174,6 +185,7 @@ describe("queryAdr enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       ids: ["ADR-NOENRICH"],
     });
@@ -186,12 +198,14 @@ describe("queryAdr enrichment", () => {
 
   it("returns empty arrays for ADR with no alternatives or consequences", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "ADR-EMPTY", title: "Bare", decision: "Nothing", rationale: "Testing" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       ids: ["ADR-EMPTY"],
       include_related: true,

@@ -17,6 +17,7 @@ beforeEach(() => {
 function upsertTest(entityType, v1Data, v2Data, checkField) {
   // Insert v1
   const r1 = handleWriteTool("changelog_insert", {
+    project_root: "/tmp/test-project",
     entity_type: entityType,
     iteration_id: seed.iteration_id,
     revision_id: seed.revision_id,
@@ -33,6 +34,7 @@ function upsertTest(entityType, v1Data, v2Data, checkField) {
 
   // Insert v2 (upsert)
   const r2 = handleWriteTool("changelog_insert", {
+    project_root: "/tmp/test-project",
     entity_type: entityType,
     iteration_id: seed.iteration_id,
     revision_id: revision2,
@@ -42,6 +44,7 @@ function upsertTest(entityType, v1Data, v2Data, checkField) {
 
   // Verify current row has v2 data
   const current = handleReadTool("changelog_query", {
+    project_root: "/tmp/test-project",
     entity_type: entityType,
     ids: [v1Data.id],
   });
@@ -172,6 +175,7 @@ describe("multiple upserts work correctly", () => {
         "INSERT INTO revision (phase_id, producer_agent, created_at, status) VALUES (?, 'test', ?, 'draft')"
       ).run(seed.phase_id, now);
       handleWriteTool("changelog_insert", {
+        project_root: "/tmp/test-project",
         entity_type: "persona",
         iteration_id: seed.iteration_id,
         revision_id: i === 1 ? seed.revision_id : Number(rev.lastInsertRowid),
@@ -181,6 +185,7 @@ describe("multiple upserts work correctly", () => {
 
     // Verify current row has the latest data
     const current = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       ids: ["P-1"],
     });

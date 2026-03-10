@@ -43,7 +43,11 @@
       "Bash(for f:*)",
       "Bash(do echo:*)",
       "Read(//Users/zaphar/projects/personal/claude-zaphar/**)",
-      "Bash(mv /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/skills/rigorous-dev /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/skills/workflow\nmv /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/.claude-rigorous-dev.local.example.md /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/.claude-rigor.local.example.md)"
+      "Bash(mv /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/skills/rigorous-dev /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/skills/workflow\nmv /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/.claude-rigorous-dev.local.example.md /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/.claude-rigor.local.example.md)",
+      "Bash(cd /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/mcp-server && npm test 2>&1)",
+      "Bash(cd /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/mcp-server && npm install 2>&1 | tail -5)",
+      "Bash(npm test:*)",
+      "Bash(grep -n \"getDb\\(\\)\" *.js)"
     ]
   }
 }

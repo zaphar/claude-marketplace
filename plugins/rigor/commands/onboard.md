@@ -25,6 +25,8 @@ Bootstrap the rigorous development workflow for an existing codebase by having a
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Check for Existing Project
 
 Call `project_status` to check whether a project already exists in the DB:

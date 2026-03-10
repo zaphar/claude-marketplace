@@ -837,7 +837,7 @@ const QUERY_DISPATCH = {
 // ---------------------------------------------------------------------------
 
 function changelogQuery(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const {
     entity_type,
     iteration_id,
@@ -866,7 +866,7 @@ function changelogQuery(args) {
 // ---------------------------------------------------------------------------
 
 function traceabilityQuery(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { target, target_type, iteration_id } = args;
 
   const iterParam = iteration_id ? [iteration_id] : [];
@@ -1136,7 +1136,7 @@ function traceabilityQuery(args) {
 // ---------------------------------------------------------------------------
 
 function revisionHistory(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { phase_id, iteration_id, phase_name } = args;
 
   let resolvedPhaseId = phase_id;
@@ -1176,7 +1176,7 @@ function revisionHistory(args) {
 // ---------------------------------------------------------------------------
 
 function iterationSummary(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
   const { iteration_id } = args;
 
   if (!iteration_id) {
@@ -1230,7 +1230,7 @@ function iterationSummary(args) {
 // ---------------------------------------------------------------------------
 
 function projectStatus(args) {
-  const db = getDb();
+  const db = getDb(args.project_root);
 
   const project = db.prepare("SELECT * FROM project WHERE id = 1").get();
   if (!project) throw new Error("Project not found — run iteration_create first");
@@ -1383,6 +1383,15 @@ export const READ_TOOLS = [
     },
   },
 ];
+
+// Inject project_root into every tool schema
+for (const tool of READ_TOOLS) {
+  tool.inputSchema.properties = {
+    project_root: { type: "string", description: "Absolute path to the project root directory" },
+    ...tool.inputSchema.properties,
+  };
+  tool.inputSchema.required = ["project_root", ...(tool.inputSchema.required ?? [])];
+}
 
 // ---------------------------------------------------------------------------
 // Dispatch

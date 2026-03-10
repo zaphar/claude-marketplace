@@ -20,6 +20,7 @@ describe("applyFilters validation", () => {
     assert.throws(
       () =>
         handleReadTool("changelog_query", {
+          project_root: "/tmp/test-project",
           entity_type: "persona",
           filters: { nonexistent_column: "value" },
         }),
@@ -31,6 +32,7 @@ describe("applyFilters validation", () => {
     assert.throws(
       () =>
         handleReadTool("changelog_query", {
+          project_root: "/tmp/test-project",
           entity_type: "persona",
           filters: { "1=1 --": null },
         }),
@@ -42,6 +44,7 @@ describe("applyFilters validation", () => {
     assert.throws(
       () =>
         handleReadTool("changelog_query", {
+          project_root: "/tmp/test-project",
           entity_type: "persona",
           filters: { name: null },
         }),
@@ -51,6 +54,7 @@ describe("applyFilters validation", () => {
 
   it("accepts null filter on nullable column", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -58,6 +62,7 @@ describe("applyFilters validation", () => {
     });
     // technical_level is nullable — filtering by null should work
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       filters: { technical_level: null },
     });
@@ -73,24 +78,28 @@ describe("applyFilters validation", () => {
 describe("queryWorkItem filters critical_path_sequence", () => {
   it("filters by critical_path_sequence", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "phase-a", work_type: "feature", goal: "A", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "phase-b", work_type: "feature", goal: "B", critical_path_sequence: 2 },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 3, name: "phase-c", work_type: "feature", goal: "C" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       filters: { critical_path_sequence: 2 },
@@ -101,18 +110,21 @@ describe("queryWorkItem filters critical_path_sequence", () => {
 
   it("filters by critical_path_sequence = null to find non-critical-path phases", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "critical-phase", work_type: "feature", goal: "Critical", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "optional-phase", work_type: "feature", goal: "Optional" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       filters: { critical_path_sequence: null },
@@ -126,6 +138,7 @@ describe("queryWorkItem filters critical_path_sequence", () => {
 describe("queryBlocker (INTEGER PK, nullable filters)", () => {
   it("filters by severity", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -137,6 +150,7 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -148,6 +162,7 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       filters: { severity: "critical" },
     });
@@ -157,6 +172,7 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
 
   it("filters by nullable resolved_at = null (unresolved blockers)", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -169,6 +185,7 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
     });
     // Insert a resolved blocker by using blocker_resolve
     const b2 = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -180,10 +197,12 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
       },
     });
     handleWriteTool("blocker_resolve", {
+      project_root: "/tmp/test-project",
       blocker_id: b2.id,
       resolution_notes: "Fixed",
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       filters: { resolved_at: null },
     });
@@ -199,6 +218,7 @@ describe("queryBlocker (INTEGER PK, nullable filters)", () => {
 describe("ids + filters combination", () => {
   it("combines ids with filters correctly", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -211,6 +231,7 @@ describe("ids + filters combination", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -223,6 +244,7 @@ describe("ids + filters combination", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       ids: ["ADR-1", "ADR-2"],
       filters: { status: "accepted" },
@@ -233,6 +255,7 @@ describe("ids + filters combination", () => {
 
   it("combines ids with null filters correctly", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -245,6 +268,7 @@ describe("ids + filters combination", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -258,6 +282,7 @@ describe("ids + filters combination", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       ids: ["ADR-1", "ADR-2"],
       filters: { superseded_by: null },
@@ -274,12 +299,14 @@ describe("ids + filters combination", () => {
 describe("queryPersona enrichment", () => {
   it("parses goals JSON when include_related is true", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Developer", goals: ["ship fast", "low bugs"] },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       ids: ["P-1"],
       include_related: true,
@@ -290,12 +317,14 @@ describe("queryPersona enrichment", () => {
 
   it("returns raw goals string when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-2", name: "QA", description: "QA engineer", goals: ["coverage"] },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       ids: ["P-2"],
       include_related: false,
@@ -308,12 +337,14 @@ describe("queryPersona enrichment", () => {
 
   it("handles empty goals array gracefully", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-3", name: "Admin", description: "Admin user" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       ids: ["P-3"],
       include_related: true,
@@ -326,18 +357,21 @@ describe("queryPlanOverview enrichment", () => {
   it("attaches total_phases, risks, and parsed assumptions when include_related is true", () => {
     // Insert plan phases first so COUNT works
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "setup", work_type: "feature", goal: "Setup project" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 2, name: "core", work_type: "feature", goal: "Build core" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "plan_overview",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -352,6 +386,7 @@ describe("queryPlanOverview enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "plan_overview",
       iteration_id: seed.iteration_id,
       include_related: true,
@@ -370,6 +405,7 @@ describe("queryPlanOverview enrichment", () => {
 
   it("does not attach total_phases or risks when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "plan_overview",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -380,6 +416,7 @@ describe("queryPlanOverview enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "plan_overview",
       iteration_id: seed.iteration_id,
     });
@@ -399,24 +436,28 @@ describe("queryPersonaAddressed enrichment", () => {
   it("attaches flows when include_related is true", () => {
     // Need a persona and user_flow first
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Developer" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "UF-1", name: "Login", goal: "Authenticate user" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "UF-2", name: "Signup", goal: "Register user" },
     });
     const paResult = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona_addressed",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -428,6 +469,7 @@ describe("queryPersonaAddressed enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona_addressed",
       ids: [paResult.id],
       include_related: true,
@@ -438,18 +480,21 @@ describe("queryPersonaAddressed enrichment", () => {
 
   it("does not attach flows when include_related is omitted", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-2", name: "QA", description: "QA" },
     });
     const paResult = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona_addressed",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { persona_id: "P-2", goal: "Test", how_addressed: "Automation" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona_addressed",
       ids: [paResult.id],
     });
@@ -461,24 +506,28 @@ describe("queryPersonaAddressed enrichment", () => {
 describe("queryInfoArchitecture enrichment", () => {
   it("attaches children when include_related is true", () => {
     const parentResult = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { category: "navigation", key: "main-menu", value: "Top nav bar" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { category: "navigation", key: "sub-item-1", value: "Dashboard", parent_id: parentResult.id },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { category: "navigation", key: "sub-item-2", value: "Settings", parent_id: parentResult.id },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       ids: [parentResult.id],
       include_related: true,
@@ -494,18 +543,21 @@ describe("queryInfoArchitecture enrichment", () => {
 
   it("does not attach children when include_related is false", () => {
     const parentResult = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { category: "nav", key: "top", value: "TopNav" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { category: "nav", key: "child", value: "ChildNav", parent_id: parentResult.id },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "info_architecture",
       ids: [parentResult.id],
       include_related: false,
@@ -523,12 +575,14 @@ describe("queryComponent enrichment", () => {
   it("attaches interfaces, dependencies, requirements_addressed, and integration_test_boundaries when include_related is true", () => {
     // Create prerequisite requirements
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-C1", description: "Auth", priority: "must-have", category: "security" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -536,12 +590,14 @@ describe("queryComponent enrichment", () => {
     });
     // Create two components (one depends on the other)
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "COMP-DEP", name: "Logger", purpose: "Logging", type: "library" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -562,6 +618,7 @@ describe("queryComponent enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       ids: ["COMP-1"],
       include_related: true,
@@ -594,6 +651,7 @@ describe("queryComponent enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -606,6 +664,7 @@ describe("queryComponent enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       ids: ["COMP-NOENRICH"],
     });
@@ -618,12 +677,14 @@ describe("queryComponent enrichment", () => {
 
   it("returns empty arrays for component with no children", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "COMP-EMPTY", name: "Bare", purpose: "Nothing", type: "module" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       ids: ["COMP-EMPTY"],
       include_related: true,
@@ -640,18 +701,21 @@ describe("queryUserFlow enrichment", () => {
   it("attaches steps with branches, error_states, requirements, and parsed data_dependencies when include_related is true", () => {
     // Prerequisites
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-UF1", description: "Login req", priority: "must-have", category: "auth" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-UF2", description: "MFA req", priority: "should-have", category: "auth" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -682,6 +746,7 @@ describe("queryUserFlow enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       ids: ["UF-LOGIN"],
       include_related: true,
@@ -722,6 +787,7 @@ describe("queryUserFlow enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -734,6 +800,7 @@ describe("queryUserFlow enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       ids: ["UF-NOENRICH"],
     });
@@ -747,12 +814,14 @@ describe("queryUserFlow enrichment", () => {
 
   it("returns empty arrays for flow with no children", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "UF-EMPTY", name: "Empty", goal: "Nothing" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       ids: ["UF-EMPTY"],
       include_related: true,
@@ -769,30 +838,35 @@ describe("queryWorkItem enrichment", () => {
   it("attaches all child data and parses JSON when include_related is true", () => {
     // Prerequisites: requirements, components, user flows, screens
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-PP1", description: "Core feature", priority: "must-have", category: "feature" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-PP2", description: "Nice extra", priority: "nice-to-have", category: "feature" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "COMP-PP1", name: "API", purpose: "REST API", type: "service" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "UF-PP1", name: "Setup", goal: "Init system" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "screen",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -801,6 +875,7 @@ describe("queryWorkItem enrichment", () => {
 
     // Create phase 1 first (needed as dependency target)
     const phase1Result = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -815,6 +890,7 @@ describe("queryWorkItem enrichment", () => {
 
     // Create phase 2 (depends on phase 1, parallel with none yet)
     const phase2Result = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -844,6 +920,7 @@ describe("queryWorkItem enrichment", () => {
 
     // Query phase 2 with full enrichment
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       ids: [phase2Id],
       include_related: true,
@@ -878,6 +955,7 @@ describe("queryWorkItem enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     const result = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -891,6 +969,7 @@ describe("queryWorkItem enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       ids: [result.id],
     });
@@ -909,6 +988,7 @@ describe("queryWorkItem enrichment", () => {
 
   it("returns empty arrays for work_item with no children", () => {
     const result = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -920,6 +1000,7 @@ describe("queryWorkItem enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       ids: [result.id],
       include_related: true,
@@ -943,18 +1024,21 @@ describe("queryImplementationManifest enrichment", () => {
   it("attaches all child data with nested requirements when include_related is true", () => {
     // Prerequisites: requirements, component
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-IM1", description: "Core feature", priority: "must-have", category: "feature" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-IM2", description: "API feature", priority: "should-have", category: "api" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -963,6 +1047,7 @@ describe("queryImplementationManifest enrichment", () => {
 
     // Insert implementation data (no parent manifest table — just child data)
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -982,6 +1067,7 @@ describe("queryImplementationManifest enrichment", () => {
 
     // Query with include_related
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       include_related: true,
@@ -1008,12 +1094,14 @@ describe("queryImplementationManifest enrichment", () => {
 
   it("does not attach child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-NOREL", description: "No-relate test", priority: "must-have", category: "feature" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -1022,6 +1110,7 @@ describe("queryImplementationManifest enrichment", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "implementation_manifest",
       iteration_id: seed.iteration_id,
     });
@@ -1035,11 +1124,13 @@ describe("queryImplementationManifest enrichment", () => {
   it("returns empty arrays for iteration with no implementation data", () => {
     // Create a fresh iteration with no implementation data
     const newIter = handleWriteTool("iteration_create", {
+      project_root: "/tmp/test-project",
       project_name: "Empty Impl Test",
       project_description: "Test project",
     });
     // Insert a requirement_status to have at least one iteration, then query a different one
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "implementation_manifest",
       iteration_id: newIter.iteration_id,
       include_related: true,

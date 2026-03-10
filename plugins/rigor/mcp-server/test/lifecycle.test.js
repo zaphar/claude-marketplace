@@ -19,24 +19,24 @@ describe("iteration_create", () => {
   it("creates project singleton + iteration + 8 phases", () => {
     // freshDb + seedIteration already created iteration 1 via raw SQL.
     // Use handleWriteTool to create a SECOND iteration via the tool interface.
-    const result = handleWriteTool("iteration_create", { project_name: "tool-test" });
+    const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project", project_name: "tool-test" });
     assert.ok(result.iteration_id);
 
-    const status = handleReadTool("project_status", {});
+    const status = handleReadTool("project_status", { project_root: "/tmp/test-project" });
     assert.strictEqual(status.project.project_name, "test-project"); // first wins
     assert.strictEqual(status.phases.length, 8);
   });
 
   it("sets requirements phase to in_progress", () => {
-    const result = handleWriteTool("iteration_create", {});
-    const summary = handleReadTool("iteration_summary", { iteration_id: result.iteration_id });
+    const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project" });
+    const summary = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: result.iteration_id });
     const reqPhase = summary.phases.find((p) => p.name === "requirements");
     assert.strictEqual(reqPhase.status, "in_progress");
   });
 
   it("sets all other phases to pending", () => {
-    const result = handleWriteTool("iteration_create", {});
-    const summary = handleReadTool("iteration_summary", { iteration_id: result.iteration_id });
+    const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project" });
+    const summary = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: result.iteration_id });
     const nonReq = summary.phases.filter((p) => p.name !== "requirements");
     assert.strictEqual(nonReq.length, 7);
     for (const p of nonReq) {
@@ -52,6 +52,7 @@ describe("iteration_create", () => {
 describe("phase_transition", () => {
   it("transitions a phase to completed", () => {
     const result = handleWriteTool("phase_transition", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       phase_name: "requirements",
       status: "completed",
@@ -62,6 +63,7 @@ describe("phase_transition", () => {
 
   it("transitions a phase to skipped", () => {
     const result = handleWriteTool("phase_transition", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       phase_name: "ux_design",
       status: "skipped",
@@ -71,6 +73,7 @@ describe("phase_transition", () => {
 
   it("records started_at when moving to in_progress", () => {
     handleWriteTool("phase_transition", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       phase_name: "architecture",
       status: "in_progress",
@@ -83,6 +86,7 @@ describe("phase_transition", () => {
 
   it("records completed_at when moving to completed", () => {
     handleWriteTool("phase_transition", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       phase_name: "requirements",
       status: "completed",
@@ -96,6 +100,7 @@ describe("phase_transition", () => {
   it("throws when phase_name does not exist", () => {
     assert.throws(
       () => handleWriteTool("phase_transition", {
+        project_root: "/tmp/test-project",
         iteration_id: seed.iteration_id,
         phase_name: "nonexistent_phase",
         status: "in_progress",
@@ -113,6 +118,7 @@ describe("work_item_transition", () => {
   it("transitions a work_item status", () => {
     // Insert a work_item first
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -129,6 +135,7 @@ describe("work_item_transition", () => {
     const ppId = phases[0].id;
 
     const result = handleWriteTool("work_item_transition", {
+      project_root: "/tmp/test-project",
       work_item_id: ppId,
       status: "implementing",
     });
@@ -142,6 +149,7 @@ describe("work_item_transition", () => {
   it("throws when work_item_id does not exist", () => {
     assert.throws(
       () => handleWriteTool("work_item_transition", {
+        project_root: "/tmp/test-project",
         work_item_id: 99999,
         status: "implementing",
       }),
@@ -157,6 +165,7 @@ describe("work_item_transition", () => {
 describe("revision_create", () => {
   it("creates a revision and returns count", () => {
     const result = handleWriteTool("revision_create", {
+      project_root: "/tmp/test-project",
       phase_id: seed.phase_id,
       producer_agent: "test-agent",
     });
@@ -170,6 +179,7 @@ describe("revision_create", () => {
 describe("revision_update", () => {
   it("records critic feedback and status", () => {
     const result = handleWriteTool("revision_update", {
+      project_root: "/tmp/test-project",
       revision_id: seed.revision_id,
       status: "approved",
       critic_agent: "test-critic",
@@ -185,6 +195,7 @@ describe("revision_update", () => {
 
   it("sets reviewed_at only on approved/rejected", () => {
     handleWriteTool("revision_update", {
+      project_root: "/tmp/test-project",
       revision_id: seed.revision_id,
       status: "submitted",
     });
@@ -200,12 +211,14 @@ describe("revision_update", () => {
 describe("commit_link", () => {
   it("links a commit to a work item and revision", () => {
     const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "commit-test", work_type: "feature", goal: "Test" },
     });
     const result = handleWriteTool("commit_link", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       work_item_id: wi.id,
       revision_id: seed.revision_id,
@@ -229,6 +242,7 @@ describe("commit_link", () => {
 describe("project_update", () => {
   it("updates project fields", () => {
     const result = handleWriteTool("project_update", {
+      project_root: "/tmp/test-project",
       notes: "Updated notes",
       critic_model: "opus",
     });
@@ -248,6 +262,7 @@ describe("blocker_resolve", () => {
   it("resolves a blocker", () => {
     // Insert a blocker first
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "blocker",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -261,6 +276,7 @@ describe("blocker_resolve", () => {
     const blocker = db.prepare("SELECT id FROM blocker WHERE iteration_id = ?").get(seed.iteration_id);
 
     const result = handleWriteTool("blocker_resolve", {
+      project_root: "/tmp/test-project",
       blocker_id: blocker.id,
       resolution_notes: "Spec received",
     });
@@ -279,6 +295,7 @@ describe("blocker_resolve", () => {
 describe("iteration_close", () => {
   it("closes an active iteration", () => {
     const result = handleWriteTool("iteration_close", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       notes: "Done",
     });
@@ -287,9 +304,9 @@ describe("iteration_close", () => {
   });
 
   it("rejects closing an already-closed iteration", () => {
-    handleWriteTool("iteration_close", { iteration_id: seed.iteration_id });
+    handleWriteTool("iteration_close", { project_root: "/tmp/test-project", iteration_id: seed.iteration_id });
     assert.throws(
-      () => handleWriteTool("iteration_close", { iteration_id: seed.iteration_id }),
+      () => handleWriteTool("iteration_close", { project_root: "/tmp/test-project", iteration_id: seed.iteration_id }),
       /not active/
     );
   });
@@ -302,6 +319,7 @@ describe("iteration_close", () => {
 describe("changelog_update", () => {
   it("updates security_audit_finding status", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "security_audit_finding",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -316,6 +334,7 @@ describe("changelog_update", () => {
     const finding = db.prepare("SELECT id FROM security_audit_finding LIMIT 1").get();
 
     const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
       entity_type: "security_audit_finding",
       entity_id: finding.id,
       updates: { status: "resolved" },
@@ -329,6 +348,7 @@ describe("changelog_update", () => {
   it("rejects unsupported entity types", () => {
     assert.throws(
       () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
         entity_type: "persona",
         entity_id: "P-1",
         updates: { status: "closed" },
@@ -339,6 +359,7 @@ describe("changelog_update", () => {
 
   it("sets updated_at when updating adr status", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -348,6 +369,7 @@ describe("changelog_update", () => {
     assert.strictEqual(before.updated_at, null);
 
     handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       entity_id: "ADR-UPD",
       updates: { status: "accepted" },

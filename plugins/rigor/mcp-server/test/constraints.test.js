@@ -41,6 +41,7 @@ describe("FK cascade deletes", () => {
   it("deleting an iteration cascades to entity rows via revision FK", () => {
     // Insert entities that reference revision_id (which cascades from iteration → phase → revision)
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -63,6 +64,7 @@ describe("CHECK constraints", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -92,6 +94,7 @@ describe("CHECK constraints", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "implementation_manifest",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -109,6 +112,7 @@ describe("CHECK constraints", () => {
 describe("UNIQUE constraints", () => {
   it("replaces duplicate project_context (iteration_id, key, value) triple", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "project_context",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -116,6 +120,7 @@ describe("UNIQUE constraints", () => {
     });
     // Same (iteration_id, key, value) → OR REPLACE triggers
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "project_context",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -129,12 +134,14 @@ describe("UNIQUE constraints", () => {
 
   it("prevents duplicate vcs_commit sha", () => {
     const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { phase_number: 1, name: "vcs-test", work_type: "feature", goal: "Test" },
     });
     handleWriteTool("commit_link", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       work_item_id: wi.id,
       revision_id: seed.revision_id,
@@ -144,6 +151,7 @@ describe("UNIQUE constraints", () => {
     assert.throws(
       () =>
         handleWriteTool("commit_link", {
+          project_root: "/tmp/test-project",
           iteration_id: seed.iteration_id,
           work_item_id: wi.id,
           revision_id: seed.revision_id,
@@ -162,6 +170,7 @@ describe("UNIQUE constraints", () => {
 describe("changelog_update", () => {
   it("updates adr status", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -171,6 +180,7 @@ describe("changelog_update", () => {
       },
     });
     const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       entity_id: "ADR-1",
       updates: { status: "accepted" },
@@ -183,6 +193,7 @@ describe("changelog_update", () => {
 
   it("updates performance_audit_finding", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "performance_audit_finding",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -194,6 +205,7 @@ describe("changelog_update", () => {
     const finding = db.prepare("SELECT id FROM performance_audit_finding LIMIT 1").get();
 
     handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
       entity_type: "performance_audit_finding",
       entity_id: finding.id,
       updates: { status: "resolved" },
@@ -210,6 +222,7 @@ describe("changelog_update", () => {
 describe("requirement_trace screen validation", () => {
   it("rejects mapping to nonexistent screen", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -218,6 +231,7 @@ describe("requirement_trace screen validation", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement_trace",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,

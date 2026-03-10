@@ -19,6 +19,7 @@ describe("changelog_insert invalid entity_type", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "nonexistent_entity",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -32,6 +33,7 @@ describe("changelog_insert invalid entity_type", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -51,6 +53,7 @@ describe("changelog_insert missing required fields", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "persona",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -64,6 +67,7 @@ describe("changelog_insert missing required fields", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "persona",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -77,6 +81,7 @@ describe("changelog_insert missing required fields", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -90,6 +95,7 @@ describe("changelog_insert missing required fields", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "adr",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -103,6 +109,7 @@ describe("changelog_insert missing required fields", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "component",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -123,6 +130,7 @@ describe("changelog_insert FK violations", () => {
     // The singleton project always exists, so this test verifies the FK by
     // checking that a persona insert succeeds (no FK violation with valid project)
     const result = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -135,6 +143,7 @@ describe("changelog_insert FK violations", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement",
           iteration_id: 99999,
           revision_id: seed.revision_id,
@@ -154,6 +163,7 @@ describe("changelog_insert CHECK constraint violations", () => {
   it("rejects requirement_trace with invalid addressed_by_type", () => {
     // Insert a requirement first so that FK is satisfied
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -162,6 +172,7 @@ describe("changelog_insert CHECK constraint violations", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement_trace",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -179,6 +190,7 @@ describe("changelog_insert CHECK constraint violations", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "requirement",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,
@@ -192,6 +204,7 @@ describe("changelog_insert CHECK constraint violations", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "data_exchange",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,

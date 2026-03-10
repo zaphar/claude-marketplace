@@ -14,6 +14,7 @@ beforeEach(() => {
 // Helper: insert an entity and query it back
 function insertAndQuery(entityType, data, queryOpts = {}) {
   const writeResult = handleWriteTool("changelog_insert", {
+    project_root: "/tmp/test-project",
     entity_type: entityType,
     iteration_id: seed.iteration_id,
     revision_id: seed.revision_id,
@@ -22,6 +23,7 @@ function insertAndQuery(entityType, data, queryOpts = {}) {
   assert.strictEqual(writeResult.entity_type, entityType);
 
   const readResult = handleReadTool("changelog_query", {
+    project_root: "/tmp/test-project",
     entity_type: entityType,
     iteration_id: seed.iteration_id,
     ...queryOpts,
@@ -51,6 +53,7 @@ describe("requirement", () => {
   it("inserts with personas and dependencies", () => {
     // Insert persona first as FK target
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -155,12 +158,14 @@ describe("requirement_trace", () => {
   it("inserts mapping from requirement to component", () => {
     // Insert requirement + component first
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-1", description: "Auth", priority: "must-have", category: "functional" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -265,6 +270,7 @@ describe("persona_addressed", () => {
   it("inserts persona addressed", () => {
     // Insert persona first
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -372,12 +378,14 @@ describe("work_item with critical_path_sequence", () => {
 describe("implementation_manifest", () => {
   it("inserts requirement_status and component_status", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-IMPL1", description: "Impl test req", priority: "must-have", category: "feature" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -410,6 +418,7 @@ describe("implementation_manifest", () => {
 describe("vcs_commit (via changelog_insert)", () => {
   it("inserts commit record", () => {
     const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -497,6 +506,7 @@ describe("unknown entity type", () => {
     assert.throws(
       () =>
         handleWriteTool("changelog_insert", {
+          project_root: "/tmp/test-project",
           entity_type: "nonexistent_entity",
           iteration_id: seed.iteration_id,
           revision_id: seed.revision_id,

@@ -18,12 +18,14 @@ beforeEach(() => {
 describe("changelog_query", () => {
   it("filters by iteration_id", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Dev" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
     });
@@ -33,18 +35,21 @@ describe("changelog_query", () => {
 
   it("queries by ids", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Dev" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-2", name: "PM", description: "PM" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       ids: ["P-2"],
     });
@@ -54,18 +59,21 @@ describe("changelog_query", () => {
 
   it("applies field filters", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-1", description: "A", priority: "must-have", category: "functional" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "REQ-2", description: "B", priority: "nice-to-have", category: "functional" },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       filters: { priority: "must-have" },
     });
@@ -75,6 +83,7 @@ describe("changelog_query", () => {
 
   it("enriches with include_related", () => {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -84,6 +93,7 @@ describe("changelog_query", () => {
       },
     });
     const r = handleReadTool("changelog_query", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       ids: ["comp-1"],
       include_related: true,
@@ -96,7 +106,7 @@ describe("changelog_query", () => {
 
   it("rejects unknown entity_type", () => {
     assert.throws(
-      () => handleReadTool("changelog_query", { entity_type: "unknown_thing" }),
+      () => handleReadTool("changelog_query", { project_root: "/tmp/test-project", entity_type: "unknown_thing" }),
       /Unknown entity_type/
     );
   });
@@ -110,12 +120,14 @@ describe("traceability_query", () => {
   // Seed data shared by multiple traceability tests
   function seedTraceabilityData() {
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Developer" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "requirement",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -125,6 +137,7 @@ describe("traceability_query", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "adr",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -135,6 +148,7 @@ describe("traceability_query", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "component",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -144,18 +158,21 @@ describe("traceability_query", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "approved_dependency",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { package: "jsonwebtoken", purpose: "JWT token auth", justification: "Industry standard JWT library", adr_id: "ADR-1" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "screen",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "login-scr", name: "Login", purpose: "Authentication screen" },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "user_flow",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -166,6 +183,7 @@ describe("traceability_query", () => {
       },
     });
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "project_context",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
@@ -176,6 +194,7 @@ describe("traceability_query", () => {
   it("traces component → requirements → ADRs", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "auth-svc",
       target_type: "component",
       iteration_id: seed.iteration_id,
@@ -189,6 +208,7 @@ describe("traceability_query", () => {
   it("traces technology → ADRs", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "JWT",
       target_type: "technology",
       iteration_id: seed.iteration_id,
@@ -202,6 +222,7 @@ describe("traceability_query", () => {
   it("traces requirement → components", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "REQ-1",
       target_type: "requirement",
       iteration_id: seed.iteration_id,
@@ -214,6 +235,7 @@ describe("traceability_query", () => {
   it("traces adr → alternatives → components", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "ADR-1",
       target_type: "adr",
       iteration_id: seed.iteration_id,
@@ -226,6 +248,7 @@ describe("traceability_query", () => {
   it("traces flow → steps → screens → requirements", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "login-flow",
       target_type: "flow",
       iteration_id: seed.iteration_id,
@@ -238,6 +261,7 @@ describe("traceability_query", () => {
   it("traces screen → flows → requirements", () => {
     seedTraceabilityData();
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "login-scr",
       target_type: "screen",
       iteration_id: seed.iteration_id,
@@ -250,6 +274,7 @@ describe("traceability_query", () => {
   it("rejects unknown target_type", () => {
     assert.throws(
       () => handleReadTool("traceability_query", {
+        project_root: "/tmp/test-project",
         target: "x", target_type: "invalid_type",
       }),
       /Unknown target_type/
@@ -263,7 +288,7 @@ describe("traceability_query", () => {
 
 describe("revision_history", () => {
   it("returns revisions for a phase by id", () => {
-    const r = handleReadTool("revision_history", { phase_id: seed.phase_id });
+    const r = handleReadTool("revision_history", { project_root: "/tmp/test-project", phase_id: seed.phase_id });
     assert.ok(r.phase);
     assert.strictEqual(r.revisions.length, 1);
     assert.strictEqual(r.revisions[0].producer_agent, "test-producer");
@@ -271,6 +296,7 @@ describe("revision_history", () => {
 
   it("resolves by iteration_id + phase_name", () => {
     const r = handleReadTool("revision_history", {
+      project_root: "/tmp/test-project",
       iteration_id: seed.iteration_id,
       phase_name: "requirements",
     });
@@ -281,7 +307,7 @@ describe("revision_history", () => {
   it("shows multiple revisions", () => {
     seedRevision(db, seed.phase_id);
     seedRevision(db, seed.phase_id);
-    const r = handleReadTool("revision_history", { phase_id: seed.phase_id });
+    const r = handleReadTool("revision_history", { project_root: "/tmp/test-project", phase_id: seed.phase_id });
     assert.strictEqual(r.revisions.length, 3);
   });
 });
@@ -294,12 +320,13 @@ describe("iteration_summary", () => {
   it("returns iteration with phases and entity counts", () => {
     // Insert some entities
     handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
       entity_type: "persona",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
       data: { id: "P-1", name: "Dev", description: "Dev" },
     });
-    const r = handleReadTool("iteration_summary", { iteration_id: seed.iteration_id });
+    const r = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: seed.iteration_id });
     assert.ok(r.iteration);
     assert.strictEqual(r.phases.length, 8);
     assert.ok(r.decisions);
@@ -313,7 +340,7 @@ describe("iteration_summary", () => {
 
 describe("project_status", () => {
   it("returns project, current iteration, phases", () => {
-    const r = handleReadTool("project_status", {});
+    const r = handleReadTool("project_status", { project_root: "/tmp/test-project" });
     assert.ok(r.project);
     assert.strictEqual(r.project.project_name, "test-project");
     assert.strictEqual(r.phases.length, 8);

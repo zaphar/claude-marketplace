@@ -8,7 +8,7 @@ import { closeDb, getDb } from "../db.js";
 export function freshDb() {
   process.env.RIGOR_DB_PATH = ":memory:";
   closeDb();
-  return getDb();
+  return getDb("/tmp/test-project");
 }
 
 /**

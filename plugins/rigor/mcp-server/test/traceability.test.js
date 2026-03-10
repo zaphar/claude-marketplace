@@ -17,6 +17,7 @@ beforeEach(() => {
 describe("traceability_query empty chain", () => {
   it("returns empty chain for non-existent component", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "NONEXISTENT-999",
       target_type: "component",
       iteration_id: seed.iteration_id,
@@ -28,6 +29,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain for non-existent technology", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "NONEXISTENT-TECH",
       target_type: "technology",
       iteration_id: seed.iteration_id,
@@ -39,6 +41,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain for non-existent requirement", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "REQ-NONEXISTENT-999",
       target_type: "requirement",
       iteration_id: seed.iteration_id,
@@ -50,6 +53,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain for non-existent ADR", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "ADR-NONEXISTENT-999",
       target_type: "adr",
       iteration_id: seed.iteration_id,
@@ -61,6 +65,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain for non-existent flow", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "FLOW-NONEXISTENT-999",
       target_type: "flow",
       iteration_id: seed.iteration_id,
@@ -72,6 +77,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain for non-existent screen", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "SCR-NONEXISTENT-999",
       target_type: "screen",
       iteration_id: seed.iteration_id,
@@ -83,6 +89,7 @@ describe("traceability_query empty chain", () => {
 
   it("returns empty chain without iteration_id filter", () => {
     const r = handleReadTool("traceability_query", {
+      project_root: "/tmp/test-project",
       target: "NONEXISTENT-999",
       target_type: "component",
     });

@@ -20,6 +20,8 @@ Resume an existing release workflow from saved state.
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Check for Release Workflow State
 
 Call `project_status` to check whether release phases exist and have any activity:

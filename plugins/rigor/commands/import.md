@@ -22,6 +22,8 @@ Read an existing file (requirements doc, design spec, PRD, meeting notes, YAML, 
 
 ## Implementation Steps
 
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+
 ### 1. Get File Path
 
 If the user passed a file path as a command argument, use it directly.
