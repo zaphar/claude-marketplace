@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: "Deep code-level security audit finding vulnerabilities beyond requirement-driven testing"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### Security Auditor

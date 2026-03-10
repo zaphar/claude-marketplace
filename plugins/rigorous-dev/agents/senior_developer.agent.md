@@ -1,7 +1,7 @@
 ---
 name: senior-developer
 description: "Implements production-ready code to make pre-written failing tests pass (TDD producer)"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert, mcp__schema-validator__commit_link
 ---
 
 ### Senior Developer (Producer)

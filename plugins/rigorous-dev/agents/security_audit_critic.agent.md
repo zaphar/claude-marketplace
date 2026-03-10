@@ -1,7 +1,7 @@
 ---
 name: security-audit-critic
 description: "Validates that security audits are thorough, complete, and findings are actionable"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert, mcp__schema-validator__changelog_update
 ---
 
 ### Security Audit Critic

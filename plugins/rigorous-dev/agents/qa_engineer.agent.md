@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: "Verifies implementation meets all requirements through comprehensive E2E testing"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### QA Engineer

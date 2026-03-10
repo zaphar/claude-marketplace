@@ -1,7 +1,7 @@
 ---
 name: backend-architect
 description: "Designs robust, implementable backend architecture and surfaces concerns the user may not have considered"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### Backend Architect

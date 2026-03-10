@@ -1,7 +1,7 @@
 ---
 name: ux-designer
 description: "Designs intuitive, accessible user experiences and surfaces UX concerns not yet considered"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### UX Designer

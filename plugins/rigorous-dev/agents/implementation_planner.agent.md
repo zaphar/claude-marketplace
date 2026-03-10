@@ -1,7 +1,7 @@
 ---
 name: implementation-planner
 description: "Creates a phased implementation plan that prioritizes iterative delivery of user value"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
 ---
 
 ### Implementation Planner

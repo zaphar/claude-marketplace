@@ -75,36 +75,46 @@ function phaseTransition(args) {
   } = args;
   const now = new Date().toISOString();
 
-  const sets = ["status = @status"];
-  const params = { status, iteration_id, phase_name };
+  const run = db.transaction(() => {
+    // Verify the phase exists before attempting update
+    const existing = db
+      .prepare("SELECT id, name, status FROM phase WHERE iteration_id = @iteration_id AND name = @phase_name")
+      .get({ iteration_id, phase_name });
+    if (!existing) throw new Error(`Phase "${phase_name}" not found in iteration ${iteration_id}`);
 
-  if (status === "in_progress") {
-    sets.push("started_at = @now");
-    params.now = now;
-  }
-  if (status === "completed") {
-    sets.push("completed_at = @now");
-    params.now = now;
-  }
-  if (approved_by !== undefined) {
-    sets.push("approved_by = @approved_by");
-    params.approved_by = approved_by;
-  }
-  if (notes !== undefined) {
-    sets.push("notes = @notes");
-    params.notes = notes;
-  }
+    // Already in the requested status — return early with a message
+    if (existing.status === status) {
+      return { phase_id: existing.id, name: existing.name, status: existing.status, message: `Phase already in status: ${status}` };
+    }
 
-  db.prepare(
-    `UPDATE phase SET ${sets.join(", ")} WHERE iteration_id = @iteration_id AND name = @phase_name`
-  ).run(params);
+    const sets = ["status = @status"];
+    const params = { status, iteration_id, phase_name };
 
-  const row = db
-    .prepare("SELECT id, name, status FROM phase WHERE iteration_id = @iteration_id AND name = @phase_name")
-    .get({ iteration_id, phase_name });
-  if (!row) throw new Error(`Phase "${phase_name}" not found in iteration ${iteration_id}`);
+    if (status === "in_progress") {
+      sets.push("started_at = @now");
+      params.now = now;
+    }
+    if (status === "completed") {
+      sets.push("completed_at = @now");
+      params.now = now;
+    }
+    if (approved_by !== undefined) {
+      sets.push("approved_by = @approved_by");
+      params.approved_by = approved_by;
+    }
+    if (notes !== undefined) {
+      sets.push("notes = @notes");
+      params.notes = notes;
+    }
 
-  return { phase_id: row.id, name: row.name, status: row.status };
+    db.prepare(
+      `UPDATE phase SET ${sets.join(", ")} WHERE iteration_id = @iteration_id AND name = @phase_name`
+    ).run(params);
+
+    return { phase_id: existing.id, name: existing.name, status };
+  });
+
+  return run();
 }
 
 function workItemTransition(args) {

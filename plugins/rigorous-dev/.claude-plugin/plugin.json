@@ -1,6 +1,6 @@
 {
   "name": "rigor",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Rigorous SDLC workflow with producer-critic validation patterns for high-quality software development",
   "author": {
     "name": "zaphar"

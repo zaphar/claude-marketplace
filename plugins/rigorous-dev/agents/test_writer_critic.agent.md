@@ -1,7 +1,7 @@
 ---
 name: test-writer-critic
 description: "Validates test completeness and that tests are in failing (red) state before implementation"
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query
 ---
 
 ### Test Writer Critic
