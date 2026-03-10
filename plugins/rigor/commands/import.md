@@ -9,7 +9,7 @@ allowed-tools:
 
 # Import Existing Data into the Changelog Database
 
-Read an existing file (requirements doc, design spec, PRD, meeting notes, YAML, JSON, markdown, or any freeform text) and bulk-import its contents into the rigorous-dev changelog database.
+Read an existing file (requirements doc, design spec, PRD, meeting notes, YAML, JSON, markdown, or any freeform text) and bulk-import its contents into the rigor changelog database.
 
 ## What This Command Does
 
@@ -149,7 +149,7 @@ Call `iteration_create` to bootstrap a new project and iteration:
 ```
 iteration_create({
   project_name: "<inferred_from_cwd_or_file_name>",
-  artifacts_directory: ".claude/rigorous-dev-artifacts",
+  artifacts_directory: ".claude/rigor-artifacts",
   critic_model: "sonnet",
   starting_phase: "<first_detected_phase>"
 })
@@ -298,14 +298,14 @@ If any entities failed to import, append:
   - ...
 
 Review the errors above. You can re-run the import with a corrected file,
-or use /rigorous-dev:resume to continue the workflow and address gaps manually.
+or use /rigor:resume to continue the workflow and address gaps manually.
 ```
 
 If all phases completed successfully, suggest next steps:
 
 ```
 Next steps:
-  - Use /rigorous-dev:resume to continue the workflow from where you left off
+  - Use /rigor:resume to continue the workflow from where you left off
   - Use /rigor:dev-status to review the current project state
 ```
 

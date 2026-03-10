@@ -15,7 +15,7 @@ Resume an existing rigorous development workflow from saved state.
 1. Checks if a workflow exists (error if it doesn't)
 2. Loads workflow state from the database
 3. Displays current status
-4. Loads the rigorous-dev skill with context
+4. Loads the workflow skill with context
 5. Continues from the current phase
 
 ## Implementation Steps
@@ -32,7 +32,7 @@ If it returns no project record, stop with an error:
 
 ```
 ERROR: No project found.
-Use /rigorous-dev:start to initialize a new workflow.
+Use /rigor:start to initialize a new workflow.
 ```
 
 ### 2. Check Workflow Status
@@ -44,7 +44,7 @@ Inspect the `status` field in the `project_status` response:
 ```
 ERROR: This workflow is closed (iteration <iteration_id>).
 A closed workflow cannot be resumed.
-Use /rigorous-dev:new-iteration to start a new iteration.
+Use /rigor:new-iteration to start a new iteration.
 ```
 
 ### 3. Load Workflow State
@@ -76,7 +76,7 @@ Resuming <current_phase> phase...
 
 ### 5. Load Rigorous Dev Skill
 
-Load the rigorous-dev skill with the current state context so it knows where to continue.
+Load the workflow skill with the current state context so it knows where to continue.
 
 ### 6. Continue Current Phase
 

@@ -34,7 +34,7 @@ If it returns no project record, stop with an error:
 
 ```
 ERROR: No project found.
-Use /rigorous-dev:start to initialize a new workflow.
+Use /rigor:start to initialize a new workflow.
 ```
 
 ### 2. Validate Arguments
@@ -53,7 +53,7 @@ If invalid or missing:
 ```
 ERROR: Invalid or missing phase argument.
 
-Usage: /rigorous-dev:skip-to <phase>
+Usage: /rigor:skip-to <phase>
 
 Valid phases (development workflow):
 - requirements
@@ -64,7 +64,7 @@ Valid phases (development workflow):
 - documentation
 
 Note: QA and audit phases are part of the release workflow.
-Use /rigorous-dev:start-release to begin the release workflow.
+Use /rigor:start-release to begin the release workflow.
 ```
 
 ### 3. Load Current State and Check Workflow Status
@@ -79,7 +79,7 @@ If `status == "closed"`, display error:
 ```
 ERROR: This workflow is closed (iteration <iteration_id>).
 A closed workflow cannot be modified.
-Use /rigorous-dev:new-iteration to start a new iteration.
+Use /rigor:new-iteration to start a new iteration.
 ```
 
 ### 4. Check if Already at Target
@@ -87,7 +87,7 @@ Use /rigorous-dev:new-iteration to start a new iteration.
 If `current_phase` == target phase:
 ```
 You are already at the <target_phase> phase.
-Use /rigorous-dev:resume to continue.
+Use /rigor:resume to continue.
 ```
 Exit without changes.
 
@@ -149,14 +149,14 @@ If user confirms, call `phase_transition` for each phase that needs to change:
 
 Load the appropriate agent for the target phase:
 
-- `requirements` → `rigorous-dev:requirements_analyst`
-- `ux_design` → `rigorous-dev:ux_designer`
-- `architecture` → `rigorous-dev:backend_architect`
-- `planning` → `rigorous-dev:implementation_planner`
+- `requirements` → `rigor:requirements_analyst`
+- `ux_design` → `rigor:ux_designer`
+- `architecture` → `rigor:backend_architect`
+- `planning` → `rigor:implementation_planner`
 - `implementation` → Query `work_item` for first row with `status != 'completed'` ordered by `phase_number`:
-  - If that row's `status` is `"test_writing"` or `"pending"` → `rigorous-dev:test_writer`
-  - If that row's `status` is `"implementing"` → `rigorous-dev:senior_developer`
-- `documentation` → `rigorous-dev:documentation_master`
+  - If that row's `status` is `"test_writing"` or `"pending"` → `rigor:test_writer`
+  - If that row's `status` is `"implementing"` → `rigor:senior_developer`
+- `documentation` → `rigor:documentation_master`
 
 ### 9. Inform User
 
@@ -175,7 +175,7 @@ Loading <agent_name> agent...
 If user cancels:
 ```
 Operation cancelled. Workflow state unchanged.
-Use /rigorous-dev:resume to continue from <current_phase>.
+Use /rigor:resume to continue from <current_phase>.
 ```
 
 ## Important Notes
@@ -188,7 +188,7 @@ Use /rigorous-dev:resume to continue from <current_phase>.
 ## Example Usage
 
 ```
-/rigorous-dev:skip-to implementation
+/rigor:skip-to implementation
 ```
 
 This would skip from the current phase directly to implementation, marking all intermediate phases as "skipped".

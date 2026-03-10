@@ -30,7 +30,7 @@ If it returns no project record, display:
 ```
 No active project found.
 
-Use /rigorous-dev:start to initialize a new workflow.
+Use /rigor:start to initialize a new workflow.
 ```
 
 Exit without error.
@@ -97,7 +97,7 @@ Generated Artifacts:
 
 <if status is "closed">
 This workflow is closed. To start a new iteration:
-  /rigorous-dev:new-iteration
+  /rigor:new-iteration
 </if>
 ```
 
@@ -123,7 +123,7 @@ The `updated_at` timestamp comes from the `project_status` response; no separate
 Project: My Project
 Iteration: 1
 Status: active
-Artifacts: .claude/rigorous-dev-artifacts
+Artifacts: .claude/rigor-artifacts
 Created: 2026-02-12T19:00:00Z
 Last Updated: 2026-02-12T21:30:00Z
 
@@ -164,4 +164,4 @@ Last updated: 2026-02-12 21:30:00
 ## Usage Tips
 
 - Run this command anytime to check progress
-- Use it before `/rigorous-dev:resume` to see where you left off
+- Use it before `/rigor:resume` to see where you left off

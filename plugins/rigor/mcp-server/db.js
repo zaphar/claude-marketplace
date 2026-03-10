@@ -17,7 +17,7 @@ export function getDb() {
 
   const dbPath =
     process.env.RIGOROUS_DEV_DB_PATH ||
-    path.join(process.cwd(), ".claude", "rigorous-dev.db");
+    path.join(process.cwd(), ".claude", "rigor.db");
 
   mkdirSync(path.dirname(dbPath), { recursive: true });
 

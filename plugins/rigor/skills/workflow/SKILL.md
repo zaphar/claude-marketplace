@@ -52,7 +52,7 @@ Each phase uses a **producer-critic pattern**: a producer agent creates the arti
 
 ### 1. State Management
 
-**State is stored in the SQLite changelog database at `.claude/rigorous-dev.db`**
+**State is stored in the SQLite changelog database at `.claude/rigor.db`**
 
 Both the development workflow and release workflow state are tracked in the same database.
 
@@ -145,7 +145,7 @@ For each phase, follow this pattern:
 
 **Artifact Storage:**
 
-All decisions, specifications, and intermediate outputs are stored in the SQLite changelog database at `.claude/rigorous-dev.db`.
+All decisions, specifications, and intermediate outputs are stored in the SQLite changelog database at `.claude/rigor.db`.
 Each entry is linked to an iteration and optionally a revision (producer-critic loop).
 
 Use these tools for artifact management:
@@ -441,7 +441,7 @@ The development workflow does NOT automatically trigger the release workflow. Th
 
 ### 11. Release Workflow Orchestration
 
-The release workflow is triggered by `/rigor:start-release` and tracked in the same SQLite database (`.claude/rigorous-dev.db`). It reads dev phase data from the DB using `changelog_query`.
+The release workflow is triggered by `/rigor:start-release` and tracked in the same SQLite database (`.claude/rigor.db`). It reads dev phase data from the DB using `changelog_query`.
 
 **Release Workflow Phases:**
 

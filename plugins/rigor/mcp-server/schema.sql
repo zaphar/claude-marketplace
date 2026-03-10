@@ -2,7 +2,7 @@
 -- All artifacts produced during the rigorous development workflow are stored in
 -- a normalized SQLite changelog database. This DDL is auto-applied on first run.
 --
--- Database location: .claude/rigorous-dev.db
+-- Database location: .claude/rigor.db
 -- Engine: better-sqlite3 (synchronous), WAL mode, foreign keys enforced
 --
 -- ============================================================

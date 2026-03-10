@@ -16,7 +16,7 @@ Start the release workflow to run pre-release verification: QA testing and secur
 1. Validates a dev workflow exists and implementation is completed
 2. Checks no active release workflow already exists
 3. Activates the QA phase in the database
-4. Loads the rigorous-dev skill and begins the QA phase
+4. Loads the workflow skill and begins the QA phase
 
 ## Implementation Steps
 
@@ -32,7 +32,7 @@ If no project record exists, stop with error:
 
 ```
 ERROR: No project found.
-Use /rigorous-dev:start to initialize a development workflow first.
+Use /rigor:start to initialize a development workflow first.
 ```
 
 ### 2. Validate Dev Workflow
@@ -48,7 +48,7 @@ The release workflow requires a completed implementation.
 Current implementation status: <status>
 
 Complete the development workflow before starting a release.
-Use /rigorous-dev:resume to continue the development workflow.
+Use /rigor:resume to continue the development workflow.
 ```
 
 ### 3. Check for Existing Release Workflow
@@ -57,7 +57,7 @@ Check the `project_status` response for release phases (qa, audit). If any relea
 
 ```
 ERROR: A release workflow already exists.
-Use /rigorous-dev:resume-release to continue the existing release workflow.
+Use /rigor:resume-release to continue the existing release workflow.
 ```
 
 ### 4. Create Release State
@@ -72,7 +72,7 @@ The release phases (qa, audit) already exist in the DB — they were created by 
 
 ### 5. Load Rigorous Dev Skill
 
-Load the rigorous-dev skill (`skills/rigorous-dev/SKILL.md`) for orchestration context.
+Load the workflow skill (`skills/workflow/SKILL.md`) for orchestration context.
 
 ### 6. Start QA Phase
 
@@ -88,7 +88,7 @@ Starting QA Phase...
 Loading QA Engineer agent.
 ```
 
-Then load and execute `rigorous-dev:qa_engineer` to begin testing.
+Then load and execute `rigor:qa_engineer` to begin testing.
 
 ## Success Message
 

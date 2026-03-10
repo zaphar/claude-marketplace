@@ -34,7 +34,7 @@ If it returns no project record, stop with an error:
 
 ```
 ERROR: No project found.
-Use /rigorous-dev:start to initialize a new workflow.
+Use /rigor:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
@@ -45,7 +45,7 @@ Inspect the `project_status` response:
 
 ```
 ERROR: The current project is still active.
-Use /rigorous-dev:close to close the current iteration before starting a new one.
+Use /rigor:close to close the current iteration before starting a new one.
 ```
 
 ### 3. Display Previous Iteration Summary
@@ -80,7 +80,7 @@ Options:
 If user cancels:
 ```
 Operation cancelled. Workflow remains closed.
-Use /rigorous-dev:new-iteration when ready to start a new iteration.
+Use /rigor:new-iteration when ready to start a new iteration.
 ```
 
 ### 5. Commit Artifacts to VCS
@@ -91,11 +91,11 @@ Before creating the new iteration, commit all current artifacts to VCS so the fu
 # Detect VCS and commit
 if [ -d .jj ]; then
   # Jujutsu — just describe the current change with a message
-  jj commit -m "rigorous-dev: archive iteration <iteration_id> artifacts for <project_name>"
+  jj commit -m "rigor: archive iteration <iteration_id> artifacts for <project_name>"
 elif [ -d .git ]; then
   # Git — stage the artifacts directory and commit
   git add "<artifacts_dir>/"
-  git commit -m "rigorous-dev: archive iteration <iteration_id> artifacts for <project_name>"
+  git commit -m "rigor: archive iteration <iteration_id> artifacts for <project_name>"
 fi
 ```
 
@@ -118,7 +118,7 @@ The DB retains all records from previous iterations — nothing is deleted.
 
 ### 7. Load Rigorous Dev Skill and Begin Requirements Phase
 
-Load the rigorous-dev skill and start the Requirements phase, informing the agent about the prior iteration:
+Load the workflow skill and start the Requirements phase, informing the agent about the prior iteration:
 
 ```
 Workflow iteration <new_iteration_id> started!
@@ -136,7 +136,7 @@ Provide the Requirements Analyst with context:
 - Persistent artifacts (UX design, architecture) remain in the current directory as starting points
 - The analyst should reference prior requirements but conduct a fresh interview to capture changes
 
-Then load and execute `rigorous-dev:requirements_analyst` to begin the conversational interview.
+Then load and execute `rigor:requirements_analyst` to begin the conversational interview.
 
 ## Important Notes
 

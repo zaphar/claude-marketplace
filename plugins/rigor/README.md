@@ -10,7 +10,7 @@ Two workflows covering the complete SDLC:
 
 **Release:** QA → Audit (security + performance)
 
-Each phase uses a **producer-critic pattern**: a producer agent creates artifacts, a critic agent validates them, with up to 3 revision loops before escalating to the user. All state and decisions are stored in an append-only SQLite database (`.claude/rigorous-dev.db`) for full traceability.
+Each phase uses a **producer-critic pattern**: a producer agent creates artifacts, a critic agent validates them, with up to 3 revision loops before escalating to the user. All state and decisions are stored in an append-only SQLite database (`.claude/rigor.db`) for full traceability.
 
 ## Installation
 
@@ -65,7 +65,7 @@ Loads the plugin for the current session without installing.
 rigor/
 ├── agents/                          # 20 agent personality files (10 producer-critic pairs)
 ├── commands/                        # Slash command definitions
-├── skills/rigorous-dev/SKILL.md     # Orchestration skill (main workflow logic)
+├── skills/workflow/SKILL.md     # Orchestration skill (main workflow logic)
 └── mcp-server/                      # MCP server with SQLite changelog backend
     ├── schema.sql                   # Database schema (source of truth for data model)
     ├── write-tools.js               # Write tools (changelog_insert, phase_transition, etc.)
@@ -80,7 +80,7 @@ rigor/
 
 **Extending the schema:** See the checklist at the top of `mcp-server/schema.sql`.
 
-**Adding new phases:** Create producer + critic agent files, add tables to `schema.sql`, add handlers in `write-tools.js` and `read-tools.js`, and update `skills/rigorous-dev/SKILL.md`.
+**Adding new phases:** Create producer + critic agent files, add tables to `schema.sql`, add handlers in `write-tools.js` and `read-tools.js`, and update `skills/workflow/SKILL.md`.
 
 ## Troubleshooting
 

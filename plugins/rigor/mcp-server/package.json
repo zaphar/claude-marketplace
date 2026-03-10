@@ -1,9 +1,9 @@
 {
-  "name": "rigorous-dev-mcp",
+  "name": "rigor-mcp",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MCP server for rigorous-dev changelog database",
+  "description": "MCP server for rigor changelog database",
   "main": "server.js",
   "scripts": {
     "test": "node --test test/*.test.js"

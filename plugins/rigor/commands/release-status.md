@@ -30,7 +30,7 @@ If no workflow exists or release phases haven't been started, display:
 ```
 No release workflow found.
 
-Use /rigorous-dev:start-release to initialize a release workflow.
+Use /rigor:start-release to initialize a release workflow.
 ```
 
 Exit without error.
@@ -87,7 +87,7 @@ Release Workflow Status
 
 Project: My Project
 Status: active
-Artifacts: .claude/rigorous-dev-artifacts
+Artifacts: .claude/rigor-artifacts
 Created: 2026-02-15T10:00:00Z
 Last Updated: 2026-02-15T14:30:00Z
 

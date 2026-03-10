@@ -33,7 +33,7 @@ If it returns no project record, stop with an error:
 
 ```
 ERROR: No project found.
-Use /rigorous-dev:start to initialize a new workflow.
+Use /rigor:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
@@ -44,7 +44,7 @@ Inspect the `project_status` response:
 
 ```
 ERROR: This project is already closed.
-Use /rigorous-dev:new-iteration to start a new iteration.
+Use /rigor:new-iteration to start a new iteration.
 ```
 
 ### 3. Display Status Summary
@@ -86,7 +86,7 @@ If user chooses "Close with notes", prompt for the notes text.
 If user cancels:
 ```
 Operation cancelled. Workflow remains active.
-Use /rigorous-dev:resume to continue working.
+Use /rigor:resume to continue working.
 ```
 
 ### 5. Update Workflow in DB
@@ -121,7 +121,7 @@ Project: <project_name>
 Closed at: <closed_at>
 
 To start a new iteration:
-  /rigorous-dev:new-iteration
+  /rigor:new-iteration
 
 To check status:
   /rigor:dev-status
@@ -130,5 +130,5 @@ To check status:
 ## Important Notes
 
 - Closing a workflow does not delete any artifacts or DB records
-- A closed workflow cannot be resumed; use `/rigorous-dev:new-iteration` to continue work
+- A closed workflow cannot be resumed; use `/rigor:new-iteration` to continue work
 - The release phases (qa, audit) are part of the same iteration in the DB and are not affected by closing the dev workflow

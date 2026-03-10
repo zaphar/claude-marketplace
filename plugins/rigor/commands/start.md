@@ -42,7 +42,7 @@ Use /rigor:close to close it, then /rigor:new-iteration to start fresh.
 Use AskUserQuestion to prompt for:
 
 - **Project name**: Default to current directory name if not provided
-- **Artifacts directory**: Default to `.claude/rigorous-dev-artifacts`
+- **Artifacts directory**: Default to `.claude/rigor-artifacts`
 - **Critic model**: What effort level should critic agents use for review?
   - **Sonnet (Recommended)** — Best balance of quality and cost
   - **Haiku** — Budget-friendly, good for small projects
@@ -75,10 +75,10 @@ This creates the project record, the first iteration, and all phase rows (requir
 
 ### 5. Load Rigorous Dev Skill
 
-After state file is created, load the rigorous-dev skill to begin the workflow:
+After state file is created, load the workflow skill to begin the workflow:
 
 ```
-Load skills/rigorous-dev/SKILL.md and begin with Requirements phase.
+Load skills/workflow/SKILL.md and begin with Requirements phase.
 ```
 
 ### 6. Start Requirements Phase
@@ -95,7 +95,7 @@ Starting Requirements Phase...
 Loading Requirements Analyst agent.
 ```
 
-Then load and execute `rigorous-dev:requirements_analyst` to begin the conversational interview.
+Then load and execute `rigor:requirements_analyst` to begin the conversational interview.
 
 ## Success Message
 

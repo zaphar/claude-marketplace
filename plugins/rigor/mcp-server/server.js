@@ -20,7 +20,7 @@ import { READ_TOOLS, handleReadTool } from "./read-tools.js";
 // ---------------------------------------------------------------------------
 
 const mcpServer = new McpServer(
-  { name: "rigorous-dev-mcp", version: "1.0.0" },
+  { name: "rigor-mcp", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -96,7 +96,7 @@ mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
-  console.error("rigorous-dev-mcp server running on stdio");
+  console.error("rigor-mcp server running on stdio");
 }
 
 main().catch((err) => {

@@ -37,8 +37,8 @@ If it returns a project record, stop with an error:
 
 ```
 ERROR: A project already exists in this directory.
-Use /rigorous-dev:resume to continue the existing workflow.
-Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
+Use /rigor:resume to continue the existing workflow.
+Use /rigor:close to close it, then /rigor:new-iteration to start fresh.
 ```
 
 ### 2. Gather Configuration
@@ -46,7 +46,7 @@ Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start f
 Use AskUserQuestion to prompt for:
 
 - **Project name**: Default to current directory name if not provided
-- **Artifacts directory**: Default to `.claude/rigorous-dev-artifacts`
+- **Artifacts directory**: Default to `.claude/rigor-artifacts`
 - **Project type**: Whether the project has a visual UI (web/desktop/mobile app) or is non-visual (CLI/library/API-only). This determines whether the UX design phase runs or is skipped.
 - **Critic model**: What effort level should critic agents use for review?
   - **Sonnet (Recommended)** — Best balance of quality and cost
@@ -106,7 +106,7 @@ No YAML state file is written.
 
 ### 5. Load Rigorous Dev Skill
 
-After state file is created, load the rigorous-dev skill (`skills/rigorous-dev/SKILL.md`) for orchestration context. This provides the phase transition rules, artifact management patterns, and producer-critic loop mechanics.
+After state file is created, load the workflow skill (`skills/workflow/SKILL.md`) for orchestration context. This provides the phase transition rules, artifact management patterns, and producer-critic loop mechanics.
 
 ### 6. Run UX Design Documentation (Visual Projects Only)
 
@@ -114,7 +114,7 @@ After state file is created, load the rigorous-dev skill (`skills/rigorous-dev/S
 
 #### 6a. Load UX Designer with Documentation Mode Override
 
-Load `rigorous-dev:ux_designer`, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
+Load `rigor:ux_designer`, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - User interviews and design direction questions
@@ -152,7 +152,7 @@ Load `rigorous-dev:ux_designer`, then apply these **Documentation Mode Overrides
 
 #### 6b. Run UX Critic with Onboarding Override
 
-Load `rigorous-dev:ux_critic`, then apply these **Onboarding Critic Overrides**:
+Load `rigor:ux_critic`, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every user-facing REQ-XXX has UX coverage") — there are no real requirements yet
@@ -184,7 +184,7 @@ After approval, transition to architecture phase: set `architecture.status: "in_
 
 #### 7a. Load Backend Architect with Documentation Mode Override
 
-Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Overrides**:
+Load `rigor:backend_architect`, then apply these **Documentation Mode Overrides**:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - Validating requirements and UX specifications as inputs (they don't exist yet, or were just produced by onboarding)
@@ -237,7 +237,7 @@ Load `rigorous-dev:backend_architect`, then apply these **Documentation Mode Ove
 
 #### 7b. Run Architecture Critic with Onboarding Override
 
-Load `rigorous-dev:architecture_critic`, then apply these **Onboarding Critic Overrides**:
+Load `rigor:architecture_critic`, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every REQ-XXX has corresponding architectural coverage") — requirements are placeholders
@@ -289,7 +289,7 @@ Documented:
 The existing codebase has been documented. The workflow is now ready
 for its first requirements gathering iteration.
 
-Next step: Use /rigorous-dev:resume to begin the Requirements phase,
+Next step: Use /rigor:resume to begin the Requirements phase,
 where you can define what you want to build or change next.
 ```
 
