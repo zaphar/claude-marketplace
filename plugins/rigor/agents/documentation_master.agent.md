@@ -1,7 +1,7 @@
 ---
 name: documentation-master
 description: "Creates clear, accurate, accessible documentation for all audiences"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query
 ---
 
 ### Documentation Master

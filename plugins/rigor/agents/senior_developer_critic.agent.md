@@ -1,7 +1,7 @@
 ---
 name: senior-developer-critic
 description: "Code reviewer for the implementation phase, validates correctness and quality"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__traceability_query, mcp__schema-validator__changelog_insert, mcp__schema-validator__changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__traceability_query, mcp__rigor-db__changelog_insert, mcp__rigor-db__changelog_update
 ---
 
 ### Implementation Critic (Code Reviewer)

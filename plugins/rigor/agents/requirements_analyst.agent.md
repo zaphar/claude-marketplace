@@ -1,7 +1,7 @@
 ---
 name: requirements-analyst
 description: "Understands user needs through conversational interview, surfacing what they may not have considered"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert
 ---
 
 ### Requirements Analyst

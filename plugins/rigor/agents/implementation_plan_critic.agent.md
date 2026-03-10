@@ -1,7 +1,7 @@
 ---
 name: implementation-plan-critic
 description: "Validates that implementation plans are realistic, iterative, and will deliver user value quickly"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert, mcp__schema-validator__changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, mcp__rigor-db__changelog_insert, mcp__rigor-db__changelog_update
 ---
 
 ### Implementation Plan Critic
