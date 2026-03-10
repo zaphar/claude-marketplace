@@ -259,9 +259,7 @@ function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = 
     return {
       ...fl,
       steps,
-      error_states: db
-        .prepare("SELECT condition, recovery FROM user_flow_error_state WHERE flow_id = ?")
-        .all(fl.id),
+      error_states: (() => { try { return JSON.parse(fl.error_states || '[]'); } catch { return fl.error_states; } })(),
       requirements: db
         .prepare("SELECT requirement_id FROM requirement_trace WHERE addressed_by = ? AND addressed_by_type = 'flow'")
         .all(fl.id)
@@ -299,7 +297,7 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
 const WORK_ITEM_FILTERS = {
   phase_number: { nullable: false },
   name: { nullable: false },
-  phase_type: { nullable: false },
+  work_type: { nullable: false },
   goal: { nullable: false },
   status: { nullable: false },
   complexity: { nullable: true },
@@ -334,9 +332,7 @@ function queryWorkItem(db, { iteration_id, ids, filters = {}, include_related = 
       .map((x) => x.component_id),
     entry_criteria: (() => { try { return JSON.parse(p.entry_criteria || '[]'); } catch { return p.entry_criteria; } })(),
     exit_criteria: (() => { try { return JSON.parse(p.exit_criteria || '[]'); } catch { return p.exit_criteria; } })(),
-    risks: db
-      .prepare("SELECT risk, mitigation FROM work_item_risk WHERE work_item_id = ?")
-      .all(p.id),
+    risks: (() => { try { return JSON.parse(p.risks || '[]'); } catch { return p.risks; } })(),
     checkpoint_focus: (() => { try { return JSON.parse(p.checkpoint_focus || '[]'); } catch { return p.checkpoint_focus; } })(),
   }));
 }
@@ -603,7 +599,7 @@ function queryDataExchange(db, { iteration_id, ids, filters = {} }) {
 }
 
 const NONFUNCTIONAL_REQUIREMENT_FILTERS = {
-  type: { nullable: false },
+  nfr_type: { nullable: false },
   item: { nullable: false },
   category: { nullable: true },
   value: { nullable: true },

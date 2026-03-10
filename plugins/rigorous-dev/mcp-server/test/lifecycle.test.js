@@ -119,7 +119,7 @@ describe("work_item_transition", () => {
       data: {
         phase_number: 1,
         name: "auth-module",
-        type: "feature",
+        work_type: "feature",
         goal: "Implement authentication",
       },
     });
@@ -203,7 +203,7 @@ describe("commit_link", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "commit-test", type: "feature", goal: "Test" },
+      data: { phase_number: 1, name: "commit-test", work_type: "feature", goal: "Test" },
     });
     const result = handleWriteTool("commit_link", {
       iteration_id: seed.iteration_id,

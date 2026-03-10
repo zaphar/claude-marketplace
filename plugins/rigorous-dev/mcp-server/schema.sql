@@ -28,7 +28,7 @@
 --    sets timestamps via new Date().toISOString(). No DATETIME or INTEGER epoch.
 --
 -- ============================================================
--- DOMAIN MAP (10 domains, 45 tables)
+-- DOMAIN MAP (10 domains, 43 tables)
 -- ============================================================
 --
 -- Core (spine):       project, iteration, phase, revision
@@ -40,11 +40,11 @@
 --                     integration_test_boundary
 -- Cross-cutting:      approved_dependency, requirement_trace, blocker,
 --                     project_lesson
--- UX Design:          user_flow, user_flow_step, user_flow_error_state, screen,
+-- UX Design:          user_flow, user_flow_step, screen,
 --                     info_architecture, persona_addressed,
 --                     persona_addressed_flow, ux_asset
 -- Planning:           work_item, work_item_requirement, work_item_component,
---                     work_item_risk, plan_overview, plan_external_dependency
+--                     plan_overview, plan_external_dependency
 -- Implementation:     implementation_requirement_status,
 --                     implementation_component_status, implementation_blocker,
 --                     implementation_blocker_requirement, vcs_commit,
@@ -303,12 +303,13 @@ CREATE TABLE IF NOT EXISTS data_exchange (
 CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK(type IN ('deployment', 'operational', 'technology')),
+  nfr_type TEXT NOT NULL CHECK(nfr_type IN ('deployment', 'operational', 'technology')),
   item TEXT NOT NULL,
   category TEXT,
   value TEXT,
   notes TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(iteration_id, nfr_type, item)
 );
 
 -- Architecture Decision Records
@@ -518,6 +519,7 @@ CREATE TABLE IF NOT EXISTS user_flow (
   entry_point TEXT,
   success_state TEXT,
   data_dependencies JSON NOT NULL DEFAULT '[]',
+  error_states JSON, -- [{condition, recovery}] — error conditions and recovery paths for this flow
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
 );
@@ -542,20 +544,6 @@ CREATE TABLE IF NOT EXISTS user_flow_step (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_surface ON user_flow_step(surface);
-
--- Domain: ux-design
--- Purpose: An error condition that can occur during the flow and the recovery path the user must
--- take. Captures exception handling from a UX perspective (not from a system error perspective).
--- Context: Error states are sibling records of the flow rather than children of individual steps,
--- because an error may span multiple steps or originate from backend failures. Examples: "Session
--- expires mid-flow → redirect to login with return URL", "Payment gateway timeout → show retry
--- dialog".
-CREATE TABLE IF NOT EXISTS user_flow_error_state (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  flow_id TEXT NOT NULL REFERENCES user_flow(id) ON DELETE CASCADE,
-  condition TEXT NOT NULL,
-  recovery TEXT NOT NULL
-);
 
 -- requirement_trace: unified traceability — see requirement_trace table above
 
@@ -647,7 +635,8 @@ CREATE TABLE IF NOT EXISTS ux_asset (
   asset_type TEXT NOT NULL,
   screen_id TEXT REFERENCES screen(id) ON DELETE SET NULL,
   description TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(iteration_id, path)
 );
 
 -- Implementation plan phases
@@ -669,7 +658,7 @@ CREATE TABLE IF NOT EXISTS work_item (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_number INTEGER NOT NULL,
   name TEXT NOT NULL,
-  phase_type TEXT NOT NULL,
+  work_type TEXT NOT NULL,
   goal TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'test_writing', 'implementing', 'completed')),
   complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')), -- NULL when estimation not yet done
@@ -680,6 +669,7 @@ CREATE TABLE IF NOT EXISTS work_item (
   checkpoint_focus JSON NOT NULL DEFAULT '[]',
   critical_path_sequence INTEGER, -- NULL = not on critical path; non-NULL = sequence order
   work_order INTEGER, -- NULL = unordered; non-NULL = explicit execution sequence
+  risks JSON, -- [{risk, mitigation}] — work-item-scoped risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
 );
@@ -711,22 +701,6 @@ CREATE TABLE IF NOT EXISTS work_item_component (
   work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
   PRIMARY KEY (work_item_id, component_id)
-);
-
--- Domain: planning
--- Purpose: Records risks specific to a single work item — technical unknowns, integration hazards,
--- or schedule threats — along with their mitigations.
--- Context: One-to-many child of work_item. A work item may have zero or more risks. Distinct from
--- plan_overview.risks (JSON column), which records plan-wide risks. These are work-item-scoped.
--- implementation_planner documents risks when a work item touches unfamiliar technology, has a
--- tight time window, or depends on external teams. senior_developer reviews these before starting
--- the work item to pre-empt blockers. implementation_plan_critic checks that every risk has a
--- concrete mitigation (not just "be careful").
-CREATE TABLE IF NOT EXISTS work_item_risk (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  work_item_id INTEGER NOT NULL REFERENCES work_item(id) ON DELETE CASCADE,
-  risk TEXT NOT NULL,
-  mitigation TEXT
 );
 
 -- Implementation plan: overview
@@ -1016,8 +990,7 @@ CREATE TABLE IF NOT EXISTS project_lesson (
 
 -- Requirements domain
 -- Skipped: data_exchange (iteration_id is leftmost in UNIQUE(iteration_id, direction, name))
-CREATE INDEX IF NOT EXISTS idx_nonfunctional_requirement_iteration_id
-  ON nonfunctional_requirement(iteration_id);
+-- Skipped: nonfunctional_requirement (iteration_id is leftmost in UNIQUE(iteration_id, nfr_type, item))
 CREATE INDEX IF NOT EXISTS idx_persona_introduced_in_iteration_id
   ON persona(introduced_in_iteration_id);
 
@@ -1046,8 +1019,6 @@ CREATE INDEX IF NOT EXISTS idx_implementation_blocker_iteration_id
 --   (work_item_id is leftmost in their composite PKs)
 -- ------------------------------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_work_item_risk_work_item_id
-  ON work_item_risk(work_item_id);
 CREATE INDEX IF NOT EXISTS idx_plan_external_dependency_work_item_id
   ON plan_external_dependency(work_item_id);
 CREATE INDEX IF NOT EXISTS idx_vcs_commit_work_item_id
@@ -1100,8 +1071,7 @@ CREATE INDEX IF NOT EXISTS idx_info_architecture_iteration_id
   ON info_architecture(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_persona_addressed_iteration_id
   ON persona_addressed(iteration_id);
-CREATE INDEX IF NOT EXISTS idx_ux_asset_iteration_id
-  ON ux_asset(iteration_id);
+-- Skipped: ux_asset (iteration_id is leftmost in UNIQUE)
 
 -- Planning domain
 CREATE INDEX IF NOT EXISTS idx_work_item_iteration_id
@@ -1184,8 +1154,6 @@ CREATE INDEX IF NOT EXISTS idx_ux_asset_screen_id
 
 CREATE INDEX IF NOT EXISTS idx_user_flow_step_flow_id
   ON user_flow_step(flow_id);
-CREATE INDEX IF NOT EXISTS idx_user_flow_error_state_flow_id
-  ON user_flow_error_state(flow_id);
 CREATE INDEX IF NOT EXISTS idx_persona_addressed_flow_flow_id
   ON persona_addressed_flow(flow_id);
 

@@ -132,7 +132,7 @@ describe("UNIQUE constraints", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "vcs-test", type: "feature", goal: "Test" },
+      data: { phase_number: 1, name: "vcs-test", work_type: "feature", goal: "Test" },
     });
     handleWriteTool("commit_link", {
       iteration_id: seed.iteration_id,

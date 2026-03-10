@@ -218,7 +218,7 @@ describe("data_exchange", () => {
 describe("nonfunctional_requirement (deployment)", () => {
   it("inserts deployment requirement", () => {
     const { readResult } = insertAndQuery("nonfunctional_requirement", {
-      type: "deployment",
+      nfr_type: "deployment",
       item: "Node 18+ required",
       category: "production",
     });
@@ -229,7 +229,7 @@ describe("nonfunctional_requirement (deployment)", () => {
 describe("nonfunctional_requirement (operational)", () => {
   it("inserts operational requirement", () => {
     const { readResult } = insertAndQuery("nonfunctional_requirement", {
-      type: "operational",
+      nfr_type: "operational",
       item: "Log rotation",
       category: "logging",
     });
@@ -240,7 +240,7 @@ describe("nonfunctional_requirement (operational)", () => {
 describe("nonfunctional_requirement (technology)", () => {
   it("inserts technology constraint", () => {
     const { readResult } = insertAndQuery("nonfunctional_requirement", {
-      type: "technology",
+      nfr_type: "technology",
       item: "min_node_version",
       value: "18",
     });
@@ -301,7 +301,7 @@ describe("work_item", () => {
       {
         phase_number: 1,
         name: "auth-module",
-        type: "feature",
+        work_type: "feature",
         goal: "Auth implementation",
         api_endpoints: [{ http_method: "POST", route: "/login" }],
         risks: [{ risk: "Scope creep", mitigation: "Strict requirements" }],
@@ -343,7 +343,7 @@ describe("work_item with critical_path_sequence", () => {
     const { writeResult, readResult } = insertAndQuery("work_item", {
       phase_number: 1,
       name: "setup",
-      type: "feature",
+      work_type: "feature",
       goal: "Initial setup",
       critical_path_sequence: 1,
     });
@@ -356,7 +356,7 @@ describe("work_item with critical_path_sequence", () => {
     const { readResult } = insertAndQuery("work_item", {
       phase_number: 2,
       name: "build",
-      type: "feature",
+      work_type: "feature",
       goal: "Build things",
     });
     assert.strictEqual(readResult.results[0].critical_path_sequence, null);
@@ -413,7 +413,7 @@ describe("vcs_commit (via changelog_insert)", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "vcs-entity", type: "feature", goal: "Test" },
+      data: { phase_number: 1, name: "vcs-entity", work_type: "feature", goal: "Test" },
     });
     const { readResult } = insertAndQuery("vcs_commit", {
       work_item_id: wi.id,

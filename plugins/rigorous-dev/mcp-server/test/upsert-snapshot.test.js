@@ -142,7 +142,8 @@ describe("user_flow upsert", () => {
 
     const steps = db.prepare("SELECT * FROM user_flow_step WHERE flow_id = 'flow-1'").all();
     assert.strictEqual(steps.length, 2);
-    const errors = db.prepare("SELECT * FROM user_flow_error_state WHERE flow_id = 'flow-1'").all();
+    const flow = db.prepare("SELECT error_states FROM user_flow WHERE id = 'flow-1'").get();
+    const errors = JSON.parse(flow.error_states || '[]');
     assert.strictEqual(errors.length, 0);
   });
 });

@@ -495,8 +495,8 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
   const existed = existsForUpsert(db, "user_flow", data.id);
 
   db.prepare(
-    `INSERT INTO user_flow (id, iteration_id, name, goal, persona_id, entry_point, success_state, data_dependencies, created_at)
-     VALUES (@id, @iteration_id, @name, @goal, @persona_id, @entry_point, @success_state, @data_dependencies, @created_at)
+    `INSERT INTO user_flow (id, iteration_id, name, goal, persona_id, entry_point, success_state, data_dependencies, error_states, created_at)
+     VALUES (@id, @iteration_id, @name, @goal, @persona_id, @entry_point, @success_state, @data_dependencies, @error_states, @created_at)
      ON CONFLICT(id) DO UPDATE SET
        iteration_id = excluded.iteration_id,
        name = excluded.name,
@@ -505,6 +505,7 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
        entry_point = excluded.entry_point,
        success_state = excluded.success_state,
        data_dependencies = excluded.data_dependencies,
+       error_states = excluded.error_states,
        updated_at = @updated_at`
   ).run({
     id: data.id,
@@ -515,13 +516,13 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
     entry_point: data.entry_point ?? null,
     success_state: data.success_state ?? null,
     data_dependencies: JSON.stringify(data.data_dependencies ?? []),
+    error_states: data.error_states?.length ? JSON.stringify(data.error_states) : null,
     created_at: now,
     updated_at: now
   });
 
   if (existed) {
     db.prepare("DELETE FROM user_flow_step WHERE flow_id = @flow_id").run({ flow_id: data.id });
-    db.prepare("DELETE FROM user_flow_error_state WHERE flow_id = @flow_id").run({ flow_id: data.id });
     db.prepare("DELETE FROM requirement_trace WHERE addressed_by = @addressed_by AND addressed_by_type = 'flow'").run({ addressed_by: data.id });
   }
 
@@ -538,13 +539,6 @@ function insertUserFlow(db, iteration_id, revision_id, data) {
       is_decision_point: step.is_decision_point ? 1 : 0,
       branches: step.branches?.length ? JSON.stringify(step.branches) : null
     });
-  }
-
-  const insertError = db.prepare(
-    "INSERT INTO user_flow_error_state (flow_id, condition, recovery) VALUES (@flow_id, @condition, @recovery)"
-  );
-  for (const err of data.error_states ?? []) {
-    insertError.run({ flow_id: data.id, condition: err.condition, recovery: err.recovery });
   }
 
   const insertReq = db.prepare(
@@ -591,14 +585,14 @@ function insertWorkItem(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO work_item (iteration_id, phase_number, name, phase_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, work_order, created_at)
-       VALUES (@iteration_id, @phase_number, @name, @phase_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @work_order, @created_at)`
+      `INSERT INTO work_item (iteration_id, phase_number, name, work_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, work_order, risks, created_at)
+       VALUES (@iteration_id, @phase_number, @name, @work_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @work_order, @risks, @created_at)`
     )
     .run({
       iteration_id,
       phase_number: data.phase_number,
       name: data.name,
-      phase_type: data.type,
+      work_type: data.work_type,
       goal: data.goal,
       complexity: data.complexity ?? null,
       review_checkpoint: data.review_checkpoint ? 1 : 0,
@@ -608,6 +602,7 @@ function insertWorkItem(db, iteration_id, revision_id, data) {
       checkpoint_focus: JSON.stringify(data.checkpoint_focus ?? []),
       critical_path_sequence: data.critical_path_sequence ?? null,
       work_order: data.work_order ?? null,
+      risks: data.risks?.length ? JSON.stringify(data.risks) : null,
       created_at: now
     });
   const work_item_id = result.lastInsertRowid;
@@ -628,13 +623,6 @@ function insertWorkItem(db, iteration_id, revision_id, data) {
   );
   for (const comp_id of data.components ?? []) {
     insertComp.run({ work_item_id, component_id: comp_id });
-  }
-
-  const insertRisk = db.prepare(
-    "INSERT INTO work_item_risk (work_item_id, risk, mitigation) VALUES (@work_item_id, @risk, @mitigation)"
-  );
-  for (const risk of data.risks ?? []) {
-    insertRisk.run({ work_item_id, risk: risk.risk, mitigation: risk.mitigation ?? null });
   }
 
   return { entity_type: "work_item", id: work_item_id };
@@ -767,12 +755,12 @@ function insertNonfunctionalRequirement(db, iteration_id, _revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO nonfunctional_requirement (iteration_id, type, item, category, value, notes) VALUES (@iteration_id, @type, @item, @category, @value, @notes)`
+    `INSERT OR REPLACE INTO nonfunctional_requirement (iteration_id, nfr_type, item, category, value, notes) VALUES (@iteration_id, @nfr_type, @item, @category, @value, @notes)`
   );
   for (const entry of entries) {
     const result = insert.run({
       iteration_id,
-      type: entry.type,
+      nfr_type: entry.nfr_type,
       item: entry.item,
       category: entry.category ?? null,
       value: entry.value ?? null,
@@ -979,7 +967,7 @@ function insertUxAsset(db, iteration_id, _revision_id, data) {
   const now = new Date().toISOString();
   let lastId;
   const insert = db.prepare(
-    `INSERT INTO ux_asset (iteration_id, name, path, asset_type, screen_id, description, created_at)
+    `INSERT OR REPLACE INTO ux_asset (iteration_id, name, path, asset_type, screen_id, description, created_at)
      VALUES (@iteration_id, @name, @path, @asset_type, @screen_id, @description, @created_at)`
   );
   for (const entry of entries) {

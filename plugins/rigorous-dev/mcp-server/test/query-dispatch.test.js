@@ -76,19 +76,19 @@ describe("queryWorkItem filters critical_path_sequence", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "phase-a", type: "feature", goal: "A", critical_path_sequence: 1 },
+      data: { phase_number: 1, name: "phase-a", work_type: "feature", goal: "A", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 2, name: "phase-b", type: "feature", goal: "B", critical_path_sequence: 2 },
+      data: { phase_number: 2, name: "phase-b", work_type: "feature", goal: "B", critical_path_sequence: 2 },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 3, name: "phase-c", type: "feature", goal: "C" },
+      data: { phase_number: 3, name: "phase-c", work_type: "feature", goal: "C" },
     });
     const r = handleReadTool("changelog_query", {
       entity_type: "work_item",
@@ -104,13 +104,13 @@ describe("queryWorkItem filters critical_path_sequence", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "critical-phase", type: "feature", goal: "Critical", critical_path_sequence: 1 },
+      data: { phase_number: 1, name: "critical-phase", work_type: "feature", goal: "Critical", critical_path_sequence: 1 },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 2, name: "optional-phase", type: "feature", goal: "Optional" },
+      data: { phase_number: 2, name: "optional-phase", work_type: "feature", goal: "Optional" },
     });
     const r = handleReadTool("changelog_query", {
       entity_type: "work_item",
@@ -329,13 +329,13 @@ describe("queryPlanOverview enrichment", () => {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "setup", type: "feature", goal: "Setup project" },
+      data: { phase_number: 1, name: "setup", work_type: "feature", goal: "Setup project" },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 2, name: "core", type: "feature", goal: "Build core" },
+      data: { phase_number: 2, name: "core", work_type: "feature", goal: "Build core" },
     });
     handleWriteTool("changelog_insert", {
       entity_type: "plan_overview",
@@ -739,7 +739,7 @@ describe("queryUserFlow enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].steps, undefined);
-    assert.strictEqual(r.results[0].error_states, undefined);
+    assert.strictEqual(r.results[0].error_states, null);
     assert.strictEqual(r.results[0].requirements, undefined);
     // data_dependencies should remain raw JSON string
     assert.strictEqual(typeof r.results[0].data_dependencies, "string");
@@ -807,7 +807,7 @@ describe("queryWorkItem enrichment", () => {
       data: {
         phase_number: 1,
         name: "Foundation",
-        type: "implementation",
+        work_type: "implementation",
         goal: "Set up foundation",
       },
     });
@@ -821,7 +821,7 @@ describe("queryWorkItem enrichment", () => {
       data: {
         phase_number: 2,
         name: "Core Features",
-        type: "implementation",
+        work_type: "implementation",
         goal: "Build core features",
         complexity: "L",
         review_checkpoint: true,
@@ -873,7 +873,7 @@ describe("queryWorkItem enrichment", () => {
     assert.strictEqual(phase.risks.length, 2);
     assert.strictEqual(phase.risks[0].risk, "API breaking changes");
     assert.strictEqual(phase.risks[0].mitigation, "Versioned endpoints");
-    assert.strictEqual(phase.risks[1].mitigation, null);
+    assert.strictEqual(phase.risks[1].mitigation, undefined);
   });
 
   it("does not attach child data when include_related is false", () => {
@@ -884,7 +884,7 @@ describe("queryWorkItem enrichment", () => {
       data: {
         phase_number: 10,
         name: "NoEnrich",
-        type: "implementation",
+        work_type: "implementation",
         goal: "Test no enrichment",
         entry_criteria: ["foo"],
         risks: [{ risk: "bar", mitigation: "baz" }],
@@ -903,7 +903,8 @@ describe("queryWorkItem enrichment", () => {
     // Child data should not be present
     assert.strictEqual(phase.requirements, undefined);
     assert.strictEqual(phase.components, undefined);
-    assert.strictEqual(phase.risks, undefined);
+    // risks is now a JSON column on the row — raw string when not enriched
+    assert.strictEqual(typeof phase.risks, "string");
   });
 
   it("returns empty arrays for work_item with no children", () => {
@@ -914,7 +915,7 @@ describe("queryWorkItem enrichment", () => {
       data: {
         phase_number: 99,
         name: "Empty Phase",
-        type: "implementation",
+        work_type: "implementation",
         goal: "Nothing",
       },
     });

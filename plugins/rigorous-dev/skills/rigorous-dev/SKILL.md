@@ -295,7 +295,7 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 **Determining Sub-phases:**
 - Query the approved implementation plan via `changelog_query(entity_type="work_item", iteration_id=<current_iteration_id>)`
-- Each returned row is a flat `work_item` record with fields such as `phase_number`, `name`, `type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve child data (linked `requirements`, `components`, `entry_criteria`, `exit_criteria`, `risks`, `checkpoint_focus`)
+- Each returned row is a flat `work_item` record with fields such as `phase_number`, `name`, `work_type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve linked child data (`requirements`, `components`) and parse JSON columns (`entry_criteria`, `exit_criteria`, `risks`, `checkpoint_focus`)
 - The response's `count` field gives the total number of sub-phases
 - Process sub-phases sequentially in ascending `phase_number` order
 
