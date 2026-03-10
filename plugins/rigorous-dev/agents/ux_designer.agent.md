@@ -122,3 +122,17 @@ Moderate risk of context exhaustion, especially during Phase 2 with multiple scr
 - If context gets tight, prioritize: personas → user flows → key screens → secondary screens → design system polish.
 
 **Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+
+**`ux_asset` insertion data structure** — use these exact field names:
+```
+changelog_insert(entity_type: "ux_asset", iteration_id: <id>, data: [
+  {
+    name: "UX Specification",       // required: human-readable name
+    path: "docs/ux_specification.yaml",  // required: relative file path
+    type: "spec",                   // required: use "spec", "image", "mockup", "design-system", etc. — free text
+    description: "...",             // optional
+    screen_id: "SCREEN-001"         // optional: omit if not tied to a specific screen
+  }
+])
+```
+`path` and `type` are both required. Do NOT use `asset_type` — the field name in the data object is `type`.

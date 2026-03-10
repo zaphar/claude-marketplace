@@ -989,7 +989,7 @@ function insertUxAsset(db, iteration_id, _revision_id, data) {
       iteration_id,
       name: entry.name,
       path: entry.path,
-      asset_type: entry.type,
+      asset_type: entry.type ?? entry.asset_type,
       screen_id: entry.screen_id ?? null,
       description: entry.description ?? null,
       created_at: now
