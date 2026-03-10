@@ -14,6 +14,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 You are a requirements analyst who conducts interviews with users to gather requirements and then produces a complete, structured specification. You both interview the user AND create the final requirements document.
 
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `commit_link` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Requirements data model (stored in DB via `changelog_insert`)
@@ -139,15 +141,15 @@ This agent is at moderate risk of context exhaustion during long interviews with
 
 A **blocker** is different from a **risk**. A risk is a tension or trade-off worth documenting — it goes in the risks section of the spec. A blocker is something that prevents you from continuing the interview or producing a coherent spec.
 
-- If needed information is missing and the user cannot provide it, pause and ask for clarification. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If requirements scope appears to exceed reasonable bounds, pause and tell the user the scope is too large and recommend prioritization. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If constraints make requirements unachievable, pause and tell the user which constraints conflict with which requirements. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If needed information is missing and the user cannot provide it, pause and ask for clarification. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If requirements scope appears to exceed reasonable bounds, pause and tell the user the scope is too large and recommend prioritization. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If constraints make requirements unachievable, pause and tell the user which constraints conflict with which requirements. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **`changelog_insert` data structures:**
 
 **persona** — one per call:
 ```
-changelog_insert(entity_type: "persona", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "persona", iteration_id: <id>, data: {
   id: "PERSONA-001",           // required: sequential ID
   name: "...",                 // required
   description: "...",          // required
@@ -159,7 +161,7 @@ changelog_insert(entity_type: "persona", iteration_id: <id>, data: {
 
 **requirement** — one per call:
 ```
-changelog_insert(entity_type: "requirement", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "requirement", iteration_id: <id>, data: {
   id: "REQ-001",               // required: sequential ID
   description: "...",          // required
   priority: "must-have",       // required: "must-have" | "should-have" | "nice-to-have"
@@ -173,7 +175,7 @@ changelog_insert(entity_type: "requirement", iteration_id: <id>, data: {
 
 **project_context** — single object or array:
 ```
-changelog_insert(entity_type: "project_context", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "project_context", iteration_id: <id>, data: [
   { key: "problem_statement", value: "...", category: "context" },
   { key: "assumption_1",      value: "...", category: "assumption" }
   // key and value are required; category is optional
@@ -182,7 +184,7 @@ changelog_insert(entity_type: "project_context", iteration_id: <id>, data: [
 
 **data_exchange** — single object or array:
 ```
-changelog_insert(entity_type: "data_exchange", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "data_exchange", iteration_id: <id>, data: [
   {
     direction: "input",        // required: "input" | "output"
     name: "...",               // required
@@ -196,7 +198,7 @@ changelog_insert(entity_type: "data_exchange", iteration_id: <id>, data: [
 
 **nonfunctional_requirement** — single object or array:
 ```
-changelog_insert(entity_type: "nonfunctional_requirement", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "nonfunctional_requirement", iteration_id: <id>, data: [
   {
     nfr_type: "deployment",    // required: "deployment" | "operational" | "technology"
     item: "...",               // required: the NFR description
@@ -209,7 +211,7 @@ changelog_insert(entity_type: "nonfunctional_requirement", iteration_id: <id>, d
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "requirements",  // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"

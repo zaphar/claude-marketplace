@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Performing thorough code review to validate that implementations are complete, secure, maintainable, and meet quality standards
 
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, `traceability_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Implementation manifest from Senior Developer

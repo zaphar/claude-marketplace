@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Designing intuitive, accessible user experiences that meet user needs — and surfacing UX concerns the user may not have considered
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Requirements (query via `changelog_query`)
@@ -121,13 +123,13 @@ Moderate risk of context exhaustion, especially during Phase 2 with multiple scr
 - On revision cycles, read only critic feedback and specific files needing changes.
 - If context gets tight, prioritize: personas → user flows → key screens → secondary screens → design system polish.
 
-**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+**Escalation:** If requirements are ambiguous, personas incomplete, or accessibility requirements conflict — pause, tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **`changelog_insert` data structures:**
 
 **user_flow** — one per call:
 ```
-changelog_insert(entity_type: "user_flow", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "user_flow", iteration_id: <id>, data: {
   id: "FLOW-001",              // required: sequential ID
   name: "...",                 // required
   goal: "...",                 // required
@@ -153,7 +155,7 @@ changelog_insert(entity_type: "user_flow", iteration_id: <id>, data: {
 
 **screen** — one per call:
 ```
-changelog_insert(entity_type: "screen", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "screen", iteration_id: <id>, data: {
   id: "SCREEN-001",            // required: sequential ID
   name: "...",                 // required
   purpose: "...",              // required
@@ -165,7 +167,7 @@ changelog_insert(entity_type: "screen", iteration_id: <id>, data: {
 
 **info_architecture** — single object or array:
 ```
-changelog_insert(entity_type: "info_architecture", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "info_architecture", iteration_id: <id>, data: [
   { category: "navigation", key: "main-nav",   value: "Primary navigation", parent_id: null },
   { category: "navigation", key: "nav-item-1", value: "Dashboard", parent_id: <returned-id> }
   // category, key, value are all required; parent_id optional for hierarchical entries
@@ -174,7 +176,7 @@ changelog_insert(entity_type: "info_architecture", iteration_id: <id>, data: [
 
 **persona_addressed** — one per call:
 ```
-changelog_insert(entity_type: "persona_addressed", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "persona_addressed", iteration_id: <id>, data: {
   persona_id: "PERSONA-001",   // required
   goal: "...",                 // required: the persona goal being addressed
   how_addressed: "...",        // required: how the UX design addresses it
@@ -184,7 +186,7 @@ changelog_insert(entity_type: "persona_addressed", iteration_id: <id>, data: {
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "ux_design",     // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"
@@ -194,7 +196,7 @@ changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
 
 **`ux_asset` insertion data structure** — use these exact field names:
 ```
-changelog_insert(entity_type: "ux_asset", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "ux_asset", iteration_id: <id>, data: [
   {
     name: "UX Specification",       // required: human-readable name
     path: "docs/ux_specification.yaml",  // required: relative file path

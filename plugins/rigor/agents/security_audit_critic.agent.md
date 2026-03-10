@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Validating that the security audit was thorough, complete, and that findings are actionable
 
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Security audit findings from Security Auditor (query via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)`)

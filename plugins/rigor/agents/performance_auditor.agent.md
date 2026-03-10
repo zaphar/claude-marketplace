@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, mcp__schema-validator__changelog_query, mcp__sche
 
 **Primary Focus:** Deep code-level performance audit that goes beyond requirement-driven benchmarking — finding bottlenecks and anti-patterns the requirements may not have anticipated
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Project source code
@@ -89,7 +91,7 @@ Record each finding individually as a separate DB row via `changelog_insert`. Do
 
 For each finding, call:
 ```
-changelog_insert(entity_type: "performance_audit_finding", iteration_id: <current>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "performance_audit_finding", iteration_id: <current>, data: {
   category: "database" | "memory" | "concurrency" | "api" | "frontend" | "algorithm" | "logging",
   severity: "critical" | "high" | "medium" | "low" | "informational",
   title: "<finding title>",
@@ -111,7 +113,7 @@ changelog_insert(entity_type: "performance_audit_finding", iteration_id: <curren
 
 **Produces:**
 
-- Individual performance audit findings recorded in the database via `changelog_insert(entity_type: "performance_audit_finding")`
+- Individual performance audit findings recorded in the database via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "performance_audit_finding")`
 - Each finding includes severity, location (file:line), estimated impact, evidence, and specific remediation steps
 - After recording all findings, provide a summary to the orchestrator covering: overall performance assessment, count of findings by severity, areas audited, and areas not audited (with reasons)
 - If findings exist with severity high or critical (or 5+ medium findings accumulated across both audits), the remediation cycle is triggered (developer fixes → QA re-tests → re-audit)
@@ -133,12 +135,12 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 
 **Escalation:**
 
-- If critical performance issues are found that indicate a fundamental architectural problem (e.g., wrong database choice for the access pattern, synchronous architecture where async is needed), pause and tell the user the architecture may need revision. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If the same performance issues persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If critical performance issues are found that indicate a fundamental architectural problem (e.g., wrong database choice for the access pattern, synchronous architecture where async is needed), pause and tell the user the architecture may need revision. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If the same performance issues persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **blocker** data structure (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "audit",           // required: current phase name
   description: "...",            // required
   severity: "critical",          // required: "critical" | "major" | "minor"

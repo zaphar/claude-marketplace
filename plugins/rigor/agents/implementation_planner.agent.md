@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Creating a phased implementation plan that prioritizes getting interactive software into users' hands quickly through highly iterative cycles
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Requirements specification (approved by Requirements Critic)
@@ -118,13 +120,13 @@ This agent is at **high risk** of context exhaustion.
 
 *Pass 2:* Work one phase at a time. Use `changelog_query` to load only the specific requirements, components, and flows needed per WI. Write each WI immediately. If context exhausts, continue from first phase missing WI files.
 
-**Escalation:** If specs have gaps/conflicts, scope is too large (>10 phases), or circular dependencies exist — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+**Escalation:** If specs have gaps/conflicts, scope is too large (>10 phases), or circular dependencies exist — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **`changelog_insert` data structures:**
 
 **plan_overview** — one per iteration:
 ```
-changelog_insert(entity_type: "plan_overview", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "plan_overview", iteration_id: <id>, data: {
   strategy: "...",             // required
   rationale: "...",            // required
   phase_one_approach: "...",   // optional
@@ -137,7 +139,7 @@ changelog_insert(entity_type: "plan_overview", iteration_id: <id>, data: {
 
 **work_item** — one per call:
 ```
-changelog_insert(entity_type: "work_item", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "work_item", iteration_id: <id>, data: {
   phase_number: 1,             // required: which phase this WI belongs to
   name: "...",                 // required
   work_type: "feature",        // required: e.g. "feature" | "infrastructure" | "foundation"
@@ -163,7 +165,7 @@ changelog_insert(entity_type: "work_item", iteration_id: <id>, data: {
 
 **plan_external_dependency** — one per call:
 ```
-changelog_insert(entity_type: "plan_external_dependency", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "plan_external_dependency", iteration_id: <id>, data: {
   name: "...",                 // required
   description: "...",          // required
   work_item_id: <int>,         // optional: DB id of the affected work_item row
@@ -174,7 +176,7 @@ changelog_insert(entity_type: "plan_external_dependency", iteration_id: <id>, da
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "planning",      // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"

@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Making pre-written failing tests pass by implementing production-ready code
 
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `commit_link` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Pre-written failing tests from Test Writer (approved by Test Writer Critic)
@@ -90,13 +92,13 @@ High risk of context exhaustion during multi-phase implementation.
 - After completing phase, verify Feature-Layer Matrix and commit.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
 
-**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
+**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
 
 **`changelog_insert` data structures:**
 
 **implementation_manifest** — one per WI completion:
 ```
-changelog_insert(entity_type: "implementation_manifest", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "implementation_manifest", iteration_id: <id>, data: {
   requirement_status: [        // optional array
     {
       requirement_id: "REQ-001",
@@ -125,7 +127,7 @@ changelog_insert(entity_type: "implementation_manifest", iteration_id: <id>, dat
 
 **intermediate_asset** — for handoff context between producer and critic:
 ```
-changelog_insert(entity_type: "intermediate_asset", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "intermediate_asset", iteration_id: <id>, data: {
   asset_type: "plan",          // required: "commit_ref" | "file_ref" | "work_item" | "plan" | "note"
   title: "...",                // required
   content: "...",              // optional: text content
@@ -135,7 +137,7 @@ changelog_insert(entity_type: "intermediate_asset", iteration_id: <id>, data: {
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "implementation", // required: current phase name
   description: "...",           // required
   severity: "critical",         // required: "critical" | "major" | "minor"

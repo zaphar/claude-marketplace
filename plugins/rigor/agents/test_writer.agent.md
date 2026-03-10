@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Writing failing tests and minimal compilation stubs that define the behavioral contract for each Work Item, without implementing any logic
 
+**MCP Tool Note:** All `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic

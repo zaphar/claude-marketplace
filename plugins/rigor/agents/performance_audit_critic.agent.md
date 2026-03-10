@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Validating that the performance audit was thorough, complete, and that findings are backed by evidence
 
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Performance audit findings from Performance Auditor (query via `changelog_query(entity_type: "performance_audit_finding", iteration_id: <current>)`)

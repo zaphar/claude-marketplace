@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Verifying that the implementation meets all requirements and finding defects through comprehensive E2E testing
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Requirements specification (approved)
@@ -110,15 +112,15 @@ This agent is at **moderate risk** of context exhaustion during testing of large
 
 **Escalation:**
 
-- If tests consistently fail after 3 developer remediation attempts, pause and tell the user which failures persist. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If requirements are untestable as written, pause and describe why. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If architecture makes testing impossible, pause and describe the issue. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If tests consistently fail after 3 developer remediation attempts, pause and tell the user which failures persist. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If requirements are untestable as written, pause and describe why. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If architecture makes testing impossible, pause and describe the issue. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **`changelog_insert` data structures:**
 
 **test_report** — one per QA run:
 ```
-changelog_insert(entity_type: "test_report", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "test_report", iteration_id: <id>, data: {
   status: "pass",              // required: "pass" | "fail" | "blocked"
   total_tests: 42,             // optional (defaults to 0)
   passed_count: 40,            // optional
@@ -140,7 +142,7 @@ changelog_insert(entity_type: "test_report", iteration_id: <id>, data: {
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "qa",            // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"

@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 **Primary Focus:** Designing robust, implementable architecture — and surfacing concerns the user may not have considered
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Requirements specification (approved by Requirements Critic)
@@ -97,13 +99,13 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 - Record each architecture entry as you complete its topic (write `api_spec.yaml` separately).
 - Research one technology at a time; write ADR before researching next.
 
-**Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+**Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **`changelog_insert` data structures:**
 
 **adr** — one per call:
 ```
-changelog_insert(entity_type: "adr", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "adr", iteration_id: <id>, data: {
   id: "ADR-001",               // required: sequential ID
   title: "...",                // required
   status: "proposed",          // optional: "proposed" | "accepted" | "deprecated" | "superseded"; default "proposed"
@@ -122,7 +124,7 @@ changelog_insert(entity_type: "adr", iteration_id: <id>, data: {
 
 **adr_decision** — one per ADR to record the chosen alternative:
 ```
-changelog_insert(entity_type: "adr_decision", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "adr_decision", iteration_id: <id>, data: {
   adr_id: "ADR-001",           // required
   alternative_id: <int>,       // optional: DB id of the chosen adr_alternative row
   rationale: "...",            // optional
@@ -132,7 +134,7 @@ changelog_insert(entity_type: "adr_decision", iteration_id: <id>, data: {
 
 **component** — one per call:
 ```
-changelog_insert(entity_type: "component", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "component", iteration_id: <id>, data: {
   id: "COMP-001",              // required: sequential ID
   name: "...",                 // required
   purpose: "...",              // required
@@ -151,7 +153,7 @@ changelog_insert(entity_type: "component", iteration_id: <id>, data: {
 
 **approved_dependency** — single object or array:
 ```
-changelog_insert(entity_type: "approved_dependency", iteration_id: <id>, data: [
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "approved_dependency", iteration_id: <id>, data: [
   {
     package: "express",          // required
     purpose: "...",              // required
@@ -170,7 +172,7 @@ changelog_insert(entity_type: "approved_dependency", iteration_id: <id>, data: [
 
 **requirement_trace** — for explicit endpoint/technology/adr traces (component inserts auto-create component traces):
 ```
-changelog_insert(entity_type: "requirement_trace", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "requirement_trace", iteration_id: <id>, data: {
   requirement_id: "REQ-001",   // required
   addressed_by: "...",         // required: ID or name of the addressing element
   addressed_by_type: "endpoint", // required: "component" | "flow" | "screen" | "adr" | "endpoint" | "technology"
@@ -180,7 +182,7 @@ changelog_insert(entity_type: "requirement_trace", iteration_id: <id>, data: {
 
 **blocker** (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "architecture",  // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"

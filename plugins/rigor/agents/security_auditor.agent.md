@@ -12,6 +12,8 @@ tools: Read, Grep, Glob, Bash, mcp__schema-validator__changelog_query, mcp__sche
 
 **Primary Focus:** Deep code-level security audit that goes beyond requirement-driven testing — finding vulnerabilities the requirements may not have anticipated
 
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+
 **Inputs:**
 
 - Project source code
@@ -65,7 +67,7 @@ Record each finding individually as a separate DB row via `changelog_insert`. Do
 
 For each finding, call:
 ```
-changelog_insert(entity_type: "security_audit_finding", iteration_id: <current>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "security_audit_finding", iteration_id: <current>, data: {
   category: "<OWASP category or custom>",
   severity: "critical" | "high" | "medium" | "low" | "informational",
   title: "<finding title>",
@@ -85,7 +87,7 @@ changelog_insert(entity_type: "security_audit_finding", iteration_id: <current>,
 
 **Produces:**
 
-- Individual security audit findings recorded in the database via `changelog_insert(entity_type: "security_audit_finding")`
+- Individual security audit findings recorded in the database via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "security_audit_finding")`
 - Each finding includes severity, location (file:line), attack scenario, evidence, and specific remediation steps
 - After recording all findings, provide a summary to the orchestrator covering: overall risk level, count of findings by severity, OWASP categories audited, and areas not audited (with reasons)
 - If findings exist with severity high or critical (or 5+ medium findings accumulated across both audits), the remediation cycle is triggered (developer fixes → QA re-tests → re-audit)
@@ -106,13 +108,13 @@ This agent is at **high risk** of context exhaustion. You read the full source c
 
 **Escalation:**
 
-- If critical vulnerabilities are found that require immediate attention, pause and tell the user immediately. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If the security architecture itself is fundamentally flawed (not just the implementation), pause and tell the user the architecture needs revision. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If the same vulnerabilities persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If critical vulnerabilities are found that require immediate attention, pause and tell the user immediately. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If the security architecture itself is fundamentally flawed (not just the implementation), pause and tell the user the architecture needs revision. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
+- If the same vulnerabilities persist after 3 remediation cycles, pause and tell the user which issues keep recurring. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **blocker** data structure (for Escalation):
 ```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
+changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
   phase_name: "audit",         // required: current phase name
   description: "...",          // required
   severity: "critical",        // required: "critical" | "major" | "minor"
