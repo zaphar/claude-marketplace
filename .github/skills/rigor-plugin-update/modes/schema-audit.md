@@ -53,7 +53,7 @@ The 20 audit categories are split across 4 agent groups that run in parallel. Ea
 
 ```
 Agent A prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 1: Table Consolidation
 - Category 2: Child Table Collapse
 - Category 3: Foreign Key Enforcement
@@ -61,7 +61,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
 
 Agent B prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 5: Schema Correctness
 - Category 12: Nullable vs Required Alignment
 - Category 13: Transaction Safety
@@ -69,7 +69,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
 
 Agent C prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 6: Redundant Tables
 - Category 7: Orphaned Tables
 - Category 8: Naming Consistency
@@ -77,7 +77,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Produce your findings in the standard audit report format. Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
 
 Agent D prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 10: Index Coverage
 - Category 11: Timestamp Consistency
 - Category 15: Polymorphic References

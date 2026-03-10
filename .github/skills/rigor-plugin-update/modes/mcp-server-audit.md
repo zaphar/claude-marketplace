@@ -47,7 +47,7 @@ Launch the `rigor_mcp_server_critic` agent (always `claude-opus-4.6`) with a sco
 **For a full audit:**
 
 ```
-Perform a full audit of the rigorous-dev MCP server at plugins/rigorous-dev/mcp-server/.
+Perform a full audit of the rigor MCP server at plugins/rigor/mcp-server/.
 
 Run all 7 audit dimensions — Correctness, Data Integrity & Consistency, Error Handling & Robustness,
 MCP Protocol Compliance, Patterns & Anti-Patterns, Test Coverage Gaps, and Schema Header Documentation
@@ -60,7 +60,7 @@ systematically. Persist your report to .scratch/rigor-mcp-server-critic/<date>/<
 **For a focused audit:**
 
 ```
-Perform a focused audit of the rigorous-dev MCP server at plugins/rigorous-dev/mcp-server/.
+Perform a focused audit of the rigor MCP server at plugins/rigor/mcp-server/.
 
 Run ONLY these audit dimensions:
 - Dimension N: [name]

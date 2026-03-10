@@ -1,17 +1,17 @@
 ---
 name: rigor-plugin-update
 description: >
-  Manage changes to the rigorous-dev plugin at plugins/rigorous-dev/.
-  Use when the user wants to modify, audit, or ask questions about the rigorous-dev plugin —
+  Manage changes to the rigor plugin at plugins/rigor/.
+  Use when the user wants to modify, audit, or ask questions about the rigor plugin —
   its agents, commands, skills, MCP server, or orchestration workflow.
-  Triggers on: update plugin, modify agent, plugin audit, plugin consistency, rigorous-dev changes.
+  Triggers on: update plugin, modify agent, plugin audit, plugin consistency, rigor changes.
 ---
 
 # Rigor Plugin Update
 
-You are orchestrating changes to the rigorous-dev plugin located at `plugins/rigorous-dev/`. This skill manages five modes of interaction: making changes, auditing the plugin, auditing the schema, auditing the MCP server code, and answering questions.
+You are orchestrating changes to the rigor plugin located at `plugins/rigor/`. This skill manages five modes of interaction: making changes, auditing the plugin, auditing the schema, auditing the MCP server code, and answering questions.
 
-**Before any mode:** Read `plugins/rigorous-dev/README.md` to understand the plugin's purpose, workflows, agents, and design conventions.
+**Before any mode:** Read `plugins/rigor/README.md` to understand the plugin's purpose, workflows, agents, and design conventions.
 
 **Detailed instructions are split into focused files.** After detecting the mode, read the relevant file(s) listed below. Do NOT proceed from memory — always read the mode file before executing.
 

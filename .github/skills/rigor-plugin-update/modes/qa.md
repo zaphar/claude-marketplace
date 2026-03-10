@@ -10,24 +10,24 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 
 | What | How |
 |------|-----|
-| Agent files | `ls plugins/rigorous-dev/agents/*.agent.md` |
-| Command files | `ls plugins/rigorous-dev/commands/*.md` |
-| MCP tool names | `grep -o 'name: "[a-z_]*"' plugins/rigorous-dev/mcp-server/write-tools.js plugins/rigorous-dev/mcp-server/read-tools.js` |
-| Entity types | `grep -A 30 'const ENTITY_TABLE' plugins/rigorous-dev/mcp-server/read-tools.js` |
-| Plugin-phases | `grep -A 15 'const PHASES' plugins/rigorous-dev/mcp-server/write-tools.js` |
-| DB tables | `grep '^CREATE TABLE' plugins/rigorous-dev/mcp-server/schema.sql` |
-| SKILL.md agent tables | `grep -A 20 'Producer Agent.*Critic Agent' plugins/rigorous-dev/skills/rigorous-dev/SKILL.md` |
-| TEXT-PK entity tables | `grep -A 5 'TEXT_PK_TYPES' plugins/rigorous-dev/mcp-server/read-tools.js` |
-| Full schema for a table | `grep -A 30 'CREATE TABLE <table_name>' plugins/rigorous-dev/mcp-server/schema.sql` |
-| Table relationships | `grep 'REFERENCES' plugins/rigorous-dev/mcp-server/schema.sql` |
+| Agent files | `ls plugins/rigor/agents/*.agent.md` |
+| Command files | `ls plugins/rigor/commands/*.md` |
+| MCP tool names | `grep -o 'name: "[a-z_]*"' plugins/rigor/mcp-server/write-tools.js plugins/rigor/mcp-server/read-tools.js` |
+| Entity types | `grep -A 30 'const ENTITY_TABLE' plugins/rigor/mcp-server/read-tools.js` |
+| Plugin-phases | `grep -A 15 'const PHASES' plugins/rigor/mcp-server/write-tools.js` |
+| DB tables | `grep '^CREATE TABLE' plugins/rigor/mcp-server/schema.sql` |
+| SKILL.md agent tables | `grep -A 20 'Producer Agent.*Critic Agent' plugins/rigor/skills/workflow/SKILL.md` |
+| TEXT-PK entity tables | `grep -A 5 'TEXT_PK_TYPES' plugins/rigor/mcp-server/read-tools.js` |
+| Full schema for a table | `grep -A 30 'CREATE TABLE <table_name>' plugins/rigor/mcp-server/schema.sql` |
+| Table relationships | `grep 'REFERENCES' plugins/rigor/mcp-server/schema.sql` |
 | MCP tool parameters | Read the relevant tool handler in `write-tools.js` or `read-tools.js` |
-| Data model overview | Read the header block in `plugins/rigorous-dev/mcp-server/schema.sql` (design principles, domain map, new-entity checklist) |
+| Data model overview | Read the header block in `plugins/rigor/mcp-server/schema.sql` (design principles, domain map, new-entity checklist) |
 
 **Key reference files for data model questions:**
-- `plugins/rigorous-dev/mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys, and inline comments (`-- Domain:`, `-- Purpose:`, `-- Context:`). Also contains a header block with design principles, domain map (all 45 tables by domain), and a new-entity checklist.
-- `plugins/rigorous-dev/mcp-server/write-tools.js` — Write tool handlers (shows what parameters each tool accepts and what it does)
-- `plugins/rigorous-dev/mcp-server/read-tools.js` — Read tool handlers (shows query logic, entity type mappings, TEXT-PK types)
-- `plugins/rigorous-dev/mcp-server/db.js` — Database initialization (WAL mode, foreign keys)
+- `plugins/rigor/mcp-server/schema.sql` — **Source of truth.** Full DDL with all tables, columns, constraints, foreign keys, and inline comments (`-- Domain:`, `-- Purpose:`, `-- Context:`). Also contains a header block with design principles, domain map (all 45 tables by domain), and a new-entity checklist.
+- `plugins/rigor/mcp-server/write-tools.js` — Write tool handlers (shows what parameters each tool accepts and what it does)
+- `plugins/rigor/mcp-server/read-tools.js` — Read tool handlers (shows query logic, entity type mappings, TEXT-PK types)
+- `plugins/rigor/mcp-server/db.js` — Database initialization (WAL mode, foreign keys)
 
 **Capabilities:**
 - Trace cross-references: "What agents reference tool X?" → grep agent files for the tool name
