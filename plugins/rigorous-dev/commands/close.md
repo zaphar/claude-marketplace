@@ -13,36 +13,37 @@ Close the current workflow iteration, marking it as completed (or partially comp
 
 ## What This Command Does
 
-1. Validates workflow exists and is active (not already closed)
+1. Validates project exists and is active (not already closed)
 2. Shows status summary
 3. Asks user for confirmation + optional closing notes
-4. Snapshots state file into artifacts directory
-5. Updates state: marks as closed
-6. Displays confirmation with next-step hint
+4. Updates project in DB: marks as closed
+5. Displays confirmation with next-step hint
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `project_status` to check whether a project exists in the DB:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: No workflow found in this project."
-  echo "Use /rigorous-dev:start to initialize a new workflow."
-  exit 1
-fi
+```
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
+Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
 
-Read `.claude/rigorous-dev-state.yaml` and check the workflow status:
+Inspect the `project_status` response:
 
-- If `status` field is missing, treat as `"active"` (backward compatibility)
 - If `status == "closed"`, display error:
 
 ```
-ERROR: This workflow is already closed.
+ERROR: This project is already closed.
 Use /rigorous-dev:new-iteration to start a new iteration.
 ```
 
@@ -54,7 +55,7 @@ Show a concise summary of the current workflow state before closing:
 Workflow Close Summary
 
 Project: <project_name>
-Iteration: <iteration_number> (default 1 if missing)
+Iteration: <iteration_id>
 Current Phase: <current_phase> (<phase_status>)
 
 Completed Phases:
@@ -88,38 +89,36 @@ Operation cancelled. Workflow remains active.
 Use /rigorous-dev:resume to continue working.
 ```
 
-### 5. Snapshot State File
+### 5. Update Workflow in DB
 
-Copy the current state file into the artifacts directory as a snapshot:
-
-```bash
-cp .claude/rigorous-dev-state.yaml "<artifacts_dir>/<workflow_id>/rigorous-dev-state-closed.yaml"
-```
-
-Create the directory if it doesn't exist:
-
-```bash
-mkdir -p "<artifacts_dir>/<workflow_id>"
-```
-
-### 6. Update State File
-
-Update `.claude/rigorous-dev-state.yaml` with the following changes:
-
-- Set `status: "closed"`
-- Set `closed_at: "<current_timestamp_ISO8601>"`
-- Ensure `iteration_number` is set (add as `1` if missing for backward compatibility)
-- Append closing notes to `notes` field if provided
-- Update `updated_at: "<current_timestamp_ISO8601>"`
-
-### 7. Display Confirmation
+First, call `iteration_close` to close the current iteration:
 
 ```
-Workflow iteration <iteration_number> closed.
+iteration_close({
+  iteration_id: <iteration_id>,
+  notes: "<closing_notes_if_provided>"
+})
+```
+
+Then, call `project_update` to mark the project as closed:
+
+```
+project_update({
+  status: "closed",
+  closed_at: "<current_timestamp_ISO8601>",
+  notes: "<closing_notes_if_provided>"
+})
+```
+
+No YAML state file snapshot is needed — the DB is the record of state.
+
+### 6. Display Confirmation
+
+```
+Workflow iteration <iteration_id> closed.
 
 Project: <project_name>
 Closed at: <closed_at>
-State snapshot: <artifacts_dir>/<workflow_id>/rigorous-dev-state-closed.yaml
 
 To start a new iteration:
   /rigorous-dev:new-iteration
@@ -130,7 +129,6 @@ To check status:
 
 ## Important Notes
 
-- Closing a workflow does not delete any artifacts or state
-- The state snapshot preserves the full state at close time
+- Closing a workflow does not delete any artifacts or DB records
 - A closed workflow cannot be resumed; use `/rigorous-dev:new-iteration` to continue work
-- The release workflow (`.claude/rigorous-dev-release-state.yaml`) is not affected by closing the dev workflow
+- The release phases (qa, audit) are part of the same iteration in the DB and are not affected by closing the dev workflow

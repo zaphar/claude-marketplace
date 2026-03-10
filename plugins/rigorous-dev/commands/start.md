@@ -13,7 +13,7 @@ Initialize a new rigorous development workflow for this project.
 
 ## What This Command Does
 
-1. Checks if a workflow already exists (error if it does)
+1. Checks if a project already exists (error if it does)
 2. Prompts user for project configuration
 3. Creates artifacts directory
 4. Initializes workflow state file
@@ -21,17 +21,20 @@ Initialize a new rigorous development workflow for this project.
 
 ## Implementation Steps
 
-### 1. Check for Existing Workflow
+### 1. Check for Existing Project
 
-First, check if `.claude/rigorous-dev-state.yaml` already exists:
+Call `project_status` to check whether a project already exists in the DB:
 
-```bash
-if [ -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: A workflow already exists in this project."
-  echo "Use /rigorous-dev:resume to continue the existing workflow."
-  echo "Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh."
-  exit 1
-fi
+```
+project_status()
+```
+
+If it returns a project record, stop with an error:
+
+```
+ERROR: A project already exists in this directory.
+Use /rigorous-dev:resume to continue the existing workflow.
+Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
 ```
 
 ### 2. Gather Configuration
@@ -55,73 +58,20 @@ Create the configured artifacts directory:
 mkdir -p "<artifacts_directory>"
 ```
 
-### 4. Initialize State File
+### 4. Initialize Project in DB
 
-Create `.claude/rigorous-dev-state.yaml` with this structure:
+Call `iteration_create` to create the project, iteration 1, and all phases in the DB:
 
-```yaml
-workflow_id: "rigorous-dev-workflow"
-project_name: "<user_provided_or_inferred>"
-created_at: "<current_timestamp_ISO8601>"
-updated_at: "<current_timestamp_ISO8601>"
-current_phase: "requirements"
-artifacts_directory: "<user_configured_path>"
-critic_model: "<user_selected_model>"  # "sonnet" | "haiku" | "opus"
-iteration_number: 1
-status: "active"
-closed_at: null
-notes: ""
-phase_status:
-  requirements:
-    status: "in_progress"
-    started_at: "<current_timestamp_ISO8601>"
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  ux_design:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  architecture:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  planning:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  implementation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    current_phase_number: null
-    notes: ""
-  documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
 ```
+iteration_create({
+  project_name: "<user_provided_or_inferred>",
+  artifacts_directory: "<user_configured_path>",
+  critic_model: "<user_selected_model>",
+  starting_phase: "requirements"
+})
+```
+
+This creates the project record, the first iteration, and all phase rows (requirements, ux_design, architecture, planning, implementation, documentation) with requirements set to `in_progress` and the rest `pending`. No YAML state file is written.
 
 ### 5. Load Rigorous Dev Skill
 

@@ -15,17 +15,17 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 **Inputs:**
 
 - Implementation manifest from Senior Developer
-- Schema: `schemas/implementation_manifest.schema.yaml`
+- Data model: Implementation entries (validated on insert via `changelog_insert`)
 - Codebase produced by Senior Developer
 - Implementation plan (phase indexes with Feature-Layer Matrices)
-- Architecture dependencies manifest (`architecture_dependencies.yaml`)
+- Architecture dependencies manifest (query via `changelog_query`, entity_type: `approved_dependency`)
 - Requirements specification (for traceability verification)
 - UX specification (for UI compliance verification, if applicable)
 
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Validate the implementation manifest against the JSON schema
+- Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - **Perform comprehensive code review** of all new/modified files
 - Verify the codebase builds with zero warnings
 - Verify all tests pass including E2E tests
@@ -41,12 +41,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Verify that the software can run if it's a service or application and not a library
     - This is not the same as running tests or building and running linters
 - Verify that all objects which get sent over the wire or stored have round-trip unit tests
-- Record significant lessons or recurring patterns to `planning/project-memory.md` for downstream agents.
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Code Review Checklist:**
 
 - Schema validation:
-    - [ ] Manifest validates against `schemas/implementation_manifest.schema.yaml`
+    - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All REQ-XXX and COMP-XXX have status entries
     - [ ] All FLOW-XXX have status entries (if applicable)
@@ -83,7 +83,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
     - [ ] Consistent structural/behavioral patterns across peer features — navigation patterns, button placement, save/cancel flows, error display, loading states
     - [ ] If analogous features exist, the new feature matches their patterns (not just code formatting — actual UX behavior)
 - Dependencies:
-    - [ ] Dependencies match the architect's approved manifest (`architecture_dependencies.yaml`) — no unapproved additions
+    - [ ] Dependencies match the architect's approved manifest (query via `changelog_query`, entity_type: `approved_dependency`) — no unapproved additions
     - [ ] If new dependencies were needed, they are flagged for architect evaluation
 - Security:
     - [ ] No hardcoded secrets or credentials
@@ -169,15 +169,15 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 
 - **Review code file-by-file.** Start with the highest-risk files (authentication, data access, API endpoints), then work through the rest.
 - **Write findings incrementally.** After reviewing each file or group of related files, write your findings before moving on. Don't accumulate the entire review in memory.
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` to get the structural index of requirements/architecture, then `query_artifact` with specific IDs for traceability checks. Avoid reading entire YAML artifacts.
-- **Read architecture files selectively.** You need the components definition and dependency manifest for compliance checks. You don't need the full deployment, observability, or ADR files unless a specific concern arises.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve requirements/architecture entries for traceability checks. Avoid loading all entities at once.
+- **Read architecture entries selectively.** Query components and approved_dependency entries for compliance checks. You don't need the full deployment, observability, or ADR entries unless a specific concern arises.
 - **If context gets tight**, prioritize: security checks first, then completeness (Feature-Layer Matrix), then code quality, then performance.
 - **On re-review cycles**, read only your previous review's issues and the specific files that were changed.
 
 **Escalation:**
 
-- If the same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write the concern to `planning/BLOCKERS.md`.
-- If security vulnerabilities are found, flag immediately. Write to `planning/BLOCKERS.md`.
-- If architecture itself is the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
-- If UX specification is the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
-- If requirements are the root cause, pause and explain. Write to `planning/BLOCKERS.md`.
+- If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If security vulnerabilities are found, flag immediately to the user.
+- If architecture itself is the root cause, pause and explain to the user.
+- If UX specification is the root cause, pause and explain to the user.
+- If requirements are the root cause, pause and explain to the user.

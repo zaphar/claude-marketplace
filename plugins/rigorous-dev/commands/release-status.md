@@ -19,22 +19,25 @@ Display the current status and progress of the release workflow.
 
 ### 1. Check for Release Workflow State
 
-Check if `.claude/rigorous-dev-release-state.yaml` exists:
+Call `project_status` to check whether release phases exist:
 
-```bash
-if [ ! -f .claude/rigorous-dev-release-state.yaml ]; then
-  echo "No release workflow found."
-  echo ""
-  echo "Use /rigorous-dev:start-release to initialize a release workflow."
-  exit 0
-fi
 ```
+project_status()
+```
+
+If no workflow exists or release phases haven't been started, display:
+
+```
+No release workflow found.
+
+Use /rigorous-dev:start-release to initialize a release workflow.
+```
+
+Exit without error.
 
 ### 2. Load and Parse State
 
-Read `.claude/rigorous-dev-release-state.yaml` and extract all fields.
-
-Also read `.claude/rigorous-dev-state.yaml` to show dev artifact inputs.
+Use the `project_status` response and call `iteration_summary` to get full phase-level details. Extract all fields from the release phases (qa, audit).
 
 ### 3. Display Formatted Status
 
@@ -44,7 +47,6 @@ Present the status in a clear, visual format:
 Release Workflow Status
 
 Project: <project_name>
-Workflow ID: <workflow_id>
 Status: <active|completed>
 Artifacts: <artifacts_directory>
 Created: <created_at>
@@ -62,10 +64,6 @@ Release Progress:
    Status: <status>
    [same format as above]
 
-<status_indicator> Release
-   Status: <status>
-   [same format as above]
-
 Dev Artifact Inputs:
   Requirements: <artifact_path or "not available">
   Architecture: <artifact_path or "not available">
@@ -80,13 +78,7 @@ Dev Artifact Inputs:
 
 ### 4. List Release Artifacts
 
-Scan the artifacts directory for release-specific artifacts:
-
-```bash
-ls -1 "<artifacts_directory>/<workflow_id>/qa" 2>/dev/null
-ls -1 "<artifacts_directory>/<workflow_id>/audit" 2>/dev/null
-ls -1 "<artifacts_directory>/<workflow_id>/release" 2>/dev/null
-```
+Call `changelog_query` to retrieve release-phase artifact entries from the DB.
 
 ## Output Format Example
 
@@ -94,7 +86,6 @@ ls -1 "<artifacts_directory>/<workflow_id>/release" 2>/dev/null
 Release Workflow Status
 
 Project: My Project
-Workflow ID: rigorous-dev-workflow
 Status: active
 Artifacts: .claude/rigorous-dev-artifacts
 Created: 2026-02-15T10:00:00Z
@@ -110,9 +101,6 @@ QA
 Audit
    Status: in_progress
    Iteration: 1/3
-
-Release
-   Status: pending
 
 Dev Artifact Inputs:
   Requirements: requirements/requirements.yaml

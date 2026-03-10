@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Test files and stubs from Test Writer
 - WI file with DO list and acceptance criteria
 - Implementation plan (for phase scope)
-- Architecture files (for integration boundaries)
+- Architecture entries (for integration boundaries)
 - Requirements specification (for traceability)
 
 **What You Do:**
@@ -30,6 +30,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Verify no implementation logic exists in stubs
 - Verify test quality standards
 - Provide specific, actionable feedback on any deficiencies
+- Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Review Checklist:**
 
@@ -118,10 +119,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Review test files one at a time for large WIs
 - Write findings incrementally after reviewing each file
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` to get the structural index, then `query_artifact` with specific IDs for coverage checks. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve the structural index for coverage checks. Avoid loading all entities at once.
 - On re-review cycles, read only previous review issues and changed files
 
 **Escalation:**
 
-- If same issues persist after 3 revision cycles, pause and tell the user which issues keep recurring. Write to `planning/BLOCKERS.md`.
-- If acceptance criteria are untestable, flag immediately. Write to `planning/BLOCKERS.md`.
+- If same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
+- If acceptance criteria are untestable, flag immediately to the user.

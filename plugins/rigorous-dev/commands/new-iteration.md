@@ -16,34 +16,35 @@ Start a new workflow iteration after closing the previous one. Commits current a
 1. Validates workflow exists and is closed
 2. Shows previous iteration summary
 3. Asks user for confirmation
-4. Commits all current artifacts to VCS (preserving history)
-5. Deletes versioned artifact directories (they start fresh)
-6. Resets state for the new iteration
-7. Begins Requirements phase with context from prior iteration
+4. Commits current artifacts to VCS for history
+5. Resets state for the new iteration via `iteration_create`
+6. Begins Requirements phase with context from prior iteration
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `project_status` to check whether a project exists in the DB:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "ERROR: No workflow found in this project."
-  echo "Use /rigorous-dev:start to initialize a new workflow."
-  exit 1
-fi
+```
+project_status()
+```
+
+If it returns no project record, stop with an error:
+
+```
+ERROR: No project found.
+Use /rigorous-dev:start to initialize a new workflow.
 ```
 
 ### 2. Load and Validate State
 
-Read `.claude/rigorous-dev-state.yaml` and check:
+Inspect the `project_status` response:
 
-- If `status` field is missing, treat as `"active"` (backward compatibility)
 - If `status != "closed"`, display error:
 
 ```
-ERROR: The current workflow is still active.
+ERROR: The current project is still active.
 Use /rigorous-dev:close to close the current iteration before starting a new one.
 ```
 
@@ -55,13 +56,12 @@ Show a summary of the iteration being closed out:
 Previous Iteration Summary
 
 Project: <project_name>
-Iteration: <iteration_number>
+Iteration: <iteration_id>
 Closed at: <closed_at>
 
 Phase Results:
 <for each phase: name, status, artifact_path if present>
 
-Versioned artifacts will be deleted (retrievable from VCS history).
 Persistent artifacts (ux_design/, architecture/) will remain in place.
 ```
 
@@ -70,7 +70,7 @@ Persistent artifacts (ux_design/, architecture/) will remain in place.
 Use AskUserQuestion to confirm:
 
 ```
-Start a new iteration? This will commit current artifacts to VCS, then delete versioned artifact directories.
+Start a new iteration? This will commit current artifacts to VCS and create a fresh iteration in the DB.
 ```
 
 Options:
@@ -80,114 +80,48 @@ Options:
 If user cancels:
 ```
 Operation cancelled. Workflow remains closed.
-Use /rigorous-dev:resume is not available for closed workflows.
 Use /rigorous-dev:new-iteration when ready to start a new iteration.
 ```
 
 ### 5. Commit Artifacts to VCS
 
-Before deleting anything, commit all current artifacts to VCS so the full state is preserved in history. Detect which VCS is in use and commit accordingly:
+Before creating the new iteration, commit all current artifacts to VCS so the full state is preserved in history. Detect which VCS is in use and commit accordingly:
 
 ```bash
 # Detect VCS and commit
 if [ -d .jj ]; then
   # Jujutsu — just describe the current change with a message
-  jj commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+  jj commit -m "rigorous-dev: archive iteration <iteration_id> artifacts for <project_name>"
 elif [ -d .git ]; then
   # Git — stage the artifacts directory and commit
-  git add "<artifacts_dir>/<workflow_id>/"
-  git commit -m "rigorous-dev: archive iteration <iteration_number> artifacts for <project_name>"
+  git add "<artifacts_dir>/"
+  git commit -m "rigorous-dev: archive iteration <iteration_id> artifacts for <project_name>"
 fi
 ```
 
-This ensures the complete artifact state is retrievable from VCS history even after versioned directories are deleted.
+> **Note:** The archival commit is recorded in VCS history but not in the `vcs_commit` table,
+> since `vcs_commit` tracks work-item-scoped implementation commits (each linked to a specific
+> `work_item_id` and `revision_id`). Archival commits are infrastructure, not deliverables.
 
-### 6. Delete Versioned Artifact Directories
+### 6. Create New Iteration in DB
 
-Remove the directories that start fresh each iteration. Persistent artifacts (`ux_design/`, `architecture/`, `planning/`, `documentation/`) remain in place untouched.
+Call `iteration_create` with the incremented iteration number to create all new phase rows in the DB:
 
-```bash
-# Delete dev-owned versioned artifact directories
-rm -rf "<artifacts_dir>/<workflow_id>/requirements"
-rm -rf "<artifacts_dir>/<workflow_id>/implementation"
-
-# Delete the close snapshot (no longer needed)
-rm -f "<artifacts_dir>/<workflow_id>/rigorous-dev-state-closed.yaml"
+```
+iteration_create({
+  starting_phase: "requirements",
+  notes: "New iteration started. Prior iteration artifacts preserved in VCS history."
+})
 ```
 
-**Note:** Release workflow artifacts (`qa/`, `audit/`, `release/`) are owned by the release workflow and are NOT deleted here. If an active release workflow exists (`.claude/rigorous-dev-release-state.yaml`), warn the user that it will reference the previous iteration's dev artifacts.
+The DB retains all records from previous iterations — nothing is deleted.
 
-### 7. Rewrite State File
-
-Update `.claude/rigorous-dev-state.yaml` with:
-
-- Increment `iteration_number` (old value + 1)
-- Set `status: "active"`
-- Set `closed_at: null`
-- Set `current_phase: "requirements"`
-- Update `updated_at: "<current_timestamp_ISO8601>"`
-- Set `notes` field to: `"New iteration started. Prior iteration artifacts preserved in VCS history."`
-- Reset all phase statuses to initial state:
-
-```yaml
-phase_status:
-  requirements:
-    status: "in_progress"
-    started_at: "<current_timestamp_ISO8601>"
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  ux_design:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  architecture:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  planning:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-  implementation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    current_phase_number: null
-    notes: ""
-  documentation:
-    status: "pending"
-    started_at: null
-    completed_at: null
-    artifact_path: null
-    approved_by: null
-    iteration_count: 0
-    notes: ""
-```
-
-### 8. Load Rigorous Dev Skill and Begin Requirements Phase
+### 7. Load Rigorous Dev Skill and Begin Requirements Phase
 
 Load the rigorous-dev skill and start the Requirements phase, informing the agent about the prior iteration:
 
 ```
-Workflow iteration <new_iteration_number> started!
+Workflow iteration <new_iteration_id> started!
 
 Project: <project_name>
 Prior iteration artifacts preserved in VCS history.
@@ -208,5 +142,4 @@ Then load and execute `rigorous-dev:requirements_analyst` to begin the conversat
 
 - VCS history preserves all artifacts from previous iterations — nothing is lost
 - Persistent artifacts (ux_design, architecture) stay in place and are re-evaluated by their respective phases
-- Versioned artifacts (requirements, planning, implementation, etc.) start completely fresh
-- The close state snapshot is cleaned up since VCS history serves the same purpose
+- The DB retains all previous iteration data; `iteration_create` adds new rows for the new iteration without removing old ones

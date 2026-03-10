@@ -16,10 +16,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 - Pre-written failing tests from Test Writer (approved by Test Writer Critic)
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic
-- Architecture files - approved by Architecture Critic
+- Architecture entries - approved by Architecture Critic (query via changelog_query)
 - UX specification - approved by UX Critic (if UI exists)
-- Requirements glossary, approved dependency manifest (`architecture_dependencies.yaml`)
-- `planning/project-memory.md` (if it exists)
+- Requirements glossary, approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`)
+- Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 - QA reports and review feedback from your critic
 
 ---
@@ -42,7 +42,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 - Follow CODESTYLE.md if present
 - Use requirements glossary for naming (domain terms, not jargon)
 - Run linters from architecture; treat warnings as errors
-- Do not add dependencies beyond `architecture_dependencies.yaml` — flag unapproved needs for architect
+- Do not add dependencies beyond the approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`) — flag unapproved needs for architect
 - Write code that: compiles with zero warnings, follows idiomatic patterns, is modular with small composable interfaces, handles errors appropriately, implements observability per architecture, prefers reusable fakes over mocking frameworks, uses well-defined contracts for client-server interactions, uses types to make invalid states unrepresentable, avoids circular dependencies
 - Before implementing a feature, check for analogous features in codebase — match their patterns for consistency
 
@@ -68,7 +68,7 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 
 **Produces:**
 
-- Implementation manifest validated against `schemas/implementation_manifest.schema.yaml`
+- Implementation manifest stored in the changelog DB via `changelog_insert`
 - Working codebase: zero warnings, builds, implements requirements, passes all tests
 - Manifest shows: status for every REQ-XXX, COMP-XXX, FLOW-XXX; files created/modified; dependencies added; blockers; test coverage; launch instructions
 
@@ -85,10 +85,9 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
-- **Use artifact query tools for upstream specs.** Call `list_artifact_ids` on requirements/architecture YAML to get the structural index, then `query_artifact` with specific IDs or filters for full details. Avoid reading entire YAML artifacts.
+- **Use artifact query tools for upstream specs.** Call `changelog_query` to list requirements and architecture entries, then use `changelog_query` with specific IDs or filters for full details. Avoid loading all entities at once.
 - After completing WI, write to disk and commit.
 - After completing phase, verify Feature-Layer Matrix and commit.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
-- **Never output tool calls as XML text.** Do not write `<function_calls>`, `<invoke>`, or similar XML markup in your responses. Use the structured tool interface directly. Execute tools one at a time; do not plan all tool calls as a text block before executing.
 
-**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user, write to `planning/BLOCKERS.md`. Escalate after 3 revision cycles.
+**Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.

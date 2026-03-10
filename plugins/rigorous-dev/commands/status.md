@@ -14,26 +14,31 @@ Display the current status and progress of the rigorous development workflow.
 
 1. Checks if a workflow exists
 2. Loads and displays comprehensive workflow status
-3. Auto-saves the state (updates timestamp)
+3. Shows generated artifacts from the changelog
 
 ## Implementation Steps
 
-### 1. Check for Workflow State
+### 1. Check for Project State
 
-Check if `.claude/rigorous-dev-state.yaml` exists:
+Call `project_status` to check whether a project exists in the DB:
 
-```bash
-if [ ! -f .claude/rigorous-dev-state.yaml ]; then
-  echo "No active workflow found."
-  echo ""
-  echo "Use /rigorous-dev:start to initialize a new workflow."
-  exit 0
-fi
 ```
+project_status()
+```
+
+If it returns no project record, display:
+
+```
+No active project found.
+
+Use /rigorous-dev:start to initialize a new workflow.
+```
+
+Exit without error.
 
 ### 2. Load and Parse State
 
-Read `.claude/rigorous-dev-state.yaml` and extract all fields.
+Call `iteration_summary` to get full phase-level details for the current iteration alongside the `project_status` result.
 
 ### 3. Display Formatted Status
 
@@ -43,8 +48,7 @@ Present the status in a clear, visual format:
 📋 Rigorous Dev Workflow Status
 
 Project: <project_name>
-Workflow ID: <workflow_id>
-Iteration: <iteration_number> (default 1 if missing)
+Iteration: <iteration_id>
 Status: <active|closed>
 <if closed>Closed at: <closed_at></if>
 Artifacts: <artifacts_directory>
@@ -71,21 +75,16 @@ Progress:
 
 <status_indicator> Implementation
    [same format as above]
-   <if in_progress and current_phase_number>Current Phase: <current_phase_number></if>
-   <if in_progress and current_step>Step: <current_step></if>
 
 <status_indicator> Documentation
    [same format as above]
 
-<if .claude/rigorous-dev-release-state.yaml exists>
+<if release phases exist in project_status>
 Release Workflow:
 <status_indicator> QA
    [same format as above]
 
 <status_indicator> Audit
-   [same format as above]
-
-<status_indicator> Release
    [same format as above]
 </if>
 
@@ -95,7 +94,7 @@ Workflow Notes:
 </if>
 
 Generated Artifacts:
-<list all artifact files that exist in artifacts_directory>
+<use changelog_query to count entities per type and list artifact entries>
 
 <if status is "closed">
 This workflow is closed. To start a new iteration:
@@ -111,23 +110,11 @@ This workflow is closed. To start a new iteration:
 
 ### 4. List Generated Artifacts
 
-Scan the artifacts directory and list all files found:
+Call `changelog_query` to retrieve artifact entries recorded in the DB and list them by type.
 
-```bash
-ls -1 "<artifacts_directory>" 2>/dev/null
-```
+### 5. Display Last Updated
 
-Display each artifact with its filename.
-
-### 5. Auto-Save State
-
-Update the `updated_at` timestamp in the state file:
-
-```yaml
-updated_at: "<current_timestamp_ISO8601>"
-```
-
-Write the updated state back to `.claude/rigorous-dev-state.yaml`.
+The `updated_at` timestamp comes from the `project_status` response; no separate write is needed.
 
 ## Output Format Example
 
@@ -135,7 +122,6 @@ Write the updated state back to `.claude/rigorous-dev-state.yaml`.
 📋 Rigorous Dev Workflow Status
 
 Project: My Project
-Workflow ID: rigorous-dev-workflow
 Iteration: 1
 Status: active
 Artifacts: .claude/rigorous-dev-artifacts
@@ -180,4 +166,3 @@ Last updated: 2026-02-12 21:30:00
 
 - Run this command anytime to check progress
 - Use it before `/rigorous-dev:resume` to see where you left off
-- The state auto-saves after each phase, but this command refreshes the timestamp
