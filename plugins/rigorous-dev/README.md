@@ -48,7 +48,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:start` — Initialize a new workflow
 - `/rigor:onboard` — Bootstrap from an existing codebase
 - `/rigor:resume` — Resume an existing workflow
-- `/rigor:status` — Display current progress
+- `/rigor:dev-status` — Display current progress
 - `/rigor:skip-to <phase>` — Skip to a specific phase (advanced)
 - `/rigor:close` — Close the current iteration
 - `/rigor:import` — Import existing data (requirements, design specs, etc.)

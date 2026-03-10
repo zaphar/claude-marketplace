@@ -88,7 +88,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 **If phase status is "completed":**
 - Should not happen; workflow should have advanced to next phase
-- Display error and suggest running `/rigorous-dev:status` to check state
+- Display error and suggest running `/rigor:dev-status` to check state
 
 ### 7. Context Handoff
 

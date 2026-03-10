@@ -306,7 +306,7 @@ If all phases completed successfully, suggest next steps:
 ```
 Next steps:
   - Use /rigorous-dev:resume to continue the workflow from where you left off
-  - Use /rigorous-dev:status to review the current project state
+  - Use /rigor:dev-status to review the current project state
 ```
 
 ## Important Notes

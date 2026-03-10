@@ -124,7 +124,7 @@ To start a new iteration:
   /rigorous-dev:new-iteration
 
 To check status:
-  /rigorous-dev:status
+  /rigor:dev-status
 ```
 
 ## Important Notes

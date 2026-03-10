@@ -433,7 +433,7 @@ All development phases have been completed and approved.
 Next steps:
 - To run pre-release verification (QA, audit): /rigorous-dev:start-release
 - To close this iteration and start a new one: /rigorous-dev:close
-- To check status: /rigorous-dev:status
+- To check status: /rigor:dev-status
 - To import existing docs into the database: /rigorous-dev:import
 ```
 
@@ -520,7 +520,7 @@ When working in a new iteration, agents should be aware of:
 
 **If DB unavailable or corrupted:**
 - Display clear error message
-- Suggest using `/rigorous-dev:status` to check state
+- Suggest using `/rigor:dev-status` to check state
 - Do not proceed until DB is accessible
 
 ## User Communication

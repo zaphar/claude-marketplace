@@ -182,7 +182,7 @@ Use /rigorous-dev:resume to continue from <current_phase>.
 
 - This command is for advanced users only
 - Skipping phases can lead to incomplete or inconsistent artifacts
-- Use `/rigorous-dev:status` after skipping to verify state
+- Use `/rigor:dev-status` after skipping to verify state
 - Consider using this only for experimentation or when resuming partial work
 
 ## Example Usage
