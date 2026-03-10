@@ -37,7 +37,7 @@ Answer the user's question by reading and analyzing the relevant plugin files. T
 - Spot-check: "Is the README agent listing up to date?" → compare agents/ filenames with README content
 - Data model questions: "What columns does the requirement table have?" → grep schema.sql for the CREATE TABLE
 - Tool behavior: "What does changelog_insert do?" → read the handler in write-tools.js
-- Entity relationships: "How do iterations relate to plugin-phases?" → read core.md and grep schema.sql for REFERENCES
+- Entity relationships: "How do iterations relate to plugin-phases?" → grep schema.sql for REFERENCES
 
 #### Audit History Queries
 
