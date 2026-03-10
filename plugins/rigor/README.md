@@ -37,7 +37,7 @@ Then inside Claude Code:
 ### Using `--plugin-dir`
 
 ```bash
-claude --plugin-dir /path/to/claude-zaphar/plugins/rigorous-dev
+claude --plugin-dir /path/to/claude-zaphar/plugins/rigor
 ```
 
 Loads the plugin for the current session without installing.
@@ -48,7 +48,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:start` — Initialize a new workflow
 - `/rigor:onboard` — Bootstrap from an existing codebase
 - `/rigor:resume` — Resume an existing workflow
-- `/rigor:dev-status` — Display current progress
+- `/rigor:current-status` — Display current progress
 - `/rigor:skip-to <phase>` — Skip to a specific phase (advanced)
 - `/rigor:close` — Close the current iteration
 - `/rigor:import` — Import existing data (requirements, design specs, etc.)
@@ -62,7 +62,7 @@ Loads the plugin for the current session without installing.
 ## Directory Structure
 
 ```
-rigorous-dev/
+rigor/
 ├── agents/                          # 20 agent personality files (10 producer-critic pairs)
 ├── commands/                        # Slash command definitions
 ├── skills/rigorous-dev/SKILL.md     # Orchestration skill (main workflow logic)
@@ -71,8 +71,7 @@ rigorous-dev/
     ├── write-tools.js               # Write tools (changelog_insert, phase_transition, etc.)
     ├── read-tools.js                # Read tools (changelog_query, traceability_query, etc.)
     ├── db.js                        # Database initialization
-    ├── server.js                    # MCP server entry point
-    └── package.json                 # Node dependencies
+    └── server.js                    # MCP server entry point
 ```
 
 ## Customization

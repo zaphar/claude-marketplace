@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.11.0
+version: 0.10.1
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -44,7 +44,7 @@ The development workflow runs fast iteration loops. When you're ready to ship, t
 
 ### Import (data bootstrapping)
 
-`/rigorous-dev:import` — Import existing data (requirements docs, PRDs, design specs, etc.) into the changelog database. Accepts any file format; extracts and maps entities automatically. Use this before starting the development workflow to pre-populate phases with existing material, bypassing the interview steps for phases whose data is already captured.
+`/rigor:import` — Import existing data (requirements docs, PRDs, design specs, etc.) into the changelog database. Accepts any file format; extracts and maps entities automatically. Use this before starting the development workflow to pre-populate phases with existing material, bypassing the interview steps for phases whose data is already captured.
 
 Each phase uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 revision loops before escalating to the user. The Requirements phase additionally begins with a conversational interview step before entering the standard producer-critic loop.
 
@@ -75,11 +75,11 @@ For each phase, follow this pattern:
 
 #### Requirements Phase
 
-1. Load `rigorous-dev:requirements_analyst`
+1. Load `rigor:requirements_analyst`
 2. Analyst conducts conversational interview with user
 3. Call `revision_create` with `phase_id: "requirements"` and the analyst agent name
 4. Analyst records output using `changelog_insert` (requirements, user stories, acceptance criteria, etc.)
-5. Load `rigorous-dev:requirements_critic` to review via `changelog_query`
+5. Load `rigor:requirements_critic` to review via `changelog_query`
 6. Call `revision_update` with approved/rejected status and critic feedback
 7. **If approved:**
    - Call `phase_transition` to mark requirements completed
@@ -111,26 +111,26 @@ For each phase, follow this pattern:
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
-| Requirements | `rigorous-dev:requirements_analyst` | `rigorous-dev:requirements_critic` |
-| UX Design | `rigorous-dev:ux_designer` | `rigorous-dev:ux_critic` |
-| Architecture | `rigorous-dev:backend_architect` | `rigorous-dev:architecture_critic` |
-| Planning | `rigorous-dev:implementation_planner` | `rigorous-dev:implementation_plan_critic` |
-| Implementation (tests) | `rigorous-dev:test_writer` | `rigorous-dev:test_writer_critic` |
-| Implementation (code) | `rigorous-dev:senior_developer` | `rigorous-dev:senior_developer_critic` |
-| Documentation | `rigorous-dev:documentation_master` | `rigorous-dev:documentation_critic` |
+| Requirements | `rigor:requirements_analyst` | `rigor:requirements_critic` |
+| UX Design | `rigor:ux_designer` | `rigor:ux_critic` |
+| Architecture | `rigor:backend_architect` | `rigor:architecture_critic` |
+| Planning | `rigor:implementation_planner` | `rigor:implementation_plan_critic` |
+| Implementation (tests) | `rigor:test_writer` | `rigor:test_writer_critic` |
+| Implementation (code) | `rigor:senior_developer` | `rigor:senior_developer_critic` |
+| Documentation | `rigor:documentation_master` | `rigor:documentation_critic` |
 
 **Release Workflow Agents:**
 
 | Phase | Producer Agent | Critic Agent |
 |-------|----------------|--------------|
-| QA | `rigorous-dev:qa_engineer` | `rigorous-dev:qa_critic` |
-| Audit (Security) | `rigorous-dev:security_auditor` | `rigorous-dev:security_audit_critic` |
-| Audit (Performance) | `rigorous-dev:performance_auditor` | `rigorous-dev:performance_audit_critic` |
+| QA | `rigor:qa_engineer` | `rigor:qa_critic` |
+| Audit (Security) | `rigor:security_auditor` | `rigor:security_audit_critic` |
+| Audit (Performance) | `rigor:performance_auditor` | `rigor:performance_audit_critic` |
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
 
 **When loading agents:**
-- Load the agent by its namespaced name (e.g., `rigorous-dev:requirements_analyst`)
+- Load the agent by its namespaced name (e.g., `rigor:requirements_analyst`)
 - Follow the instructions and adopt the personality
 - Use the phase's DB entries for validation context
 - Reference prior phase data via `changelog_query`
@@ -310,9 +310,9 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 
 **Step 1 — Test Writing:**
 
-5. Load `rigorous-dev:test_writer`
+5. Load `rigor:test_writer`
 6. Test Writer reads WI files for this sub-phase, writes failing tests and minimal compilation stubs
-7. Load `rigorous-dev:test_writer_critic` (using `critic_model` from state)
+7. Load `rigor:test_writer_critic` (using `critic_model` from state)
 8. Critic validates:
    - Project compiles with new test files and stubs
    - All new tests fail (red state) for the right reason
@@ -331,10 +331,10 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 
 **Step 2 — Implementation:**
 
-11. Load `rigorous-dev:senior_developer`
+11. Load `rigor:senior_developer`
 12. Developer reads existing failing tests and implements minimum code to make them pass
 13. Developer records implementation manifest using `changelog_insert` with `entity_type: "implementation_manifest"` linked to the current sub-phase revision
-14. Load `rigorous-dev:senior_developer_critic` (using `critic_model` from `project_status`)
+14. Load `rigor:senior_developer_critic` (using `critic_model` from `project_status`)
 15. Critic validates:
     - All pre-written tests pass, no pre-existing tests broken, full test suite passes
     - No test files modified or deleted
@@ -385,13 +385,13 @@ The audit phase is part of the **release workflow** and runs two independent pro
 **Parallel Tracks:**
 
 1. **Security Track:**
-   - Load `rigorous-dev:security_auditor` → records security audit findings via `changelog_insert(entity_type: "security_audit_finding")`
-   - Load `rigorous-dev:security_audit_critic` → validates findings via `changelog_query(entity_type: "security_audit_finding")`
+   - Load `rigor:security_auditor` → records security audit findings via `changelog_insert(entity_type: "security_audit_finding")`
+   - Load `rigor:security_audit_critic` → validates findings via `changelog_query(entity_type: "security_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 2. **Performance Track:**
-   - Load `rigorous-dev:performance_auditor` → records performance audit findings via `changelog_insert(entity_type: "performance_audit_finding")`
-   - Load `rigorous-dev:performance_audit_critic` → validates findings via `changelog_query(entity_type: "performance_audit_finding")`
+   - Load `rigor:performance_auditor` → records performance audit findings via `changelog_insert(entity_type: "performance_audit_finding")`
+   - Load `rigor:performance_audit_critic` → validates findings via `changelog_query(entity_type: "performance_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.
@@ -431,17 +431,17 @@ Development Workflow Complete!
 All development phases have been completed and approved.
 
 Next steps:
-- To run pre-release verification (QA, audit): /rigorous-dev:start-release
-- To close this iteration and start a new one: /rigorous-dev:close
-- To check status: /rigor:dev-status
-- To import existing docs into the database: /rigorous-dev:import
+- To run pre-release verification (QA, audit): /rigor:start-release
+- To close this iteration and start a new one: /rigor:close
+- To check status: /rigor:status
+- To import existing docs into the database: /rigor:import
 ```
 
-The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigorous-dev:start-release` when ready to ship.
+The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigor:start-release` when ready to ship.
 
 ### 11. Release Workflow Orchestration
 
-The release workflow is triggered by `/rigorous-dev:start-release` and tracked in the same SQLite database (`.claude/rigorous-dev.db`). It reads dev phase data from the DB using `changelog_query`.
+The release workflow is triggered by `/rigor:start-release` and tracked in the same SQLite database (`.claude/rigorous-dev.db`). It reads dev phase data from the DB using `changelog_query`.
 
 **Release Workflow Phases:**
 

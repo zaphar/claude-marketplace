@@ -33,8 +33,8 @@ If it returns a project record, stop with an error:
 
 ```
 ERROR: A project already exists in this directory.
-Use /rigorous-dev:resume to continue the existing workflow.
-Use /rigorous-dev:close to close it, then /rigorous-dev:new-iteration to start fresh.
+Use /rigor:resume to continue the existing workflow.
+Use /rigor:close to close it, then /rigor:new-iteration to start fresh.
 ```
 
 ### 2. Gather Configuration

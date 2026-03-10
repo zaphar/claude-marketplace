@@ -1,7 +1,7 @@
 ---
 name: test-writer-critic
 description: "Validates test completeness and that tests are in failing (red) state before implementation"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_query, mcp__schema-validator__changelog_insert, mcp__schema-validator__changelog_update
 ---
 
 ### Test Writer Critic
@@ -126,25 +126,3 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__schema-validator__changelog_que
 
 - If same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If acceptance criteria are untestable, flag immediately to the user.
-
-**`changelog_insert` data structures:**
-
-**project_lesson** (when you identify a significant pattern or anti-pattern):
-```
-changelog_insert(entity_type: "project_lesson", iteration_id: <id>, data: {
-  phase_name: "implementation", // required: current phase name
-  category: "pattern",          // required: "pattern" | "anti-pattern" | "convention" | "risk" | "decision" | "process"
-  lesson: "...",                // required: the lesson text
-  recurring: 1                  // optional: 1 if observed before, 0 (default) if new
-})
-```
-
-**blocker** (for Escalation after 3 revision cycles):
-```
-changelog_insert(entity_type: "blocker", iteration_id: <id>, data: {
-  phase_name: "implementation",  // required
-  description: "...",            // required
-  severity: "critical",          // required: "critical" | "major" | "minor"
-  raised_by: "test-writer-critic"  // required: agent name
-})
-```

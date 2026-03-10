@@ -36,13 +36,13 @@ sqlite3 -header -markdown .scratch/rigor-plugin-update/audit.db \
 
 ```
 Agent 1 — Consistency Critic prompt:
-Perform a full plugin-level audit of the rigorous-dev plugin. Review cross-reference consistency,
+Perform a full plugin-level audit of the rigor plugin. Review cross-reference consistency,
 structural integrity, and developer ergonomics per your agent instructions.
 Persist your report to .scratch/rigor-consistency-critic/<date>/<HHMMSS>_consistency-audit.md
 where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MANDATORY.
 
 Agent 2 — Schema Critic Group A prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 1: Table Consolidation
 - Category 2: Child Table Collapse
 - Category 3: Foreign Key Enforcement
@@ -50,7 +50,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-a-simplification.md
 
 Agent 3 — Schema Critic Group B prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 5: Schema Correctness
 - Category 12: Nullable vs Required Alignment
 - Category 13: Transaction Safety
@@ -58,7 +58,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-b-correctness.md
 
 Agent 4 — Schema Critic Group C prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 6: Redundant Tables
 - Category 7: Orphaned Tables
 - Category 8: Naming Consistency
@@ -66,7 +66,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-c-waste-consistency.md
 
 Agent 5 — Schema Critic Group D prompt:
-Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categories:
+Perform a schema audit of the rigor plugin. Focus ONLY on these categories:
 - Category 10: Index Coverage
 - Category 11: Timestamp Consistency
 - Category 15: Polymorphic References
@@ -78,7 +78,7 @@ Perform a schema audit of the rigorous-dev plugin. Focus ONLY on these categorie
 Persist results to .scratch/rigor-schema-critic/<date>/<HHMMSS>_group-d-performance-hygiene.md
 
 Agent 6 — MCP Server Critic prompt:
-Perform a full 7-dimension MCP server audit of the rigorous-dev plugin: Correctness, Data Integrity,
+Perform a full 7-dimension MCP server audit of the rigor plugin: Correctness, Data Integrity,
 Error Handling, Protocol Compliance, Patterns, Test Coverage, Schema Header Accuracy.
 Persist your report to .scratch/rigor-mcp-server-critic/<date>/<HHMMSS>_mcp-server-audit.md
 where <date> is YYYY-MM-DD and <HHMMSS> is current time. The HHMMSS prefix is MANDATORY.
