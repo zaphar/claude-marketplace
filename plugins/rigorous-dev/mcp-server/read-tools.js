@@ -449,6 +449,13 @@ function queryImplementationManifest(db, { iteration_id, ids, filters = {}, incl
   ).all(...(iteration_id != null ? [iteration_id] : []));
   for (const r of compIterations) iterationIds.add(r.iteration_id);
 
+  if (ids?.length) {
+    const idSet = new Set(ids.map(Number));
+    for (const iid of iterationIds) {
+      if (!idSet.has(iid)) iterationIds.delete(iid);
+    }
+  }
+
   const results = [...iterationIds].map(iid => ({ iteration_id: iid }));
   if (!include_related) return results;
 

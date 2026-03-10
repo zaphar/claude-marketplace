@@ -96,14 +96,13 @@ CREATE TABLE IF NOT EXISTS project (
 -- Purpose: A single change-request cycle within a project. Each time new work is requested — a new
 -- feature, a bug-fix batch, a refactor — a new iteration is opened. Iterations are numbered
 -- sequentially.
--- Context: Created by iteration_create. An iteration encompasses all nine phases and their revision
--- attempts. Changelog entities reference the iteration either directly (via iteration_id for
--- context tables) or directly (via iteration_id on producer-critic
--- artifacts). Closing an iteration (status closed) signals that the work shipped and a new request
--- cycle can begin.
+-- Context: Created by iteration_create. An iteration encompasses all eight phases and their revision
+-- attempts. Changelog entities reference the iteration via iteration_id (both context tables and
+-- producer-critic artifacts). Closing an iteration (status closed) signals that the work shipped
+-- and a new request cycle can begin.
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'closed')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT,
   notes TEXT NOT NULL DEFAULT ''
@@ -113,7 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_iteration_status ON iteration(status);
 
 -- Phases within an iteration
 -- Domain: core
--- Purpose: One of the nine SDLC stages within an iteration. Phases are created in bulk (all nine,
+-- Purpose: One of the eight SDLC stages within an iteration. Phases are created in bulk (all eight,
 -- all pending) when an iteration is created, then activated and completed one at a time as the
 -- workflow advances.
 -- Context: Created by iteration_create alongside the iteration row. Status is advanced by
@@ -127,7 +126,7 @@ CREATE TABLE IF NOT EXISTS phase (
     'requirements', 'ux_design', 'architecture', 'planning',
     'implementation', 'documentation', 'qa', 'audit'
   )),
-  status TEXT NOT NULL CHECK(status IN ('pending', 'in_progress', 'completed', 'skipped')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'in_progress', 'completed', 'skipped')),
   started_at TEXT,
   completed_at TEXT,
   approved_by TEXT,
@@ -151,7 +150,7 @@ CREATE TABLE IF NOT EXISTS revision (
   phase_id INTEGER NOT NULL REFERENCES phase(id) ON DELETE CASCADE,
   producer_agent TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  status TEXT NOT NULL CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
   critic_agent TEXT,
   critic_feedback TEXT,
   reviewed_at TEXT
@@ -345,16 +344,16 @@ CREATE TABLE IF NOT EXISTS adr (
 -- ADR should have at least two alternatives (including the chosen option) so that future readers
 -- understand what was weighed. Pros and cons are stored inline as JSON arrays.
 -- Context: The alternative-with-pros-and-cons pattern is the structured form of the classic ADR
--- "options considered" section. Pros and cons are stored as nullable TEXT columns containing JSON
--- arrays (e.g., ["Built-in horizontal sharding","Mature ecosystem"]). When queried via
--- changelog_query or traceability_query, these columns are parsed back into arrays for convenient
--- consumption.
+-- "options considered" section. Pros and cons are stored as nullable JSON columns containing
+-- arrays (e.g., ["Built-in horizontal sharding","Mature ecosystem"]). The columns use JSON type
+-- for clarity (SQLite treats JSON as TEXT affinity). When queried via changelog_query or
+-- traceability_query, these columns are parsed back into arrays for convenient consumption.
 CREATE TABLE IF NOT EXISTS adr_alternative (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   adr_id TEXT NOT NULL REFERENCES adr(id) ON DELETE CASCADE,
   option_text TEXT NOT NULL,
-  pros TEXT,
-  cons TEXT
+  pros JSON,
+  cons JSON
 );
 
 -- Domain: architecture
@@ -367,7 +366,7 @@ CREATE TABLE IF NOT EXISTS adr_alternative (
 -- decided_at timestamp records when the decision was formalised.
 CREATE TABLE IF NOT EXISTS adr_decision (
   adr_id TEXT NOT NULL REFERENCES adr(id) ON DELETE CASCADE,
-  alternative_id INTEGER REFERENCES adr_alternative(id) ON DELETE CASCADE,
+  alternative_id INTEGER REFERENCES adr_alternative(id) ON DELETE SET NULL,
   rationale TEXT,
   decided_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (adr_id)
