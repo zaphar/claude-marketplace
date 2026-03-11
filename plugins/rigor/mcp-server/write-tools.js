@@ -1015,6 +1015,36 @@ function insertUxAsset(db, iteration_id, _revision_id, data) {
   return { entity_type: "ux_asset", id: lastId };
 }
 
+// Handler map shared by changelogInsert and bulkImport
+const ENTITY_INSERT_HANDLERS = {
+  persona: insertPersona,
+  requirement: insertRequirement,
+  adr: insertAdr,
+  adr_decision: insertAdrDecision,
+  component: insertComponent,
+  requirement_trace: insertRequirementTrace,
+  approved_dependency: insertApprovedDependency,
+  user_flow: insertUserFlow,
+  screen: insertScreen,
+  info_architecture: insertInfoArchitecture,
+  persona_addressed: insertPersonaAddressed,
+  ux_asset: insertUxAsset,
+  work_item: insertWorkItem,
+  plan_overview: insertPlanOverview,
+  plan_external_dependency: insertPlanExternalDependency,
+  implementation_manifest: insertImplementationManifest,
+  project_context: insertProjectContext,
+  data_exchange: insertDataExchange,
+  nonfunctional_requirement: insertNonfunctionalRequirement,
+  vcs_commit: insertVcsCommit,
+  intermediate_asset: insertIntermediateAsset,
+  blocker: insertWorkflowBlocker,
+  project_lesson: insertProjectLesson,
+  security_audit_finding: insertSecurityAuditFinding,
+  performance_audit_finding: insertPerformanceAuditFinding,
+  test_report: insertTestReport,
+};
+
 // ---------------------------------------------------------------------------
 
 function changelogInsert(args) {
@@ -1031,36 +1061,7 @@ function changelogInsert(args) {
     if (ctx) iteration_id = ctx.iteration_id;
   }
 
-  const handlers = {
-    persona: insertPersona,
-    requirement: insertRequirement,
-    adr: insertAdr,
-    adr_decision: insertAdrDecision,
-    component: insertComponent,
-    requirement_trace: insertRequirementTrace,
-    approved_dependency: insertApprovedDependency,
-    user_flow: insertUserFlow,
-    screen: insertScreen,
-    info_architecture: insertInfoArchitecture,
-    persona_addressed: insertPersonaAddressed,
-    ux_asset: insertUxAsset,
-    work_item: insertWorkItem,
-    plan_overview: insertPlanOverview,
-    plan_external_dependency: insertPlanExternalDependency,
-    implementation_manifest: insertImplementationManifest,
-    project_context: insertProjectContext,
-    data_exchange: insertDataExchange,
-    nonfunctional_requirement: insertNonfunctionalRequirement,
-    vcs_commit: insertVcsCommit,
-    intermediate_asset: insertIntermediateAsset,
-    blocker: insertWorkflowBlocker,
-    project_lesson: insertProjectLesson,
-    security_audit_finding: insertSecurityAuditFinding,
-    performance_audit_finding: insertPerformanceAuditFinding,
-    test_report: insertTestReport,
-  };
-
-  const handler = handlers[entity_type];
+  const handler = ENTITY_INSERT_HANDLERS[entity_type];
   if (!handler) {
     throw new Error(`Unsupported entity_type: ${entity_type}`);
   }
@@ -1206,6 +1207,183 @@ function iterationClose(args) {
 
     const updated = db.prepare("SELECT * FROM iteration WHERE id = @iteration_id").get({ iteration_id });
     return { iteration_id, status: updated.status, closed_at: updated.closed_at };
+  });
+
+  return run();
+}
+
+// ---------------------------------------------------------------------------
+// Bulk import
+// ---------------------------------------------------------------------------
+
+// Entity type → SDLC phase mapping (canonical import order)
+const ENTITY_PHASE_MAP = {
+  persona: "requirements",
+  requirement: "requirements",
+  project_context: "requirements",
+  data_exchange: "requirements",
+  nonfunctional_requirement: "requirements",
+  user_flow: "ux_design",
+  screen: "ux_design",
+  info_architecture: "ux_design",
+  persona_addressed: "ux_design",
+  ux_asset: "ux_design",
+  adr: "architecture",
+  adr_decision: "architecture",
+  component: "architecture",
+  approved_dependency: "architecture",
+  requirement_trace: "architecture",
+  work_item: "planning",
+  plan_overview: "planning",
+  plan_external_dependency: "planning",
+};
+
+// Insertion priority within each phase (lower = inserted first)
+const ENTITY_INSERT_PRIORITY = {
+  persona: 0, requirement: 1, project_context: 2, data_exchange: 3, nonfunctional_requirement: 4,
+  user_flow: 0, screen: 1, info_architecture: 2, persona_addressed: 3, ux_asset: 4,
+  adr: 0, adr_decision: 1, component: 2, approved_dependency: 3, requirement_trace: 4,
+  plan_overview: 0, work_item: 1, plan_external_dependency: 2,
+};
+
+const IMPORTABLE_PHASES = ["requirements", "ux_design", "architecture", "planning"];
+
+function bulkImport(args) {
+  const db = getDb(args.project_root);
+  const { project_name, critic_model, entities } = args;
+
+  if (!Array.isArray(entities) || entities.length === 0) {
+    throw new Error("entities must be a non-empty array of {entity_type, data} objects");
+  }
+
+  // Validate all entity types before touching the database
+  for (let i = 0; i < entities.length; i++) {
+    const entry = entities[i];
+    if (!entry.entity_type || !entry.data) {
+      throw new Error(`Entity at index ${i} must have both entity_type and data`);
+    }
+    if (!ENTITY_PHASE_MAP[entry.entity_type]) {
+      throw new Error(
+        `Unsupported entity_type for bulk import: "${entry.entity_type}". ` +
+        `Supported: ${Object.keys(ENTITY_PHASE_MAP).join(", ")}`
+      );
+    }
+  }
+
+  const run = db.transaction(() => {
+    const now = new Date().toISOString();
+
+    // Resolve active iteration or bootstrap a new project + iteration
+    let iteration_id;
+    let bootstrapped = false;
+
+    const activeIter = db.prepare(
+      "SELECT id FROM iteration WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+    ).get();
+
+    if (activeIter) {
+      iteration_id = activeIter.id;
+    } else {
+      const existingProject = db.prepare("SELECT id FROM project WHERE id = 1").get();
+      if (!existingProject) {
+        db.prepare(
+          `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes)
+           VALUES (1, @project_name, @now, @now, 'active', @critic_model, '')`
+        ).run({
+          project_name: project_name || "default",
+          now,
+          critic_model: critic_model || "sonnet",
+        });
+      }
+
+      const iterResult = db.prepare(
+        "INSERT INTO iteration (status, created_at, notes) VALUES ('active', @now, '')"
+      ).run({ now });
+      iteration_id = iterResult.lastInsertRowid;
+
+      const insertPhase = db.prepare(
+        "INSERT INTO phase (iteration_id, name, status) VALUES (@iteration_id, @name, 'pending')"
+      );
+      for (const name of PHASES) {
+        insertPhase.run({ iteration_id, name });
+      }
+
+      bootstrapped = true;
+    }
+
+    // Group entities by phase and sort by insertion priority
+    const phaseGroups = {};
+    for (const entry of entities) {
+      const phase = ENTITY_PHASE_MAP[entry.entity_type];
+      if (!phaseGroups[phase]) phaseGroups[phase] = [];
+      phaseGroups[phase].push(entry);
+    }
+
+    for (const group of Object.values(phaseGroups)) {
+      group.sort(
+        (a, b) => (ENTITY_INSERT_PRIORITY[a.entity_type] ?? 99)
+                 - (ENTITY_INSERT_PRIORITY[b.entity_type] ?? 99)
+      );
+    }
+
+    // Process phases in canonical order
+    const imported = {};
+    const phases_processed = [];
+
+    for (const phaseName of IMPORTABLE_PHASES) {
+      const group = phaseGroups[phaseName];
+      if (!group || group.length === 0) continue;
+
+      const phase = db.prepare(
+        "SELECT id, status FROM phase WHERE iteration_id = @iteration_id AND name = @name"
+      ).get({ iteration_id, name: phaseName });
+      if (!phase) {
+        throw new Error(`Phase "${phaseName}" not found in iteration ${iteration_id}`);
+      }
+
+      const originalStatus = phase.status;
+
+      if (originalStatus === "pending") {
+        db.prepare(
+          "UPDATE phase SET status = 'in_progress', started_at = @now WHERE id = @id"
+        ).run({ now, id: phase.id });
+      }
+
+      const revResult = db.prepare(
+        `INSERT INTO revision (phase_id, producer_agent, created_at, status)
+         VALUES (@phase_id, 'import', @now, 'draft')`
+      ).run({ phase_id: phase.id, now });
+      const revision_id = revResult.lastInsertRowid;
+
+      for (const entry of group) {
+        const handler = ENTITY_INSERT_HANDLERS[entry.entity_type];
+        handler(db, iteration_id, revision_id, entry.data);
+        imported[entry.entity_type] = (imported[entry.entity_type] || 0) + 1;
+      }
+
+      db.prepare(
+        `UPDATE revision SET status = 'approved', reviewed_at = @now,
+         critic_agent = 'import', critic_feedback = 'Bulk import'
+         WHERE id = @revision_id`
+      ).run({ now, revision_id });
+
+      // Complete phase only if it was pending (don't disrupt active workflow)
+      if (originalStatus === "pending") {
+        db.prepare(
+          "UPDATE phase SET status = 'completed', completed_at = @now, approved_by = 'import' WHERE id = @id"
+        ).run({ now, id: phase.id });
+      }
+
+      phases_processed.push(phaseName);
+    }
+
+    return {
+      iteration_id: Number(iteration_id),
+      bootstrapped,
+      imported,
+      phases_processed,
+      total_entities: entities.length,
+    };
   });
 
   return run();
@@ -1391,6 +1569,41 @@ export const WRITE_TOOLS = [
       required: ["iteration_id"],
     },
   },
+  {
+    name: "bulk_import",
+    description:
+      "Bulk-imports entities into the changelog database in a single atomic transaction. " +
+      "Groups entities by SDLC phase (requirements → ux_design → architecture → planning), " +
+      "creates revisions, inserts all entities, and manages phase transitions automatically. " +
+      "Always targets the current active iteration (or bootstraps a new one if none exists).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_name: { type: "string", description: "Project name (used if project must be created)" },
+        critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
+        entities: {
+          type: "array",
+          description: "Array of entities to import, each with entity_type and data.",
+          items: {
+            type: "object",
+            properties: {
+              entity_type: {
+                type: "string",
+                enum: Object.keys(ENTITY_PHASE_MAP),
+                description: "The entity type",
+              },
+              data: {
+                type: "object",
+                description: "Entity-specific fields (same schema as changelog_insert data)",
+              },
+            },
+            required: ["entity_type", "data"],
+          },
+        },
+      },
+      required: ["entities"],
+    },
+  },
 ];
 
 // Inject project_root into every tool schema
@@ -1430,6 +1643,8 @@ export function handleWriteTool(name, args) {
       return blockerResolve(args);
     case "iteration_close":
       return iterationClose(args);
+    case "bulk_import":
+      return bulkImport(args);
     default:
       throw new Error(`Unknown write tool: ${name}`);
   }

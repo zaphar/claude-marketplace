@@ -2,7 +2,6 @@
 description: Import existing data into the changelog database
 allowed-tools:
   - Read
-  - Write
   - Bash
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
@@ -15,20 +14,19 @@ allowed-tools:
 
 # Import Existing Data into the Changelog Database
 
-Read an existing file (requirements doc, design spec, PRD, meeting notes, YAML, JSON, markdown, or any freeform text) and bulk-import its contents into the rigor changelog database.
+Read an existing file (requirements doc, design spec, PRD, meeting notes, YAML, JSON, markdown, or any freeform text) and bulk-import its contents into the rigor changelog database using a single `bulk_import` call.
 
 ## What This Command Does
 
 1. Accepts a file path to import (from command argument or user prompt)
 2. Reads and analyzes the file to identify entity types and phases
 3. Shows a preview and asks the user to confirm before writing anything
-4. Checks project state and bootstraps an iteration if necessary
-5. Imports entities phase by phase via `changelog_insert`
-6. Displays a summary of what was imported
+4. Calls `bulk_import` to atomically insert all entities in a single transaction
+5. Displays a summary of what was imported
 
 ## Implementation Steps
 
-> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+> **Always include `project_root` in every MCP tool call**, set to the absolute path of the current project's root directory.
 
 ### 1. Get File Path
 
@@ -69,10 +67,10 @@ Use your reasoning to extract structured entities from the content — even if t
 
 | Phase | Entity Types |
 |-------|-------------|
-| `requirements` | `persona`, `requirement` (with `acceptance_criteria`, `user_stories`, `dependencies`) |
-| `ux_design` | `user_flow`, `screen` |
-| `architecture` | `adr`, `component`, `approved_dependency` (with optional `category` for technology grouping) |
-| `planning` | `work_item`, `plan_overview` |
+| `requirements` | `persona`, `requirement`, `project_context`, `data_exchange`, `nonfunctional_requirement` |
+| `ux_design` | `user_flow`, `screen`, `info_architecture`, `persona_addressed`, `ux_asset` |
+| `architecture` | `adr`, `adr_decision`, `component`, `approved_dependency`, `requirement_trace` |
+| `planning` | `work_item`, `plan_overview`, `plan_external_dependency` |
 
 **ID Generation Rules:**
 
@@ -85,7 +83,7 @@ Use your reasoning to extract structured entities from the content — even if t
 
 If the source file already contains IDs in a compatible format, preserve them. If IDs are missing or in an incompatible format, generate new ones.
 
-**Traceability:** When relationships between entities are detectable (e.g., a requirement mentions a persona, an ADR references a requirement), plan to create `requirement_trace` entries to link them.
+**Traceability:** When relationships between entities are detectable (e.g., a requirement mentions a persona, an ADR references a requirement), include `requirement_trace` entries in the entities array to link them.
 
 ### 3. Show Import Preview
 
@@ -108,7 +106,7 @@ Detected entities:
 
   (list all detected phases and entity counts)
 
-Phases to be processed: <comma-separated list in phase order>
+Total entities: <count>
 ```
 
 Then use AskUserQuestion to ask:
@@ -142,174 +140,61 @@ Suggestions:
 
 If any content is ambiguous (e.g., unclear whether something is a persona or a requirement, or an entity spans multiple phases), ask the user for clarification before proceeding. Use AskUserQuestion to surface the specific ambiguity.
 
-### 4. Check Project State
+### 4. Bulk Import
 
-Call `project_status()` to determine the current state:
-
-```
-project_status()
-```
-
-**Case A — No project exists:**
-
-Call `iteration_create` to bootstrap a new project and iteration:
+Call `bulk_import` with all extracted entities in a single call:
 
 ```
-iteration_create({
-  project_name: "<inferred_from_cwd_or_file_name>",
-  artifacts_directory: ".claude/rigor-artifacts",
-  critic_model: "sonnet",
-  starting_phase: "<first_detected_phase>"
+bulk_import({
+  project_root: "<project_root>",
+  entities: [
+    { entity_type: "persona", data: { id: "PERSONA-001", name: "...", ... } },
+    { entity_type: "requirement", data: { id: "REQ-001", description: "...", ... } },
+    { entity_type: "component", data: { id: "COMP-001", name: "...", ... } },
+    { entity_type: "requirement_trace", data: { requirement_id: "REQ-001", addressed_by: "COMP-001", addressed_by_type: "component" } },
+    ...
+  ]
 })
 ```
 
-Inform the user:
+The tool handles all orchestration automatically:
+- Uses the current active iteration, or bootstraps a new project and iteration if none exists
+- Groups entities by phase in canonical order (requirements → ux_design → architecture → planning)
+- Orders entities within each phase so dependencies are inserted first (e.g., personas before requirements)
+- Creates a revision per phase, inserts entities, and approves the revision
+- Completes phases that were pending; leaves in-progress or completed phases untouched
+- All inserts happen in a single atomic transaction — if any entity fails, everything rolls back
 
-```
-No project found. Bootstrapped a new project and iteration to hold the imported data.
-```
+**Error handling:** If `bulk_import` returns an error, display the error message to the user. The error will indicate which specific entity failed. No data was written because the transaction rolled back. The user can fix the issue and re-run the import.
 
-**Case B — Project exists with an active iteration:**
+### 5. Show Summary
 
-Use the current iteration ID from `project_status`. No action needed.
-
-**Case C — Project exists but the iteration is closed:**
-
-Use AskUserQuestion to ask:
-
-```
-The current iteration is closed.
-
-How would you like to proceed?
-1. Create a new iteration and import into it
-2. Cancel import
-```
-
-If the user selects **Create new iteration**, call `iteration_create` to open a new iteration, then continue.
-
-If the user selects **Cancel**, stop with:
-
-```
-Import cancelled. No data was written.
-```
-
-### 5. Import Data Phase by Phase
-
-Process detected phases in canonical order: `requirements` → `ux_design` → `architecture` → `planning`.
-
-Only process phases for which entities were detected in step 2. Do not touch phases with no detected data.
-
-For each phase with detected entities:
-
-#### 5a. Transition Phase to In Progress
-
-Check the current phase status via `project_status`. If the phase is not already `in_progress`, call:
-
-```
-phase_transition({ phase: "<phase_id>", status: "in_progress" })
-```
-
-#### 5b. Create Import Revision
-
-```
-revision_create({
-  phase_id: "<phase_id>",
-  producer_agent: "import"
-})
-```
-
-Record the returned `revision_id` — use it when calling `revision_update` to approve the revision after entity inserts.
-
-#### 5c. Insert Entities
-
-For each entity extracted for this phase, call `changelog_insert`:
-
-```
-changelog_insert({
-  entity_type: "<entity_type>",
-  iteration_id: <current_iteration_id>,
-  data: { <extracted_entity_fields> }
-})
-```
-
-Insert entities in a logical order within each phase (e.g., personas before requirements, so requirements can reference them).
-
-If a `changelog_insert` call fails:
-- Record which entity failed and the error message
-- Continue importing remaining entities
-- Report failures in the final summary (do not abort the entire import)
-
-After all entities for this phase are inserted, create `requirement_trace` entries for any detectable relationships:
-
-```
-changelog_insert({
-  entity_type: "requirement_trace",
-  iteration_id: <current_iteration_id>,
-  data: {
-    source_id: "<entity_id>",
-    target_id: "<related_entity_id>",
-    relationship: "<relationship_type>"
-  }
-})
-```
-
-#### 5d. Approve the Revision
-
-```
-revision_update({
-  revision_id: <import_revision_id>,
-  status: "approved",
-  critic_agent: "import",
-  critic_feedback: "Imported from user-provided file: <file_path>"
-})
-```
-
-#### 5e. Mark Phase Completed
-
-```
-phase_transition({
-  phase: "<phase_id>",
-  status: "completed",
-  approved_by: "import"
-})
-```
-
-### 6. Show Summary
-
-After all phases are processed, display the final summary:
+Display the summary from the `bulk_import` response:
 
 ```
 ✅ Import Complete
 
 File: <file_path>
-Iteration: <iteration_id>
+Iteration: <result.iteration_id>
 
 Imported:
-  - X requirements
-  - Y personas
+  - X personas
+  - Y requirements
   - Z ADRs
   - W components
-  - V user flows
-  - ... (all imported entity types and counts)
+  - ... (from result.imported object)
 
-Phases completed: <comma-separated list>
-
-Traceability mappings created: <count>
+Total entities: <result.total_entities>
+Phases processed: <result.phases_processed>
 ```
 
-If any entities failed to import, append:
+If `result.bootstrapped` is true, mention:
 
 ```
-⚠️  Partial import — some entities were not imported:
-
-  - <entity_type> "<entity_id_or_name>": <error_message>
-  - ...
-
-Review the errors above. You can re-run the import with a corrected file,
-or use /rigor:resume to continue the workflow and address gaps manually.
+ℹ️  New project and iteration were created for this import.
 ```
 
-If all phases completed successfully, suggest next steps:
+Suggest next steps:
 
 ```
 Next steps:
@@ -319,8 +204,8 @@ Next steps:
 
 ## Important Notes
 
-- **Any file format is accepted.** The orchestrator should use its reasoning to extract structured entities from freeform text, prose documents, spreadsheet exports, and any other format. If the content clearly describes requirements, architecture decisions, or personas — extract them, even if the source document uses different terminology.
-- **Only process detected phases.** If the file contains only requirements, only the `requirements` phase is processed. Other phases are left untouched.
-- **Preserve existing data.** The import does not overwrite existing entries. Each import run creates a new revision, so prior entries remain intact and queryable.
-- **Phase order matters.** Always process phases in canonical order (requirements → ux_design → architecture → planning) so that cross-phase traceability references are valid at insert time.
-- **When in doubt, ask.** If content is ambiguous — unclear phase, ambiguous entity type, missing required fields — use AskUserQuestion rather than guessing. A targeted question is better than a wrong assumption that corrupts the data.
+- **Any file format is accepted.** Use reasoning to extract structured entities from freeform text, prose documents, spreadsheet exports, and any other format.
+- **Only process detected phases.** If the file contains only requirements, only requirements entities are included.
+- **Preserve existing data.** The import creates new revisions. Entities with existing IDs are upserted.
+- **Atomic operation.** The entire import succeeds or fails as a unit. No partial imports — fix the error and retry.
+- **When in doubt, ask.** If content is ambiguous, use AskUserQuestion rather than guessing.
