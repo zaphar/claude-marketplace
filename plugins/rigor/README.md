@@ -1,6 +1,21 @@
 # Rigorous Software Development Workflow Plugin
 
-A Claude Code plugin that guides you through creating or modifying software with high rigor using specialized agents, structured specifications, and producer-critic validation patterns.
+A Claude Code and GitHub Copilot CLI plugin that guides software projects through a structured SDLC using specialized AI agents, producer-critic validation, and a persistent SQLite audit trail.
+
+## What Problem Does This Solve?
+
+Ad-hoc AI-assisted development tends to skip steps, make undocumented decisions, and lose context across sessions. The rigor plugin enforces discipline:
+
+- **Nothing ships without a critic reviewing it.** Every phase has a dedicated critic agent that can reject work and force revision.
+- **Decisions are recorded, not forgotten.** Requirements, architecture decisions, implementation plans, test coverage, and audit findings are all written to an append-only SQLite database — queryable at any phase.
+- **You stay in control.** After 3 failed revision loops the workflow escalates to you, not to a hallucinated compromise.
+- **Full SDLC coverage.** From initial requirements interview through security and performance audit before release.
+
+## Who Is This For?
+
+- Developers who want AI assistance but don't want AI to skip requirements, design, or testing
+- Teams building regulated or high-stakes software where traceability matters
+- Solo developers who want the discipline of a full team workflow with AI standing in for each role
 
 ## Overview
 
@@ -11,6 +26,13 @@ Two workflows covering the complete SDLC:
 **Release:** QA → Audit (security + performance)
 
 Each phase uses a **producer-critic pattern**: a producer agent creates artifacts, a critic agent validates them, with up to 3 revision loops before escalating to the user. All state and decisions are stored in an append-only SQLite database (`.claude/rigor.db`) for full traceability.
+
+## Supported Platforms
+
+| Platform | Status |
+|----------|--------|
+| Claude Code | Fully supported |
+| GitHub Copilot CLI | Compatible (see `copilot-compatibility-audit.md` for known risks) |
 
 ## Installation
 
@@ -48,7 +70,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:start` — Initialize a new workflow
 - `/rigor:onboard` — Bootstrap from an existing codebase
 - `/rigor:resume` — Resume an existing workflow
-- `/rigor:current-status` — Display current progress
+- `/rigor:dev-status` — Display current progress
 - `/rigor:skip-to <phase>` — Skip to a specific phase (advanced)
 - `/rigor:close` — Close the current iteration
 - `/rigor:import` — Import existing data (requirements, design specs, etc.)
