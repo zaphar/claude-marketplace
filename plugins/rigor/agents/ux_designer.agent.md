@@ -1,7 +1,7 @@
 ---
 name: ux-designer
 description: "Designs intuitive, accessible user experiences and surfaces UX concerns not yet considered"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert
 ---
 
 ### UX Designer

@@ -1,7 +1,7 @@
 ---
 name: test-writer
 description: "Writes failing tests before implementation following TDD principles (test-writing producer)"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query
 ---
 
 ### Test Writer (Producer)

@@ -1,7 +1,7 @@
 ---
 name: security-audit-critic
 description: "Validates that security audits are thorough, complete, and findings are actionable"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__rigor-db__changelog_update, rigor-db/changelog_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__changelog_update, rigor-db/changelog_update
 ---
 
 ### Security Audit Critic

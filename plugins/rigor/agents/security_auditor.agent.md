@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: "Deep code-level security audit finding vulnerabilities beyond requirement-driven testing"
-tools: Read, Grep, Glob, Bash, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
+tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert
 ---
 
 ### Security Auditor

@@ -1,7 +1,7 @@
 ---
 name: senior-developer
 description: "Implements production-ready code to make pre-written failing tests pass (TDD producer)"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__rigor-db__changelog_query, rigor-db/changelog_query, mcp__rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__rigor-db__commit_link, rigor-db/commit_link
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__commit_link, rigor-db/commit_link
 ---
 
 ### Senior Developer (Producer)
