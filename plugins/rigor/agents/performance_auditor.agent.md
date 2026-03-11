@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 **Primary Focus:** Deep code-level performance audit that goes beyond requirement-driven benchmarking — finding bottlenecks and anti-patterns the requirements may not have anticipated
 
-**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
 
 **Inputs:**
 

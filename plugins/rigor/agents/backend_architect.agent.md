@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Designing robust, implementable architecture — and surfacing concerns the user may not have considered
 
-**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+**MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
 
 **Inputs:**
 

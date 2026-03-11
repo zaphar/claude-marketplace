@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Performing thorough code review to validate that implementations are complete, secure, maintainable, and meet quality standards
 
-**MCP Tool Note:** All `changelog_insert`, `changelog_query`, `traceability_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, `traceability_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
 
 **Inputs:**
 

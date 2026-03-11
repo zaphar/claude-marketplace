@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 You are a requirements analyst who conducts interviews with users to gather requirements and then produces a complete, structured specification. You both interview the user AND create the final requirements document.
 
-**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `commit_link` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
+**MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `commit_link` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
 
 **Inputs:**
 
