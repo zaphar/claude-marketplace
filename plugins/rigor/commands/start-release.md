@@ -5,6 +5,8 @@ allowed-tools:
   - Write
   - Bash
   - AskUserQuestion
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__phase_transition
 ---
 
 # Start Release Workflow

@@ -77,7 +77,7 @@ For each phase, follow this pattern:
 
 1. Load `rigor:requirements_analyst`
 2. Analyst conducts conversational interview with user
-3. Call `revision_create` with `phase_id: "requirements"` and the analyst agent name
+3. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: "requirements"`, and the analyst agent name
 4. Analyst records output using `changelog_insert` (requirements, user stories, acceptance criteria, etc.)
 5. Load `rigor:requirements_critic` to review via `changelog_query`
 6. Call `revision_update` with approved/rejected status and critic feedback
@@ -92,7 +92,7 @@ For each phase, follow this pattern:
 
 **Producer-Critic Loop:**
 
-1. Call `revision_create` with the phase_id and producer agent name
+1. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: <current_phase_name>`, and the producer agent name
 2. Load producer agent for phase (ux_designer, backend_architect, implementation_planner, documentation_master, etc.)
 3. Producer conducts interview (if needed) and records output using `changelog_insert` (decisions, ADRs, components, specs, etc.)
 4. Load critic agent for phase
@@ -164,7 +164,7 @@ When transitioning between phases:
 
 1. Verify current phase is "completed" (via `project_status`)
 2. Call `phase_transition` with the next phase and status `"in_progress"`
-3. Call `revision_create` for the new phase's first producer
+3. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
 4. **Compact context** before loading the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
 5. Load producer agent for new phase
 6. Inform user of transition
@@ -306,7 +306,7 @@ Each sub-phase has two steps: **test writing** then **implementation**. This enf
 For each sub-phase (query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`):
 
 1. Call `work_item_transition({ work_item_id: <id>, status: "test_writing" })` to start test writing
-2. Call `revision_create` with `phase_id: "implementation"`, sub-phase number, and `"test_writer"` agent name
+2. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: "implementation"`, and `"test_writer"` agent name
 
 **Step 1 — Test Writing:**
 
@@ -541,7 +541,7 @@ You have access to:
 - **work_item_transition** (MCP tool) - Update a work_item row's status (pending → test_writing → implementing → completed). Takes `work_item_id` and `status`
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
-- **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Returns revision_id and revision_count for escalation checks
+- **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Pass `iteration_id` and `phase_name` (e.g. `"requirements"`, `"implementation"`) — do not pass a raw `phase_id` integer. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration. Inputs: `entity_type`, `iteration_id`, `revision_id` (accepted but ignored for all entity types except `vcs_commit`), `data`
 - **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.

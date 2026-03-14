@@ -5,6 +5,9 @@ allowed-tools:
   - Write
   - Bash
   - AskUserQuestion
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__iteration_close
+  - mcp__plugin_rigor_rigor-db__project_update
 ---
 
 # Close Rigorous Development Workflow

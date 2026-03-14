@@ -133,10 +133,26 @@ function workItemTransition(args) {
 
 function revisionCreate(args) {
   const db = getDb(args.project_root);
-  const { phase_id, producer_agent } = args;
+  const { iteration_id, phase_name, producer_agent } = args;
+  let { phase_id } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
+    // Resolve phase_id from iteration_id + phase_name if not provided directly
+    if (!phase_id && iteration_id && phase_name) {
+      const ph = db
+        .prepare("SELECT id FROM phase WHERE iteration_id = @iteration_id AND name = @phase_name")
+        .get({ iteration_id, phase_name });
+      if (!ph) {
+        throw new Error(`Phase "${phase_name}" not found in iteration ${iteration_id}`);
+      }
+      phase_id = ph.id;
+    }
+
+    if (!phase_id) {
+      throw new Error("Provide phase_id, or both iteration_id and phase_name");
+    }
+
     const phase = db.prepare("SELECT id FROM phase WHERE id = @phase_id").get({ phase_id });
     if (!phase) {
       throw new Error(`phase_id ${phase_id} does not exist`);
@@ -1003,7 +1019,8 @@ function insertUxAsset(db, iteration_id, _revision_id, data) {
 
 function changelogInsert(args) {
   const db = getDb(args.project_root);
-  const { entity_type, revision_id, data } = args;
+  const { entity_type, revision_id } = args;
+  const data = typeof args.data === "string" ? JSON.parse(args.data) : args.data;
 
   // Derive iteration_id from revision_id (for handlers that still need it)
   let iteration_id = args.iteration_id;
@@ -1244,14 +1261,20 @@ export const WRITE_TOOLS = [
   {
     name: "revision_create",
     description:
-      "Starts a new producer-critic revision within a phase. Returns revision_id and the total revision_count for escalation checks.",
+      "Starts a new producer-critic revision within a phase. Returns revision_id and the total revision_count for escalation checks. Provide either phase_id (integer) or both iteration_id and phase_name to identify the phase.",
     inputSchema: {
       type: "object",
       properties: {
-        phase_id: { type: "integer" },
+        phase_id: { type: "integer", description: "Direct phase ID (if known)" },
+        iteration_id: { type: "integer", description: "Iteration ID (use with phase_name to look up the phase)" },
+        phase_name: {
+          type: "string",
+          description: "Phase name (use with iteration_id). One of: requirements, ux_design, architecture, planning, implementation, documentation, qa, audit",
+          enum: PHASES,
+        },
         producer_agent: { type: "string" },
       },
-      required: ["phase_id", "producer_agent"],
+      required: ["producer_agent"],
     },
   },
   {

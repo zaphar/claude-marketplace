@@ -3,6 +3,9 @@ description: Display release workflow status
 allowed-tools:
   - Read
   - Bash
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__iteration_summary
+  - mcp__plugin_rigor_rigor-db__changelog_query
 ---
 
 # Show Release Workflow Status

@@ -3,6 +3,9 @@ description: Display current workflow status and progress
 allowed-tools:
   - Read
   - Bash
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__iteration_summary
+  - mcp__plugin_rigor_rigor-db__changelog_query
 ---
 
 # Show Workflow Status

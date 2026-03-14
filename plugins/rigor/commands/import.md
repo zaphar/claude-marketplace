@@ -5,6 +5,12 @@ allowed-tools:
   - Write
   - Bash
   - AskUserQuestion
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__iteration_create
+  - mcp__plugin_rigor_rigor-db__changelog_insert
+  - mcp__plugin_rigor_rigor-db__revision_create
+  - mcp__plugin_rigor_rigor-db__revision_update
+  - mcp__plugin_rigor_rigor-db__phase_transition
 ---
 
 # Import Existing Data into the Changelog Database

@@ -4,6 +4,8 @@ allowed-tools:
   - Read
   - Write
   - Bash
+  - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__changelog_query
 ---
 
 # Resume Release Workflow

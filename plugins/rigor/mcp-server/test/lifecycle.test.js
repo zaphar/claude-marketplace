@@ -174,6 +174,40 @@ describe("revision_create", () => {
     // seedIteration already created 1 revision, this is the 2nd
     assert.strictEqual(result.revision_count, 2);
   });
+
+  it("resolves phase_id from iteration_id + phase_name", () => {
+    const result = handleWriteTool("revision_create", {
+      project_root: "/tmp/test-project",
+      iteration_id: seed.iteration_id,
+      phase_name: "requirements",
+      producer_agent: "test-agent",
+    });
+    assert.ok(result.revision_id);
+    assert.strictEqual(result.phase_id, seed.phase_id);
+    assert.strictEqual(result.revision_count, 2);
+  });
+
+  it("throws when phase_name not found in iteration", () => {
+    assert.throws(
+      () => handleWriteTool("revision_create", {
+        project_root: "/tmp/test-project",
+        iteration_id: 9999,
+        phase_name: "requirements",
+        producer_agent: "test-agent",
+      }),
+      /not found in iteration/
+    );
+  });
+
+  it("throws when neither phase_id nor iteration_id+phase_name provided", () => {
+    assert.throws(
+      () => handleWriteTool("revision_create", {
+        project_root: "/tmp/test-project",
+        producer_agent: "test-agent",
+      }),
+      /Provide phase_id/
+    );
+  });
 });
 
 describe("revision_update", () => {
