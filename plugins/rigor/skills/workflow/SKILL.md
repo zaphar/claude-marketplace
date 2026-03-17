@@ -131,8 +131,38 @@ For each phase, follow this pattern:
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
 
-**When invoking agents via the Task tool:**
-- Use the agent's namespaced name as the `agent_type` parameter (e.g., `agent_type: "rigor:requirements_analyst"`)
+**When invoking agents via the Task tool, always provide these parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `agent_type` | Yes | The agent's namespaced name from the tables above (e.g., `"rigor:implementation_planner"`) |
+| `prompt` | Yes | The task context and instructions for the agent (see §7 Context Passing) |
+| `description` | Yes | A short (3–5 word) summary of the task (e.g., `"Planning implementation phases"`, `"Reviewing architecture"`) |
+| `name` | Yes | A short kebab-case name for the invocation (e.g., `"planning-producer"`, `"arch-critic"`) |
+| `model` | Critics only | The `critic_model` from `project_status` (see Critic Model Selection below) |
+
+**Example invocation (Planning phase producer):**
+```
+Task(
+  agent_type: "rigor:implementation_planner",
+  name: "planning-producer",
+  description: "Creating implementation plan",
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are working on iteration <iteration_id>, phase: planning. <context from §7>..."
+)
+```
+
+**Example invocation (Planning phase critic):**
+```
+Task(
+  agent_type: "rigor:implementation_plan_critic",
+  name: "planning-critic",
+  description: "Reviewing implementation plan",
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nReview the planning phase output for iteration <iteration_id>. <context from §7>...",
+  model: "<critic_model from project_status>"
+)
+```
+
+**Additional guidelines:**
 - The agent will follow the instructions in its `.agent.md` file and adopt the specified personality
 - Use the phase's DB entries for validation context
 - Reference prior phase data via `changelog_query`
