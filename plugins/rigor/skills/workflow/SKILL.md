@@ -453,7 +453,7 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 **Release Workflow Phases:**
 
-1. **QA Phase**: Load QA Engineer, run tests, produce test report. Standard producer-critic loop.
+1. **QA Phase**: Invoke `rigor:qa_engineer` via the Task tool, run tests, produce test report. Standard producer-critic loop.
 2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 9). Standard producer-critic loops with remediation cycles.
 
 **Release Workflow Completion:**

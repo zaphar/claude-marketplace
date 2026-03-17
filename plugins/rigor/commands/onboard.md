@@ -120,7 +120,7 @@ After state file is created, load the workflow skill (`skills/workflow/SKILL.md`
 
 **Skip this step entirely if the project is non-visual.** Proceed directly to step 7.
 
-#### 6a. Load UX Designer with Documentation Mode Override
+#### 6a. Invoke UX Designer with Documentation Mode Override
 
 Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
 
@@ -190,7 +190,7 @@ After approval, transition to architecture phase: set `architecture.status: "in_
 
 ### 7. Run Architecture Documentation
 
-#### 7a. Load Backend Architect with Documentation Mode Override
+#### 7a. Invoke Backend Architect with Documentation Mode Override
 
 Invoke `rigor:backend_architect` via the Task tool, then apply these **Documentation Mode Overrides**:
 

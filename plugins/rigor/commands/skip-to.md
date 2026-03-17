@@ -152,7 +152,7 @@ If user confirms, call `phase_transition` for each phase that needs to change:
 
 ### 8. Invoke Target Phase Agent via the Task Tool
 
-Invoke the appropriate agent for the target phase using the Task tool:
+Invoke the appropriate agent for the target phase via the Task tool:
 
 - `requirements` → `rigor:requirements_analyst`
 - `ux_design` → `rigor:ux_designer`
