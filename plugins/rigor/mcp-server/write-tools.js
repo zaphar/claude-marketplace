@@ -1389,6 +1389,19 @@ function bulkImport(args) {
   return run();
 }
 
+function checkpoint(args) {
+  const db = getDb(args.project_root);
+  const result = db.pragma("wal_checkpoint(TRUNCATE)");
+  // pragma returns an array of rows; checkpoint returns one row with busy, checkpointed, log
+  const row = Array.isArray(result) ? result[0] : result;
+  return {
+    message: "WAL checkpoint completed (TRUNCATE mode). WAL and SHM files flushed.",
+    busy: row.busy,
+    checkpointed: row.checkpointed,
+    log: row.log,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tool definitions (MCP inputSchema)
 // ---------------------------------------------------------------------------
@@ -1604,6 +1617,15 @@ export const WRITE_TOOLS = [
       required: ["entities"],
     },
   },
+  {
+    name: "checkpoint",
+    description:
+      "Flushes the SQLite WAL (write-ahead log) to the main database file and removes the -wal and -shm files. Runs PRAGMA wal_checkpoint(TRUNCATE). Use when you want to ensure all data is persisted to the main .db file.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
 ];
 
 // Inject project_root into every tool schema
@@ -1645,6 +1667,8 @@ export function handleWriteTool(name, args) {
       return iterationClose(args);
     case "bulk_import":
       return bulkImport(args);
+    case "checkpoint":
+      return checkpoint(args);
     default:
       throw new Error(`Unknown write tool: ${name}`);
   }

@@ -77,6 +77,7 @@ mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "blocker_resolve":
       case "iteration_close":
       case "bulk_import":
+      case "checkpoint":
         return okResponse(handleWriteTool(name, args));
 
       case "changelog_query":
