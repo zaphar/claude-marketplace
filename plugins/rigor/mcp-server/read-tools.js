@@ -96,7 +96,9 @@ function queryPersona(db, { iteration_id, ids, filters = {}, include_related = f
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ goals, ...rest }) => rest);
+  }
   return results.map((p) => ({
     ...p,
     goals: (() => { try { return JSON.parse(p.goals || '[]'); } catch { return p.goals; } })(),
@@ -121,7 +123,9 @@ function queryRequirement(db, { iteration_id, ids, filters = {}, include_related
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ acceptance_criteria, ...rest }) => rest);
+  }
   return results.map((r) => ({
     ...r,
     acceptance_criteria: (() => { try { return JSON.parse(r.acceptance_criteria || '[]'); } catch { return r.acceptance_criteria; } })(),
@@ -155,7 +159,9 @@ function queryAdr(db, { iteration_id, ids, filters = {}, include_related = false
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ consequences, research_sources, ...rest }) => rest);
+  }
   return results.map((a) => {
     const alternatives = db
       .prepare("SELECT * FROM adr_alternative WHERE adr_id = ?")
@@ -247,7 +253,9 @@ function queryUserFlow(db, { iteration_id, ids, filters = {}, include_related = 
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ data_dependencies, error_states, ...rest }) => rest);
+  }
   return results.map((fl) => {
     const steps = db
       .prepare("SELECT * FROM user_flow_step WHERE flow_id = ? ORDER BY step_number")
@@ -287,7 +295,9 @@ function queryScreen(db, { iteration_id, ids, filters = {}, include_related = fa
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ components, ...rest }) => rest);
+  }
   return results.map((s) => ({
     ...s,
     components: (() => { try { return JSON.parse(s.components || '[]'); } catch { return s.components; } })(),
@@ -317,7 +327,9 @@ function queryWorkItem(db, { iteration_id, ids, filters = {}, include_related = 
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ entry_criteria, exit_criteria, checkpoint_focus, risks, ...rest }) => rest);
+  }
   return results.map((p) => ({
     ...p,
     requirements: db
@@ -354,7 +366,9 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
   params.push(...f.params);
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
-  if (!include_related) return results;
+  if (!include_related) {
+    return results.map(({ assumptions, risks, ...rest }) => rest);
+  }
   return results.map((o) => ({
     ...o,
     total_phases: (() => {
@@ -844,6 +858,8 @@ function changelogQuery(args) {
     ids,
     filters,
     include_related = false,
+    limit,
+    offset = 0,
   } = args;
 
   if (!QUERY_DISPATCH[entity_type]) {
@@ -853,10 +869,51 @@ function changelogQuery(args) {
   }
 
   try {
-    const results = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
+    const allResults = QUERY_DISPATCH[entity_type](db, { iteration_id, ids, filters, include_related });
 
-    return { entity_type, results, count: results.length };
+    const total = allResults.length;
+
+    // Clamp limit to [1, 100] if provided; guard against non-numeric values
+    const effectiveLimit = limit != null && Number.isFinite(limit)
+      ? Math.min(Math.max(1, Math.floor(limit)), 100)
+      : null;
+
+    // Clamp offset to >= 0; always apply (even without limit)
+    const effectiveOffset = Math.max(0, Math.floor(offset) || 0);
+
+    const results = effectiveLimit != null
+      ? allResults.slice(effectiveOffset, effectiveOffset + effectiveLimit)
+      : allResults.slice(effectiveOffset);
+
+    // Overflow guard: check response size for ALL queries
+    if (results.length > 0) {
+      const serialized = JSON.stringify(results);
+      const THRESHOLD = 50_000;
+
+      if (serialized.length > THRESHOLD) {
+        const avgRowSize = Math.ceil(serialized.length / results.length);
+        const suggestedLimit = Math.max(1, Math.floor(THRESHOLD / avgRowSize));
+        const err = new Error(
+          `Query would return ~${serialized.length.toLocaleString()} chars ` +
+          `(${results.length} rows). Use limit/offset to paginate, or ids to fetch ` +
+          `specific items. Suggested limit: ${suggestedLimit}.`
+        );
+        err.code = "PAYLOAD_TOO_LARGE";
+        err.details = { entity_type, total, estimated_chars: serialized.length, suggested_limit: suggestedLimit };
+        throw err;
+      }
+    }
+
+    return {
+      entity_type,
+      total,
+      count: results.length,  // backward compat (matches returned page size)
+      limit: effectiveLimit,
+      offset: effectiveOffset,
+      results,
+    };
   } catch (err) {
+    if (err.code === "PAYLOAD_TOO_LARGE") throw err;
     throw new Error(`Failed to query ${entity_type}: ${err.message}`);
   }
 }
@@ -1274,7 +1331,9 @@ export const READ_TOOLS = [
     description:
       "Flexible query of the changelog database. Primary read tool for agents. " +
       "Query any entity type with optional iteration, ID, and field filters. " +
-      "Set include_related=true to attach child table data (acceptance criteria, interfaces, alternatives, etc.).",
+      "Supports limit/offset pagination; returns total count in every response. " +
+      "Set include_related=true to attach child table data (acceptance criteria, interfaces, alternatives, etc.); " +
+      "false returns base columns only, stripping large inline JSON fields for lightweight index scans.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1303,6 +1362,20 @@ export const READ_TOOLS = [
           description:
             "If true, attach child/related table data (acceptance criteria, interfaces, etc.). More tokens but complete data.",
           default: false,
+        },
+        limit: {
+          type: "integer",
+          description:
+            "Maximum number of results to return (1-100). Omit for all results (subject to overflow protection).",
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: "integer",
+          description:
+            "Number of results to skip (default 0). Use with limit for pagination.",
+          default: 0,
+          minimum: 0,
         },
       },
       required: ["entity_type"],

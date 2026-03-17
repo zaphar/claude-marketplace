@@ -315,7 +315,7 @@ describe("queryPersona enrichment", () => {
     assert.deepStrictEqual(r.results[0].goals, ["ship fast", "low bugs"]);
   });
 
-  it("returns raw goals string when include_related is false", () => {
+  it("strips goals when include_related is false", () => {
     handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "persona",
@@ -330,9 +330,8 @@ describe("queryPersona enrichment", () => {
       include_related: false,
     });
     assert.strictEqual(r.count, 1);
-    // Without include_related, goals should be the raw JSON string
-    assert.strictEqual(typeof r.results[0].goals, "string");
-    assert.deepStrictEqual(JSON.parse(r.results[0].goals), ["coverage"]);
+    // Without include_related, goals should be stripped
+    assert.strictEqual(r.results[0].goals, undefined);
   });
 
   it("handles empty goals array gracefully", () => {
@@ -403,7 +402,7 @@ describe("queryPlanOverview enrichment", () => {
     assert.strictEqual(overview.risks[1].work_item_id, undefined);
   });
 
-  it("does not attach total_phases or risks when include_related is false", () => {
+  it("strips assumptions and risks when include_related is false", () => {
     handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "plan_overview",
@@ -422,13 +421,9 @@ describe("queryPlanOverview enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].total_phases, undefined);
-    // risks is now a JSON column — returned as raw JSON string when not enriched
-    assert.strictEqual(typeof r.results[0].risks, "string");
-    const parsedRisks = JSON.parse(r.results[0].risks);
-    assert.strictEqual(parsedRisks.length, 1);
-    assert.strictEqual(parsedRisks[0].risk, "failure");
-    // assumptions should be raw JSON string
-    assert.strictEqual(typeof r.results[0].assumptions, "string");
+    // risks and assumptions should be stripped when include_related is false
+    assert.strictEqual(r.results[0].risks, undefined);
+    assert.strictEqual(r.results[0].assumptions, undefined);
   });
 });
 
@@ -785,7 +780,7 @@ describe("queryUserFlow enrichment", () => {
     assert.deepStrictEqual(flow.requirements.sort(), ["REQ-UF1", "REQ-UF2"]);
   });
 
-  it("does not attach child data when include_related is false", () => {
+  it("strips inline JSON child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "user_flow",
@@ -806,10 +801,10 @@ describe("queryUserFlow enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].steps, undefined);
-    assert.strictEqual(r.results[0].error_states, null);
+    assert.strictEqual(r.results[0].error_states, undefined);
     assert.strictEqual(r.results[0].requirements, undefined);
-    // data_dependencies should remain raw JSON string
-    assert.strictEqual(typeof r.results[0].data_dependencies, "string");
+    // data_dependencies should be stripped
+    assert.strictEqual(r.results[0].data_dependencies, undefined);
   });
 
   it("returns empty arrays for flow with no children", () => {
@@ -953,7 +948,7 @@ describe("queryWorkItem enrichment", () => {
     assert.strictEqual(phase.risks[1].mitigation, undefined);
   });
 
-  it("does not attach child data when include_related is false", () => {
+  it("strips inline JSON child data when include_related is false", () => {
     const result = handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "work_item",
@@ -975,15 +970,15 @@ describe("queryWorkItem enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     const phase = r.results[0];
-    // JSON fields should be raw strings
-    assert.strictEqual(typeof phase.entry_criteria, "string");
-    assert.strictEqual(typeof phase.exit_criteria, "string");
-    assert.strictEqual(typeof phase.checkpoint_focus, "string");
+    // JSON fields should be stripped
+    assert.strictEqual(phase.entry_criteria, undefined);
+    assert.strictEqual(phase.exit_criteria, undefined);
+    assert.strictEqual(phase.checkpoint_focus, undefined);
     // Child data should not be present
     assert.strictEqual(phase.requirements, undefined);
     assert.strictEqual(phase.components, undefined);
-    // risks is now a JSON column on the row — raw string when not enriched
-    assert.strictEqual(typeof phase.risks, "string");
+    // risks should be stripped
+    assert.strictEqual(phase.risks, undefined);
   });
 
   it("returns empty arrays for work_item with no children", () => {

@@ -141,6 +141,12 @@ For each phase, follow this pattern:
 
 **Prior Phase Data:** Agents use `changelog_query` to retrieve data from prior phases by querying by `entity_type`, `iteration_id`, `ids`, or `filters`. The orchestrator does not need to manage this — agents use the tools directly.
 
+**Query Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full row count) and `count` (rows in current page) regardless of pagination. Recommended patterns:
+- **Index scan** (lightweight): `changelog_query(entity_type: "requirement", include_related: false, limit: 50)` — returns base columns only, stripping large inline JSON fields.
+- **Detail fetch**: `changelog_query(entity_type: "requirement", ids: ["REQ-001", "REQ-005"], include_related: true)` — full data for specific items.
+- **Paginated full review** (for critics): paginate with `limit: 20, offset: 0`, process the page, then fetch `offset: 20`, etc. until all `total` rows are covered.
+- Queries that would return more than ~50,000 characters without a `limit` will return a `PAYLOAD_TOO_LARGE` error with a `suggested_limit` instead of the oversized payload.
+
 ### 4. Artifact Management
 
 **Artifact Storage:**
@@ -544,7 +550,7 @@ You have access to:
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Pass `iteration_id` and `phase_name` (e.g. `"requirements"`, `"implementation"`) — do not pass a raw `phase_id` integer. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration. Inputs: `entity_type`, `iteration_id`, `revision_id` (accepted but ignored for all entity types except `vcs_commit`), `data`
-- **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Set include_related=true for child data.
+- **changelog_query** (MCP tool) - Retrieve entries by entity_type, iteration_id, ids, and/or field filters. Supports `limit`/`offset` pagination; returns `total` count in every response. Set include_related=true for child data (including inline JSON fields like acceptance_criteria); false returns lightweight index data only.
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration

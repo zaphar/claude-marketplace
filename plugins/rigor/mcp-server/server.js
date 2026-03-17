@@ -90,6 +90,12 @@ mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return errResponse(`Unknown tool: ${name}`);
     }
   } catch (err) {
+    if (err.code === "PAYLOAD_TOO_LARGE") {
+      return {
+        content: [{ type: "text", text: JSON.stringify(err.details, null, 2) }],
+        isError: true,
+      };
+    }
     return errResponse(err);
   }
 });

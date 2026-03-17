@@ -71,7 +71,7 @@ describe("queryRequirement enrichment", () => {
     assert.deepStrictEqual(req.depends_on, ["REQ-DEP"]);
   });
 
-  it("does not attach child data when include_related is false", () => {
+  it("strips inline JSON child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "requirement",
@@ -92,8 +92,8 @@ describe("queryRequirement enrichment", () => {
       ids: ["REQ-NOENRICH"],
     });
     assert.strictEqual(r.count, 1);
-    // Without include_related, acceptance_criteria should be raw JSON string
-    assert.strictEqual(typeof r.results[0].acceptance_criteria, "string");
+    // Without include_related, acceptance_criteria should be stripped
+    assert.strictEqual(r.results[0].acceptance_criteria, undefined);
     assert.strictEqual(r.results[0].personas, undefined);
     assert.strictEqual(r.results[0].depends_on, undefined);
   });
@@ -169,7 +169,7 @@ describe("queryAdr enrichment", () => {
     assert.deepStrictEqual(adr.research_sources, ["https://postgresql.org", "internal-benchmarks"]);
   });
 
-  it("does not attach child data when include_related is false", () => {
+  it("strips inline JSON child data when include_related is false", () => {
     handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "adr",
@@ -191,9 +191,9 @@ describe("queryAdr enrichment", () => {
     });
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.results[0].alternatives, undefined);
-    // consequences should be raw JSON string
-    assert.strictEqual(typeof r.results[0].consequences, "string");
-    assert.strictEqual(typeof r.results[0].research_sources, "string");
+    // consequences and research_sources should be stripped
+    assert.strictEqual(r.results[0].consequences, undefined);
+    assert.strictEqual(r.results[0].research_sources, undefined);
   });
 
   it("returns empty arrays for ADR with no alternatives or consequences", () => {
