@@ -114,6 +114,13 @@ export function runMigrations(db) {
     );
     const checksum = computeChecksum(content);
 
+    // Disable FK checks before the transaction — PRAGMA foreign_keys cannot
+    // be changed inside a transaction and table-recreation migrations need it.
+    // Also enable legacy_alter_table so ALTER TABLE RENAME does not rewrite
+    // FK references in child tables (SQLite 3.25+ behaviour).
+    db.pragma("foreign_keys=OFF");
+    db.pragma("legacy_alter_table=ON");
+
     const applyMigration = db.transaction(() => {
       db.exec(content);
       db.prepare(
@@ -126,6 +133,12 @@ export function runMigrations(db) {
       );
     });
 
-    applyMigration();
+    try {
+      applyMigration();
+    } finally {
+      // Re-enable FK checks and restore default alter_table behaviour
+      db.pragma("legacy_alter_table=OFF");
+      db.pragma("foreign_keys=ON");
+    }
   }
 }

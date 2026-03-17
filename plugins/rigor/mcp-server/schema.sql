@@ -29,6 +29,14 @@
 -- 5. UTC timestamps in ISO 8601 — All timestamp columns use TEXT type. App code
 --    sets timestamps via new Date().toISOString(). No DATETIME or INTEGER epoch.
 --
+-- 6. No CHECK constraints on TEXT columns — CHECK constraints must not be used
+--    to enforce enum-like values on TEXT columns. They cause LLM quality
+--    degradation (opaque, unrecoverable errors) and migration friction (SQLite
+--    requires full table recreation to alter constraints). Validation of
+--    enum-like values belongs in the application layer (write-tools.js) or is
+--    the agent's responsibility. The only permitted CHECK is CHECK(id = 1) on
+--    project.id (INTEGER PK singleton enforcement).
+--
 -- ============================================================
 -- DOMAIN MAP (10 domains, 44 tables)
 -- ============================================================
@@ -101,7 +109,7 @@ CREATE TABLE IF NOT EXISTS project (
   project_name TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  status TEXT NOT NULL CHECK(status IN ('active', 'closed')),
+  status TEXT NOT NULL,
   closed_at TEXT,
   critic_model TEXT NOT NULL DEFAULT 'sonnet',
   notes TEXT NOT NULL DEFAULT ''
@@ -118,7 +126,7 @@ CREATE TABLE IF NOT EXISTS project (
 -- and a new request cycle can begin.
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'closed')),
+  status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT,
   notes TEXT NOT NULL DEFAULT ''
@@ -138,11 +146,8 @@ CREATE INDEX IF NOT EXISTS idx_iteration_status ON iteration(status);
 CREATE TABLE IF NOT EXISTS phase (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  name TEXT NOT NULL CHECK(name IN (
-    'requirements', 'ux_design', 'architecture', 'planning',
-    'implementation', 'documentation', 'qa', 'audit'
-  )),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'in_progress', 'completed', 'skipped')),
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
   started_at TEXT,
   completed_at TEXT,
   approved_by TEXT,
@@ -166,7 +171,7 @@ CREATE TABLE IF NOT EXISTS revision (
   phase_id INTEGER NOT NULL REFERENCES phase(id) ON DELETE CASCADE,
   producer_agent TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')),
+  status TEXT NOT NULL DEFAULT 'draft',
   critic_agent TEXT,
   critic_feedback TEXT,
   reviewed_at TEXT
@@ -216,7 +221,7 @@ CREATE TABLE IF NOT EXISTS requirement (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   rationale TEXT,
-  priority TEXT NOT NULL CHECK(priority IN ('must-have', 'should-have', 'nice-to-have')),
+  priority TEXT NOT NULL,
   category TEXT NOT NULL,
   acceptance_criteria JSON NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -286,7 +291,7 @@ CREATE TABLE IF NOT EXISTS project_context (
 CREATE TABLE IF NOT EXISTS data_exchange (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  direction TEXT NOT NULL CHECK(direction IN ('input', 'output')),
+  direction TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source TEXT,
@@ -319,7 +324,7 @@ CREATE TABLE IF NOT EXISTS data_exchange (
 CREATE TABLE IF NOT EXISTS nonfunctional_requirement (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
-  nfr_type TEXT NOT NULL CHECK(nfr_type IN ('deployment', 'operational', 'technology')),
+  nfr_type TEXT NOT NULL,
   item TEXT NOT NULL,
   category TEXT,
   value TEXT,
@@ -346,7 +351,7 @@ CREATE TABLE IF NOT EXISTS adr (
   id TEXT PRIMARY KEY,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('proposed', 'accepted', 'deprecated', 'superseded')),
+  status TEXT NOT NULL,
   decision TEXT, -- the decision that was made, e.g. "Adopt", "Reject", "Deprecate"
   rationale TEXT, -- the reasoning behind the decision
   date TEXT, -- ISO 8601 date, e.g. "2026-03-08"
@@ -505,15 +510,14 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
 -- requirement — requirements with no mapping are dark requirements that cannot be verified during
 -- QA. The addressed_by field is a free-text identifier that should match an existing entity ID:
 -- COMP-XXX for components, an endpoint path/name, a user_flow.id, a screen.id, or a descriptive
--- label for other. The addressed_by_type column has a CHECK constraint — valid values are
--- component, endpoint, flow, screen, adr, and technology.
+-- label for other. The addressed_by_type column uses application-level validation (CHECK constraint
+-- removed in migration 002); valid values are component, endpoint, flow, screen, adr, and technology.
 CREATE TABLE IF NOT EXISTS requirement_trace (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
   addressed_by TEXT NOT NULL,
-  addressed_by_type TEXT NOT NULL
-    CHECK(addressed_by_type IN ('component', 'flow', 'screen', 'adr', 'endpoint', 'technology')),
+  addressed_by_type TEXT NOT NULL,
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, requirement_id, addressed_by, addressed_by_type)
@@ -678,8 +682,8 @@ CREATE TABLE IF NOT EXISTS work_item (
   name TEXT NOT NULL,
   work_type TEXT NOT NULL,
   goal TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'test_writing', 'implementing', 'completed')),
-  complexity TEXT CHECK(complexity IN ('XS', 'S', 'M', 'L', 'XL')), -- NULL when estimation not yet done
+  status TEXT NOT NULL DEFAULT 'pending',
+  complexity TEXT, -- NULL when estimation not yet done
   review_checkpoint INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
   entry_criteria JSON NOT NULL DEFAULT '[]',
@@ -760,7 +764,7 @@ CREATE TABLE IF NOT EXISTS plan_external_dependency (
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   work_item_id INTEGER REFERENCES work_item(id) ON DELETE SET NULL,
-  risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
+  risk_level TEXT NOT NULL,
   mitigation TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, name)
@@ -779,7 +783,7 @@ CREATE TABLE IF NOT EXISTS implementation_requirement_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirement(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('implemented', 'partial', 'not_started', 'blocked', 'not_applicable')),
+  status TEXT NOT NULL,
   notes TEXT,
   UNIQUE(iteration_id, requirement_id)
 );
@@ -794,7 +798,7 @@ CREATE TABLE IF NOT EXISTS implementation_component_status (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   component_id TEXT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('complete', 'partial', 'not_started')),
+  status TEXT NOT NULL,
   notes TEXT,
   UNIQUE(iteration_id, component_id)
 );
@@ -810,7 +814,7 @@ CREATE TABLE IF NOT EXISTS implementation_blocker (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
+  severity TEXT NOT NULL,
   recommendation TEXT,
   needs_escalation INTEGER NOT NULL DEFAULT 0
 );
@@ -887,7 +891,7 @@ CREATE TABLE IF NOT EXISTS test_report (
   coverage_branch REAL,
   coverage_function REAL,
   duration_seconds REAL,
-  status TEXT NOT NULL CHECK(status IN ('pass', 'fail', 'blocked')),
+  status TEXT NOT NULL,
   stdout TEXT,
   stderr TEXT,
   version TEXT,
@@ -914,13 +918,13 @@ CREATE TABLE IF NOT EXISTS security_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  severity TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   location TEXT,
   recommendation TEXT NOT NULL,
   cve TEXT,
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'false-positive')),
+  status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -939,7 +943,7 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+  severity TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   location TEXT,
@@ -947,7 +951,7 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
   baseline_value REAL,
   actual_value REAL,
   recommendation TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'accepted', 'deferred')),
+  status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 -- ============================================================
@@ -965,7 +969,7 @@ CREATE TABLE IF NOT EXISTS blocker (
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
   phase_name TEXT NOT NULL,
   description TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK(severity IN ('critical', 'major', 'minor')),
+  severity TEXT NOT NULL,
   raised_by TEXT NOT NULL,
   resolved_at TEXT,
   resolution_notes TEXT,

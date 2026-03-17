@@ -56,51 +56,16 @@ describe("FK cascade deletes", () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// CHECK constraints
+// NOT NULL constraints (CHECK constraints on TEXT columns were
+// removed in migration 002; validation is now application-level)
 // ───────────────────────────────────────────────────────────────
 
-describe("CHECK constraints", () => {
-  it("rejects invalid requirement priority", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          project_root: "/tmp/test-project",
-          entity_type: "requirement",
-          iteration_id: seed.iteration_id,
-          revision_id: seed.revision_id,
-          data: { id: "REQ-1", description: "X", priority: "invalid", category: "functional" },
-        }),
-      /CHECK constraint/
-    );
-  });
-
-  it("rejects invalid blocker severity (no CHECK but NOT NULL)", () => {
+describe("NOT NULL constraints", () => {
+  it("rejects invalid blocker severity (NOT NULL)", () => {
     assert.throws(
       () =>
         db.prepare("INSERT INTO blocker (iteration_id, phase_name, description, severity, raised_by) VALUES (?, 'requirements', 'x', NULL, 'test')").run(seed.iteration_id),
       /NOT NULL/
-    );
-  });
-
-  it("rejects invalid phase status", () => {
-    assert.throws(
-      () =>
-        db.prepare("UPDATE phase SET status = 'invalid' WHERE id = ?").run(seed.phase_id),
-      /CHECK constraint/
-    );
-  });
-
-  it("rejects invalid implementation_requirement_status status", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          project_root: "/tmp/test-project",
-          entity_type: "implementation_manifest",
-          iteration_id: seed.iteration_id,
-          revision_id: seed.revision_id,
-          data: { requirement_status: [{ requirement_id: "REQ-001", status: "invalid" }] },
-        }),
-      /CHECK constraint/
     );
   });
 });

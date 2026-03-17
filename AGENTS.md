@@ -76,6 +76,14 @@ Individual agents only access the data-plane tools (`changelog_query`, `changelo
 
 `test_writer.agent.md` and `documentation_master.agent.md` have `changelog_query` but not `changelog_insert`. This is intentional: their artifacts (test files, documentation files) are written directly to the filesystem and committed to VCS, not stored as DB entries. Their respective critics handle any DB recording.
 
+### 6. No CHECK Constraints on TEXT Columns
+
+**Do not add CHECK constraints to TEXT columns in the schema.** CHECK constraints on TEXT columns (e.g., `CHECK(status IN ('active', 'closed'))`) are explicitly prohibited. They were removed in migration 002 and must not be reintroduced.
+
+**Why:** CHECK constraints on TEXT enum columns cause significant quality degradation when LLMs interact with the MCP server — the rigid constraint errors are opaque and unrecoverable from the agent's perspective. They also create friction in schema migrations since SQLite requires full table recreation to alter constraints. Validation of enum-like values belongs in the application layer (`write-tools.js` handlers) or is the agent's responsibility, not the database's.
+
+The one permitted CHECK on a non-TEXT column is `CHECK(id = 1)` on `project.id` (INTEGER PK singleton enforcement).
+
 ---
 
 ## Adding a New Agent

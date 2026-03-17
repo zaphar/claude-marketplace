@@ -186,31 +186,7 @@ describe("changelog_insert CHECK constraint violations", () => {
     );
   });
 
-  it("rejects requirement with invalid priority", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          project_root: "/tmp/test-project",
-          entity_type: "requirement",
-          iteration_id: seed.iteration_id,
-          revision_id: seed.revision_id,
-          data: { id: "REQ-1", description: "X", priority: "critical", category: "functional" },
-        }),
-      /CHECK constraint/
-    );
-  });
-
-  it("rejects data_exchange with invalid direction", () => {
-    assert.throws(
-      () =>
-        handleWriteTool("changelog_insert", {
-          project_root: "/tmp/test-project",
-          entity_type: "data_exchange",
-          iteration_id: seed.iteration_id,
-          revision_id: seed.revision_id,
-          data: { name: "API", direction: "sideways", protocol: "HTTP", description: "ext" },
-        }),
-      /CHECK constraint/
-    );
-  });
+  // NOTE: CHECK constraint tests for requirement.priority and data_exchange.direction
+  // were removed — CHECK constraints on TEXT columns were dropped in migration 002.
+  // These columns now accept free-form values; validation is the agent's responsibility.
 });
