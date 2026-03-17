@@ -172,7 +172,7 @@ Display confirmation message:
 
 ⚠️  Reminder: Ensure you have necessary artifacts from previous phases.
 
-Loading <agent_name> agent...
+Invoking <agent_name> agent...
 ```
 
 ### 10. Handle Cancellation

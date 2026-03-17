@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.10.1
+version: 0.11.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -105,7 +105,7 @@ For each phase, follow this pattern:
    - If revision_count < 3: loop back to step 1 with feedback (next `revision_create` call)
    - If revision_count >= 3: escalate to user for guidance
 
-### 3. Agent Loading
+### 3. Agent Invocation
 
 > **IMPORTANT:** Agents are **not** skills. Agents live in `agents/*.agent.md` and must be invoked via the **Task tool** (sub-agent invocation). Do **not** use the Skill mechanism (`Skill()`) to load agents — that only resolves entries in `skills/` directories and will fail with "Unknown skill" errors. Every instruction in this document that says to "load" an agent means: **invoke it via the Task tool** using its namespaced `agent_type` (e.g., `agent_type: "rigor:implementation_planner"`).
 

@@ -89,7 +89,7 @@ Project: <project_name>
 Artifacts: <artifacts_directory>
 
 Starting QA Phase...
-Loading QA Engineer agent.
+Invoking QA Engineer agent...
 ```
 
 Then invoke `rigor:qa_engineer` via the Task tool to begin testing.

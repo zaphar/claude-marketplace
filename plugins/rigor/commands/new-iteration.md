@@ -133,7 +133,7 @@ Prior iteration artifacts preserved in VCS history.
 Persistent artifacts remain in place: ux_design/, architecture/ (if they exist)
 
 Starting Requirements Phase...
-Loading Requirements Analyst agent.
+Invoking Requirements Analyst agent...
 ```
 
 Provide the Requirements Analyst with context:

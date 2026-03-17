@@ -96,7 +96,7 @@ Project: <project_name>
 Artifacts: <artifacts_directory>
 
 Starting Requirements Phase...
-Loading Requirements Analyst agent.
+Invoking Requirements Analyst agent...
 ```
 
 Then invoke `rigor:requirements_analyst` via the Task tool to begin the conversational interview.

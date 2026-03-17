@@ -88,7 +88,7 @@ Based on the current phase and its status, invoke the appropriate agent via the 
 
 **If phase status is "in_progress":**
 - Invoke the producer agent for that phase via the Task tool (continue work)
-- Refer to the phase-to-agent mapping in SKILL.md §3 (Agent Loading)
+- Refer to the phase-to-agent mapping in SKILL.md §3 (Agent Invocation)
 
 **If phase status is "completed":**
 - Should not happen; workflow should have advanced to next phase
