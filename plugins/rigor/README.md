@@ -87,20 +87,23 @@ Loads the plugin for the current session without installing.
 rigor/
 ├── agents/                          # 20 agent personality files (10 producer-critic pairs)
 ├── commands/                        # Slash command definitions
-├── skills/workflow/SKILL.md     # Orchestration skill (main workflow logic)
+├── skills/workflow/SKILL.md         # Orchestration skill (main workflow logic)
 └── mcp-server/                      # MCP server with SQLite changelog backend
-    ├── schema.sql                   # Database schema (source of truth for data model)
+    ├── schema.sql                   # Database schema reference (source of truth for data model)
+    ├── migrate.js                   # Migration engine (applies versioned SQL migrations)
+    ├── migrations/                  # Numbered migration files (001_baseline.sql, etc.)
+    ├── db.js                        # Database initialization (WAL mode, foreign keys, runs migrations)
     ├── write-tools.js               # Write tools (changelog_insert, phase_transition, etc.)
     ├── read-tools.js                # Read tools (changelog_query, traceability_query, etc.)
-    ├── db.js                        # Database initialization
-    └── server.js                    # MCP server entry point
+    ├── server.js                    # MCP server entry point
+    └── test/                        # Test suite
 ```
 
 ## Customization
 
 **Modifying agents:** Edit agent files in `agents/` to customize personalities and behaviors.
 
-**Extending the schema:** See the checklist at the top of `mcp-server/schema.sql`.
+**Extending the schema:** See the checklist at the top of `mcp-server/schema.sql`. Schema changes are applied via numbered migration files in `mcp-server/migrations/` — create a new `NNN_<name>.sql` file for each change. Never modify an already-applied migration; the system enforces this with SHA-256 checksum verification. See `mcp-server/migrate.js` for implementation details.
 
 **Adding new phases:** Create producer + critic agent files, add tables to `schema.sql`, add handlers in `write-tools.js` and `read-tools.js`, and update `skills/workflow/SKILL.md`.
 

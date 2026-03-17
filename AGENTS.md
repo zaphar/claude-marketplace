@@ -94,4 +94,4 @@ The MCP server is at `plugins/rigor/mcp-server/`. When adding a new tool:
 
 1. Add the tool definition to `write-tools.js` (WRITE_TOOLS array) or `read-tools.js` (READ_TOOLS array)
 2. Add it to any agent frontmatter that needs it — **in both naming formats**
-3. Update `schema.sql` if the tool requires new tables or columns
+3. Update `schema.sql` if the tool requires new tables or columns, and create a new numbered migration file in `migrations/` (never modify an already-applied migration)

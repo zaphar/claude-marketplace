@@ -1,10 +1,7 @@
 import Database from "better-sqlite3";
-import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
+import { mkdirSync, existsSync, renameSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = path.join(__dirname, "schema.sql");
+import { runMigrations } from "./migrate.js";
 
 let _db = null;
 
@@ -31,14 +28,7 @@ export function getDb(projectRoot) {
   db.pragma("journal_mode=WAL");
   db.pragma("foreign_keys=ON");
 
-  const tableExists = db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project'")
-    .get();
-
-  if (!tableExists) {
-    const ddl = readFileSync(SCHEMA_PATH, "utf8");
-    db.exec(ddl);
-  }
+  runMigrations(db);
 
   _db = db;
   return _db;
