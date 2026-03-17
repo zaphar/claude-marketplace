@@ -75,11 +75,11 @@ For each phase, follow this pattern:
 
 #### Requirements Phase
 
-1. Load `rigor:requirements_analyst`
+1. Invoke `rigor:requirements_analyst` via the Task tool
 2. Analyst conducts conversational interview with user
 3. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: "requirements"`, and the analyst agent name
 4. Analyst records output using `changelog_insert` (requirements, user stories, acceptance criteria, etc.)
-5. Load `rigor:requirements_critic` to review via `changelog_query`
+5. Invoke `rigor:requirements_critic` via the Task tool to review via `changelog_query`
 6. Call `revision_update` with approved/rejected status and critic feedback
 7. **If approved:**
    - Call `phase_transition` to mark requirements completed
@@ -93,9 +93,9 @@ For each phase, follow this pattern:
 **Producer-Critic Loop:**
 
 1. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: <current_phase_name>`, and the producer agent name
-2. Load producer agent for phase (ux_designer, backend_architect, implementation_planner, documentation_master, etc.)
+2. Invoke the producer agent for the phase via the Task tool (ux_designer, backend_architect, implementation_planner, documentation_master, etc.)
 3. Producer conducts interview (if needed) and records output using `changelog_insert` (decisions, ADRs, components, specs, etc.)
-4. Load critic agent for phase
+4. Invoke the critic agent for the phase via the Task tool
 5. Critic reviews by querying the current revision's data via `changelog_query`
 6. Call `revision_update` with approved/rejected status and critic feedback
 7. **If approved:**
@@ -107,9 +107,11 @@ For each phase, follow this pattern:
 
 ### 3. Agent Loading
 
+> **IMPORTANT:** Agents are **not** skills. Agents live in `agents/*.agent.md` and must be invoked via the **Task tool** (sub-agent invocation). Do **not** use the Skill mechanism (`Skill()`) to load agents — that only resolves entries in `skills/` directories and will fail with "Unknown skill" errors. Every instruction in this document that says to "load" an agent means: **invoke it via the Task tool** using its namespaced `agent_type` (e.g., `agent_type: "rigor:implementation_planner"`).
+
 **Development Workflow Agents:**
 
-| Phase | Producer Agent | Critic Agent |
+| Phase | Producer Agent (`agent_type`) | Critic Agent (`agent_type`) |
 |-------|----------------|--------------|
 | Requirements | `rigor:requirements_analyst` | `rigor:requirements_critic` |
 | UX Design | `rigor:ux_designer` | `rigor:ux_critic` |
@@ -121,7 +123,7 @@ For each phase, follow this pattern:
 
 **Release Workflow Agents:**
 
-| Phase | Producer Agent | Critic Agent |
+| Phase | Producer Agent (`agent_type`) | Critic Agent (`agent_type`) |
 |-------|----------------|--------------|
 | QA | `rigor:qa_engineer` | `rigor:qa_critic` |
 | Audit (Security) | `rigor:security_auditor` | `rigor:security_audit_critic` |
@@ -129,15 +131,15 @@ For each phase, follow this pattern:
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
 
-**When loading agents:**
-- Load the agent by its namespaced name (e.g., `rigor:requirements_analyst`)
-- Follow the instructions and adopt the personality
+**When invoking agents via the Task tool:**
+- Use the agent's namespaced name as the `agent_type` parameter (e.g., `agent_type: "rigor:requirements_analyst"`)
+- The agent will follow the instructions in its `.agent.md` file and adopt the specified personality
 - Use the phase's DB entries for validation context
 - Reference prior phase data via `changelog_query`
 - **User questions must reach the human:** When an agent says "ask the user", "interview the user", "consult the user", or "ask for preference", these questions MUST be surfaced to the actual human user. Never answer on behalf of the user using information from prior artifacts or your own judgment. Use AskUserQuestion for structured choices; use direct conversation for open-ended interview questions. The orchestrator's role is to facilitate the conversation between the agent personality and the human, not to stand in for the human.
 - **Prepend to every agent prompt:** "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text (`<function_calls>`, `<invoke>`, etc.) — use the structured tool interface directly."
 
-**Critic Model Selection:** When loading any critic agent, call `project_status` to get `critic_model` and pass it as the `model` parameter to the Task tool. If `critic_model` is not set (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
+**Critic Model Selection:** When invoking any critic agent, call `project_status` to get `critic_model` and pass it as the `model` parameter to the Task tool. If `critic_model` is not set (backward compatibility), default to `"sonnet"`. Producer agents always inherit the parent model (do not set `model` for producers).
 
 **Prior Phase Data:** Agents use `changelog_query` to retrieve data from prior phases by querying by `entity_type`, `iteration_id`, `ids`, or `filters`. The orchestrator does not need to manage this — agents use the tools directly.
 
@@ -171,8 +173,8 @@ When transitioning between phases:
 1. Verify current phase is "completed" (via `project_status`)
 2. Call `phase_transition` with the next phase and status `"in_progress"`
 3. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
-4. **Compact context** before loading the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
-5. Load producer agent for new phase
+4. **Compact context** before invoking the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
+5. Invoke the producer agent for the new phase via the Task tool
 6. Inform user of transition
 
 **Development Workflow Phase Order:**
@@ -229,7 +231,7 @@ changelog_insert(entity_type: "blocker", iteration_id: <current>, data: {
 
 **Querying Active Blockers at Phase Start:**
 
-At the start of each phase, before loading the producer agent, query for active (unresolved) blockers:
+At the start of each phase, before invoking the producer agent, query for active (unresolved) blockers:
 ```
 changelog_query(entity_type: "blocker", iteration_id: <current>, filters: { resolved_at: null })
 ```
@@ -265,12 +267,12 @@ Like `blocker`, `project_lesson` does not require a `revision_id` — lessons ar
 
 **Querying Lessons at Phase Start:**
 
-At the start of each phase, before loading the producer agent, query prior lessons so the producer can benefit from cross-phase knowledge:
+At the start of each phase, before invoking the producer agent, query prior lessons so the producer can benefit from cross-phase knowledge:
 ```
 changelog_query(entity_type: "project_lesson", iteration_id: <current>)
 ```
 
-If lessons exist, include a summary when loading the producer agent:
+If lessons exist, include a summary when invoking the producer agent:
 ```
 📝 Project Lessons
 
@@ -282,7 +284,7 @@ Producers also query lessons directly via `changelog_query(entity_type: "project
 
 ### 7. Context Passing Between Agents
 
-When loading an agent, provide context:
+When invoking an agent via the Task tool, provide context:
 
 **For Producer Agents:**
 - Current phase name
@@ -316,9 +318,9 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 
 **Step 1 — Test Writing:**
 
-5. Load `rigor:test_writer`
+5. Invoke `rigor:test_writer` via the Task tool
 6. Test Writer reads WI files for this sub-phase, writes failing tests and minimal compilation stubs
-7. Load `rigor:test_writer_critic` (using `critic_model` from state)
+7. Invoke `rigor:test_writer_critic` via the Task tool (using `critic_model` from state)
 8. Critic validates:
    - Project compiles with new test files and stubs
    - All new tests fail (red state) for the right reason
@@ -337,10 +339,10 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 
 **Step 2 — Implementation:**
 
-11. Load `rigor:senior_developer`
+11. Invoke `rigor:senior_developer` via the Task tool
 12. Developer reads existing failing tests and implements minimum code to make them pass
 13. Developer records implementation manifest using `changelog_insert` with `entity_type: "implementation_manifest"` linked to the current sub-phase revision
-14. Load `rigor:senior_developer_critic` (using `critic_model` from `project_status`)
+14. Invoke `rigor:senior_developer_critic` via the Task tool (using `critic_model` from `project_status`)
 15. Critic validates:
     - All pre-written tests pass, no pre-existing tests broken, full test suite passes
     - No test files modified or deleted
@@ -391,13 +393,13 @@ The audit phase is part of the **release workflow** and runs two independent pro
 **Parallel Tracks:**
 
 1. **Security Track:**
-   - Load `rigor:security_auditor` → records security audit findings via `changelog_insert(entity_type: "security_audit_finding")`
-   - Load `rigor:security_audit_critic` → validates findings via `changelog_query(entity_type: "security_audit_finding")`
+   - Invoke `rigor:security_auditor` via the Task tool → records security audit findings via `changelog_insert(entity_type: "security_audit_finding")`
+   - Invoke `rigor:security_audit_critic` via the Task tool → validates findings via `changelog_query(entity_type: "security_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 2. **Performance Track:**
-   - Load `rigor:performance_auditor` → records performance audit findings via `changelog_insert(entity_type: "performance_audit_finding")`
-   - Load `rigor:performance_audit_critic` → validates findings via `changelog_query(entity_type: "performance_audit_finding")`
+   - Invoke `rigor:performance_auditor` via the Task tool → records performance audit findings via `changelog_insert(entity_type: "performance_audit_finding")`
+   - Invoke `rigor:performance_audit_critic` via the Task tool → validates findings via `changelog_query(entity_type: "performance_audit_finding")`
    - Standard producer-critic loop (max 3 revisions)
 
 Both tracks receive the QA test report as input and operate on the same codebase. They should not duplicate each other's work — security focuses on vulnerabilities, performance focuses on bottlenecks.

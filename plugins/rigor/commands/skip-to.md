@@ -150,9 +150,9 @@ If user confirms, call `phase_transition` for each phase that needs to change:
    phase_transition({ phase: "<target_phase>", status: "in_progress" })
    ```
 
-### 8. Load Target Phase Agent
+### 8. Invoke Target Phase Agent via the Task Tool
 
-Load the appropriate agent for the target phase:
+Invoke the appropriate agent for the target phase using the Task tool:
 
 - `requirements` → `rigor:requirements_analyst`
 - `ux_design` → `rigor:ux_designer`

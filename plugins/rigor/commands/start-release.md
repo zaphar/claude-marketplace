@@ -80,7 +80,7 @@ Load the workflow skill (`skills/workflow/SKILL.md`) for orchestration context.
 
 ### 6. Start QA Phase
 
-Inform the user that the release workflow has started and load the QA engineer agent:
+Inform the user that the release workflow has started and invoke the QA engineer agent via the Task tool:
 
 ```
 Release Workflow Started!
@@ -92,7 +92,7 @@ Starting QA Phase...
 Loading QA Engineer agent.
 ```
 
-Then load and execute `rigor:qa_engineer` to begin testing.
+Then invoke `rigor:qa_engineer` via the Task tool to begin testing.
 
 ## Success Message
 

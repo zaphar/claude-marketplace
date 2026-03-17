@@ -87,7 +87,7 @@ Load skills/workflow/SKILL.md and begin with Requirements phase.
 
 ### 6. Start Requirements Phase
 
-Inform the user that the workflow has started and load the requirements_analyst agent:
+Inform the user that the workflow has started and invoke the requirements_analyst agent via the Task tool:
 
 ```
 ✓ Workflow initialized successfully!
@@ -99,7 +99,7 @@ Starting Requirements Phase...
 Loading Requirements Analyst agent.
 ```
 
-Then load and execute `rigor:requirements_analyst` to begin the conversational interview.
+Then invoke `rigor:requirements_analyst` via the Task tool to begin the conversational interview.
 
 ## Success Message
 

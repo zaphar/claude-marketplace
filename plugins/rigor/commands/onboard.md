@@ -122,7 +122,7 @@ After state file is created, load the workflow skill (`skills/workflow/SKILL.md`
 
 #### 6a. Load UX Designer with Documentation Mode Override
 
-Load `rigor:ux_designer`, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
+Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - User interviews and design direction questions
@@ -160,7 +160,7 @@ Load `rigor:ux_designer`, then apply these **Documentation Mode Overrides** that
 
 #### 6b. Run UX Critic with Onboarding Override
 
-Load `rigor:ux_critic`, then apply these **Onboarding Critic Overrides**:
+Invoke `rigor:ux_critic` via the Task tool, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every user-facing REQ-XXX has UX coverage") — there are no real requirements yet
@@ -192,7 +192,7 @@ After approval, transition to architecture phase: set `architecture.status: "in_
 
 #### 7a. Load Backend Architect with Documentation Mode Override
 
-Load `rigor:backend_architect`, then apply these **Documentation Mode Overrides**:
+Invoke `rigor:backend_architect` via the Task tool, then apply these **Documentation Mode Overrides**:
 
 **DISABLED behaviors (do NOT perform these during onboarding):**
 - Validating requirements and UX specifications as inputs (they don't exist yet, or were just produced by onboarding)
@@ -245,7 +245,7 @@ Load `rigor:backend_architect`, then apply these **Documentation Mode Overrides*
 
 #### 7b. Run Architecture Critic with Onboarding Override
 
-Load `rigor:architecture_critic`, then apply these **Onboarding Critic Overrides**:
+Invoke `rigor:architecture_critic` via the Task tool, then apply these **Onboarding Critic Overrides**:
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every REQ-XXX has corresponding architectural coverage") — requirements are placeholders

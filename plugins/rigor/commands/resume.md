@@ -84,10 +84,10 @@ Load the workflow skill with the current state context so it knows where to cont
 
 ### 6. Continue Current Phase
 
-Based on the current phase and its status, load the appropriate agent:
+Based on the current phase and its status, invoke the appropriate agent via the Task tool:
 
 **If phase status is "in_progress":**
-- Load the producer agent for that phase (continue work)
+- Invoke the producer agent for that phase via the Task tool (continue work)
 - Refer to the phase-to-agent mapping in SKILL.md §3 (Agent Loading)
 
 **If phase status is "completed":**
@@ -96,7 +96,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 ### 7. Context Handoff
 
-When loading the agent, provide context from the `project_status` response about:
+When invoking the agent, provide context from the `project_status` response about:
 - What artifacts already exist
 - Current iteration count
 - Any notes from previous work

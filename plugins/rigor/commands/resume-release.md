@@ -82,14 +82,14 @@ Load the workflow skill with the current release state context.
 
 ### 6. Continue Current Phase
 
-Based on the current phase and its status, load the appropriate agent:
+Based on the current phase and its status, invoke the appropriate agent via the Task tool:
 
 **Phase-to-Agent Mapping:**
 - `qa` → `rigor:qa_engineer`
 - `audit` → `rigor:security_auditor` + `rigor:performance_auditor` (parallel)
 
 **If phase status is "in_progress":**
-- Load the producer agent for that phase (continue work)
+- Invoke the producer agent for that phase via the Task tool (continue work)
 
 **If phase status is "completed":**
 - Should not happen; workflow should have advanced to next phase
@@ -97,7 +97,7 @@ Based on the current phase and its status, load the appropriate agent:
 
 ### 7. Context Handoff
 
-When loading the agent, provide context about:
+When invoking the agent, provide context about:
 - What dev workflow artifacts exist (from `project_status` and `changelog_query` responses)
 - What release artifacts already exist
 - Current iteration count
