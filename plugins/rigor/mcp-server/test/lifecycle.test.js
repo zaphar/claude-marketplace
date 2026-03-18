@@ -156,6 +156,27 @@ describe("work_item_transition", () => {
       /Work item 99999 not found/
     );
   });
+
+  it("sets updated_at when transitioning status", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "transition-updated-at", work_type: "feature", goal: "Test" },
+    });
+    const wi = db.prepare("SELECT id, updated_at FROM work_item WHERE name = 'transition-updated-at'").get();
+    assert.strictEqual(wi.updated_at, null, "updated_at should be null before transition");
+
+    handleWriteTool("work_item_transition", {
+      project_root: "/tmp/test-project",
+      work_item_id: wi.id,
+      status: "implementing",
+    });
+
+    const after = db.prepare("SELECT updated_at FROM work_item WHERE id = ?").get(wi.id);
+    assert.ok(after.updated_at, "updated_at should be set after transition");
+  });
 });
 
 // ───────────────────────────────────────────────────────────────
@@ -411,5 +432,141 @@ describe("changelog_update", () => {
     const after = db.prepare("SELECT status, updated_at FROM adr WHERE id = 'ADR-UPD'").get();
     assert.strictEqual(after.status, "accepted");
     assert.ok(after.updated_at, "updated_at should be set after changelog_update");
+  });
+
+  // ── work_item update tests ──
+
+  it("updates a single work_item field", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "update-single", work_type: "feature", goal: "Test goal" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { notes: "updated notes" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["notes"]);
+
+    const row = db.prepare("SELECT notes, updated_at FROM work_item WHERE id = ?").get(wi.id);
+    assert.strictEqual(row.notes, "updated notes");
+    assert.ok(row.updated_at, "updated_at should be set");
+  });
+
+  it("updates multiple work_item fields at once", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "update-multi", work_type: "feature", goal: "Test goal" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { review_checkpoint: true, complexity: "L", notes: "revised" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["review_checkpoint", "complexity", "notes"]);
+
+    const row = db.prepare("SELECT review_checkpoint, complexity, notes, updated_at FROM work_item WHERE id = ?").get(wi.id);
+    assert.strictEqual(row.review_checkpoint, 1);
+    assert.strictEqual(row.complexity, "L");
+    assert.strictEqual(row.notes, "revised");
+    assert.ok(row.updated_at, "updated_at should be set");
+  });
+
+  it("updates work_item JSON fields", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "update-json", work_type: "feature", goal: "Test goal" },
+    });
+
+    handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { exit_criteria: ["criterion 1", "criterion 2"] },
+    });
+
+    const row = db.prepare("SELECT exit_criteria FROM work_item WHERE id = ?").get(wi.id);
+    const parsed = JSON.parse(row.exit_criteria);
+    assert.deepStrictEqual(parsed, ["criterion 1", "criterion 2"]);
+  });
+
+  it("rejects structural field on work_item", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "reject-structural", work_type: "feature", goal: "Test goal" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "work_item",
+        entity_id: wi.id,
+        updates: { phase_number: 2 },
+      }),
+      /phase_number.*not mutable/
+    );
+  });
+
+  it("rejects status field on work_item", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "reject-status", work_type: "feature", goal: "Test goal" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "work_item",
+        entity_id: wi.id,
+        updates: { status: "completed" },
+      }),
+      /status.*not mutable/
+    );
+  });
+
+  it("throws on UNIQUE constraint violation for work_item name", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "unique-name-a", work_type: "feature", goal: "Goal A" },
+    });
+    const wiB = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 2, name: "unique-name-b", work_type: "feature", goal: "Goal B" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "work_item",
+        entity_id: wiB.id,
+        updates: { name: "unique-name-a" },
+      }),
+      /violate a uniqueness constraint/
+    );
   });
 });

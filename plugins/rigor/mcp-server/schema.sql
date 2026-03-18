@@ -693,6 +693,7 @@ CREATE TABLE IF NOT EXISTS work_item (
   work_order INTEGER, -- NULL = unordered; non-NULL = explicit execution sequence
   risks JSON, -- [{risk, mitigation}] — work-item-scoped risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT,
   UNIQUE(iteration_id, name)
 );
 

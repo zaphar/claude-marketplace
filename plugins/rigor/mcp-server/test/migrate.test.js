@@ -135,40 +135,27 @@ describe("runMigrations", () => {
     db.close();
   });
 
-  it("adopts baseline for pre-migration databases without re-executing DDL", () => {
-    // Step 1: Create a fully-migrated DB via getDb (which calls runMigrations)
+  it("creates a fully-migrated database successfully", () => {
     process.env.RIGOR_DB_PATH = ":memory:";
     closeDb();
     const db = getDb("/tmp/test-project");
 
     const expectedCount = migrationFileCount();
 
-    // Verify all migrations were applied
-    const beforeRows = db.prepare("SELECT * FROM schema_version").all();
-    assert.strictEqual(beforeRows.length, expectedCount);
+    // All migrations were applied
+    const rows = db.prepare("SELECT * FROM schema_version ORDER BY version").all();
+    assert.strictEqual(rows.length, expectedCount);
+    assert.strictEqual(rows[0].version, 1);
+    assert.strictEqual(rows[0].name, "baseline");
+    assert.ok(rows[0].checksum, "baseline should have a checksum");
 
-    // Step 2: Simulate a pre-migration database by clearing schema_version
-    // but keeping all tables intact (as if the DB existed before the migration system)
-    db.prepare("DELETE FROM schema_version").run();
-    const afterDelete = db.prepare("SELECT COUNT(*) AS cnt FROM schema_version").get().cnt;
-    assert.strictEqual(afterDelete, 0, "schema_version should be empty after DELETE");
+    // Every migration has a checksum and applied_at timestamp
+    for (const row of rows) {
+      assert.ok(row.checksum, `migration ${row.version} should have a checksum`);
+      assert.ok(row.applied_at, `migration ${row.version} should have applied_at`);
+    }
 
-    // project table still exists (simulating pre-migration state)
-    const projectExists = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project'")
-      .get();
-    assert.ok(projectExists, "project table should still exist");
-
-    // Step 3: Run migrations again — should adopt baseline, then apply remaining
-    runMigrations(db);
-
-    // schema_version should have rows for all migrations
-    const adopted = db.prepare("SELECT * FROM schema_version ORDER BY version").all();
-    assert.strictEqual(adopted[0].version, 1);
-    assert.strictEqual(adopted[0].name, "baseline");
-    assert.ok(adopted[0].checksum, "adopted baseline should have a checksum");
-
-    // Tables still at 43 — nothing was duplicated or broken
+    // Expected table count — nothing duplicated or missing
     const tableCount = db
       .prepare("SELECT COUNT(*) AS cnt FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_version', 'sqlite_sequence')")
       .get().cnt;

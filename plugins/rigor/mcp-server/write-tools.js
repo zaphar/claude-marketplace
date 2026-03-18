@@ -124,9 +124,10 @@ function workItemTransition(args) {
   const row = db.prepare("SELECT id, phase_number, name, status FROM work_item WHERE id = @work_item_id").get({ work_item_id });
   if (!row) throw new Error(`Work item ${work_item_id} not found`);
 
+  const now = new Date().toISOString();
   db.prepare(
-    "UPDATE work_item SET status = @status WHERE id = @work_item_id"
-  ).run({ status, work_item_id });
+    "UPDATE work_item SET status = @status, updated_at = @now WHERE id = @work_item_id"
+  ).run({ status, work_item_id, now });
 
   return { work_item_id: row.id, phase_number: row.phase_number, name: row.name, status };
 }
@@ -1088,6 +1089,16 @@ function changelogUpdate(args) {
       statuses: ["proposed", "accepted", "deprecated", "superseded"],
       hasUpdatedAt: true,
     },
+    work_item: {
+      table: "work_item",
+      hasUpdatedAt: true,
+      // work_item supports updating multiple fields, not just status
+      // Status is managed by work_item_transition, not changelog_update
+      mutableFields: [
+        "review_checkpoint", "exit_criteria", "entry_criteria",
+        "notes", "complexity", "checkpoint_focus", "risks", "goal", "name",
+      ],
+    },
   };
 
   const config = ALLOWED_TYPES[entity_type];
@@ -1100,14 +1111,36 @@ function changelogUpdate(args) {
   const setClauses = [];
   const params = { entity_id };
 
-  if (updates.status !== undefined) {
-    if (!config.statuses.includes(updates.status)) {
-      throw new Error(
-        `Invalid status '${updates.status}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
-      );
+  if (config.mutableFields) {
+    // Multi-field update path (work_item)
+    for (const [key, value] of Object.entries(updates)) {
+      if (!config.mutableFields.includes(key)) {
+        throw new Error(
+          `Field '${key}' is not mutable on ${entity_type}. Allowed: ${config.mutableFields.join(", ")}`
+        );
+      }
+      const paramName = `f_${key}`;
+      setClauses.push(`${key} = @${paramName}`);
+      // JSON fields: stringify arrays/objects
+      if (value !== null && typeof value === "object") {
+        params[paramName] = JSON.stringify(value);
+      } else if (key === "review_checkpoint" && typeof value === "boolean") {
+        params[paramName] = value ? 1 : 0;
+      } else {
+        params[paramName] = value;
+      }
     }
-    setClauses.push("status = @status");
-    params.status = updates.status;
+  } else {
+    // Status-only update path (existing types)
+    if (updates.status !== undefined) {
+      if (!config.statuses.includes(updates.status)) {
+        throw new Error(
+          `Invalid status '${updates.status}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
+        );
+      }
+      setClauses.push("status = @status");
+      params.status = updates.status;
+    }
   }
 
   if (setClauses.length === 0) {
@@ -1120,7 +1153,17 @@ function changelogUpdate(args) {
   }
 
   const sql = `UPDATE ${config.table} SET ${setClauses.join(", ")} WHERE id = @entity_id`;
-  const info = db.prepare(sql).run(params);
+  let info;
+  try {
+    info = db.prepare(sql).run(params);
+  } catch (err) {
+    if (err.message && err.message.includes("UNIQUE constraint failed")) {
+      throw new Error(
+        `Cannot update ${entity_type} ${entity_id}: the new values violate a uniqueness constraint (e.g. duplicate name within the same iteration)`
+      );
+    }
+    throw err;
+  }
 
   if (info.changes === 0) {
     throw new Error(`${entity_type} with id=${entity_id} not found`);
@@ -1503,26 +1546,64 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, and adr records through their lifecycle (e.g. open → resolved, proposed → accepted).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, and adr records through their lifecycle (e.g. open → resolved, proposed → accepted). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity).",
     inputSchema: {
       type: "object",
       properties: {
         entity_type: {
           type: "string",
-          enum: ["security_audit_finding", "performance_audit_finding", "adr"],
+          enum: ["security_audit_finding", "performance_audit_finding", "adr", "work_item"],
         },
         entity_id: {
           type: ["integer", "string"],
-          description: "The row ID of the entity to update (integer for audit findings, text for ADRs)",
+          description:
+            "The row ID of the entity to update (integer for audit findings and work_item, text for ADRs)",
         },
         updates: {
           type: "object",
-          description: "Fields to update. Only provided fields are changed.",
+          description:
+            "Fields to update. Only provided fields are changed.",
           properties: {
             status: {
               type: "string",
               description:
                 "New status. security_audit_finding: open|resolved|accepted|false-positive. performance_audit_finding: open|resolved|accepted|deferred. adr: proposed|accepted|deprecated|superseded.",
+            },
+            review_checkpoint: {
+              type: ["boolean", "integer"],
+              description: "work_item: whether human review is required (boolean or 0/1)",
+            },
+            exit_criteria: {
+              type: "array",
+              description: "work_item: completion conditions",
+            },
+            entry_criteria: {
+              type: "array",
+              description: "work_item: pre-work conditions",
+            },
+            notes: {
+              type: "string",
+              description: "work_item: additional notes/clarifications",
+            },
+            complexity: {
+              type: "string",
+              description: "work_item: estimated complexity (XS/S/M/L/XL)",
+            },
+            checkpoint_focus: {
+              type: "array",
+              description: "work_item: focus areas for review checkpoint",
+            },
+            risks: {
+              type: "array",
+              description: "work_item: [{risk, mitigation}] array",
+            },
+            goal: {
+              type: "string",
+              description: "work_item: work item objective",
+            },
+            name: {
+              type: "string",
+              description: "work_item: work item name (must remain unique within iteration)",
             },
           },
         },
