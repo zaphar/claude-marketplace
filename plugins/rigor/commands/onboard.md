@@ -4,6 +4,8 @@ allowed-tools:
   - Read
   - Write
   - Bash
+  - Skill
+  - Task
   - Glob
   - Grep
   - AskUserQuestion

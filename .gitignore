@@ -9,6 +9,8 @@ rigorous-dev.db
 Thumbs.db
 .scratch
 
+copy-rigor-plugin.sh
+
 # Editor files
 .vscode/
 .idea/

@@ -5,6 +5,8 @@ allowed-tools:
   - Read
   - Write
   - Bash
+  - Skill
+  - Task
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__phase_transition
@@ -150,7 +152,12 @@ If user confirms, call `phase_transition` for each phase that needs to change:
    phase_transition({ phase: "<target_phase>", status: "in_progress" })
    ```
 
-### 8. Invoke Target Phase Agent via the Task Tool
+### 8. Load Rigorous Dev Skill
+
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill for orchestration context before invoking the target phase agent.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
+
+### 9. Invoke Target Phase Agent via the Task Tool
 
 Invoke the appropriate agent for the target phase via the Task tool:
 
@@ -163,7 +170,7 @@ Invoke the appropriate agent for the target phase via the Task tool:
   - If that row's `status` is `"implementing"` → `rigor:senior_developer`
 - `documentation` → `rigor:documentation_master`
 
-### 9. Inform User
+### 10. Inform User
 
 Display confirmation message:
 
@@ -175,7 +182,7 @@ Display confirmation message:
 Invoking <agent_name> agent...
 ```
 
-### 10. Handle Cancellation
+### 11. Handle Cancellation
 
 If user cancels:
 ```
