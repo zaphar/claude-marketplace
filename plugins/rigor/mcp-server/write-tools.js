@@ -1633,10 +1633,12 @@ export const WRITE_TOOLS = [
             },
             exit_criteria: {
               type: "array",
+              items: { type: "string" },
               description: "work_item: completion conditions",
             },
             entry_criteria: {
               type: "array",
+              items: { type: "string" },
               description: "work_item: pre-work conditions",
             },
             notes: {
@@ -1649,10 +1651,18 @@ export const WRITE_TOOLS = [
             },
             checkpoint_focus: {
               type: "array",
+              items: { type: "string" },
               description: "work_item: focus areas for review checkpoint",
             },
             risks: {
               type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  risk: { type: "string" },
+                  mitigation: { type: "string" },
+                },
+              },
               description: "work_item: [{risk, mitigation}] array",
             },
             goal: {
@@ -1686,6 +1696,7 @@ export const WRITE_TOOLS = [
             },
             research_sources: {
               type: "array",
+              items: { type: "string" },
               description: "adr: references and research sources",
             },
             purpose: {
