@@ -1662,6 +1662,8 @@ export const WRITE_TOOLS = [
                   risk: { type: "string" },
                   mitigation: { type: "string" },
                 },
+                required: ["risk", "mitigation"],
+                additionalProperties: false,
               },
               description: "work_item: [{risk, mitigation}] array",
             },

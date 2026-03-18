@@ -24,14 +24,14 @@ Every agent in `plugins/rigor/agents/*.agent.md` lists each MCP tool **twice** �
 
 ```yaml
 tools: Read, Grep, Glob, Bash, Edit, Write,
-       mcp__rigor-db__changelog_query, rigor-db/changelog_query,
-       mcp__rigor-db__changelog_insert, rigor-db/changelog_insert
+       mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query,
+       mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert
 ```
 
 | Format | Used by | Example |
 |--------|---------|---------|
-| `mcp__<server>__<tool>` | Claude Code | `mcp__rigor-db__changelog_query` |
-| `<server>/<tool>` | GitHub Copilot CLI | `rigor-db/changelog_query` |
+| `mcp__plugin_rigor_rigor-db__<tool>` | Claude Code | `mcp__plugin_rigor_rigor-db__changelog_query` |
+| `rigor-db/<tool>` | GitHub Copilot CLI | `rigor-db/changelog_query` |
 
 This is **intentional cross-platform compatibility**. The plugin targets both Claude Code and GitHub Copilot CLI. Each platform only recognizes its own format and silently ignores the other — so both must be present for the plugin to work on both platforms.
 
@@ -39,11 +39,11 @@ This is **intentional cross-platform compatibility**. The plugin targets both Cl
 
 ### 2. Critics Always Include `changelog_update`
 
-Every critic agent must have `changelog_update` (in both naming formats). This is the tool critics use to record revision decisions (approved/rejected) in the database.
+Every critic agent must have `changelog_update` (in both naming formats). Critics use this tool to update entity statuses (e.g., marking audit findings as resolved, transitioning ADR statuses). Revision-level decisions (approved/rejected) are recorded via `revision_update`, typically by the orchestrator after critic review.
 
 **Pattern:** All `*_critic.agent.md` files must include:
 ```yaml
-mcp__rigor-db__changelog_update, rigor-db/changelog_update
+mcp__plugin_rigor_rigor-db__changelog_update, rigor-db/changelog_update
 ```
 
 Producer agents generally do **not** need `changelog_update` — that is a critic responsibility.
@@ -56,9 +56,7 @@ The workflow orchestrator (`plugins/rigor/skills/workflow/SKILL.md`) uses a set 
 |-------------------------|
 | `iteration_create` |
 | `phase_transition` |
-| `work_item_transition` |
 | `revision_create` |
-| `revision_update` |
 | `project_update` |
 | `blocker_resolve` |
 | `iteration_close` |
@@ -66,15 +64,17 @@ The workflow orchestrator (`plugins/rigor/skills/workflow/SKILL.md`) uses a set 
 | `revision_history` |
 | `iteration_summary` |
 
-Individual agents only access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`, `commit_link`). Do not add orchestrator tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
+Some tools appear in both orchestrator and agent contexts: `revision_update` is in all agent frontmatter (agents may self-report status), and `work_item_transition` is in `senior_developer.agent.md` (implementation tracking). The tools above are strictly orchestrator-only.
+
+Individual agents primarily access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`, `commit_link`). Do not add orchestrator-only tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
 
 ### 4. Intentionally Read-Only Producers
 
 `security_auditor.agent.md` and `performance_auditor.agent.md` do **not** have `Edit` or `Write` in their tools. This is intentional: audit findings go to the database only, not to files. Do not add file-editing tools to these agents.
 
-### 5. `test_writer` and `documentation_master` — No `changelog_insert`
+### 5. `test_writer` and `documentation_master` — Filesystem-First Producers
 
-`test_writer.agent.md` and `documentation_master.agent.md` have `changelog_query` but not `changelog_insert`. This is intentional: their artifacts (test files, documentation files) are written directly to the filesystem and committed to VCS, not stored as DB entries. Their respective critics handle any DB recording.
+`test_writer.agent.md` and `documentation_master.agent.md` are **filesystem-first** producers: their primary artifacts (test files, documentation files) are written directly to the filesystem and committed to VCS, not stored as DB entries. `documentation_master` has `changelog_insert` and `changelog_query` for recording metadata (e.g., intermediate assets), while `test_writer` has only `changelog_query` (no `changelog_insert`) — it is the most filesystem-constrained producer.
 
 ### 6. No CHECK Constraints on TEXT Columns
 
@@ -83,6 +83,25 @@ Individual agents only access the data-plane tools (`changelog_query`, `changelo
 **Why:** CHECK constraints on TEXT enum columns cause significant quality degradation when LLMs interact with the MCP server — the rigid constraint errors are opaque and unrecoverable from the agent's perspective. They also create friction in schema migrations since SQLite requires full table recreation to alter constraints. Validation of enum-like values belongs in the application layer (`write-tools.js` handlers) or is the agent's responsibility, not the database's.
 
 The one permitted CHECK on a non-TEXT column is `CHECK(id = 1)` on `project.id` (INTEGER PK singleton enforcement).
+
+### 7. Array Schemas Must Include `items`
+
+**Every `type: "array"` property in MCP tool `inputSchema` definitions must include an `items` field.**
+
+OpenAI-based clients (including GitHub Copilot CLI) perform strict JSON Schema validation and reject tool registrations where array schemas omit `items`. Claude's MCP client is lenient and accepts bare `type: "array"`, so missing `items` will silently work on Claude Code but fail on Copilot with:
+
+```
+CAPIError: 400 Invalid schema for function '...': array schema missing items
+```
+
+When defining array properties in tool schemas, always specify the element type:
+```js
+// ✅ Correct
+exit_criteria: { type: "array", items: { type: "string" }, description: "..." }
+
+// ❌ Will break on Copilot
+exit_criteria: { type: "array", description: "..." }
+```
 
 ---
 
@@ -101,5 +120,6 @@ When creating a new agent:
 The MCP server is at `plugins/rigor/mcp-server/`. When adding a new tool:
 
 1. Add the tool definition to `write-tools.js` (WRITE_TOOLS array) or `read-tools.js` (READ_TOOLS array)
-2. Add it to any agent frontmatter that needs it — **in both naming formats**
-3. Update `schema.sql` if the tool requires new tables or columns, and create a new numbered migration file in `migrations/` (never modify an already-applied migration)
+2. Ensure all `type: "array"` properties have an `items` field (see invariant #7)
+3. Add it to any agent frontmatter that needs it — **in both naming formats**
+4. Update `schema.sql` if the tool requires new tables or columns, and create a new numbered migration file in `migrations/` (never modify an already-applied migration)
