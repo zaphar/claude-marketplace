@@ -348,13 +348,16 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 
 **Step 1 — Test Writing:**
 
-5. Invoke `rigor:test_writer` via the Task tool
+5. Invoke `rigor:test_writer` via the Task tool. When invoking the test writer, include in the prompt:
+   - The work item's exit_criteria (primary test derivation source)
+   - The work item's linked requirements (for context only, not test derivation)
 6. Test Writer reads WI files for this sub-phase, writes failing tests and minimal compilation stubs
 7. Invoke `rigor:test_writer_critic` via the Task tool (using `critic_model` from state)
 8. Critic validates:
    - Project compiles with new test files and stubs
    - All new tests fail (red state) for the right reason
-   - Every acceptance criterion has test coverage
+   - Every test-suite-verifiable exit criterion has test coverage
+   - Execution-validated exit criteria are documented with validation mechanisms
    - No implementation logic in stubs
 9. **If approved:**
    - Call `revision_update` with approved status

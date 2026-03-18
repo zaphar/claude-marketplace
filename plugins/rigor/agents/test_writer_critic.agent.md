@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Role:** Critic in the Implementation phase (test-writing step) - validates test completeness and red state
 
-**Primary Focus:** Validating that all tests fail correctly, cover every acceptance criterion, and contain no implementation logic
+**Primary Focus:** Validating that all tests fail correctly, cover every test-suite-verifiable exit criterion from the work item, document execution-validated criteria, and contain no implementation logic
 
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
 
@@ -21,7 +21,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 **Inputs:**
 
 - Test files and stubs from Test Writer
-- WI file with DO list and acceptance criteria
+- WI file with DO list and exit criteria
 - Implementation plan (for phase scope)
 - Architecture entries (for integration boundaries)
 - Requirements specification (for traceability)
@@ -32,7 +32,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Verify the project compiles with new test files and stubs
 - Verify all new and modified tests fail (red state)
 - Verify existing tests in scope were audited and each decision (keep/modify/delete) is documented
-- Verify test coverage against WI acceptance criteria
+- Verify test coverage against WI exit criteria
 - Verify no implementation logic exists in stubs
 - Verify test quality standards
 - Provide specific, actionable feedback on any deficiencies
@@ -55,8 +55,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] Deleted tests covered behavior that was intentionally removed
     - [ ] No orphaned tests remain that assert old behavior contradicting the new WI contract
 - Coverage:
-    - [ ] Every acceptance criterion in the WI DO list has at least one test
+    - [ ] Every test-suite-verifiable exit criterion has at least one test
     - [ ] Every verification step has a test
+    - [ ] Every execution-validated exit criterion is documented with a stated validation mechanism
+    - [ ] No brittle infrastructure-config-parsing tests (YAML grep, Dockerfile content assertions)
     - [ ] Edge cases and error conditions covered
     - [ ] For serialized objects: round-trip tests present
     - [ ] For API endpoints: integration tests for request/response flows
@@ -131,7 +133,21 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 **Escalation:**
 
 - If same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
-- If acceptance criteria are untestable, flag immediately to the user.
+- If exit criteria are untestable or ambiguously classified, flag immediately to the user.
+
+## Coverage Validation
+
+Validate test coverage against the work item's `exit_criteria`, not against
+acceptance criteria on linked requirements.
+
+For each exit criterion, verify one of:
+1. A test exists that asserts the criterion (for test-suite-verifiable criteria)
+2. The test writer has documented it as execution-validated with a stated
+   validation mechanism (for infrastructure/self-validating artifacts)
+
+Reject tests that parse infrastructure configuration files (CI workflow YAML,
+Dockerfiles, IaC templates) to grep for expected strings. These are brittle,
+low-value tests for artifacts that are validated by their own execution.
 
 ## Hard Constraint: No Direct Database Access
 

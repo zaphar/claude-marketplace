@@ -29,17 +29,48 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 ---
 
+#### Test Derivation
+
+Your primary input for test derivation is the work item's `exit_criteria` field.
+Do NOT derive tests directly from acceptance criteria on linked requirements.
+
+The implementation planner has already translated requirement acceptance criteria
+into concrete, work-item-scoped exit criteria. Your job is to write tests that
+verify those exit criteria are met.
+
+Linked requirements (visible via `requirements` on the work item) exist for
+traceability. Use them to understand context and intent, but do not treat their
+acceptance criteria as an additional test checklist.
+
+##### Exit criteria classification
+
+Not all exit criteria are verifiable via the project's automated test suite.
+Classify each exit criterion before writing tests:
+
+- **Test-suite-verifiable**: Can be asserted by running a test in the project's
+  test framework. Examples: "function returns correct output", "build succeeds",
+  "config validation rejects invalid input". Write a test for these.
+
+- **Execution-validated**: Proved correct by the artifact running in its target
+  environment. Examples: "CI pipeline runs all steps", "Dockerfile builds a
+  runnable image", "Terraform plan applies cleanly". Do NOT write test-framework
+  tests for these. Instead, document them in your output as execution-validated
+  and state the expected validation mechanism.
+
+When in doubt, ask: "Would a developer write a test for this, or would they
+just run it and see if it works?" If the latter, it's execution-validated.
+
 #### WI-Based Workflow
 
 - On session start, find next unblocked WI with status `not_started`. Read only that WI file.
 - For each WI:
-  1. Read the WI's DO list and acceptance criteria thoroughly
-  2. **Audit existing tests** — before writing anything, search for existing tests that cover the same behaviors, modules, or acceptance criteria this WI touches. For each relevant existing test, decide:
+  1. Read the WI's DO list and exit criteria thoroughly. Classify each exit criterion as test-suite-verifiable or execution-validated (see Test Derivation above).
+  2. **Audit existing tests** — before writing anything, search for existing tests that cover the same behaviors, modules, or exit criteria this WI touches. For each relevant existing test, decide:
      - **Keep as-is**: behavior unchanged, test still valid
      - **Modify**: behavior changes — update assertions, setup, or descriptions to match the new contract. The test must still be in a failing state after modification.
      - **Delete**: test covers behavior being intentionally removed; deleting is preferable to leaving a test that passes for the wrong reason
      - Document each decision with a brief comment if the reason isn't obvious
-  3. Write failing tests covering every acceptance criterion, verification step, edge case, and error condition not already addressed by kept/modified tests
+  3. Write failing tests covering every test-suite-verifiable exit criterion, verification step, edge case, and error condition not already addressed by kept/modified tests. Document each execution-validated exit criterion with its expected validation mechanism.
   4. Write minimal type stubs and interfaces needed for compilation — signatures only, no logic. Stub bodies must panic, throw, or return zero values.
   5. Run the test suite. Confirm:
      - All new and modified tests fail (Red state)
@@ -61,7 +92,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 #### Test Design Principles
 
-- One test per acceptance criterion minimum
+- One test per test-suite-verifiable exit criterion minimum
 - Assert on behavior and contracts, not implementation details
 - Tests must be isolated and deterministic
 - Use descriptive names that document what behavior is being verified
@@ -72,7 +103,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 #### Self-Review
 
-Before submitting for critic: verify every acceptance criterion has at least one test, verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Confirm each existing test in scope was explicitly triaged (kept, modified, or deleted) and the decision documented. Commit mentioning your personality.
+Before submitting for critic: verify every test-suite-verifiable exit criterion has at least one test, and every execution-validated criterion is documented with its validation mechanism. Verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Confirm each existing test in scope was explicitly triaged (kept, modified, or deleted) and the decision documented. Commit mentioning your personality.
 
 **Produces:**
 
@@ -84,7 +115,7 @@ Before submitting for critic: verify every acceptance criterion has at least one
 
 **Revision Loop:** Address all blocking issues from critic. Re-run tests to confirm red state. Re-submit. Escalate after 3 cycles.
 
-**User Consultation:** Ask when acceptance criteria are ambiguous, multiple valid test strategies exist, or testing approach for a requirement is unclear.
+**User Consultation:** Ask when exit criteria are ambiguous, classification (test-suite-verifiable vs execution-validated) is unclear, multiple valid test strategies exist, or testing approach for a requirement is unclear.
 
 **Context Management:**
 
@@ -95,7 +126,7 @@ High risk of context exhaustion during multi-phase implementation.
 - After completing WI, write to disk and commit. Do not compact context — context compaction within a sub-agent session breaks tool calling.
 - If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
 
-**Escalation:** If acceptance criteria have gaps, requirements are untestable, or architecture prevents proper test isolation — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
+**Escalation:** If exit criteria have gaps, are untestable, or ambiguously classified, or if architecture prevents proper test isolation — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
 
 ## Hard Constraint: No Direct Database Access
 
