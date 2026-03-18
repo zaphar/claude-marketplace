@@ -537,6 +537,7 @@ When working in a new iteration, agents should be aware of:
 6. **Context preservation** - Always pass prior phase data and feedback between agents via `changelog_query`
 7. **User escalation** - When stuck, involve the user for guidance
 8. **Never answer for the user** - When an agent needs user input (interviews, preferences, decisions, clarifications), always surface the question to the human. Do not infer answers from prior artifacts or make decisions on the user's behalf.
+9. **Never invoke sqlite3 directly** — No agent, skill, or command may run `sqlite3` or any other direct database client against `.claude/rigor.db`. All database interactions must use the provided MCP tools. If an MCP tool is insufficient, stop immediately and surface the limitation to the user using the structured escalation format. Do not attempt workarounds.
 
 ## Error Handling
 
@@ -588,7 +589,7 @@ You have access to:
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with a work item and revision
 - **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
-- **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr), `entity_id`, and `updates` object with `status` field. Validates status against allowed values per entity type
+- **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr, approved_dependency, component, work_item), `entity_id`, and `updates` object. For audit findings and approved_dependency, supports `status` transitions. For adr, component, and work_item, also supports mutable content fields (see schema.sql for per-type updatable columns). Validates status against allowed values per entity type
 - **iteration_close** (MCP tool) - Close an active iteration. Takes `iteration_id` (integer) and optional `notes` (string). Sets `status` to `closed` and `closed_at` to current timestamp. Validates the iteration exists and is currently active
 
 Use these tools to manage the workflow effectively.

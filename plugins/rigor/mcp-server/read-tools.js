@@ -666,6 +666,7 @@ const APPROVED_DEPENDENCY_FILTERS = {
   community_adoption: { nullable: true },
   transitive_deps: { nullable: true },
   single_maintainer_risk: { nullable: true },
+  status: { nullable: false },
 };
 
 function queryApprovedDependency(db, { iteration_id, ids, filters = {} }) {

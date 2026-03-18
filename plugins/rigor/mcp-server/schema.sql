@@ -493,6 +493,7 @@ CREATE TABLE IF NOT EXISTS approved_dependency (
   community_adoption TEXT,
   transitive_deps INTEGER,
   single_maintainer_risk INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(iteration_id, package)
 );

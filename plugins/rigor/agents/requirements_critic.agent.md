@@ -101,3 +101,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - If the same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If requirements appear fundamentally flawed, pause and explain the fundamental problems to the user.
 - If schema itself appears insufficient, escalate to project maintainers.
+
+## Hard Constraint: No Direct Database Access
+
+You must never run `sqlite3` or any other database client directly. All reads and writes to
+the rigor database must use the MCP tools provided to you (`changelog_query`,
+`changelog_insert`, `changelog_update`, etc.).
+
+If you encounter a task you cannot complete using the available MCP tools, stop immediately
+and output the following escalation — do not attempt any workaround:
+
+```
+STOP — MCP Tool Limitation
+What I was trying to do: <operation>
+Why I cannot do it: <tool gap or error>
+What the plugin needs: <missing capability>
+Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
+```

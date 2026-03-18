@@ -495,6 +495,8 @@ function insertApprovedDependency(db, iteration_id, revision_id, data) {
   const entries = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
   let lastId;
+  // status intentionally omitted — new dependencies always start as 'active'.
+  // Use changelog_update to transition to 'removed' or 'superseded'.
   const insert = db.prepare(
     `INSERT INTO approved_dependency
        (iteration_id, package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk, created_at)
@@ -1086,14 +1088,29 @@ function changelogUpdate(args) {
     },
     adr: {
       table: "adr",
-      statuses: ["proposed", "accepted", "deprecated", "superseded"],
       hasUpdatedAt: true,
+      statuses: ["proposed", "accepted", "deprecated", "superseded"],
+      mutableFields: [
+        "title",
+        "decision",
+        "rationale",
+        "context",
+        "consequences",
+        "research_sources",
+      ],
+    },
+    approved_dependency: {
+      table: "approved_dependency",
+      statuses: ["active", "removed", "superseded"],
+    },
+    component: {
+      table: "component",
+      hasUpdatedAt: true,
+      mutableFields: ["name", "purpose", "component_type"],
     },
     work_item: {
       table: "work_item",
       hasUpdatedAt: true,
-      // work_item supports updating multiple fields, not just status
-      // Status is managed by work_item_transition, not changelog_update
       mutableFields: [
         "review_checkpoint", "exit_criteria", "entry_criteria",
         "notes", "complexity", "checkpoint_focus", "risks", "goal", "name",
@@ -1112,16 +1129,33 @@ function changelogUpdate(args) {
   const params = { entity_id };
 
   if (config.mutableFields) {
-    // Multi-field update path (work_item)
+    // Multi-field update path (work_item, adr, component)
     for (const [key, value] of Object.entries(updates)) {
-      if (!config.mutableFields.includes(key)) {
+      const isStatusKey = key === "status";
+      const isContentKey = config.mutableFields.includes(key);
+
+      if (!isStatusKey && !isContentKey) {
         throw new Error(
-          `Field '${key}' is not mutable on ${entity_type}. Allowed: ${config.mutableFields.join(", ")}`
+          `Field '${key}' is not mutable on ${entity_type}. Allowed: ` +
+          config.mutableFields.join(", ") +
+          (config.statuses ? "; also: status" : "")
         );
       }
+
+      if (isStatusKey && config.statuses && !config.statuses.includes(value)) {
+        throw new Error(
+          `Invalid status '${value}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
+        );
+      }
+
+      if (isStatusKey && !config.statuses) {
+        throw new Error(
+          `Field 'status' is not mutable on ${entity_type}. Allowed: ${config.mutableFields.join(", ")}`
+        );
+      }
+
       const paramName = `f_${key}`;
       setClauses.push(`${key} = @${paramName}`);
-      // JSON fields: stringify arrays/objects
       if (value !== null && typeof value === "object") {
         params[paramName] = JSON.stringify(value);
       } else if (key === "review_checkpoint" && typeof value === "boolean") {
@@ -1546,18 +1580,26 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, and adr records through their lifecycle (e.g. open → resolved, proposed → accepted). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), and component records (name, purpose, component_type).",
     inputSchema: {
       type: "object",
       properties: {
         entity_type: {
           type: "string",
-          enum: ["security_audit_finding", "performance_audit_finding", "adr", "work_item"],
+          enum: [
+            "security_audit_finding",
+            "performance_audit_finding",
+            "adr",
+            "approved_dependency",
+            "component",
+            "work_item",
+          ],
         },
         entity_id: {
           type: ["integer", "string"],
           description:
-            "The row ID of the entity to update (integer for audit findings and work_item, text for ADRs)",
+            "Row ID of the entity to update. Integer for audit findings, approved_dependency, " +
+            "and work_item; text ID (e.g. DEC-001, COMP-xxx) for adr and component.",
         },
         updates: {
           type: "object",
@@ -1567,7 +1609,11 @@ export const WRITE_TOOLS = [
             status: {
               type: "string",
               description:
-                "New status. security_audit_finding: open|resolved|accepted|false-positive. performance_audit_finding: open|resolved|accepted|deferred. adr: proposed|accepted|deprecated|superseded.",
+                "New status. " +
+                "security_audit_finding: open|resolved|accepted|false-positive. " +
+                "performance_audit_finding: open|resolved|accepted|deferred. " +
+                "adr: proposed|accepted|deprecated|superseded. " +
+                "approved_dependency: active|removed|superseded.",
             },
             review_checkpoint: {
               type: ["boolean", "integer"],
@@ -1604,6 +1650,39 @@ export const WRITE_TOOLS = [
             name: {
               type: "string",
               description: "work_item: work item name (must remain unique within iteration)",
+            },
+            title: {
+              type: "string",
+              description: "adr: corrected decision title",
+            },
+            decision: {
+              type: "string",
+              description: "adr: the decision statement",
+            },
+            rationale: {
+              type: "string",
+              description: "adr: reasoning behind the decision",
+            },
+            context: {
+              type: "string",
+              description: "adr: problem context and alternatives considered",
+            },
+            consequences: {
+              type: "array",
+              items: { type: "string" },
+              description: "adr: trade-offs and consequences (string array)",
+            },
+            research_sources: {
+              type: "array",
+              description: "adr: references and research sources",
+            },
+            purpose: {
+              type: "string",
+              description: "component: updated purpose/description",
+            },
+            component_type: {
+              type: "string",
+              description: "component: type classification",
             },
           },
         },

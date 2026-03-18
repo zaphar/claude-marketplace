@@ -148,3 +148,20 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
   raised_by: "senior-developer" // required: agent name
 })
 ```
+
+## Hard Constraint: No Direct Database Access
+
+You must never run `sqlite3` or any other database client directly. All reads and writes to
+the rigor database must use the MCP tools provided to you (`changelog_query`,
+`changelog_insert`, `changelog_update`, etc.).
+
+If you encounter a task you cannot complete using the available MCP tools, stop immediately
+and output the following escalation — do not attempt any workaround:
+
+```
+STOP — MCP Tool Limitation
+What I was trying to do: <operation>
+Why I cannot do it: <tool gap or error>
+What the plugin needs: <missing capability>
+Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
+```
