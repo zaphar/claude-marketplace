@@ -569,4 +569,93 @@ describe("changelog_update", () => {
       /violate a uniqueness constraint/
     );
   });
+
+  // ── requirement update tests ──
+
+  it("updates requirement text fields", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UPD-1", description: "Original desc", priority: "must-have", category: "functional" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      entity_id: "REQ-UPD-1",
+      updates: { description: "Updated desc", rationale: "New rationale", priority: "should-have", category: "non-functional" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["description", "rationale", "priority", "category"]);
+
+    const row = db.prepare("SELECT description, rationale, priority, category, updated_at FROM requirement WHERE id = 'REQ-UPD-1'").get();
+    assert.strictEqual(row.description, "Updated desc");
+    assert.strictEqual(row.rationale, "New rationale");
+    assert.strictEqual(row.priority, "should-have");
+    assert.strictEqual(row.category, "non-functional");
+    assert.ok(row.updated_at, "updated_at should be set");
+  });
+
+  it("updates requirement acceptance_criteria JSON array", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UPD-2", description: "JSON test", priority: "must-have", category: "functional" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      entity_id: "REQ-UPD-2",
+      updates: { acceptance_criteria: ["criterion 1", "criterion 2"] },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["acceptance_criteria"]);
+
+    const row = db.prepare("SELECT acceptance_criteria FROM requirement WHERE id = 'REQ-UPD-2'").get();
+    const parsed = JSON.parse(row.acceptance_criteria);
+    assert.deepStrictEqual(parsed, ["criterion 1", "criterion 2"]);
+  });
+
+  it("rejects immutable field on requirement", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UPD-3", description: "Immutable test", priority: "must-have", category: "functional" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "requirement",
+        entity_id: "REQ-UPD-3",
+        updates: { iteration_id: 999 },
+      }),
+      /iteration_id.*not mutable/
+    );
+  });
+
+  it("rejects status field on requirement", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-UPD-4", description: "Status test", priority: "must-have", category: "functional" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "requirement",
+        entity_id: "REQ-UPD-4",
+        updates: { status: "closed" },
+      }),
+      /status.*not mutable/
+    );
+  });
 });
