@@ -1116,6 +1116,17 @@ function changelogUpdate(args) {
         "notes", "complexity", "checkpoint_focus", "risks", "goal", "name",
       ],
     },
+    requirement: {
+      table: "requirement",
+      hasUpdatedAt: true,
+      mutableFields: [
+        "description",
+        "rationale",
+        "priority",
+        "category",
+        "acceptance_criteria",
+      ],
+    },
   };
 
   const config = ALLOWED_TYPES[entity_type];
@@ -1580,7 +1591,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), and component records (name, purpose, component_type).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), and requirement records (description, rationale, priority, category, acceptance_criteria).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1593,13 +1604,14 @@ export const WRITE_TOOLS = [
             "approved_dependency",
             "component",
             "work_item",
+            "requirement",
           ],
         },
         entity_id: {
           type: ["integer", "string"],
           description:
             "Row ID of the entity to update. Integer for audit findings, approved_dependency, " +
-            "and work_item; text ID (e.g. DEC-001, COMP-xxx) for adr and component.",
+            "and work_item; text ID (e.g. REQ-001, DEC-001, COMP-xxx) for requirement, adr, and component.",
         },
         updates: {
           type: "object",
@@ -1661,7 +1673,7 @@ export const WRITE_TOOLS = [
             },
             rationale: {
               type: "string",
-              description: "adr: reasoning behind the decision",
+              description: "adr or requirement: reasoning behind the decision or requirement",
             },
             context: {
               type: "string",
@@ -1683,6 +1695,23 @@ export const WRITE_TOOLS = [
             component_type: {
               type: "string",
               description: "component: type classification",
+            },
+            description: {
+              type: "string",
+              description: "requirement: corrected requirement description",
+            },
+            priority: {
+              type: "string",
+              description: "requirement: corrected requirement priority",
+            },
+            category: {
+              type: "string",
+              description: "requirement: corrected requirement category",
+            },
+            acceptance_criteria: {
+              type: "array",
+              items: { type: "string" },
+              description: "requirement: updated acceptance criteria (string array, replaces existing)",
             },
           },
         },
