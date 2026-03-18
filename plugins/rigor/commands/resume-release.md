@@ -78,7 +78,8 @@ Resuming <current_phase> phase...
 
 ### 5. Load Rigorous Dev Skill
 
-Load the workflow skill with the current release state context.
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill with the current release state context.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
 ### 6. Continue Current Phase
 

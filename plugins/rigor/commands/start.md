@@ -79,11 +79,8 @@ This creates the project record, the first iteration, and all phase rows (requir
 
 ### 5. Load Rigorous Dev Skill
 
-After state file is created, load the workflow skill to begin the workflow:
-
-```
-Load skills/workflow/SKILL.md and begin with Requirements phase.
-```
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
 ### 6. Start Requirements Phase
 

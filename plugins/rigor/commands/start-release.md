@@ -76,7 +76,8 @@ The release phases (qa, audit) already exist in the DB — they were created by 
 
 ### 5. Load Rigorous Dev Skill
 
-Load the workflow skill (`skills/workflow/SKILL.md`) for orchestration context.
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill for orchestration context.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
 ### 6. Start QA Phase
 

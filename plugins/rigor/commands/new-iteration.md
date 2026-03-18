@@ -123,7 +123,8 @@ The DB retains all records from previous iterations — nothing is deleted.
 
 ### 7. Load Rigorous Dev Skill and Begin Requirements Phase
 
-Load the workflow skill and start the Requirements phase, informing the agent about the prior iteration:
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill and start the Requirements phase, informing the agent about the prior iteration.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
 ```
 Workflow iteration <new_iteration_id> started!

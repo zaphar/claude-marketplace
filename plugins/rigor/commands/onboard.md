@@ -114,7 +114,8 @@ No YAML state file is written.
 
 ### 5. Load Rigorous Dev Skill
 
-After state file is created, load the workflow skill (`skills/workflow/SKILL.md`) for orchestration context. This provides the phase transition rules, artifact management patterns, and producer-critic loop mechanics.
+Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill for orchestration context. This provides the phase transition rules, artifact management patterns, and producer-critic loop mechanics.
+Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
 ### 6. Run UX Design Documentation (Visual Projects Only)
 
