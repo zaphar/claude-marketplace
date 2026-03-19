@@ -94,6 +94,7 @@ When reviewing the complete plan (both passes done):
     - [ ] Each phase has clear, measurable exit criteria
     - [ ] Phases are balanced (no one phase is 80% of the work)
     - [ ] Technical risks are identified and mitigated
+    - [ ] WI sizing is grounded in codebase analysis, not just specification complexity
 - WI quality (full review only — spot-check 2-3 WIs per phase):
     - [ ] Each WI is a vertical slice (not a horizontal layer)
     - [ ] Each WI is sized for a single session (~1-2 features, ~3 files created, ~5 files modified max)
@@ -103,11 +104,44 @@ When reviewing the complete plan (both passes done):
     - [ ] Independent WIs identified for potential parallel execution
     - [ ] Foundation WIs created when multiple WIs share setup work
     - [ ] XL complexity WIs flagged — consider whether they should be split
+    - [ ] Planner has assessed actual codebase complexity (file counts, coupling, test coverage) — not just spec-based estimates
+    - [ ] WIs touching >5 existing files have documented justification for scope
+    - [ ] No WI exceeds the sizing heuristic (~3 files created, ~5 files modified) without documented rationale
 - Traceability:
     - [ ] Every REQ-XXX appears in exactly one phase
     - [ ] Every FLOW-XXX appears in at least one phase
     - [ ] Every SCREEN-XXX appears in exactly one phase
     - [ ] Every COMP-XXX appears in at least one phase
+
+**Replan Validation (plan_version > 1):**
+
+When reviewing a replan, apply the full Review Checklist above PLUS these additional checks:
+
+- **Completed work items are immutable:**
+    - [ ] No completed WI has been superseded, modified, or re-created
+    - [ ] Completed WI files on disk are untouched
+    - [ ] New WIs do not duplicate scope already delivered by completed WIs
+
+- **Requirement coverage preserved:**
+    - [ ] Every requirement from WIs being replaced is covered by at least one new or existing active WI
+    - [ ] No requirements were silently dropped during replanning
+    - [ ] Query `changelog_query(entity_type="work_item", filters={plan_version: <previous>, status_not: "completed"})` to get WIs being replaced (use the previous plan_version from `changelog_query(entity_type="plan_overview", iteration_id=<id>)`), then verify each requirement appears in new active WIs
+
+- **Plan version consistency:**
+    - [ ] All new WIs share the same `plan_version` (current version number)
+    - [ ] `plan_overview` exists for the new version with strategy/rationale explaining the replan
+    - [ ] Replan rationale clearly states what failed and why the new decomposition is better
+
+- **Sizing improvement:**
+    - [ ] The specific WI(s) that triggered the replan have been decomposed into smaller, codebase-grounded WIs
+    - [ ] New WI sizing reflects actual codebase analysis (file counts, coupling), not just spec re-splitting
+    - [ ] No new WI exceeds complexity L without documented justification
+
+- **Filesystem consistency:**
+    - [ ] Superseded WI files have `⚠️ SUPERSEDED` headers (not deleted)
+    - [ ] New WI files created with new names (no overwriting of superseded files)
+    - [ ] Phase index files updated to reference only active WIs
+    - [ ] `replan-log.md` has an entry for this replan with version, reason, and summary
 
 **Produces:**
 

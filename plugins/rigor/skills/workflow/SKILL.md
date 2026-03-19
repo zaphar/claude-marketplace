@@ -91,17 +91,36 @@ For each phase, follow this pattern:
 
 #### Planning Phase
 
-Before **every** planning revision (R1, R2, R3, etc.), the orchestrator must wipe stale phase artifacts so consumers of `planning/` never see orphaned files from a previous revision that reduced the number of phases:
+Before **every** planning revision, the orchestrator must handle phase artifacts appropriately based on plan version:
+
+**Initial plan (plan_version = 1) — clean slate:**
 
 ```bash
 rm -rf planning/phases/
 mkdir -p planning/phases/
 ```
 
-- This cleanup runs **before** invoking `rigor:implementation_planner` (i.e., before step 2 of the **All Phases** universal loop below).
-- Only `planning/phases/` is cleaned — other files under `planning/` are not affected.
-- Planning is the only phase that writes a variable number of directory-based artifacts to disk; other phases either store output in the DB or write to fixed file paths.
-- Git history preserves old content, so wiping before regeneration loses nothing.
+Same as before — no prior artifacts exist.
+
+**Replan (plan_version > 1) — selective cleanup:**
+
+Do NOT delete `planning/phases/`. Instead, handle files selectively:
+
+1. **Completed WI files** — Never touched. The planner receives completed WI names as read-only context and must not overwrite or modify these files.
+2. **Superseded WI files** — Planner prepends a `> ⚠️ SUPERSEDED by plan version N` header to the existing file. File stays on disk for history.
+3. **New WI files** — Created with new names (decomposed/restructured WIs naturally have different names).
+4. **Phase index files** — Regenerated to list only active WIs. This is the only overwrite — index files, not WI files.
+
+Before invoking the planner for a replan, determine the new plan_version:
+
+```
+changelog_query(entity_type="plan_overview", iteration_id=<id>)
+→ new_plan_version = max(existing plan_versions) + 1
+```
+
+- This cleanup runs **before** invoking `rigor:implementation_planner`.
+- Only `planning/phases/` is affected — other files under `planning/` are not.
+- Git history preserves old content, so selective handling loses nothing.
 - After cleanup, the rest of the universal producer-critic loop applies normally.
 
 #### All Phases (Universal Producer-Critic Loop)
@@ -259,7 +278,7 @@ qa → audit
 
 **Special Cases:**
 - If phase is "skipped", proceed to next non-skipped phase
-- Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `work_item` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`.
+- Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `work_item` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query active work items via `changelog_query` with `filters={superseded: false, status_not: "completed"}` and pick the first row ordered by `phase_number`.
 
 ### 7. Iteration Management
 
@@ -372,7 +391,8 @@ When invoking an agent via the Task tool, provide context:
 The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
 
 **Determining Sub-phases:**
-- Query the approved implementation plan via `changelog_query(entity_type="work_item", iteration_id=<current_iteration_id>)`
+- Query active work items: `changelog_query(entity_type="work_item", iteration_id=<current_iteration_id>, filters={superseded: false, status_not: "completed"})`
+- This returns only actionable WIs (pending, test_writing, implementing) — excludes both superseded WIs from prior plan versions and already-completed WIs
 - Each returned row is a flat `work_item` record with fields such as `phase_number`, `name`, `work_type`, `goal`, `status`, `complexity`, etc. Use `include_related=true` to also retrieve linked child data (`requirements`, `components`) and parse JSON columns (`entry_criteria`, `exit_criteria`, `risks`, `checkpoint_focus`)
 - The response's `count` field gives the total number of sub-phases
 - Process sub-phases sequentially in ascending `phase_number` order
@@ -381,7 +401,7 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 Each sub-phase has two steps: **test writing** then **implementation**. This enforces TDD structurally — tests are written and validated before any implementation begins.
 
-For each sub-phase (query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`):
+For each sub-phase (from the active WI query above, pick the first row ordered by `phase_number`):
 
 1. Call `work_item_transition({ work_item_id: <id>, status: "test_writing" })` to start test writing
 2. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: "implementation"`, and `"test_writer"` agent name
@@ -501,7 +521,75 @@ Auditors record their findings directly to the changelog database via `changelog
 
 The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit findings. Both tracks must show no unresolved high/critical findings.
 
-### 11. Development Workflow Completion
+### 11. Replan Flow
+
+A replan replaces pending/in-progress work items with a new set of better-sized WIs while preserving all completed work. Replans can be triggered:
+
+- By user request (`/rigor:replan` command _(forthcoming)_)
+- By escalation when `senior_developer` raises a blocker about WI sizing
+- At review checkpoints when specs change significantly
+
+**Replan Procedure:**
+
+1. **Gather current state:**
+   ```
+   project_status → current iteration_id
+   changelog_query(entity_type="work_item", iteration_id=<id>, filters={superseded: false})
+   ```
+   Partition results into:
+   - `completed` — status = "completed" (immutable, never replanned)
+   - `actionable` — all other non-superseded WIs (pending, test_writing, implementing)
+
+2. **Determine new plan version:**
+   ```
+   changelog_query(entity_type="plan_overview", iteration_id=<id>)
+   → new_plan_version = max(plan_version values) + 1
+   ```
+
+3. **Re-open the planning phase:**
+   ```
+   phase_transition(iteration_id=<id>, phase_name="planning", status="in_progress")
+   revision_create(iteration_id=<id>, phase_name="planning", agent_name="implementation_planner")
+   ```
+
+4. **Invoke the planner in replan mode:**
+   Invoke `rigor:implementation_planner` with:
+   - `plan_version: <new_plan_version>`
+   - Completed WI names and IDs (read-only context — what's already done)
+   - Actionable WIs that need decomposition/restructuring
+   - The reason for replanning
+   - Any blocker details from `senior_developer` (if escalation-triggered)
+
+5. **Run the critic:**
+   Invoke `rigor:implementation_plan_critic` — the critic applies standard checks PLUS replan-specific validation (requirement coverage, completed WI immutability, sizing improvement).
+
+6. **On approval — supersede old WIs:**
+   For each actionable WI from step 1:
+   ```
+   work_item_transition(work_item_id=<id>, status="superseded")
+   ```
+   This auto-sets `superseded_at` and is irreversible.
+
+7. **Verify replan log:**
+   Confirm the planner created an entry in `planning/replan-log.md` during step 4. If missing, the orchestrator writes it directly:
+   ```
+   ## Replan v<N> — <date>
+   **Reason:** <why the replan was needed>
+   **Superseded:** <list of old WI names>
+   **Created:** <list of new WI names>
+   **Completed (preserved):** <list of completed WI names>
+   ```
+
+8. **Resume implementation:**
+   ```
+   phase_transition(iteration_id=<id>, phase_name="planning", status="completed")
+   phase_transition(iteration_id=<id>, phase_name="implementation", status="in_progress")
+   ```
+   Implementation resumes with the new active WIs (the existing implementation phase query filters out superseded and completed WIs).
+
+**Important:** Completed WIs are NEVER superseded. The `work_item_transition` handler enforces this — attempting to supersede a completed WI will throw an error. The orchestrator should not even attempt it.
+
+### 12. Development Workflow Completion
 
 When the Documentation phase is approved by the Documentation Critic, the development workflow is complete. At this point:
 
@@ -523,7 +611,7 @@ Next steps:
 
 The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigor:start-release` when ready to ship.
 
-### 12. Release Workflow Orchestration
+### 13. Release Workflow Orchestration
 
 The release workflow is triggered by `/rigor:start-release` and tracked in the same SQLite database (`.claude/rigor.db`). It reads dev phase data from the DB using `changelog_query`.
 
@@ -536,7 +624,7 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
 
-### 13. Workflow Iterations
+### 14. Workflow Iterations
 
 The workflow supports an iteration lifecycle for iterative development. Users can close a completed (or partially completed) iteration and start a new one while preserving prior work as reference.
 
@@ -623,7 +711,7 @@ You have access to:
 - **AskUserQuestion** - Escalate decisions to user
 - **project_status** (MCP tool) - Get current project state, iteration number, and all phase statuses
 - **phase_transition** (MCP tool) - Update a phase's status (pending → in_progress → completed → skipped)
-- **work_item_transition** (MCP tool) - Update a work_item row's status (pending → test_writing → implementing → completed). Takes `work_item_id` and `status`
+- **work_item_transition** (MCP tool) - Update a work_item row's status (pending → test_writing → implementing → completed, or any non-completed status → superseded). Takes `work_item_id` and `status`. Superseded is a terminal state (auto-sets `superseded_at`); completed WIs cannot be superseded
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
 - **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Pass `iteration_id` and `phase_name` (e.g. `"requirements"`, `"implementation"`) — do not pass a raw `phase_id` integer. Returns revision_id and revision_count for escalation checks
