@@ -106,8 +106,8 @@ Expand each phase's WI list into self-contained files. This is mechanical — as
 
 **Produces:**
 
-- Overall implementation index with phase summary, dependency graph, critical path
-- Per-phase directory with index file and self-contained WI files
+- Overall implementation index (`planning/index.md`) with phase summary, dependency graph, critical path
+- Per-phase subdirectories under `planning/phases/` — e.g., `planning/phases/phase-1/index.md`, `planning/phases/phase-2/index.md` — each containing an index file and self-contained WI files
 - Does NOT write implementation code or estimate in hours/story points
 
 **Handoff:** Submitted to **Implementation Plan Critic**. On approval, consumed by Senior Developer.

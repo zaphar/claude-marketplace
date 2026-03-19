@@ -89,6 +89,21 @@ For each phase, follow this pattern:
    - Loop back to step 3 — the next `revision_create` call
    - Iterate (max 3 times); if count >= 3, escalate to user
 
+#### Planning Phase
+
+Before **every** planning revision (R1, R2, R3, etc.), the orchestrator must wipe stale phase artifacts so consumers of `planning/` never see orphaned files from a previous revision that reduced the number of phases:
+
+```bash
+rm -rf planning/phases/
+mkdir -p planning/phases/
+```
+
+- This cleanup runs **before** invoking `rigor:implementation_planner` (i.e., before step 2 of the **All Phases** universal loop below).
+- Only `planning/phases/` is cleaned — other files under `planning/` are not affected.
+- Planning is the only phase that writes a variable number of directory-based artifacts to disk; other phases either store output in the DB or write to fixed file paths.
+- Git history preserves old content, so wiping before regeneration loses nothing.
+- After cleanup, the rest of the universal producer-critic loop applies normally.
+
 #### All Phases (Universal Producer-Critic Loop)
 
 **Producer-Critic Loop:**
