@@ -63,10 +63,12 @@ The workflow orchestrator (`plugins/rigor/skills/workflow/SKILL.md`) uses a set 
 | `project_status` |
 | `revision_history` |
 | `iteration_summary` |
+| `checkpoint` |
+| `commit_link` |
 
 Some tools appear in both orchestrator and agent contexts: `revision_update` is in all agent frontmatter (agents may self-report status), and `work_item_transition` is in `senior_developer.agent.md` (implementation tracking). The tools above are strictly orchestrator-only.
 
-Individual agents primarily access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`, `commit_link`). Do not add orchestrator-only tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
+Individual agents primarily access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`). Do not add orchestrator-only tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
 
 ### 4. Intentionally Read-Only Producers
 
@@ -102,6 +104,16 @@ exit_criteria: { type: "array", items: { type: "string" }, description: "..." }
 // ❌ Will break on Copilot
 exit_criteria: { type: "array", description: "..." }
 ```
+
+### 8. Agents Never Commit to Git
+
+**Agents write files to disk but never run `git commit` or `git add`.**
+
+All VCS persistence is owned by the orchestrator via the `checkpoint` MCP tool, which atomically flushes the SQLite WAL and commits to git. This ensures the `.db` file in every commit reflects all written DB state.
+
+Agents that produce filesystem artifacts (senior_developer, test_writer, qa_engineer, documentation_master) write files using Edit/Write tools. The orchestrator calls `checkpoint` after the producer-critic loop approves the work.
+
+Do not add git commit instructions to any agent file. Do not add `checkpoint` or `commit_link` to agent frontmatter.
 
 ---
 

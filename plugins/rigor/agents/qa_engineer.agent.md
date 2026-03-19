@@ -64,8 +64,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Capture screenshots of the implemented application screens using Playwright and compare them to the mockups.
     - Look at the implementation manifest to see what has been done
     - Identify issues with invisible text or components
-- After you are done commit your new tests and modifications to other tests.
-    - Your commit should mention which personality you are.
+- After you are done, write all test files to disk. The orchestrator handles git commits.
 
 **QA-Developer Remediation Loop:**
 

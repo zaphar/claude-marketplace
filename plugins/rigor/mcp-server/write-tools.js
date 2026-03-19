@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { getDb } from "./db.js";
 import { VALID_ENTITY_TYPES } from "./read-tools.js";
 
@@ -1491,16 +1492,61 @@ function bulkImport(args) {
 }
 
 function checkpoint(args) {
+  if (!args.message || typeof args.message !== "string" || !args.message.trim()) {
+    throw new Error("checkpoint requires a non-empty 'message' string");
+  }
+
   const db = getDb(args.project_root);
   const result = db.pragma("wal_checkpoint(TRUNCATE)");
   // pragma returns an array of rows; checkpoint returns one row with busy, checkpointed, log
   const row = Array.isArray(result) ? result[0] : result;
-  return {
-    message: "WAL checkpoint completed (TRUNCATE mode). WAL and SHM files flushed.",
-    busy: row.busy,
-    checkpointed: row.checkpointed,
-    log: row.log,
-  };
+  const wal = { busy: row.busy, checkpointed: row.checkpointed, log: row.log };
+
+  // Stage all changes — execFileSync bypasses the shell, preventing injection
+  try {
+    execFileSync("git", ["add", "-A"], { cwd: args.project_root, stdio: "pipe" });
+  } catch (err) {
+    return {
+      message: "Checkpoint partial: WAL flushed but git add failed.",
+      wal,
+      git: { committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+    };
+  }
+
+  // Check if there are staged changes
+  try {
+    execFileSync("git", ["diff", "--cached", "--quiet"], { cwd: args.project_root, stdio: "pipe" });
+    // Exit code 0 means no staged changes
+    return {
+      message: "Checkpoint complete. WAL flushed. No changes to commit.",
+      wal,
+      git: { committed: false },
+    };
+  } catch (_diffErr) {
+    // Exit code 1 means there are staged changes — proceed to commit
+  }
+
+  // Commit with the provided message — execFileSync passes args via argv, no shell
+  try {
+    const commitOutput = execFileSync("git", ["commit", "-m", args.message], {
+      cwd: args.project_root,
+      stdio: "pipe",
+    }).toString();
+    // Extract SHA from git commit output (first line typically: "[branch sha] message")
+    const shaMatch = commitOutput.match(/\[.+\s+([0-9a-f]+)\]/);
+    const sha = shaMatch ? shaMatch[1] : null;
+    return {
+      message: "Checkpoint complete. WAL flushed and changes committed.",
+      wal,
+      git: { committed: true, sha, message: args.message },
+    };
+  } catch (err) {
+    return {
+      message: "Checkpoint partial: WAL flushed but git commit failed.",
+      wal,
+      git: { committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1872,10 +1918,17 @@ export const WRITE_TOOLS = [
   {
     name: "checkpoint",
     description:
-      "Flushes the SQLite WAL (write-ahead log) to the main database file and removes the -wal and -shm files. Runs PRAGMA wal_checkpoint(TRUNCATE). Use when you want to ensure all data is persisted to the main .db file.",
+      "Persists all state: flushes the SQLite WAL (write-ahead log) to the main database file, then commits all changes to git. If there are no changes to commit, the WAL is still flushed and the git commit is a no-op. This is the ONLY way to commit to git in the rigor workflow.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        message: {
+          type: "string",
+          description:
+            "Git commit message. The checkpoint tool flushes the SQLite WAL and commits all changes to git.",
+        },
+      },
+      required: ["message"],
     },
   },
 ];

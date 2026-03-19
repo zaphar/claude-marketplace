@@ -99,8 +99,9 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 **Produces:**
 
-- Documentation files in markdown format committed to the repository
-- Documentation scope determination (which categories apply, which were skipped with reasoning) — committed as part of a documentation index file
+- Documentation files in markdown format written to the repository
+- Documentation scope determination (which categories apply, which were skipped with reasoning) — written as part of a documentation index file
+- Write all documentation files to disk. The orchestrator handles git commits.
 - All documents created with paths
 - Requirements coverage (which REQ-XXX documented where)
 - Verification status
@@ -115,7 +116,7 @@ Organize documentation files into subdirectories by audience within your phase d
 - `sdk/` — library/SDK reference (if applicable)
 - `operator/` — deployment guide, runbooks, monitoring
 - `developer/` — architecture overview, contributing guide, ADR index
-- Documentation quality is enforced by the documentation_critic reviewing committed files — no DB tracking needed
+- Documentation quality is enforced by the documentation_critic reviewing files on disk — no DB tracking needed
 
 **Handoff:**
 

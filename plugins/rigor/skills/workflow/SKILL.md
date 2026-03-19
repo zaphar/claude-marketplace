@@ -83,6 +83,7 @@ For each phase, follow this pattern:
 6. Call `revision_update` with approved/rejected status and critic feedback
 7. **If approved:**
    - Call `phase_transition` to mark requirements completed
+   - Call `checkpoint` with message "requirements: phase completed and approved"
    - Transition to UX Design phase
 8. **If rejected:**
    - Loop back to step 3 — the next `revision_create` call
@@ -100,6 +101,7 @@ For each phase, follow this pattern:
 6. Call `revision_update` with approved/rejected status and critic feedback
 7. **If approved:**
    - Call `phase_transition` to mark phase completed
+   - Call `checkpoint` with message "<phase_name>: phase completed and approved"
    - Transition to next phase
 8. **If rejected:**
    - If revision_count < 3: loop back to step 1 with feedback (next `revision_create` call)
@@ -136,7 +138,7 @@ For each phase, follow this pattern:
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `agent_type` | Yes | The agent's namespaced name from the tables above (e.g., `"rigor:implementation_planner"`) |
-| `prompt` | Yes | The task context and instructions for the agent (see §7 Context Passing) |
+| `prompt` | Yes | The task context and instructions for the agent (see §8 Context Passing) |
 | `description` | Yes | A short (3–5 word) summary of the task (e.g., `"Planning implementation phases"`, `"Reviewing architecture"`) |
 | `name` | Yes | A short kebab-case name for the invocation (e.g., `"planning-producer"`, `"arch-critic"`) |
 | `model` | Critics only | The `critic_model` from `project_status` (see Critic Model Selection below) |
@@ -147,7 +149,7 @@ Task(
   agent_type: "rigor:implementation_planner",
   name: "planning-producer",
   description: "Creating implementation plan",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are working on iteration <iteration_id>, phase: planning. <context from §7>..."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are working on iteration <iteration_id>, phase: planning. <context from §8>..."
 )
 ```
 
@@ -157,7 +159,7 @@ Task(
   agent_type: "rigor:implementation_plan_critic",
   name: "planning-critic",
   description: "Reviewing implementation plan",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nReview the planning phase output for iteration <iteration_id>. <context from §7>...",
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nReview the planning phase output for iteration <iteration_id>. <context from §8>...",
   model: "<critic_model from project_status>"
 )
 ```
@@ -196,16 +198,39 @@ Use these tools for artifact management:
 **VCS-tracked deliverables** (source code, documentation files, diagrams) remain as files in the repository.
 Use `commit_link` to associate VCS commits with work items and revisions.
 
-### 5. Phase Transitions
+### 5. VCS & DB Persistence
+
+**All git commits go through the `checkpoint` MCP tool.** Never run `git commit` directly via Bash. The `checkpoint` tool atomically:
+1. Flushes the SQLite WAL to the main `.db` file
+2. Stages all changes (`git add -A`)
+3. Commits with the provided message (no-op if working tree is clean)
+
+This guarantees the `.db` file in every git commit reflects all written state. Agents do not commit to git — they write files to disk and the orchestrator calls `checkpoint` at appropriate points.
+
+**When to call `checkpoint`:**
+- After a producer-critic loop is approved (work item completion, phase approval)
+- After phase transitions
+- After iteration lifecycle events (create, close)
+- Any time DB state has been written and should be persisted before the next operation
+
+**Commit message format:**
+```
+checkpoint(project_root: "<path>", message: "<phase>: <concise description>")
+```
+
+Use `commit_link` after checkpoint to associate the commit SHA (returned by checkpoint) with the relevant work item and revision.
+
+### 6. Phase Transitions
 
 When transitioning between phases:
 
 1. Verify current phase is "completed" (via `project_status`)
 2. Call `phase_transition` with the next phase and status `"in_progress"`
-3. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
-4. **Compact context** before invoking the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
-5. Invoke the producer agent for the new phase via the Task tool
-6. Inform user of transition
+3. Call `checkpoint` with message describing the phase completion (e.g., "requirements: phase completed and approved")
+4. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
+5. **Compact context** before invoking the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
+6. Invoke the producer agent for the new phase via the Task tool
+7. Inform user of transition
 
 **Development Workflow Phase Order:**
 ```
@@ -221,7 +246,7 @@ qa → audit
 - If phase is "skipped", proceed to next non-skipped phase
 - Implementation phase may have multiple sub-phases and a two-step loop per sub-phase. Progress is tracked via the `work_item` table's `status` column (`pending`, `test_writing`, `implementing`, `completed`). To find the current sub-phase, query `work_item` for the first row with `status != 'completed'` ordered by `phase_number`.
 
-### 6. Iteration Management
+### 7. Iteration Management
 
 Track producer-critic revisions per phase:
 
@@ -312,7 +337,7 @@ The following lessons have been recorded during this iteration:
 
 Producers also query lessons directly via `changelog_query(entity_type: "project_lesson")` to check for relevant patterns, anti-patterns, and conventions.
 
-### 7. Context Passing Between Agents
+### 8. Context Passing Between Agents
 
 When invoking an agent via the Task tool, provide context:
 
@@ -327,7 +352,7 @@ When invoking an agent via the Task tool, provide context:
 - Current revision number (from `revision_history`)
 - Prior feedback (if revision > 1, from `revision_history`)
 
-### 8. Implementation Phase Special Handling
+### 9. Implementation Phase Special Handling
 
 The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
 
@@ -361,6 +386,7 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
    - No implementation logic in stubs
 9. **If approved:**
    - Call `revision_update` with approved status
+   - Call `checkpoint` with message "implementation: test writing approved for WI <name>"
    - Call `work_item_transition({ work_item_id: <id>, status: "implementing" })` to advance to implementation step
    - Compact agent context
    - Proceed to Step 2
@@ -384,6 +410,8 @@ For each sub-phase (query `work_item` for the first row with `status != 'complet
 16. **If approved:**
     - Call `revision_update` with approved status and `approved_by: "senior_developer_critic"`
     - Call `work_item_transition({ work_item_id: <id>, status: "completed" })` to mark sub-phase completed
+    - Call `checkpoint` with message "implementation: WI <name> completed"
+    - Call `commit_link` to associate the checkpoint's returned commit SHA with the work item and revision
     - Compact agent context (see below)
     - Check if this sub-phase is a review checkpoint (see below)
     - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
@@ -419,7 +447,7 @@ The implementation phase as a whole is only marked `"completed"` after:
 
 **Note:** Implementation uses sub-phases (`phase-{N}`) instead of revision iterations because sub-phases are sequential chunks of planned work. The revision count within each sub-phase tracks producer-critic revision loops.
 
-### 9. Audit Phase Special Handling (Release Workflow)
+### 10. Audit Phase Special Handling (Release Workflow)
 
 The audit phase is part of the **release workflow** and runs two independent producer-critic tracks in parallel: **Security Audit** and **Performance Audit**. Both must complete before the release workflow is considered finished.
 
@@ -458,7 +486,7 @@ Auditors record their findings directly to the changelog database via `changelog
 
 The audit phase is marked `"completed"` only after both tracks' critics have approved their respective audit findings. Both tracks must show no unresolved high/critical findings.
 
-### 10. Development Workflow Completion
+### 11. Development Workflow Completion
 
 When the Documentation phase is approved by the Documentation Critic, the development workflow is complete. At this point:
 
@@ -480,20 +508,20 @@ Next steps:
 
 The development workflow does NOT automatically trigger the release workflow. The user must explicitly start it with `/rigor:start-release` when ready to ship.
 
-### 11. Release Workflow Orchestration
+### 12. Release Workflow Orchestration
 
 The release workflow is triggered by `/rigor:start-release` and tracked in the same SQLite database (`.claude/rigor.db`). It reads dev phase data from the DB using `changelog_query`.
 
 **Release Workflow Phases:**
 
 1. **QA Phase**: Invoke `rigor:qa_engineer` via the Task tool, run tests, produce test report. Standard producer-critic loop.
-2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 9). Standard producer-critic loops with remediation cycles.
+2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 10). Standard producer-critic loops with remediation cycles.
 
 **Release Workflow Completion:**
 
 When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
 
-### 12. Workflow Iterations
+### 13. Workflow Iterations
 
 The workflow supports an iteration lifecycle for iterative development. Users can close a completed (or partially completed) iteration and start a new one while preserving prior work as reference.
 
@@ -513,7 +541,7 @@ active → close → closed → new-iteration → active (iteration N+1)
 **VCS-Based Iteration Cleanup:**
 
 When a new iteration starts, the `new-iteration` command:
-1. Commits current artifacts to VCS via shell (archival only — not tracked in `vcs_commit` since it's not work-item-scoped)
+1. Calls `checkpoint` with message "iteration: archiving artifacts before new iteration" to persist and commit all current state
 2. Calls `iteration_create` to open the new iteration in the DB with all phases reset to pending
 3. VCS-tracked files (source code, documentation) remain in the repository as the starting point for the new iteration
 4. Release workflow phase data (qa, audit) is owned by the release workflow and is not reset by `new-iteration`
@@ -590,6 +618,7 @@ You have access to:
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
+- **checkpoint** (MCP tool) - Persists all state: flushes the SQLite WAL to the main .db file, then commits all changes to git. Requires `message` (string). Returns WAL status and git commit SHA. If no changes to commit, WAL is still flushed and git commit is a no-op. This is the ONLY way to commit to git — never run `git commit` via Bash
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with a work item and revision
 - **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
 - **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr, approved_dependency, component, work_item), `entity_id`, and `updates` object. For audit findings and approved_dependency, supports `status` transitions. For adr, component, and work_item, also supports mutable content fields (see schema.sql for per-type updatable columns). Validates status against allowed values per entity type

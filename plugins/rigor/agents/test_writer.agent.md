@@ -77,7 +77,7 @@ just run it and see if it works?" If the latter, it's execution-validated.
      - They fail for the right reason (not implemented, not compile/syntax error)
      - No pre-existing tests outside the WI scope are broken
   6. Update WI status to `tests_written`
-  7. Commit before moving to next WI
+  7. Write all files to disk before reporting completion. The orchestrator handles git commits.
 - Do not implement DO NOT items.
 
 #### Constraints
@@ -103,7 +103,7 @@ just run it and see if it works?" If the latter, it's execution-validated.
 
 #### Self-Review
 
-Before submitting for critic: verify every test-suite-verifiable exit criterion has at least one test, and every execution-validated criterion is documented with its validation mechanism. Verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Confirm each existing test in scope was explicitly triaged (kept, modified, or deleted) and the decision documented. Commit mentioning your personality.
+Before submitting for critic: verify every test-suite-verifiable exit criterion has at least one test, and every execution-validated criterion is documented with its validation mechanism. Verify stubs compile but contain no logic, run all tests and confirm failures are for the right reasons. Confirm each existing test in scope was explicitly triaged (kept, modified, or deleted) and the decision documented. Report completion to the orchestrator.
 
 **Produces:**
 
@@ -123,8 +123,8 @@ High risk of context exhaustion during multi-phase implementation.
 
 - Work one WI at a time — read only current WI file.
 - **Use artifact query tools for upstream specs.** Call `changelog_query` to list requirements and architecture entries, then use `changelog_query` with specific IDs or filters for full details. Avoid loading all entities at once.
-- After completing WI, write to disk and commit. Do not compact context — context compaction within a sub-agent session breaks tool calling.
-- If context tight mid-WI, commit WIP, update status to `in_progress`, describe remaining work.
+- After completing WI, write all files to disk. Do not compact context — context compaction within a sub-agent session breaks tool calling.
+- If context tight mid-WI, write WIP to disk, update status to `in_progress`, describe remaining work.
 
 **Escalation:** If exit criteria have gaps, are untestable, or ambiguously classified, or if architecture prevents proper test isolation — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
 
