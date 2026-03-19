@@ -86,6 +86,8 @@ Loads the plugin for the current session without installing.
 
 Implementation plans can be versioned. When a plan needs revision mid-implementation — due to oversized work items, changed requirements, or developer-raised blockers — the `/rigor:replan` command triggers a new plan version (plan_version 1, 2, 3…). Old work items are **superseded**, not deleted, preserving their commit history and audit trail. Completed work items are never affected by replans. The planner explores the actual codebase when sizing work items to produce realistic estimates.
 
+Replans can also happen automatically. When the senior developer detects an oversized work item during implementation, it signals `REPLAN_NEEDED` and the orchestrator triggers a **targeted auto-replan** — only the specific oversized WI is decomposed into smaller items while all other WIs remain unaffected. A circuit breaker (max 3 auto-replans per iteration) prevents runaway replan cascades.
+
 ## Directory Structure
 
 ```
