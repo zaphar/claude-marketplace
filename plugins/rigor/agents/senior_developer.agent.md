@@ -98,6 +98,27 @@ High risk of context exhaustion during multi-phase implementation.
 
 **Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.
 
+**Oversized Work Item Detection:**
+
+Recognize early when a WI is too large for a single session — fail fast rather than exhaust context on partial understanding.
+
+- **Heuristic:** If after significant exploration (reading 15+ files, tracing multiple dependency chains) you haven't started writing implementation code, the WI likely needs decomposition.
+- **When detected:**
+  1. **Stop exploring immediately** — don't burn more context trying to understand everything
+  2. **Document what was learned so far:** which areas of the codebase are involved, key dependencies, what makes the task complex
+  3. **Signal via blocker:**
+     ```
+     changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
+       phase_name: "implementation",
+       description: "WI '<name>' too large for single session — recommend decomposition. Key findings: <summary of what was learned>",
+       severity: "major",
+       raised_by: "senior-developer"
+     })
+     ```
+  4. **Report to the orchestrator** that the WI needs decomposition, including exploration findings so they can inform the implementation planner (replan mode)
+- **Do NOT try to partially implement** — a partial implementation without tests is worse than signaling for decomposition early
+- **Goal:** The exploration findings become valuable input for the implementation planner (replan mode) to create better-sized WIs
+
 **`changelog_insert` data structures:**
 
 **implementation_manifest** — one per WI completion:

@@ -44,6 +44,28 @@ Conduct before planning. Ask one question at a time. Skip what's obvious from ap
 
 ---
 
+#### Codebase Analysis for Sizing
+
+Before producing the plan, explore the actual codebase to ground sizing decisions in real data. Use Glob, Grep, Read, and Bash to assess complexity before assigning WIs to phases.
+
+- **Discover files:** Use Glob to find files that would need modification for each anticipated feature area (e.g., `**/*.ts` for TypeScript, `**/models/**` for data layer). Map which existing files each prospective WI would touch.
+- **Assess coupling:** Use Grep to check import/dependency density — how many files import a module being changed? High fan-in modules mean more touch points and higher risk.
+- **Count touch points:** For each prospective WI, tally files to create + files to modify. This is the primary sizing input.
+- **Check test coverage:** Look for existing test files (`**/*test*`, `**/*spec*`) that would need updating when source files change. Each modified source file with existing tests adds test-update work.
+- **Apply sizing heuristic with real data:** A well-sized WI should target ~3 files created, ~5 files modified max. If codebase analysis shows a WI would touch 15 files, it needs splitting.
+- **Complexity ratings grounded in evidence:** XS/S/M/L/XL ratings must reflect actual file counts and coupling, not guesswork:
+    - **XS:** 1-2 files touched, no cross-module coupling
+    - **S:** 3-4 files touched, single-module scope
+    - **M:** 5-7 files touched, 1-2 module boundaries
+    - **L:** 8-12 files touched, multiple module boundaries or high fan-in
+    - **XL:** 13+ files touched — flag for splitting
+
+**Greenfield exception:** If the codebase doesn't exist yet (first iteration with no existing code), sizing is based on specs alone — the current default behavior. Skip codebase analysis and note in the plan_overview that sizing is spec-based.
+
+**`onboard` workflows and later iterations:** When working with an existing codebase (imported via `/rigor:onboard` or iteration > 1), codebase analysis is mandatory. Examine existing code complexity, module boundaries, and coupling — not just specs.
+
+---
+
 #### What You Do
 
 Planning uses two passes to manage context. Pass 1 does cross-referencing (reading specs, assigning requirements to phases). Pass 2 does elaboration (expanding phases into WI files). Phase index files from Pass 1 are the checkpoint between passes.
@@ -104,6 +126,49 @@ Expand each phase's WI list into self-contained files. This is mechanical — as
 - Size each WI for a single conversation (~1-2 features, ~3 files created, ~5 modified max)
 - Independent WIs can be implemented in parallel
 
+---
+
+#### Replan Mode
+
+When `plan_version > 1`, this is a **replan** — you are revising an existing plan, not creating from scratch. The orchestrator invokes you with replan context.
+
+**Orchestrator provides:**
+
+- Completed WIs (read-only context — what's already done, never subject to replan)
+- Pending/in-progress WIs that need decomposition or restructuring
+- The reason for the replan (e.g., WI turned out larger than expected, new requirements, blocked dependency)
+- The new `plan_version` number
+
+**Replan rules:**
+
+1. **Never modify completed WI files on disk.** Completed WIs are immutable historical records. Only create new files for new WIs.
+2. **Explore the codebase** to understand why the original sizing was wrong — use the Codebase Analysis for Sizing process above, focused on the affected areas.
+3. **Create new WIs** with the correct `plan_version` in the `changelog_insert` call:
+   ```
+   changelog_insert(project_root: "<absolute path>", entity_type: "work_item", iteration_id: <id>, data: {
+     plan_version: <N>,           // the new plan version number
+     phase_number: ...,
+     name: "...",
+     ...
+   })
+   ```
+4. **Ensure requirement coverage:** Every requirement from WIs being superseded must appear in at least one new or existing active WI. Query existing active WIs with `changelog_query(entity_type: "work_item", include_related: true)` to verify which requirements are already covered by completed or new active WIs, then ensure new WIs fill any gaps.
+5. **Create a new plan_overview** (version N) explaining what changed and why:
+   ```
+   changelog_insert(project_root: "<absolute path>", entity_type: "plan_overview", iteration_id: <id>, data: {
+     strategy: "Replan v<N>: ...",
+     rationale: "... what changed and why ...",
+     ...
+   })
+   ```
+6. **Update phase index files** to reflect only active WIs (completed + new, not superseded).
+7. **Mark superseded WI files:** Prepend a `> ⚠️ SUPERSEDED by plan version <N>` header to each superseded WI file using the Edit tool. Do not delete superseded files — they serve as historical records.
+8. **Append to `planning/replan-log.md`** with: version number, date, reason for replan, list of superseded WIs, list of newly created WIs. Create the file if it doesn't exist.
+
+**Scope:** Pass 1 and Pass 2 still apply but are scoped to the new/changed WIs only — do NOT redo the entire plan. Completed phases and WIs are untouched.
+
+---
+
 **Produces:**
 
 - Overall implementation index (`planning/index.md`) with phase summary, dependency graph, critical path
@@ -144,6 +209,7 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
 **work_item** — one per call:
 ```
 changelog_insert(project_root: "<absolute path to project root>", entity_type: "work_item", iteration_id: <id>, data: {
+  plan_version: 1,             // optional: plan version (>1 for replans, omit or 1 for initial plan)
   phase_number: 1,             // required: which phase this WI belongs to
   name: "...",                 // required
   work_type: "feature",        // required: e.g. "feature" | "infrastructure" | "foundation"

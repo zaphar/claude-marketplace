@@ -55,6 +55,8 @@
 --                     persona_addressed_flow, ux_asset
 -- Planning:           work_item, work_item_requirement, work_item_component,
 --                     plan_overview, plan_external_dependency
+--                     (supports plan versioning — work items carry plan_version
+--                     and can be superseded by a replan)
 -- Implementation:     implementation_requirement_status,
 --                     implementation_component_status, implementation_blocker,
 --                     implementation_blocker_requirement, vcs_commit,
@@ -684,6 +686,8 @@ CREATE TABLE IF NOT EXISTS work_item (
   work_type TEXT NOT NULL,
   goal TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
+  plan_version INTEGER NOT NULL DEFAULT 1,
+  superseded_at TEXT, -- NULL = active; set when WI is retired by a replan
   complexity TEXT, -- NULL when estimation not yet done
   review_checkpoint INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
@@ -695,7 +699,7 @@ CREATE TABLE IF NOT EXISTS work_item (
   risks JSON, -- [{risk, mitigation}] — work-item-scoped risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT,
-  UNIQUE(iteration_id, name)
+  UNIQUE(iteration_id, plan_version, name)
 );
 
 -- Domain: planning
@@ -740,13 +744,14 @@ CREATE TABLE IF NOT EXISTS work_item_component (
 CREATE TABLE IF NOT EXISTS plan_overview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  plan_version INTEGER NOT NULL DEFAULT 1,
   strategy TEXT NOT NULL,
   rationale TEXT NOT NULL,
   phase_one_approach TEXT,
   assumptions JSON NOT NULL DEFAULT '[]',
   risks JSON, -- [{risk, mitigation, work_item_number}] — plan-wide strategic risks; NULL when none
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(iteration_id)
+  UNIQUE(iteration_id, plan_version)
 );
 
 -- Implementation plan: external dependencies
@@ -1100,7 +1105,9 @@ CREATE INDEX IF NOT EXISTS idx_persona_addressed_iteration_id
 -- Planning domain
 CREATE INDEX IF NOT EXISTS idx_work_item_iteration_id
   ON work_item(iteration_id);
--- Skipped: plan_overview (iteration_id is the UNIQUE key)
+-- Skipped: work_item plan_version (iteration_id, plan_version is leftmost prefix of
+--   UNIQUE(iteration_id, plan_version, name))
+-- Skipped: plan_overview (iteration_id is leftmost in UNIQUE(iteration_id, plan_version))
 
 -- Implementation domain
 -- Skipped: implementation_requirement_status, implementation_component_status

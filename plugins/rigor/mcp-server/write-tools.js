@@ -124,10 +124,20 @@ function workItemTransition(args) {
 
   const row = db.prepare("SELECT id, phase_number, name, status FROM work_item WHERE id = @work_item_id").get({ work_item_id });
   if (!row) throw new Error(`Work item ${work_item_id} not found`);
+  if (status === "superseded" && row.status === "completed") {
+    throw new Error(`Cannot supersede completed work item ${work_item_id} ("${row.name}")`);
+  }
+  if (row.status === "superseded" && status !== "superseded") {
+    throw new Error(`Cannot transition superseded work item ${work_item_id} ("${row.name}") — superseded is terminal`);
+  }
 
   const now = new Date().toISOString();
+  const sets = ["status = @status", "updated_at = @now"];
+  if (status === "superseded") {
+    sets.push("superseded_at = @now");
+  }
   db.prepare(
-    "UPDATE work_item SET status = @status, updated_at = @now WHERE id = @work_item_id"
+    `UPDATE work_item SET ${sets.join(", ")} WHERE id = @work_item_id`
   ).run({ status, work_item_id, now });
 
   return { work_item_id: row.id, phase_number: row.phase_number, name: row.name, status };
@@ -619,8 +629,8 @@ function insertWorkItem(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO work_item (iteration_id, phase_number, name, work_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, work_order, risks, created_at)
-       VALUES (@iteration_id, @phase_number, @name, @work_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @work_order, @risks, @created_at)`
+      `INSERT INTO work_item (iteration_id, phase_number, name, work_type, goal, complexity, review_checkpoint, notes, entry_criteria, exit_criteria, checkpoint_focus, critical_path_sequence, work_order, risks, plan_version, created_at)
+       VALUES (@iteration_id, @phase_number, @name, @work_type, @goal, @complexity, @review_checkpoint, @notes, @entry_criteria, @exit_criteria, @checkpoint_focus, @critical_path_sequence, @work_order, @risks, @plan_version, @created_at)`
     )
     .run({
       iteration_id,
@@ -637,6 +647,7 @@ function insertWorkItem(db, iteration_id, revision_id, data) {
       critical_path_sequence: data.critical_path_sequence ?? null,
       work_order: data.work_order ?? null,
       risks: data.risks?.length ? JSON.stringify(data.risks) : null,
+      plan_version: data.plan_version ?? 1,
       created_at: now
     });
   const work_item_id = result.lastInsertRowid;
@@ -666,8 +677,8 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO plan_overview (iteration_id, strategy, rationale, phase_one_approach, assumptions, risks, created_at)
-       VALUES (@iteration_id, @strategy, @rationale, @phase_one_approach, @assumptions, @risks, @created_at)`
+      `INSERT INTO plan_overview (iteration_id, strategy, rationale, phase_one_approach, assumptions, risks, plan_version, created_at)
+       VALUES (@iteration_id, @strategy, @rationale, @phase_one_approach, @assumptions, @risks, @plan_version, @created_at)`
     )
     .run({
       iteration_id,
@@ -676,6 +687,7 @@ function insertPlanOverview(db, iteration_id, revision_id, data) {
       phase_one_approach: data.phase_one_approach ?? null,
       assumptions: JSON.stringify(data.assumptions ?? []),
       risks: data.risks?.length ? JSON.stringify(data.risks) : null,
+      plan_version: data.plan_version ?? 1,
       created_at: now
     });
   const plan_overview_id = result.lastInsertRowid;
@@ -1586,12 +1598,12 @@ export const WRITE_TOOLS = [
   },
   {
     name: "work_item_transition",
-    description: "Transitions an implementation plan sub-phase's status (pending → test_writing → implementing → completed). Used during the implementation phase to track progress through each sub-phase.",
+    description: "Transitions an implementation plan sub-phase's status (pending → test_writing → implementing → completed | superseded). Used during the implementation phase to track progress through each sub-phase.",
     inputSchema: {
       type: "object",
       properties: {
         work_item_id: { type: "integer", description: "The work_item row ID" },
-        status: { type: "string", enum: ["pending", "test_writing", "implementing", "completed"] },
+        status: { type: "string", enum: ["pending", "test_writing", "implementing", "completed", "superseded"] },
       },
       required: ["work_item_id", "status"],
     },
