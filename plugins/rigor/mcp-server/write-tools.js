@@ -1140,6 +1140,7 @@ function changelogUpdate(args) {
       mutableFields: [
         "review_checkpoint", "exit_criteria", "entry_criteria",
         "notes", "complexity", "checkpoint_focus", "risks", "goal", "name",
+        "work_order", "critical_path_sequence", "phase_number",
       ],
     },
     requirement: {
@@ -1162,12 +1163,25 @@ function changelogUpdate(args) {
     );
   }
 
+  // Extract junction-table fields before scalar validation (Issue #3: don't mutate input)
+  let requirementsUpdate = null;
+  if (entity_type === "work_item" && updates.requirements != null) {
+    requirementsUpdate = updates.requirements;
+    if (!Array.isArray(requirementsUpdate)) {
+      throw new Error("requirements must be an array of requirement_id strings or {requirement_id, priority?, notes?} objects");
+    }
+  }
+
+  // Use a filtered copy for scalar field processing — never mutate the caller's object
+  const scalarUpdates = { ...updates };
+  delete scalarUpdates.requirements;
+
   const setClauses = [];
   const params = { entity_id };
 
   if (config.mutableFields) {
     // Multi-field update path (work_item, adr, component)
-    for (const [key, value] of Object.entries(updates)) {
+    for (const [key, value] of Object.entries(scalarUpdates)) {
       const isStatusKey = key === "status";
       const isContentKey = config.mutableFields.includes(key);
 
@@ -1203,44 +1217,100 @@ function changelogUpdate(args) {
     }
   } else {
     // Status-only update path (existing types)
-    if (updates.status !== undefined) {
-      if (!config.statuses.includes(updates.status)) {
+    if (scalarUpdates.status !== undefined) {
+      if (!config.statuses.includes(scalarUpdates.status)) {
         throw new Error(
-          `Invalid status '${updates.status}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
+          `Invalid status '${scalarUpdates.status}' for ${entity_type}. Allowed: ${config.statuses.join(", ")}`
         );
       }
       setClauses.push("status = @status");
-      params.status = updates.status;
+      params.status = scalarUpdates.status;
     }
   }
 
-  if (setClauses.length === 0) {
+  if (setClauses.length === 0 && requirementsUpdate === null) {
     throw new Error("No valid fields provided in updates");
   }
 
-  if (config.hasUpdatedAt) {
-    setClauses.push("updated_at = @now");
-    params.now = new Date().toISOString();
-  }
-
-  const sql = `UPDATE ${config.table} SET ${setClauses.join(", ")} WHERE id = @entity_id`;
-  let info;
-  try {
-    info = db.prepare(sql).run(params);
-  } catch (err) {
-    if (err.message && err.message.includes("UNIQUE constraint failed")) {
-      throw new Error(
-        `Cannot update ${entity_type} ${entity_id}: the new values violate a uniqueness constraint (e.g. duplicate name within the same iteration)`
-      );
+  // Issue #2: Validate requirement_ids exist before any mutations
+  if (requirementsUpdate !== null) {
+    const reqIds = requirementsUpdate.map(r => typeof r === "string" ? r : r.requirement_id);
+    const placeholders = reqIds.map(() => "?").join(", ");
+    const existing = db.prepare(`SELECT id FROM requirement WHERE id IN (${placeholders})`).all(...reqIds);
+    const existingIds = new Set(existing.map(r => r.id));
+    const missing = reqIds.filter(id => !existingIds.has(id));
+    if (missing.length > 0) {
+      throw new Error(`Requirements not found: ${missing.join(", ")}. All requirement_ids must exist in the requirement table.`);
     }
-    throw err;
   }
 
-  if (info.changes === 0) {
-    throw new Error(`${entity_type} with id=${entity_id} not found`);
-  }
+  // Issue #1: Wrap all mutations in a transaction to prevent partial updates
+  const runTransaction = db.transaction(() => {
+    if (setClauses.length > 0) {
+      if (config.hasUpdatedAt) {
+        setClauses.push("updated_at = @now");
+        params.now = new Date().toISOString();
+      }
 
-  return { entity_type, entity_id, updated_fields: Object.keys(updates) };
+      const sql = `UPDATE ${config.table} SET ${setClauses.join(", ")} WHERE id = @entity_id`;
+      let info;
+      try {
+        info = db.prepare(sql).run(params);
+      } catch (err) {
+        if (err.message && err.message.includes("UNIQUE constraint failed")) {
+          throw new Error(
+            `Cannot update ${entity_type} ${entity_id}: the new values violate a uniqueness constraint (e.g. duplicate name within the same iteration)`
+          );
+        }
+        throw err;
+      }
+
+      if (info.changes === 0) {
+        throw new Error(`${entity_type} with id=${entity_id} not found`);
+      }
+    } else if (config.hasUpdatedAt) {
+      // Only junction-table updates — still bump updated_at and verify entity exists
+      const touchSql = `UPDATE ${config.table} SET updated_at = @now WHERE id = @entity_id`;
+      const info = db.prepare(touchSql).run({ entity_id, now: new Date().toISOString() });
+      if (info.changes === 0) {
+        throw new Error(`${entity_type} with id=${entity_id} not found`);
+      }
+    } else {
+      // Issue #4: Junction-only update on entity without updated_at — verify it exists
+      const exists = db.prepare(`SELECT 1 FROM ${config.table} WHERE id = @entity_id`).get({ entity_id });
+      if (!exists) {
+        throw new Error(`${entity_type} with id=${entity_id} not found`);
+      }
+    }
+
+    // Handle work_item_requirement junction table
+    if (requirementsUpdate !== null) {
+      db.prepare("DELETE FROM work_item_requirement WHERE work_item_id = @entity_id").run({ entity_id });
+      const reqStmt = db.prepare(
+        "INSERT OR IGNORE INTO work_item_requirement (work_item_id, requirement_id, priority, notes) VALUES (@work_item_id, @requirement_id, @priority, @notes)"
+      );
+      for (const req of requirementsUpdate) {
+        if (typeof req === "string") {
+          reqStmt.run({ work_item_id: entity_id, requirement_id: req, priority: null, notes: null });
+        } else {
+          reqStmt.run({
+            work_item_id: entity_id,
+            requirement_id: req.requirement_id,
+            priority: req.priority ?? null,
+            notes: req.notes ?? null,
+          });
+        }
+      }
+    }
+
+    const updated_fields = Object.keys(scalarUpdates);
+    if (requirementsUpdate !== null) {
+      updated_fields.push("requirements");
+    }
+    return { entity_type, entity_id, updated_fields };
+  });
+
+  return runTransaction();
 }
 
 function commitLink(args) {
@@ -1662,7 +1732,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), and approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), and approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1745,6 +1815,36 @@ export const WRITE_TOOLS = [
             name: {
               type: "string",
               description: "work_item: work item name (must remain unique within iteration)",
+            },
+            work_order: {
+              type: "integer",
+              description: "work_item: execution order within phase",
+            },
+            critical_path_sequence: {
+              type: "integer",
+              description: "work_item: position in the critical path (null if not on critical path)",
+            },
+            phase_number: {
+              type: "integer",
+              description: "work_item: phase number the work item belongs to",
+            },
+            requirements: {
+              type: "array",
+              items: {
+                oneOf: [
+                  { type: "string" },
+                  {
+                    type: "object",
+                    properties: {
+                      requirement_id: { type: "string" },
+                      priority: { type: "string" },
+                      notes: { type: "string" },
+                    },
+                    required: ["requirement_id"],
+                  },
+                ],
+              },
+              description: "work_item: replace all requirement links. Array of requirement_id strings or {requirement_id, priority?, notes?} objects.",
             },
             title: {
               type: "string",

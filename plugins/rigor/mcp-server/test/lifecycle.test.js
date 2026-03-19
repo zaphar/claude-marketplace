@@ -503,24 +503,25 @@ describe("changelog_update", () => {
     assert.deepStrictEqual(parsed, ["criterion 1", "criterion 2"]);
   });
 
-  it("rejects structural field on work_item", () => {
+  it("updates phase_number on work_item", () => {
     const wi = handleWriteTool("changelog_insert", {
       project_root: "/tmp/test-project",
       entity_type: "work_item",
       iteration_id: seed.iteration_id,
       revision_id: seed.revision_id,
-      data: { phase_number: 1, name: "reject-structural", work_type: "feature", goal: "Test goal" },
+      data: { phase_number: 1, name: "update-phase", work_type: "feature", goal: "Test goal" },
     });
 
-    assert.throws(
-      () => handleWriteTool("changelog_update", {
-        project_root: "/tmp/test-project",
-        entity_type: "work_item",
-        entity_id: wi.id,
-        updates: { phase_number: 2 },
-      }),
-      /phase_number.*not mutable/
-    );
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { phase_number: 2 },
+    });
+
+    assert.deepStrictEqual(result.updated_fields, ["phase_number"]);
+    const row = db.prepare("SELECT phase_number FROM work_item WHERE id = ?").get(wi.id);
+    assert.strictEqual(row.phase_number, 2, "phase_number should be persisted in database");
   });
 
   it("rejects status field on work_item", () => {
@@ -567,6 +568,180 @@ describe("changelog_update", () => {
         updates: { name: "unique-name-a" },
       }),
       /violate a uniqueness constraint/
+    );
+  });
+
+  // ── work_item requirements update tests ──
+
+  it("replaces requirements via changelog_update (object format)", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-A", description: "A", rationale: "r", priority: "must", category: "functional" },
+    });
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-B", description: "B", rationale: "r", priority: "should", category: "functional" },
+    });
+
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-replace", work_type: "feature", goal: "test", requirements: ["REQ-A"] },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { requirements: [{ requirement_id: "REQ-B", priority: "must", notes: "updated" }] },
+    });
+
+    assert.deepStrictEqual(result.updated_fields, ["requirements"]);
+    const reqs = db.prepare("SELECT * FROM work_item_requirement WHERE work_item_id = ?").all(wi.id);
+    assert.strictEqual(reqs.length, 1);
+    assert.strictEqual(reqs[0].requirement_id, "REQ-B");
+    assert.strictEqual(reqs[0].priority, "must");
+    assert.strictEqual(reqs[0].notes, "updated");
+  });
+
+  it("replaces requirements via changelog_update (string format)", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-S1", description: "S1", rationale: "r", priority: "must", category: "functional" },
+    });
+
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-string", work_type: "feature", goal: "test" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { requirements: ["REQ-S1"] },
+    });
+
+    assert.deepStrictEqual(result.updated_fields, ["requirements"]);
+    const reqs = db.prepare("SELECT * FROM work_item_requirement WHERE work_item_id = ?").all(wi.id);
+    assert.strictEqual(reqs.length, 1);
+    assert.strictEqual(reqs[0].requirement_id, "REQ-S1");
+  });
+
+  it("clears requirements with empty array", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-CLR", description: "clear", rationale: "r", priority: "must", category: "functional" },
+    });
+
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-clear", work_type: "feature", goal: "test", requirements: ["REQ-CLR"] },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { requirements: [] },
+    });
+
+    assert.deepStrictEqual(result.updated_fields, ["requirements"]);
+    const reqs = db.prepare("SELECT * FROM work_item_requirement WHERE work_item_id = ?").all(wi.id);
+    assert.strictEqual(reqs.length, 0);
+  });
+
+  it("updates both scalar fields and requirements together", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "requirement",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { id: "REQ-MIX", description: "mix", rationale: "r", priority: "must", category: "functional" },
+    });
+
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-mixed", work_type: "feature", goal: "test" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      entity_id: wi.id,
+      updates: { phase_number: 3, work_order: 5, requirements: ["REQ-MIX"] },
+    });
+
+    assert.ok(result.updated_fields.includes("phase_number"));
+    assert.ok(result.updated_fields.includes("work_order"));
+    assert.ok(result.updated_fields.includes("requirements"));
+    const row = db.prepare("SELECT phase_number, work_order FROM work_item WHERE id = ?").get(wi.id);
+    assert.strictEqual(row.phase_number, 3);
+    assert.strictEqual(row.work_order, 5);
+    const reqs = db.prepare("SELECT * FROM work_item_requirement WHERE work_item_id = ?").all(wi.id);
+    assert.strictEqual(reqs.length, 1);
+  });
+
+  it("rejects non-array requirements value", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-reject", work_type: "feature", goal: "test" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "work_item",
+        entity_id: wi.id,
+        updates: { requirements: "REQ-001" },
+      }),
+      /must be an array/
+    );
+  });
+
+  it("rejects requirements update with nonexistent requirement_id", () => {
+    const wi = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "work_item",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { phase_number: 1, name: "req-fk", work_type: "feature", goal: "test" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "work_item",
+        entity_id: wi.id,
+        updates: { requirements: ["NONEXISTENT-REQ"] },
+      }),
+      /Requirements not found: NONEXISTENT-REQ/
     );
   });
 
