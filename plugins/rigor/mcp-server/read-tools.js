@@ -314,6 +314,7 @@ const WORK_ITEM_FILTERS = {
   review_checkpoint: { nullable: true },
   notes: { nullable: true },
   critical_path_sequence: { nullable: true },
+  plan_version: { nullable: false },
 };
 
 function queryWorkItem(db, { iteration_id, ids, filters = {}, include_related = false }) {
@@ -322,9 +323,24 @@ function queryWorkItem(db, { iteration_id, ids, filters = {}, include_related = 
   const params = [];
   if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
   if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
-  const f = applyFilters(filters, WORK_ITEM_FILTERS, "work_item");
+  // Extract special filters before applyFilters (which only handles column equality)
+  const { superseded, status_not, ...standardFilters } = filters || {};
+  const f = applyFilters(standardFilters, WORK_ITEM_FILTERS, "work_item");
   clauses.push(...f.clauses);
   params.push(...f.params);
+  // Handle superseded boolean filter
+  if (superseded === true) {
+    clauses.push("superseded_at IS NOT NULL");
+  } else if (superseded === false) {
+    clauses.push("superseded_at IS NULL");
+  }
+  // If filters.superseded is null/undefined, no filter applied (return all)
+
+  // Handle status_not exclusion filter
+  if (status_not != null) {
+    clauses.push("status != ?");
+    params.push(status_not);
+  }
   if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
   const results = db.prepare(sql).all(...params);
   if (!include_related) {
@@ -353,6 +369,7 @@ const PLAN_OVERVIEW_FILTERS = {
   strategy: { nullable: false },
   rationale: { nullable: false },
   phase_one_approach: { nullable: true },
+  plan_version: { nullable: false },
 };
 
 function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_related = false }) {
@@ -374,7 +391,7 @@ function queryPlanOverview(db, { iteration_id, ids, filters = {}, include_relate
     total_phases: (() => {
         if (!o.iteration_id) return 0;
         return db.prepare(
-          "SELECT COUNT(*) AS cnt FROM work_item WHERE iteration_id = ?"
+          "SELECT COUNT(*) AS cnt FROM work_item WHERE iteration_id = ? AND superseded_at IS NULL"
         ).get(o.iteration_id).cnt;
       })(),
     risks: (() => { try { return JSON.parse(o.risks || '[]'); } catch { return o.risks; } })(),
@@ -1355,7 +1372,9 @@ export const READ_TOOLS = [
         filters: {
           type: "object",
           description:
-            'Field→value filters, e.g. { "category": "security", "priority": "must-have" }',
+            'Field→value filters, e.g. { "category": "security", "priority": "must-have" }. ' +
+            "work_item queries also support: superseded (boolean — true for superseded-only, false for active-only), " +
+            "status_not (string — exclude a status value), and plan_version (integer — specific plan version).",
           additionalProperties: true,
         },
         include_related: {
