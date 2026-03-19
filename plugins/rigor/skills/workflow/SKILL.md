@@ -434,15 +434,44 @@ For each sub-phase (from the active WI query above, pick the first row ordered b
 **Step 2 — Implementation:**
 
 11. Invoke `rigor:senior_developer` via the Task tool
-12. Developer reads existing failing tests and implements minimum code to make them pass
-13. Developer records implementation manifest using `changelog_insert` with `entity_type: "implementation_manifest"` linked to the current sub-phase revision
-14. Invoke `rigor:senior_developer_critic` via the Task tool (using `critic_model` from `project_status`)
-15. Critic validates:
+12. **Check for REPLAN_NEEDED signal.** After the senior developer returns, inspect its response for the `---REPLAN_NEEDED---` delimiter:
+    - **If NOT found:** Proceed normally to step 13 (developer implements) and the rest of the existing flow.
+    - **If found:** The senior dev detected an oversized WI. Handle as follows:
+      1. Parse the signal block (between `---REPLAN_NEEDED---` and `---END_REPLAN---`) for `work_item`, `blocker_id`, `reason`, and `codebase_analysis`.
+      2. Check the auto-replan counter (transient variable `auto_replan_count`, initialized to 0 at session start — NOT persisted to the database, resets on session resume):
+         - **If `auto_replan_count >= 3` (circuit breaker):** Escalate to user:
+           ```
+           ⚠️ Auto-Replan Circuit Breaker
+
+           The senior developer signaled REPLAN_NEEDED for WI '<name>', but 3 auto-replans
+           have already occurred this iteration.
+
+           Blocker: <blocker description>
+           Codebase analysis: <summary>
+
+           How would you like to proceed?
+           1. Allow another auto-replan for this WI
+           2. Trigger a full replan of all actionable WIs
+           3. Provide manual guidance
+           ```
+           Use `AskUserQuestion` for the decision. If option 1, proceed with the same actions as the `auto_replan_count < 3` branch below: increment `auto_replan_count`, invoke §11 targeted mode, then continue to sub-step 3. If option 2, invoke §11 full replan. If option 3, wait for user input.
+         - **If `auto_replan_count < 3`:** Increment `auto_replan_count` and invoke §11 in **targeted mode** (see "Targeted Replan" subsection in §11), passing:
+           - The specific WI name and details
+           - The senior dev's `codebase_analysis` block
+           - The `blocker_id` (to resolve after successful replan)
+      3. After targeted replan completes successfully:
+         - Call `blocker_resolve(blocker_id=<id>, resolution_notes="Auto-replan decomposed WI into sub-items")` to close the blocker
+         - Resume implementation with the new sub-WIs (§11 targeted replan handles the phase transitions)
+    - **Important:** The REPLAN_NEEDED check is a branch point — when the signal IS found, the normal implementation flow (steps 13–18) is SKIPPED for that WI. The orchestrator goes directly to the targeted replan. After replan, implementation resumes with the new active WIs.
+13. Developer reads existing failing tests and implements minimum code to make them pass
+14. Developer records implementation manifest using `changelog_insert` with `entity_type: "implementation_manifest"` linked to the current sub-phase revision
+15. Invoke `rigor:senior_developer_critic` via the Task tool (using `critic_model` from `project_status`)
+16. Critic validates:
     - All pre-written tests pass, no pre-existing tests broken, full test suite passes
     - No test files modified or deleted
     - Code review checklist (build, security, quality)
     - Requirements traceability for this sub-phase's assigned REQ-XXX/COMP-XXX/FLOW-XXX (via `traceability_query`)
-16. **If approved:**
+17. **If approved:**
     - Call `revision_update` with approved status and `approved_by: "senior_developer_critic"`
     - Call `work_item_transition({ work_item_id: <id>, status: "completed" })` to mark sub-phase completed
     - Call `checkpoint` with message "implementation: WI <name> completed"
@@ -451,7 +480,7 @@ For each sub-phase (from the active WI query above, pick the first row ordered b
     - Check if this sub-phase is a review checkpoint (see below)
     - If more sub-phases remain: advance to next sub-phase (loop back to step 1)
     - If all sub-phases complete: call `phase_transition` to mark implementation completed, transition to Documentation phase
-17. **If rejected:**
+18. **If rejected:**
     - Call `revision_update` with rejected status and feedback
     - Check `revision_history` for revision count
     - If revision_count < 3: loop back to step 11 with critic feedback
@@ -588,6 +617,56 @@ A replan replaces non-completed work items with a new set of better-sized WIs wh
    Implementation resumes with the new active WIs (the existing implementation phase query filters out superseded and completed WIs).
 
 **Important:** Completed WIs are NEVER superseded. The `work_item_transition` handler enforces this — attempting to supersede a completed WI will throw an error. The orchestrator should not even attempt it.
+
+#### Targeted Replan (single-WI decomposition)
+
+A targeted replan is a constrained variant of the full replan procedure above. It decomposes exactly ONE work item (the one flagged by the senior developer's `---REPLAN_NEEDED---` signal) while leaving all other active WIs untouched. This is invoked automatically from §9 step 12 when the auto-replan counter is below the circuit breaker threshold.
+
+**Differences from full replan:**
+
+1. **Gather current state:** Same query as full replan step 1, but partition results into three groups:
+   - `completed` — status = "completed" (immutable, same as full replan)
+   - `target_wi` — the ONE specific WI to decompose (identified by the `work_item` field from the REPLAN_NEEDED signal)
+   - `other_active` — all other non-superseded, non-completed WIs (read-only context, NOT replanned)
+
+2. **Determine new plan version:** Same as full replan step 2 — increment `max(plan_version) + 1`.
+
+3. **Re-open the planning phase:** Same as full replan step 3.
+
+4. **Invoke the planner in targeted decomposition mode:**
+   Invoke `rigor:implementation_planner` with:
+   - `plan_version: <new_plan_version>`
+   - The target WI's full details (name, requirements, exit criteria, linked components, complexity, etc.)
+   - The senior developer's `codebase_analysis` block (files explored, key areas, complexity drivers, recommended split)
+   - Completed WI names (read-only context — what's already done)
+   - Other active WI names (read-only context — NOT being replanned)
+   - Explicit instruction: "Decompose ONLY this WI into smaller sub-WIs. Do not modify, merge, or re-scope any other active work items."
+
+5. **Run the critic:**
+   Invoke `rigor:implementation_plan_critic` — the critic applies standard replan checks PLUS targeted-specific validation:
+   - **Scope constraint:** New WIs must collectively cover the target WI's requirements and exit criteria — no more, no less. Other active WIs must not be affected.
+   - **Decomposition completeness:** The union of new sub-WIs must fully replace the target WI with no gaps.
+   - **Codebase analysis grounding:** New WI boundaries should reflect the senior developer's codebase analysis (key areas, complexity drivers), not arbitrary splits.
+   - **Conservative sizing:** Each new sub-WI must be demonstrably smaller than the original. If the planner produces a single WI that is only marginally smaller, the critic rejects.
+
+6. **On approval — supersede the target WI only:**
+   ```
+   work_item_transition(work_item_id=<target_wi_id>, status="superseded")
+   ```
+   Only the ONE target WI is superseded — NOT all actionable WIs as in full replan.
+
+7. **Verify replan log:** Same as full replan step 7 — confirm or write the `planning/replan-log.md` entry. The log should note this was a targeted replan:
+   ```
+   ## Targeted Replan v<N> — <date>
+   **Trigger:** Auto-replan from senior_developer REPLAN_NEEDED signal
+   **Reason:** <reason from signal>
+   **Superseded:** <target WI name>
+   **Created:** <list of new sub-WI names>
+   **Preserved (active):** <list of other active WI names>
+   **Preserved (completed):** <list of completed WI names>
+   ```
+
+8. **Resume implementation:** Same as full replan step 8 — close planning, re-open implementation. The existing implementation phase query (`changelog_query` with `superseded: false, status_not: "completed"`) automatically picks up the new sub-WIs and excludes the superseded target WI.
 
 ### 12. Development Workflow Completion
 
