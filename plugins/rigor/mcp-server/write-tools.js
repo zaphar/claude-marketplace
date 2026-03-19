@@ -1102,6 +1102,19 @@ function changelogUpdate(args) {
     approved_dependency: {
       table: "approved_dependency",
       statuses: ["active", "removed", "superseded"],
+      mutableFields: [
+        "package",
+        "version_constraint",
+        "purpose",
+        "justification",
+        "adr_id",
+        "license",
+        "category",
+        "maintenance_activity",
+        "community_adoption",
+        "transitive_deps",
+        "single_maintainer_risk",
+      ],
     },
     component: {
       table: "component",
@@ -1591,7 +1604,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), and requirement records (description, rationale, priority, category, acceptance_criteria).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), and approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1703,11 +1716,48 @@ export const WRITE_TOOLS = [
             },
             purpose: {
               type: "string",
-              description: "component: updated purpose/description",
+              description: "component or approved_dependency: purpose/description",
             },
             component_type: {
               type: "string",
               description: "component: type classification",
+            },
+            // === APPROVED_DEPENDENCY FIELDS ===
+            package: {
+              type: "string",
+              description: "approved_dependency: package name",
+            },
+            version_constraint: {
+              type: "string",
+              description: "approved_dependency: version constraint or pin",
+            },
+            justification: {
+              type: "string",
+              description: "approved_dependency: justification for choosing this package",
+            },
+            adr_id: {
+              type: "string",
+              description: "approved_dependency: linked ADR identifier",
+            },
+            license: {
+              type: "string",
+              description: "approved_dependency: package license",
+            },
+            maintenance_activity: {
+              type: "string",
+              description: "approved_dependency: maintenance activity level",
+            },
+            community_adoption: {
+              type: "string",
+              description: "approved_dependency: community adoption level",
+            },
+            transitive_deps: {
+              type: "integer",
+              description: "approved_dependency: number of transitive dependencies",
+            },
+            single_maintainer_risk: {
+              type: "integer",
+              description: "approved_dependency: single maintainer risk flag (0 or 1)",
             },
             description: {
               type: "string",
@@ -1719,7 +1769,7 @@ export const WRITE_TOOLS = [
             },
             category: {
               type: "string",
-              description: "requirement: corrected requirement category",
+              description: "requirement or approved_dependency: category",
             },
             acceptance_criteria: {
               type: "array",
