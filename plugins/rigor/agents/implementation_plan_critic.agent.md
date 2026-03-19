@@ -143,6 +143,35 @@ When reviewing a replan, apply the full Review Checklist above PLUS these additi
     - [ ] Phase index files updated to reference only active WIs
     - [ ] `replan-log.md` has an entry for this replan with version, reason, and summary
 
+**Targeted Replan Validation (single-WI decomposition):**
+
+When the replan was triggered by a senior developer's `REPLAN_NEEDED` signal and the planner operated in targeted decomposition mode (single WI scope), apply the standard Replan Validation checks above PLUS these additional targeted-specific checks. The orchestrator will indicate targeted mode in the critic prompt.
+
+- **Scope constraint — only the flagged WI was decomposed:**
+    - [ ] Exactly ONE WI was superseded — no other pending/active WIs were superseded, modified, renamed, or had their requirements changed
+    - [ ] All WIs outside the decomposition scope have identical content and status to the previous plan version
+    - [ ] No requirements were redistributed from the decomposed WI to other existing WIs — all coverage flows into the new sub-WIs only
+
+- **Decomposition completeness:**
+    - [ ] Every requirement from the decomposed WI is covered by at least one new sub-WI
+    - [ ] No requirements were silently dropped during decomposition
+    - [ ] No new requirements were introduced that weren't in the original WI (scope creep)
+
+- **Codebase analysis grounding:**
+    - [ ] New sub-WI sizing reflects the senior developer's codebase analysis (files explored, complexity drivers, key areas identified)
+    - [ ] Reject if sizing appears to be arbitrary re-splitting without grounding in the analysis (e.g., splitting by specification sections rather than by actual code boundaries)
+    - [ ] Complexity drivers cited in the senior developer's analysis are visible in the sub-WI scope definitions
+
+- **Conservative sizing:**
+    - [ ] No new sub-WI exceeds complexity M without documented justification grounded in the codebase analysis
+    - [ ] Sub-WI file counts respect the sizing heuristic (~3 files created, ~5 files modified) — the original WI was too large, so conservative splitting is expected
+    - [ ] If any sub-WI approaches complexity L, verify it cannot be further decomposed based on the codebase analysis
+
+- **De-emphasize in targeted mode** (lighter-touch vs full replan):
+    - Phase-level restructuring checks do not apply — targeted replan does not change phase boundaries
+    - Global plan coherence is lighter-touch — the overall plan structure is unchanged, only one WI was decomposed
+    - Focus critique on the quality of the decomposition itself, not the broader plan
+
 **Produces:**
 
 - Review verdict: `approved` or `needs_revision`

@@ -167,6 +167,39 @@ When `plan_version > 1`, this is a **replan** — you are revising an existing p
 
 **Scope:** Pass 1 and Pass 2 still apply but are scoped to the new/changed WIs only — do NOT redo the entire plan. Completed phases and WIs are untouched.
 
+#### Targeted Decomposition Mode
+
+When `plan_version > 1` and the orchestrator specifies a **single WI** to decompose, this is a **targeted replan** — a constrained variant of Replan Mode triggered by a senior developer's `REPLAN_NEEDED` signal.
+
+**Orchestrator provides:**
+
+- The specific WI to decompose (full details: name, requirements, exit criteria, complexity, phase)
+- The senior developer's `codebase_analysis` block (files explored, key areas, complexity drivers, recommended split)
+- Completed WI list (read-only context — what's already done)
+- Other active WIs (read-only context — these are NOT being replanned)
+- The new `plan_version` number
+- Instruction: decompose ONLY this WI
+
+**Targeted rules:**
+
+1. **Decompose ONLY the specified WI.** Do NOT modify, restructure, or re-scope any other pending or active WIs. The scope of this replan is exactly one WI.
+2. **Use the senior developer's codebase analysis as primary input.** The senior dev already explored the codebase and identified complexity drivers during their implementation attempt — do not re-explore the same code. Their findings are authoritative.
+3. **All standard replan rules still apply:** correct `plan_version` in `changelog_insert` calls, requirement coverage, new `plan_overview`, append to `planning/replan-log.md`, superseded file headers via Edit tool, phase index updates.
+4. **The only WI superseded is the one being decomposed.** All other active WIs remain as-is — do not mark them superseded or modify their files.
+5. **Create new WIs that together cover all requirements from the decomposed WI.** Query the decomposed WI's linked requirements and ensure every one appears in at least one new WI.
+6. **Size new WIs conservatively.** The original WI was too large, so err on the side of smaller — prefer two XS WIs over one S WI when in doubt.
+
+**Codebase analysis integration:**
+
+The senior dev's `codebase_analysis` block contains:
+
+- `files_explored`: how many files were read during the implementation attempt
+- `key_areas`: which modules/areas of the codebase are involved
+- `complexity_drivers`: what makes the WI too complex for a single conversation (coupling, breadth, dependencies)
+- `recommended_split`: the senior dev's high-level suggestion for decomposition
+
+Use this analysis directly when designing the new WIs. The `key_areas` map to natural WI boundaries. The `complexity_drivers` indicate where to draw scope lines. The `recommended_split` is a strong starting point — follow it unless requirement coverage or dependency constraints force a different decomposition.
+
 ---
 
 **Produces:**

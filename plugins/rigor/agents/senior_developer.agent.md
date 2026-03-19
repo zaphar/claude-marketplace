@@ -106,7 +106,7 @@ Recognize early when a WI is too large for a single session — fail fast rather
 - **When detected:**
   1. **Stop exploring immediately** — don't burn more context trying to understand everything
   2. **Document what was learned so far:** which areas of the codebase are involved, key dependencies, what makes the task complex
-  3. **Signal via blocker:**
+  3. **Signal via blocker** (audit trail):
      ```
      changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker", iteration_id: <id>, data: {
        phase_name: "implementation",
@@ -115,9 +115,22 @@ Recognize early when a WI is too large for a single session — fail fast rather
        raised_by: "senior-developer"
      })
      ```
-  4. **Report to the orchestrator** that the WI needs decomposition, including exploration findings so they can inform the implementation planner (replan mode)
+  4. **Emit the `REPLAN_NEEDED` signal.** After inserting the blocker, output the following structured block in your response. The orchestrator (SKILL.md §9) automatically detects `---REPLAN_NEEDED---` in your response and triggers a targeted replan of just this WI — you do NOT need to explicitly ask for a replan. The signal carries the codebase analysis you gathered during exploration so the implementation planner can produce better-sized WIs.
+     ```
+     ---REPLAN_NEEDED---
+     work_item: "<WI name>"
+     blocker_id: <blocker ID returned from changelog_insert>
+     reason: "<brief explanation of why the WI is too large>"
+     codebase_analysis:
+       files_explored: <count>
+       key_areas: [<list of codebase areas/modules involved>]
+       complexity_drivers: [<what makes this WI too large — coupling, breadth, dependencies>]
+       recommended_split: "<high-level suggestion for how to decompose>"
+     ---END_REPLAN---
+     ```
 - **Do NOT try to partially implement** — a partial implementation without tests is worse than signaling for decomposition early
 - **Goal:** The exploration findings become valuable input for the implementation planner (replan mode) to create better-sized WIs
+- **Circuit breaker note:** The orchestrator tracks auto-replan attempts (max 3 per iteration). If the limit is reached, the orchestrator escalates to the user instead of replanning again. The senior dev does not need to track this — always emit `REPLAN_NEEDED` when a WI is too large, regardless of how many times it has happened before
 
 **`changelog_insert` data structures:**
 
