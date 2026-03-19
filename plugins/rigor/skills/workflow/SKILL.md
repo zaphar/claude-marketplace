@@ -523,9 +523,9 @@ The audit phase is marked `"completed"` only after both tracks' critics have app
 
 ### 11. Replan Flow
 
-A replan replaces pending/in-progress work items with a new set of better-sized WIs while preserving all completed work. Replans can be triggered:
+A replan replaces non-completed work items with a new set of better-sized WIs while preserving all completed work. Replans can be triggered:
 
-- By user request (`/rigor:replan` command _(forthcoming)_)
+- By user request (`/rigor:replan` command)
 - By escalation when `senior_developer` raises a blocker about WI sizing
 - At review checkpoints when specs change significantly
 

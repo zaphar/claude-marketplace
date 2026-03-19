@@ -72,6 +72,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:resume` — Resume an existing workflow
 - `/rigor:dev-status` — Display current progress
 - `/rigor:skip-to <phase>` — Skip to a specific phase (advanced)
+- `/rigor:replan` — Replan the current implementation plan (decompose oversized or problematic work items while preserving completed work; optionally specify WI names to target)
 - `/rigor:close` — Close the current iteration
 - `/rigor:import` — Import existing data (requirements, design specs, etc.)
 - `/rigor:new-iteration` — Start a new iteration from a closed workflow
@@ -80,6 +81,10 @@ Loads the plugin for the current session without installing.
 - `/rigor:start-release` — Start QA and audit
 - `/rigor:resume-release` — Resume release workflow
 - `/rigor:release-status` — Display release progress
+
+## Plan Versioning
+
+Implementation plans can be versioned. When a plan needs revision mid-implementation — due to oversized work items, changed requirements, or developer-raised blockers — the `/rigor:replan` command triggers a new plan version (plan_version 1, 2, 3…). Old work items are **superseded**, not deleted, preserving their commit history and audit trail. Completed work items are never affected by replans. The planner explores the actual codebase when sizing work items to produce realistic estimates.
 
 ## Directory Structure
 

@@ -115,6 +115,14 @@ Agents that produce filesystem artifacts (senior_developer, test_writer, qa_engi
 
 Do not add git commit instructions to any agent file. Do not add `checkpoint` or `commit_link` to agent frontmatter.
 
+### 9. `superseded` Is a Terminal Work Item Status
+
+The `work_item_transition` tool accepts `"superseded"` as a target status. This is a **terminal** status — once a work item is superseded, it cannot transition to any other status. Additionally, **completed work items cannot be superseded** (the handler throws an error). Only non-completed WIs (pending, test_writing, implementing) can be superseded, which happens during replanning when old WIs are replaced by a new plan version.
+
+### 10. `plan_version` Defaults to 1
+
+The `changelog_insert` tool accepts an optional `plan_version` field for `work_item` and `plan_overview` entity types. It defaults to `1`. During replans, the orchestrator passes a higher plan_version (2, 3, …) to associate new WIs with the correct plan version. Agents should not set `plan_version` unless explicitly instructed to during a replan.
+
 ---
 
 ## Adding a New Agent
