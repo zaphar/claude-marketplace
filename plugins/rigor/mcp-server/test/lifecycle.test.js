@@ -658,4 +658,133 @@ describe("changelog_update", () => {
       /status.*not mutable/
     );
   });
+
+  // ── approved_dependency update tests ──
+
+  it("updates a single approved_dependency content field", () => {
+    const dep = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "dep-single", purpose: "original purpose", justification: "needed" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      entity_id: dep.id,
+      updates: { purpose: "updated purpose" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["purpose"]);
+
+    const row = db.prepare("SELECT purpose FROM approved_dependency WHERE id = ?").get(dep.id);
+    assert.strictEqual(row.purpose, "updated purpose");
+  });
+
+  it("updates multiple approved_dependency content fields at once", () => {
+    const dep = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "dep-multi", purpose: "original", justification: "original justification" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      entity_id: dep.id,
+      updates: {
+        package: "dep-multi-renamed",
+        version_constraint: "^2.0.0",
+        purpose: "updated purpose",
+        justification: "updated justification",
+      },
+    });
+    assert.deepStrictEqual(result.updated_fields, [
+      "package",
+      "version_constraint",
+      "purpose",
+      "justification",
+    ]);
+
+    const row = db.prepare(
+      "SELECT package, version_constraint, purpose, justification FROM approved_dependency WHERE id = ?"
+    ).get(dep.id);
+    assert.strictEqual(row.package, "dep-multi-renamed");
+    assert.strictEqual(row.version_constraint, "^2.0.0");
+    assert.strictEqual(row.purpose, "updated purpose");
+    assert.strictEqual(row.justification, "updated justification");
+  });
+
+  it("updates integer fields on approved_dependency", () => {
+    const dep = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "dep-int", purpose: "int test", justification: "needed" },
+    });
+
+    handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      entity_id: dep.id,
+      updates: { transitive_deps: 42, single_maintainer_risk: 1 },
+    });
+
+    const row = db.prepare(
+      "SELECT transitive_deps, single_maintainer_risk FROM approved_dependency WHERE id = ?"
+    ).get(dep.id);
+    assert.strictEqual(row.transitive_deps, 42);
+    assert.strictEqual(row.single_maintainer_risk, 1);
+  });
+
+  it("rejects unknown fields on approved_dependency", () => {
+    const dep = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "dep-reject", purpose: "reject test", justification: "needed" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "approved_dependency",
+        entity_id: dep.id,
+        updates: { nonexistent_field: "value" },
+      }),
+      /not mutable/
+    );
+  });
+
+  it("throws on UNIQUE constraint violation for approved_dependency package", () => {
+    handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "unique-pkg-a", purpose: "purpose A", justification: "justification A" },
+    });
+    const depB = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "approved_dependency",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { package: "unique-pkg-b", purpose: "purpose B", justification: "justification B" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "approved_dependency",
+        entity_id: depB.id,
+        updates: { package: "unique-pkg-a" },
+      }),
+      /violate a uniqueness constraint/
+    );
+  });
 });
