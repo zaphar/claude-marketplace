@@ -47,6 +47,14 @@ The orchestrator drives this directly — it is a conversational loop, NOT a pro
 
 ### 1.2 Question Loop
 
+For each user message, first check:
+- Does it contain the action phrase "ship it"? → Transition to Phase 2
+- Is it an exit signal? → Exit the skill
+- Otherwise → Treat as a question (trivial or substantial)
+
+Do NOT interpret imperative statements as implicit Phase 2 triggers.
+Wait for the explicit action phrase.
+
 For each user question, the orchestrator decides: **trivial** or **substantial**?
 
 **Trivial** — answerable with a single `project_status()` or `changelog_query` returning ≤ 3 entities:
@@ -82,8 +90,21 @@ These rules are **critical** — violating them will exhaust the orchestrator's 
 ### 1.4 Exit from Phase 1
 
 The conversation loop continues until the user signals one of:
-- **"done"** / **"that's all"** / **"thanks"** — exit the skill entirely (no actions)
-- **"turn this into actions"** / **"let's make changes"** / **"fix this"** — transition to Phase 2
+
+- **Exit phrases** ("done", "that's all", "thanks") — exit the skill entirely (no actions).
+- **Action phrase: "ship it"** — transition to Phase 2.
+
+When the user says "ship it" (or a close variant like "let's ship it"),
+the orchestrator immediately transitions to Phase 2: Action Mapping.
+
+**IMPORTANT:** If the user gives an imperative directive (e.g., "get rid of X",
+"switch to Y", "consolidate on Z") WITHOUT using the action phrase, the
+orchestrator should:
+1. Acknowledge the request
+2. Remind the user: `Say "ship it" when you're ready to turn findings into tracked actions.`
+3. Stay in Phase 1
+
+This ensures the user explicitly controls when investigation ends and execution begins.
 
 ## Phase 2: Action Mapping
 
@@ -381,6 +402,11 @@ You have access to:
 4. **Max 3 revisions** — After 3 producer-critic loops in any phase, escalate to user.
 5. **No scope expansion** — Producers modify only what the actions specify. If the producer discovers additional issues, it reports them but does not fix them.
 6. **Surgical changes** — This skill makes targeted updates, not comprehensive rewrites. Every prompt reinforces this constraint.
+7. **No ad-hoc planning** — NEVER create plan.md files, session SQL todos, or
+   local task lists for changes that should flow through the rigor workflow.
+   If the user requests changes, guide them to say "ship it" to trigger
+   Phase 2. All project changes go through Action Mapping → Phase Execution.
+   The rigor DB is the sole system of record for project planning and tracking.
 
 ---
 
