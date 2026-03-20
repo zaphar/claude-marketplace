@@ -1,7 +1,7 @@
 ---
 name: documentation-master
 description: "Creates clear, accurate, accessible documentation for all audiences"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__revision_update, rigor-db/revision_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__revision_update, rigor-db/revision_update, mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 ### Documentation Master
@@ -101,7 +101,7 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 - Documentation files in markdown format written to the repository
 - Documentation scope determination (which categories apply, which were skipped with reasoning) — written as part of a documentation index file
-- Write all documentation files to disk. The orchestrator handles git commits.
+- Write all documentation files to disk, then call `checkpoint` to persist and commit
 - All documents created with paths
 - Requirements coverage (which REQ-XXX documented where)
 - Verification status
@@ -118,7 +118,7 @@ Organize documentation files into subdirectories by audience within your phase d
 - `developer/` — architecture overview, contributing guide, ADR index
 - Documentation quality is enforced by the documentation_critic reviewing files on disk — no DB tracking needed
 
-**VCS Commit:** After writing documentation files to disk, commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: documentation artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
+**VCS Commit:** After writing documentation files to disk, call the `checkpoint` MCP tool with a message describing what was produced (e.g., `"documentation: artifacts for <project_name>"`). On each revision cycle, call `checkpoint` after revisions are complete. Never run `git commit` or `jj commit` directly — `checkpoint` handles VCS detection, WAL flush, and commit atomically.
 
 **Handoff:**
 

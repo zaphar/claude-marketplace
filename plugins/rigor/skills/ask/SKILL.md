@@ -371,7 +371,7 @@ You have access to:
 - **phase_transition** (MCP tool) — Re-open and complete phases for Q&A actions
 - **revision_create** (MCP tool) — Start a new producer-critic revision for a phase
 - **revision_update** (MCP tool) — Record critic decision (approved/rejected) and feedback
-- **checkpoint** (MCP tool) — Persist state: flush SQLite WAL, commit all changes to git
+- **checkpoint** (MCP tool) — Persist state: flush SQLite WAL, commit all changes to VCS (jj or git)
 
 ## Critical Rules
 

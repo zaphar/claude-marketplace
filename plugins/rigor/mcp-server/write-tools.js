@@ -1573,17 +1573,68 @@ function bulkImport(args) {
   return run();
 }
 
-function checkpoint(args) {
-  if (!args.message || typeof args.message !== "string" || !args.message.trim()) {
-    throw new Error("checkpoint requires a non-empty 'message' string");
+// Detect whether the project is a Jujutsu repo by probing for the jj binary.
+// Returns "jj" if jj is installed and the project_root is a jj repo, otherwise "git".
+function detectVcs(projectRoot) {
+  try {
+    execFileSync("jj", ["root"], { cwd: projectRoot, stdio: "pipe" });
+    return "jj";
+  } catch {
+    return "git";
+  }
+}
+
+function checkpointJj(args, wal) {
+  // Check for working-copy changes
+  try {
+    const status = execFileSync("jj", ["diff", "--stat"], {
+      cwd: args.project_root, stdio: "pipe",
+    }).toString().trim();
+    if (!status) {
+      return {
+        message: "Checkpoint complete. WAL flushed. No changes to commit.",
+        wal,
+        vcs: { type: "jj", committed: false },
+      };
+    }
+  } catch (err) {
+    return {
+      message: "Checkpoint partial: WAL flushed but jj diff failed.",
+      wal,
+      vcs: { type: "jj", committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+    };
   }
 
-  const db = getDb(args.project_root);
-  const result = db.pragma("wal_checkpoint(TRUNCATE)");
-  // pragma returns an array of rows; checkpoint returns one row with busy, checkpointed, log
-  const row = Array.isArray(result) ? result[0] : result;
-  const wal = { busy: row.busy, checkpointed: row.checkpointed, log: row.log };
+  // Commit working-copy changes — jj has no staging area
+  try {
+    execFileSync("jj", ["commit", "-m", args.message], {
+      cwd: args.project_root, stdio: "pipe",
+    });
+  } catch (err) {
+    return {
+      message: "Checkpoint partial: WAL flushed but jj commit failed.",
+      wal,
+      vcs: { type: "jj", committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+    };
+  }
 
+  // Extract SHA — @- is the commit we just created (parent of the new working copy)
+  let sha = null;
+  try {
+    sha = execFileSync("jj", ["log", "--no-graph", "-r", "@-", "-T", "commit_id"], {
+      cwd: args.project_root, stdio: "pipe",
+    }).toString().trim();
+  } catch {
+    // SHA extraction failed but the commit succeeded — degrade gracefully
+  }
+  return {
+    message: "Checkpoint complete. WAL flushed and changes committed.",
+    wal,
+    vcs: { type: "jj", committed: true, sha, message: args.message },
+  };
+}
+
+function checkpointGit(args, wal) {
   // Stage all changes — execFileSync bypasses the shell, preventing injection
   try {
     execFileSync("git", ["add", "-A"], { cwd: args.project_root, stdio: "pipe" });
@@ -1591,7 +1642,7 @@ function checkpoint(args) {
     return {
       message: "Checkpoint partial: WAL flushed but git add failed.",
       wal,
-      git: { committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+      vcs: { type: "git", committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
     };
   }
 
@@ -1602,7 +1653,7 @@ function checkpoint(args) {
     return {
       message: "Checkpoint complete. WAL flushed. No changes to commit.",
       wal,
-      git: { committed: false },
+      vcs: { type: "git", committed: false },
     };
   } catch (_diffErr) {
     // Exit code 1 means there are staged changes — proceed to commit
@@ -1620,15 +1671,31 @@ function checkpoint(args) {
     return {
       message: "Checkpoint complete. WAL flushed and changes committed.",
       wal,
-      git: { committed: true, sha, message: args.message },
+      vcs: { type: "git", committed: true, sha, message: args.message },
     };
   } catch (err) {
     return {
       message: "Checkpoint partial: WAL flushed but git commit failed.",
       wal,
-      git: { committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
+      vcs: { type: "git", committed: false, error: err.stderr ? err.stderr.toString().trim() : err.message },
     };
   }
+}
+
+function checkpoint(args) {
+  if (!args.message || typeof args.message !== "string" || !args.message.trim()) {
+    throw new Error("checkpoint requires a non-empty 'message' string");
+  }
+
+  const db = getDb(args.project_root);
+  const result = db.pragma("wal_checkpoint(TRUNCATE)");
+  // pragma returns an array of rows; checkpoint returns one row with busy, checkpointed, log
+  const row = Array.isArray(result) ? result[0] : result;
+  const wal = { busy: row.busy, checkpointed: row.checkpointed, log: row.log };
+
+  const vcsType = detectVcs(args.project_root);
+  if (vcsType === "jj") return checkpointJj(args, wal);
+  return checkpointGit(args, wal);
 }
 
 // ---------------------------------------------------------------------------
@@ -2030,14 +2097,14 @@ export const WRITE_TOOLS = [
   {
     name: "checkpoint",
     description:
-      "Persists all state: flushes the SQLite WAL (write-ahead log) to the main database file, then commits all changes to git. If there are no changes to commit, the WAL is still flushed and the git commit is a no-op. This is the ONLY way to commit to git in the rigor workflow.",
+      "Persists all state: flushes the SQLite WAL (write-ahead log) to the main database file, then commits all changes to VCS (Jujutsu if available, otherwise git). If there are no changes to commit, the WAL is still flushed and the VCS commit is a no-op. This is the ONLY way to commit in the rigor workflow.",
     inputSchema: {
       type: "object",
       properties: {
         message: {
           type: "string",
           description:
-            "Git commit message. The checkpoint tool flushes the SQLite WAL and commits all changes to git.",
+            "VCS commit message. The checkpoint tool flushes the SQLite WAL and commits all changes to VCS (jj or git).",
         },
       },
       required: ["message"],

@@ -63,12 +63,13 @@ The workflow orchestrator (`plugins/rigor/skills/workflow/SKILL.md`) uses a set 
 | `project_status` |
 | `revision_history` |
 | `iteration_summary` |
-| `checkpoint` |
 | `commit_link` |
 
-Some tools appear in both orchestrator and agent contexts: `revision_update` is in all agent frontmatter (agents may self-report status), and `work_item_transition` is in `senior_developer.agent.md` (implementation tracking). The tools above are strictly orchestrator-only.
+Some tools appear in both orchestrator and agent contexts: `revision_update` is in all agent frontmatter (agents may self-report status), and `work_item_transition` is in `senior_developer.agent.md` (implementation tracking).
 
-Individual agents primarily access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`). Do not add orchestrator-only tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
+**`checkpoint` is shared between the orchestrator and file-producing agents.** The agents `backend_architect`, `ux_designer`, and `documentation_master` call `checkpoint` directly after writing file artifacts to disk. This ensures the rigor DB (WAL flush) and VCS commit happen atomically at the point of artifact creation. Implementation-phase agents (`senior_developer`, `test_writer`, `qa_engineer`) do **not** have `checkpoint` — the orchestrator manages checkpoints for the implementation sub-phase loop. `commit_link` remains orchestrator-only.
+
+Individual agents primarily access the data-plane tools (`changelog_query`, `changelog_insert`, `changelog_update`, `traceability_query`). Do not add other orchestrator-only tools to agent frontmatter — agents have no business calling `phase_transition` or `iteration_create`.
 
 ### 4. Intentionally Read-Only Producers
 
@@ -105,15 +106,15 @@ exit_criteria: { type: "array", items: { type: "string" }, description: "..." }
 exit_criteria: { type: "array", description: "..." }
 ```
 
-### 8. Agents Never Commit to Git
+### 8. Agent VCS Rules
 
-**Agents write files to disk but never run `git commit` or `git add`.**
+**Agents never run raw VCS commands (`git commit`, `git add`, `jj commit`) directly.** All VCS persistence goes through the `checkpoint` MCP tool, which atomically flushes the SQLite WAL and commits to VCS (Jujutsu if available, otherwise git). This ensures the `.db` file in every commit reflects all written DB state.
 
-All VCS persistence is owned by the orchestrator via the `checkpoint` MCP tool, which atomically flushes the SQLite WAL and commits to git. This ensures the `.db` file in every commit reflects all written DB state.
+**File-producing pre-implementation agents** (`backend_architect`, `ux_designer`, `documentation_master`) have `checkpoint` in their frontmatter and call it directly after writing file artifacts. This is documented in invariant #3.
 
-Agents that produce filesystem artifacts (senior_developer, test_writer, qa_engineer, documentation_master) write files using Edit/Write tools. The orchestrator calls `checkpoint` after the producer-critic loop approves the work.
+**Implementation-phase agents** (`senior_developer`, `test_writer`, `qa_engineer`) write files using Edit/Write tools but do **not** have `checkpoint` — the orchestrator manages checkpoints for the implementation sub-phase loop.
 
-Do not add git commit instructions to any agent file. Do not add `checkpoint` or `commit_link` to agent frontmatter.
+Do not add raw VCS commit instructions to any agent file. Do not add `commit_link` to agent frontmatter (it remains orchestrator-only). Only add `checkpoint` to agents listed in invariant #3 — do not add it to implementation-phase agents.
 
 ### 9. `superseded` Is a Terminal Work Item Status
 

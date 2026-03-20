@@ -238,12 +238,12 @@ Use `commit_link` to associate VCS commits with work items and revisions.
 
 ### 5. VCS & DB Persistence
 
-**All git commits go through the `checkpoint` MCP tool.** Never run `git commit` directly via Bash. The `checkpoint` tool atomically:
+**All VCS commits go through the `checkpoint` MCP tool.** Never run `git commit` or `jj commit` directly via Bash. The `checkpoint` tool atomically:
 1. Flushes the SQLite WAL to the main `.db` file
-2. Stages all changes (`git add -A`)
-3. Commits with the provided message (no-op if working tree is clean)
+2. Detects VCS (Jujutsu if available, otherwise git)
+3. Stages and commits all changes (no-op if working tree is clean)
 
-This guarantees the `.db` file in every git commit reflects all written state. Agents do not commit to git — they write files to disk and the orchestrator calls `checkpoint` at appropriate points.
+This guarantees the `.db` file in every VCS commit reflects all written state. Agents that produce file artifacts (backend_architect, ux_designer, documentation_master) call `checkpoint` directly after writing files. The orchestrator calls `checkpoint` at phase transitions and lifecycle events.
 
 **When to call `checkpoint`:**
 - After a producer-critic loop is approved (work item completion, phase approval)
@@ -804,7 +804,7 @@ You have access to:
 - **traceability_query** (MCP tool) - Trace relationships between decisions (ADRs → requirements → components)
 - **revision_history** (MCP tool) - Get the full revision history for a phase, including critic feedback and approval status
 - **iteration_summary** (MCP tool) - Get a summary of all phases and their revision counts for an iteration
-- **checkpoint** (MCP tool) - Persists all state: flushes the SQLite WAL to the main .db file, then commits all changes to git. Requires `message` (string). Returns WAL status and git commit SHA. If no changes to commit, WAL is still flushed and git commit is a no-op. This is the ONLY way to commit to git — never run `git commit` via Bash
+- **checkpoint** (MCP tool) - Persists all state: flushes the SQLite WAL to the main .db file, then commits all changes to VCS (Jujutsu if available, otherwise git). Requires `message` (string). Returns WAL status and VCS commit SHA. If no changes to commit, WAL is still flushed and VCS commit is a no-op. This is the ONLY way to commit — never run `git commit` or `jj commit` via Bash
 - **commit_link** (MCP tool) - Associate a VCS commit SHA with a work item and revision
 - **blocker_resolve** (MCP tool) - Mark a blocker as resolved. Takes `blocker_id` (integer) and optional `resolution_notes` (string). Sets `resolved_at` to current timestamp
 - **changelog_update** (MCP tool) - Update mutable fields on an existing changelog entity. Takes `entity_type` (security_audit_finding, performance_audit_finding, adr, approved_dependency, component, work_item), `entity_id`, and `updates` object. For audit findings and approved_dependency, supports `status` transitions. For adr, component, and work_item, also supports mutable content fields (see schema.sql for per-type updatable columns). Validates status against allowed values per entity type

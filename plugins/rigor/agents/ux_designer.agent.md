@@ -1,7 +1,7 @@
 ---
 name: ux-designer
 description: "Designs intuitive, accessible user experiences and surfaces UX concerns not yet considered"
-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__revision_update, rigor-db/revision_update
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelog_query, rigor-db/changelog_query, mcp__plugin_rigor_rigor-db__changelog_insert, rigor-db/changelog_insert, mcp__plugin_rigor_rigor-db__revision_update, rigor-db/revision_update, mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 ### UX Designer
@@ -112,7 +112,7 @@ Work in two phases — **validate direction early** before investing in all scre
 - UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen")
 - DOES NOT: Write implementation code or design backend architecture
 
-**VCS Commit:** After writing file artifacts to disk (design system HTML, screen mockups), commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: UX design artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
+**VCS Commit:** After writing file artifacts to disk (design system HTML, screen mockups), call the `checkpoint` MCP tool with a message describing what was produced (e.g., `"ux_design: artifacts for <project_name>"`). On each revision cycle, call `checkpoint` after revisions are complete. Never run `git commit` or `jj commit` directly — `checkpoint` handles VCS detection, WAL flush, and commit atomically.
 
 **Handoff:** Submitted to **UX Critic**. On approval, consumed by Backend Architect. Obtain stakeholder sign-off before architecture phase.
 
