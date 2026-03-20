@@ -40,10 +40,11 @@ The orchestrator drives this directly — it is a conversational loop, NOT a pro
    - Current iteration ID
    - Active phase (and its status)
    - Artifacts directory
-2. Greet the user briefly:
+2. Greet the user briefly with a plain text output:
    ```
    🔍 Q&A session active. Ask me anything about the project or codebase.
    ```
+3. Do NOT use `AskUserQuestion` to collect questions. The user's questions arrive as normal conversation messages after the greeting — wait for the user's next chat message.
 
 ### 1.2 Question Loop
 
@@ -52,7 +53,7 @@ For each user question, the orchestrator decides: **trivial** or **substantial**
 **Trivial** — answerable with a single `project_status()` or `changelog_query` returning ≤ 3 entities:
 1. Execute the small DB query directly
 2. Present the answer conversationally
-3. Wait for next question
+3. Wait for the user's next conversational message — do NOT prompt with `AskUserQuestion`
 
 **Substantial** — requires reading files, cross-referencing, or querying multiple entity types:
 1. Dispatch `rigor:project_analyst` via the Task tool:
@@ -66,7 +67,7 @@ For each user question, the orchestrator decides: **trivial** or **substantial**
    ```
 2. Receive summarized findings from the analyst
 3. Present to user conversationally
-4. Wait for next question
+4. Wait for the user's next conversational message — do NOT prompt with `AskUserQuestion`
 
 **When in doubt → treat as substantial.** Protecting the orchestrator's context window is more important than saving a sub-agent dispatch.
 
