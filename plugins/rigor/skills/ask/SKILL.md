@@ -1,5 +1,5 @@
 ---
-name: Project Q&A
+name: Project Discussion
 description: Orchestrator-level Q&A session with action mapping to phase producer-critic loops. Loaded by /rigor:ask command only, not auto-triggered.
 version: 0.1.0
 ---

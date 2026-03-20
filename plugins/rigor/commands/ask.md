@@ -3,9 +3,7 @@ description: Ask a question about the project using full codebase and rigor DB c
 allowed-tools:
   - Read
   - Bash
-  - Skill
   - Task
-  - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__changelog_query
   - mcp__plugin_rigor_rigor-db__phase_transition
@@ -22,8 +20,7 @@ the codebase and the rigor database (requirements, ADRs, components, work items,
 ## What This Command Does
 
 1. Verifies a project exists
-2. Loads the Q&A skill
-3. Passes minimal project context to the skill so it can orchestrate the answer
+2. Passes minimal project context to the already-loaded Q&A skill so it can orchestrate the answer
 
 ## Implementation Steps
 
@@ -54,21 +51,19 @@ From the `project_status` response, extract:
 
 These are the only values you pass forward — do not query additional data.
 
-### 3. Load Q&A Skill
+### 3. Begin Q&A Session
 
-Invoke the `Skill` tool with `skill: "rigor:ask"` to load the Q&A skill.
-Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
+The Q&A skill is already loaded by the platform. Do NOT call `skill("rigor:ask")` or any other skill invocation — it will fail because the skill is already active.
 
-### 4. Pass Context to Skill
-
-The skill will handle dispatching the `project_analyst` agent and formatting the
-answer. Provide the extracted context:
+Present the extracted context and greet the user:
 
 ```
 Project: <project_name>
 Iteration: <iteration_id>
 Active Phase: <phase_name> (<phase_status>)
 Artifacts: <artifacts_directory>
+
+🔍 Q&A session active. Ask me anything about the project or codebase.
 ```
 
-The user's question is already in the conversation — the skill will pick it up.
+Then wait for the user's next conversational message. Do NOT use `AskUserQuestion` to prompt for a question — the user will type naturally.
