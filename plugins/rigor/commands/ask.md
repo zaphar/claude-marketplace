@@ -64,6 +64,7 @@ Active Phase: <phase_name> (<phase_status>)
 Artifacts: <artifacts_directory>
 
 🔍 Q&A session active. Ask me anything about the project or codebase.
+Say "ship it" when you're ready to turn findings into tracked actions.
 ```
 
 Then wait for the user's next conversational message. Do NOT use `AskUserQuestion` to prompt for a question — the user will type naturally.
