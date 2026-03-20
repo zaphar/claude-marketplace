@@ -63,7 +63,7 @@ When reviewing the complete set of mockups after design direction is approved:
     - [ ] All personas have their goals addressed
     - [ ] User flows documented for all key tasks
     - [ ] Information architecture defined
-    - [ ] Every SCREEN-XXX in the spec has a corresponding HTML mockup file in `mockups/`
+    - [ ] Every SCREEN-XXX in the spec has a corresponding HTML mockup file in `docs/ux/mockups/`
     - [ ] Navigation elements in mockups link to other mockup files via relative hrefs (clickable between screens)
     - [ ] Adding a new screen updated navigation in existing mockups
     - [ ] Visual design system documented

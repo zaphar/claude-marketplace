@@ -78,9 +78,9 @@ Research before recommending. Present findings with source links. Get approval o
 
 Modular DB entries, each validated by DB constraints on insert:
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`, `adr_decision`); `api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`, `adr_decision`); `docs/architecture/api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
 - Architecture narrative (overview, principles) — committed as a markdown document (e.g., `docs/architecture/overview.md`), NOT stored in the database
-- Architecture diagrams — committed as files (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
+- Architecture diagrams — committed as files under `docs/architecture/diagrams/` (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
 - Data model design — committed as a markdown document (e.g., `docs/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database
 - Technology inventory — technology choices (language, frameworks, database, CI/CD, etc.) are documented in ADRs and tracked as `approved_dependency` entries (using the `category` column for logical grouping such as `backend-language`, `database`, `ci-cd`)
 
@@ -89,6 +89,7 @@ Each entry is self-contained — downstream agents load only what they need. Doe
 **Persistent Data:** Living DB entries updated via UPSERT. On revisit, evolve rather than restart. Preserve prior decisions (especially ADRs).
 
 **VCS Commit:** After writing file artifacts to disk (architecture narrative, diagrams, data model, `api_spec.yaml`), call the `checkpoint` MCP tool with a message describing what was produced (e.g., `"architecture: artifacts for <project_name>"`). On each revision cycle, call `checkpoint` after revisions are complete. Never run `git commit` or `jj commit` directly — `checkpoint` handles VCS detection, WAL flush, and commit atomically.
+**VCS Commit:** After writing file artifacts to disk (architecture narrative, diagrams, data model, `docs/architecture/api_spec.yaml`), commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: architecture artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
 
 **Handoff:** Submitted to **Architecture Critic**. On approval, consumed by Senior Developer. Obtain stakeholder sign-off before implementation.
 
@@ -102,7 +103,7 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 
 - **Use DB query tools for upstream specs.** Call `changelog_query` with entity_type to list requirements or UX entities. Query specific items by ID for details. Avoid loading all entities at once.
 - Read UX selectively (flows and traceability, not design system or mockups).
-- Record each architecture entry as you complete its topic (write `api_spec.yaml` separately).
+- Record each architecture entry as you complete its topic (write `docs/architecture/api_spec.yaml` separately).
 - Research one technology at a time; write ADR before researching next.
 
 **Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.

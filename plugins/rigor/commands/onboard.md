@@ -152,7 +152,7 @@ Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation M
 
 **Output artifacts** (same structure as normal UX designer output):
 - `ux_specification.yaml` — stored via `changelog_insert` tool
-- `design-system/` subdirectory — HTML document showing the extracted design system (colors, typography, spacing, components found in the code)
+- `docs/ux/design-system/` subdirectory — HTML document showing the extracted design system (colors, typography, spacing, components found in the code)
 - Screen documentation referencing source files rather than creating new mockups
 
 **Schema compliance for onboarding:**
@@ -167,7 +167,7 @@ Invoke `rigor:ux_critic` via the Task tool, then apply these **Onboarding Critic
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every user-facing REQ-XXX has UX coverage") — there are no real requirements yet
-- "Every SCREEN-XXX has a corresponding HTML mockup file in `mockups/`" — source file references are acceptable instead of new mockups
+- "Every SCREEN-XXX has a corresponding HTML mockup file in `docs/ux/mockups/`" — source file references are acceptable instead of new mockups
 - Verification against a requirements specification document (none exists yet)
 
 **FOCUS on these checks instead:**
@@ -237,7 +237,7 @@ Invoke `rigor:backend_architect` via the Task tool, then apply these **Documenta
 - `architecture_observability.yaml` — stored via `changelog_insert` tool
 - `architecture_traceability.yaml` — stored via `changelog_insert` tool
 - `architecture_dependencies.yaml` — stored via `changelog_insert` tool
-- `api_spec.yaml` — OpenAPI format (if API endpoints exist)
+- `docs/architecture/api_spec.yaml` — OpenAPI format (if API endpoints exist)
 
 **Schema compliance for onboarding:**
 - `metadata.requirements_version`: set to `"onboarding-inferred"`

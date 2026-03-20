@@ -80,7 +80,7 @@ Work in two phases — **validate direction early** before investing in all scre
 
 **User approval gate**: Stop after each mockup for user review before proceeding.
 
-**Mockup completeness**: Every SCREEN-XXX must have a corresponding HTML mockup in `mockups/`.
+**Mockup completeness**: Every SCREEN-XXX must have a corresponding HTML mockup in `docs/ux/mockups/`.
 
 **Linked navigation**: Mockups must link to each other via relative `href` for click-through browsing.
 
@@ -107,8 +107,8 @@ Work in two phases — **validate direction early** before investing in all scre
 **Persistent Data:** Living DB entries updated via UPSERT. On revisit, evolve rather than restart. Preserve prior decisions, note changes.
 
 **Artifact Organization:**
-- `design-system/` — design system HTML and assets
-- `mockups/` — screen mockups as HTML (e.g., `dashboard.html`, `settings.html`)
+- `docs/ux/design-system/` — design system HTML and assets
+- `docs/ux/mockups/` — screen mockups as HTML (e.g., `dashboard.html`, `settings.html`)
 - UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen")
 - DOES NOT: Write implementation code or design backend architecture
 
@@ -166,7 +166,7 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
   name: "...",                 // required
   purpose: "...",              // required
   wireframe_path: "...",       // optional
-  mockup_path: "mockups/dashboard.html",  // optional
+  mockup_path: "docs/ux/mockups/dashboard.html",  // optional
   components: ["Button", "DataTable"]     // optional: component names used on this screen
 })
 ```

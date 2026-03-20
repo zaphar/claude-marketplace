@@ -110,7 +110,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 - **Read the documentation index and files in full** — they're your primary review target.
 - **Read documentation files one category at a time.** Complete the review for user guide, then move to API docs, etc.
-- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `api_spec.yaml` only when reviewing API docs).
+- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `docs/architecture/api_spec.yaml` only when reviewing API docs).
 - **Read source code selectively.** Spot-check 2-3 code samples per doc category against actual source. Don't read the entire codebase.
 - **Prioritize Accuracy over Clarity** if context is tight — inaccurate docs are worse than unclear docs.
 - **On re-review cycles**, read only the previous review's issues and the updated documents.

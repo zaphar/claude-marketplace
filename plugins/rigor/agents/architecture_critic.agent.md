@@ -41,7 +41,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Completeness:
-    - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); api_spec.yaml file artifact if APIs exist
+    - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); docs/architecture/api_spec.yaml file artifact if APIs exist
     - [ ] Architecture configuration (security, deployment, observability) committed as markdown documents
     - [ ] Architecture narrative committed as a markdown document — overview, style, communication patterns, and design principles
     - [ ] Architecture diagrams committed as repository files (at minimum one component-level diagram)
@@ -53,7 +53,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] All components defined with clear interfaces (query via `changelog_query` entity_type: `component`)
     - [ ] Integration test boundaries defined for inter-component interactions — boundary type, interacting components, and expected behavior specified
     - [ ] Data model complete — entities, attributes (with types and nullability), and relationships documented in the committed data model markdown document
-    - [ ] API specification complete with machine-readable OpenAPI spec (`api_spec.yaml`) that is valid OpenAPI 3.x
+    - [ ] API specification complete with machine-readable OpenAPI spec (`docs/architecture/api_spec.yaml`) that is valid OpenAPI 3.x
     - [ ] Deployment architecture addresses all target scenarios
     - [ ] Observability strategy defined
     - [ ] Security architecture defined with authentication and authorization approach documented with trade-off reasoning

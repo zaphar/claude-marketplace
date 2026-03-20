@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 - Project source code
 - Architecture security spec — committed as markdown documentation (e.g., `docs/architecture/security.md`)
-- Architecture API spec (`api_spec.yaml`)
+- Architecture API spec (`docs/architecture/api_spec.yaml`)
 - Architecture data model (read the committed data model markdown document, e.g., `docs/architecture/data-model.md`)
 - Architecture components (query via `changelog_query` with entity_type: "component")
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
