@@ -43,6 +43,7 @@ The orchestrator drives this directly — it is a conversational loop, NOT a pro
 2. Greet the user briefly:
    ```
    🔍 Q&A session active. Ask me anything about the project or codebase.
+   Say "ship it" when you're ready to turn findings into tracked actions.
    ```
 
 ### 1.2 Question Loop
