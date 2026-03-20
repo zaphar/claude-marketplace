@@ -77,10 +77,17 @@ Loads the plugin for the current session without installing.
 - `/rigor:import` — Import existing data (requirements, design specs, etc.)
 - `/rigor:new-iteration` — Start a new iteration from a closed workflow
 
+**Investigation:**
+- `/rigor:ask` — Ask questions about the project, explore the codebase, and optionally turn findings into targeted phase updates
+
 **Release Workflow:**
 - `/rigor:start-release` — Start QA and audit
 - `/rigor:resume-release` — Resume release workflow
 - `/rigor:release-status` — Display release progress
+
+## Q&A / Investigation
+
+The `/rigor:ask` command opens an interactive Q&A session where you can investigate the project and codebase. A read-only project analyst agent handles deep exploration while protecting the orchestrator's context. When investigation reveals needed changes, findings can be mapped to targeted phase updates that run the normal producer-critic loop.
 
 ## Plan Versioning
 
@@ -92,9 +99,11 @@ Replans can also happen automatically. When the senior developer detects an over
 
 ```
 rigor/
-├── agents/                          # 20 agent personality files (10 producer-critic pairs)
+├── agents/                          # 21 agent personality files (10 producer-critic pairs + 1 standalone analyst)
 ├── commands/                        # Slash command definitions
-├── skills/workflow/SKILL.md         # Orchestration skill (main workflow logic)
+├── skills/
+│   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)
+│   └── ask/SKILL.md                 # Q&A orchestration skill
 └── mcp-server/                      # MCP server with SQLite changelog backend
     ├── schema.sql                   # Database schema reference (source of truth for data model)
     ├── migrate.js                   # Migration engine (applies versioned SQL migrations)

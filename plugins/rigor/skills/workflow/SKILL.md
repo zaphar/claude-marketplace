@@ -46,6 +46,10 @@ The development workflow runs fast iteration loops. When you're ready to ship, t
 
 `/rigor:import` — Import existing data (requirements docs, PRDs, design specs, etc.) into the changelog database. Accepts any file format; extracts and maps entities automatically. Use this before starting the development workflow to pre-populate phases with existing material, bypassing the interview steps for phases whose data is already captured.
 
+### Q&A / Investigation
+
+**For ad-hoc investigation and targeted updates:** Use `/rigor:ask` to open a Q&A session. This loads the separate Q&A skill (`skills/ask/SKILL.md`) which can investigate the project and feed findings into scoped producer-critic loops. See the Q&A skill documentation for details.
+
 Each phase uses a **producer-critic pattern**: a producer agent creates the artifact, a critic agent validates it, with up to 3 revision loops before escalating to the user. The Requirements phase additionally begins with a conversational interview step before entering the standard producer-critic loop.
 
 ## Your Responsibilities
