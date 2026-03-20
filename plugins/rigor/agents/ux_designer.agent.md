@@ -112,6 +112,8 @@ Work in two phases — **validate direction early** before investing in all scre
 - UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen")
 - DOES NOT: Write implementation code or design backend architecture
 
+**VCS Commit:** After writing file artifacts to disk (design system HTML, screen mockups), commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: UX design artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
+
 **Handoff:** Submitted to **UX Critic**. On approval, consumed by Backend Architect. Obtain stakeholder sign-off before architecture phase.
 
 **Known Limitations:** LLM-generated HTML mockups convey layout, hierarchy, and flow but lack pixel-level refinement. Useful for validating structure and flows, not for visual polish.

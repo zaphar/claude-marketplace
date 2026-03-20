@@ -14,16 +14,15 @@ allowed-tools:
 
 # New Iteration — Rigorous Development Workflow
 
-Start a new workflow iteration after closing the previous one. Commits current artifacts to VCS for history, then deletes versioned artifacts so they start fresh. Persistent design artifacts remain in place.
+Start a new workflow iteration after closing the previous one. Resets state for a fresh iteration while persistent design artifacts remain in place.
 
 ## What This Command Does
 
 1. Validates workflow exists and is closed
 2. Shows previous iteration summary
 3. Asks user for confirmation
-4. Commits current artifacts to VCS for history
-5. Resets state for the new iteration via `iteration_create`
-6. Begins Requirements phase with context from prior iteration
+4. Resets state for the new iteration via `iteration_create`
+5. Begins Requirements phase with context from prior iteration
 
 ## Implementation Steps
 
@@ -77,7 +76,7 @@ Persistent artifacts (ux_design/, architecture/) will remain in place.
 Use AskUserQuestion to confirm:
 
 ```
-Start a new iteration? This will commit current artifacts to VCS and create a fresh iteration in the DB.
+Start a new iteration? This will create a fresh iteration in the DB.
 ```
 
 Options:
@@ -90,40 +89,20 @@ Operation cancelled. Workflow remains closed.
 Use /rigor:new-iteration when ready to start a new iteration.
 ```
 
-### 5. Commit Artifacts to VCS
-
-Before creating the new iteration, commit all current artifacts to VCS so the full state is preserved in history. Detect which VCS is in use and commit accordingly:
-
-```bash
-# Detect VCS and commit
-if [ -d .jj ]; then
-  # Jujutsu — just describe the current change with a message
-  jj commit -m "rigor: archive iteration <iteration_id> artifacts for <project_name>"
-elif [ -d .git ]; then
-  # Git — stage the artifacts directory and commit
-  git add "<artifacts_dir>/"
-  git commit -m "rigor: archive iteration <iteration_id> artifacts for <project_name>"
-fi
-```
-
-> **Note:** The archival commit is recorded in VCS history but not in the `vcs_commit` table,
-> since `vcs_commit` tracks work-item-scoped implementation commits (each linked to a specific
-> `work_item_id` and `revision_id`). Archival commits are infrastructure, not deliverables.
-
-### 6. Create New Iteration in DB
+### 5. Create New Iteration in DB
 
 Call `iteration_create` with the incremented iteration number to create all new phase rows in the DB:
 
 ```
 iteration_create({
   starting_phase: "requirements",
-  notes: "New iteration started. Prior iteration artifacts preserved in VCS history."
+  notes: "New iteration started."
 })
 ```
 
 The DB retains all records from previous iterations — nothing is deleted.
 
-### 7. Load Rigorous Dev Skill and Begin Requirements Phase
+### 6. Load Rigorous Dev Skill and Begin Requirements Phase
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill and start the Requirements phase, informing the agent about the prior iteration.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
@@ -132,7 +111,6 @@ Do not use any other parameter name (e.g. `name`) — the required parameter is 
 Workflow iteration <new_iteration_id> started!
 
 Project: <project_name>
-Prior iteration artifacts preserved in VCS history.
 Persistent artifacts remain in place: ux_design/, architecture/ (if they exist)
 
 Starting Requirements Phase...
@@ -140,7 +118,6 @@ Invoking Requirements Analyst agent...
 ```
 
 Provide the Requirements Analyst with context:
-- Prior iteration artifacts are available in VCS history (use VCS log/diff to review if needed)
 - Persistent artifacts (UX design, architecture) remain in the current directory as starting points
 - The analyst should reference prior requirements but conduct a fresh interview to capture changes
 
@@ -148,6 +125,5 @@ Then invoke `rigor:requirements_analyst` via the Task tool to begin the conversa
 
 ## Important Notes
 
-- VCS history preserves all artifacts from previous iterations — nothing is lost
 - Persistent artifacts (ux_design, architecture) stay in place and are re-evaluated by their respective phases
 - The DB retains all previous iteration data; `iteration_create` adds new rows for the new iteration without removing old ones

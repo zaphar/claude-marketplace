@@ -118,6 +118,8 @@ Organize documentation files into subdirectories by audience within your phase d
 - `developer/` — architecture overview, contributing guide, ADR index
 - Documentation quality is enforced by the documentation_critic reviewing files on disk — no DB tracking needed
 
+**VCS Commit:** After writing documentation files to disk, commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: documentation artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
+
 **Handoff:**
 
 - Output is submitted to **Documentation Critic** for validation

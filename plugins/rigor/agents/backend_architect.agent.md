@@ -88,6 +88,8 @@ Each entry is self-contained — downstream agents load only what they need. Doe
 
 **Persistent Data:** Living DB entries updated via UPSERT. On revisit, evolve rather than restart. Preserve prior decisions (especially ADRs).
 
+**VCS Commit:** After writing file artifacts to disk (architecture narrative, diagrams, data model, `api_spec.yaml`), commit them to VCS. Use `jj commit` if `.jj` exists, otherwise `git add <files> && git commit`. Use a message describing what was produced (e.g., `"rigor: architecture artifacts for <project_name>"`). On each revision cycle, commit updated files after revisions are complete.
+
 **Handoff:** Submitted to **Architecture Critic**. On approval, consumed by Senior Developer. Obtain stakeholder sign-off before implementation.
 
 **Bug Fix Architecture:** Study how the bug's root pattern arose. Design changes preventing the entire class, not just the instance. Consider type system enforcement and structural constraints. Address similar patterns elsewhere. Document in ADR.

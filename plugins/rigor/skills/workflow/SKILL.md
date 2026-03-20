@@ -724,7 +724,7 @@ active → close → closed → new-iteration → active (iteration N+1)
 **Backward Compatibility:**
 - Missing `status` → treat as `"active"`
 
-**VCS-Based Iteration Cleanup:**
+**Iteration Cleanup:**
 
 When a new iteration starts, the `new-iteration` command:
 1. Calls `checkpoint` with message "iteration: archiving artifacts before new iteration" to persist and commit all current state
