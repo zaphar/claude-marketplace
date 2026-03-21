@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS schema_version (
 -- enforced by CHECK(id = 1).
 -- Context: Created by iteration_create on first run (alongside the first iteration and its phases).
 -- Status transitions to closed via project_update. The canonical "is this project active?" check is
--- status = 'active'.
+-- status = 'active'. artifacts_directory stores the root path for all SDLC file artifacts,
+-- relative to the project root (default: docs/sdlc).
 CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
@@ -114,7 +115,8 @@ CREATE TABLE IF NOT EXISTS project (
   status TEXT NOT NULL,
   closed_at TEXT,
   critic_model TEXT NOT NULL DEFAULT 'sonnet',
-  notes TEXT NOT NULL DEFAULT ''
+  notes TEXT NOT NULL DEFAULT '',
+  artifacts_directory TEXT NOT NULL DEFAULT 'docs/sdlc'
 );
 
 -- Iterations: each request to change the system

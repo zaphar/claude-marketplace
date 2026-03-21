@@ -19,7 +19,7 @@ const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb(args.project_root);
-  const { project_name, critic_model } = args;
+  const { project_name, critic_model, artifacts_directory } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
@@ -30,9 +30,15 @@ function iterationCreate(args) {
 
     if (!existing) {
       db.prepare(
-        `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes)
-         VALUES (1, @project_name, @created_at, @updated_at, 'active', @critic_model, '')`
-      ).run({ project_name: project_name || "default", created_at: now, updated_at: now, critic_model: critic_model || "sonnet" });
+        `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes, artifacts_directory)
+         VALUES (1, @project_name, @created_at, @updated_at, 'active', @critic_model, '', @artifacts_directory)`
+      ).run({
+        project_name: project_name || "default",
+        created_at: now,
+        updated_at: now,
+        critic_model: critic_model || "sonnet",
+        artifacts_directory: artifacts_directory || "docs/sdlc",
+      });
     }
 
     // Create iteration
@@ -1712,6 +1718,7 @@ export const WRITE_TOOLS = [
       properties: {
         project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
+        artifacts_directory: { type: "string", description: "Root directory for SDLC file artifacts, relative to project root (default: docs/sdlc). Only used when creating the project (first iteration)." },
       },
     },
   },
