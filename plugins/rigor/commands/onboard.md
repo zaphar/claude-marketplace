@@ -56,21 +56,25 @@ Use /rigor:close to close it, then /rigor:new-iteration to start fresh.
 Use AskUserQuestion to prompt for:
 
 - **Project name**: Default to current directory name if not provided
-- **Artifacts directory**: Default to `.claude/rigor-artifacts`
+- **Artifacts directory**: Default to `docs/sdlc`
 - **Project type**: Whether the project has a visual UI (web/desktop/mobile app) or is non-visual (CLI/library/API-only). This determines whether the UX design phase runs or is skipped.
 - **Critic model**: What effort level should critic agents use for review?
   - **Sonnet (Recommended)** — Best balance of quality and cost
   - **Haiku** — Budget-friendly, good for small projects
   - **Opus** — Maximum rigor for mission-critical work
 
-If user wants artifacts version-controlled, suggest a non-.claude path like `./docs/sdlc-artifacts`.
-
 ### 3. Create Artifacts Directory
 
-Create the configured artifacts directory:
+Create the configured artifacts directory with the canonical subtree structure:
 
 ```bash
-mkdir -p "<artifacts_directory>"
+mkdir -p "<artifacts_directory>/process/planning/phases"
+mkdir -p "<artifacts_directory>/process/qa/screenshots"
+mkdir -p "<artifacts_directory>/process/briefs"
+mkdir -p "<artifacts_directory>/deliverables/architecture/diagrams"
+mkdir -p "<artifacts_directory>/deliverables/ux/design-system"
+mkdir -p "<artifacts_directory>/deliverables/ux/mockups"
+mkdir -p "<artifacts_directory>/deliverables/product-docs"
 ```
 
 ### 4. Initialize Workflow in DB
@@ -152,7 +156,7 @@ Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation M
 
 **Output artifacts** (same structure as normal UX designer output):
 - `ux_specification.yaml` — stored via `changelog_insert` tool
-- `docs/ux/design-system/` subdirectory — HTML document showing the extracted design system (colors, typography, spacing, components found in the code)
+- `<artifacts_directory>/deliverables/ux/design-system/` subdirectory — HTML document showing the extracted design system (colors, typography, spacing, components found in the code)
 - Screen documentation referencing source files rather than creating new mockups
 
 **Schema compliance for onboarding:**
@@ -167,7 +171,7 @@ Invoke `rigor:ux_critic` via the Task tool, then apply these **Onboarding Critic
 
 **SKIP these checks during onboarding:**
 - Requirements traceability ("every user-facing REQ-XXX has UX coverage") — there are no real requirements yet
-- "Every SCREEN-XXX has a corresponding HTML mockup file in `docs/ux/mockups/`" — source file references are acceptable instead of new mockups
+- "Every SCREEN-XXX has a corresponding HTML mockup file in `<artifacts_directory>/deliverables/ux/mockups/`" — source file references are acceptable instead of new mockups
 - Verification against a requirements specification document (none exists yet)
 
 **FOCUS on these checks instead:**
@@ -231,13 +235,13 @@ Invoke `rigor:backend_architect` via the Task tool, then apply these **Documenta
 **Output artifacts** (modular architecture files):
 - `architecture_index.yaml` — stored via `changelog_insert` tool
 - `architecture_components.yaml` — stored via `changelog_insert` tool
-- `docs/architecture/data-model.md` — committed as markdown document
-- `docs/architecture/deployment.md` — committed as markdown document
+- `<artifacts_directory>/deliverables/architecture/data-model.md` — committed as markdown document
+- `<artifacts_directory>/deliverables/architecture/deployment.md` — committed as markdown document
 - `architecture_security.yaml` — stored via `changelog_insert` tool
 - `architecture_observability.yaml` — stored via `changelog_insert` tool
 - `architecture_traceability.yaml` — stored via `changelog_insert` tool
 - `architecture_dependencies.yaml` — stored via `changelog_insert` tool
-- `docs/architecture/api_spec.yaml` — OpenAPI format (if API endpoints exist)
+- `<artifacts_directory>/deliverables/architecture/api_spec.yaml` — OpenAPI format (if API endpoints exist)
 
 **Schema compliance for onboarding:**
 - `metadata.requirements_version`: set to `"onboarding-inferred"`

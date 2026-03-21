@@ -29,6 +29,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Review feedback from previous iterations (if any)
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns and anti-patterns
 
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
+
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
@@ -110,7 +112,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 - **Read the documentation index and files in full** — they're your primary review target.
 - **Read documentation files one category at a time.** Complete the review for user guide, then move to API docs, etc.
-- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `docs/architecture/api_spec.yaml` only when reviewing API docs).
+- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `<artifacts_directory>/deliverables/architecture/api_spec.yaml` only when reviewing API docs).
 - **Read source code selectively.** Spot-check 2-3 code samples per doc category against actual source. Don't read the entire codebase.
 - **Prioritize Accuracy over Clarity** if context is tight — inaccurate docs are worse than unclear docs.
 - **On re-review cycles**, read only the previous review's issues and the updated documents.

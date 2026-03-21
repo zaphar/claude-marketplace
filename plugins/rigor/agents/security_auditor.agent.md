@@ -21,14 +21,16 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 **Inputs:**
 
 - Project source code
-- Architecture security spec — committed as markdown documentation (e.g., `docs/architecture/security.md`)
-- Architecture API spec (`docs/architecture/api_spec.yaml`)
-- Architecture data model (read the committed data model markdown document, e.g., `docs/architecture/data-model.md`)
+- Architecture security spec — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/security.md`)
+- Architecture API spec (`<artifacts_directory>/deliverables/architecture/api_spec.yaml`)
+- Architecture data model (read the committed data model markdown document, e.g., `<artifacts_directory>/deliverables/architecture/data-model.md`)
 - Architecture components (query via `changelog_query` with entity_type: "component")
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
 - Requirements specification (security-category requirements)
 - QA test report (to understand what QA already tested)
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
+
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
 
 **Distinction from QA:**
 

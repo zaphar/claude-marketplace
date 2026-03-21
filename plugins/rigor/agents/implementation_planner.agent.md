@@ -163,7 +163,7 @@ When `plan_version > 1`, this is a **replan** — you are revising an existing p
    ```
 6. **Update phase index files** to reflect only active WIs (completed + new, not superseded).
 7. **Mark superseded WI files:** Prepend a `> ⚠️ SUPERSEDED by plan version <N>` header to each superseded WI file using the Edit tool. Do not delete superseded files — they serve as historical records.
-8. **Append to `<artifacts_directory>/planning/replan-log.md`** with: version number, date, reason for replan, list of superseded WIs, list of newly created WIs. Create the file if it doesn't exist.
+8. **Append to `<artifacts_directory>/process/planning/replan-log.md`** with: version number, date, reason for replan, list of superseded WIs, list of newly created WIs. Create the file if it doesn't exist.
 
 **Scope:** Pass 1 and Pass 2 still apply but are scoped to the new/changed WIs only — do NOT redo the entire plan. Completed phases and WIs are untouched.
 
@@ -184,7 +184,7 @@ When `plan_version > 1` and the orchestrator specifies a **single WI** to decomp
 
 1. **Decompose ONLY the specified WI.** Do NOT modify, restructure, or re-scope any other pending or active WIs. The scope of this replan is exactly one WI.
 2. **Use the senior developer's codebase analysis as primary input.** The senior dev already explored the codebase and identified complexity drivers during their implementation attempt — do not re-explore the same code. Their findings are authoritative.
-3. **All standard replan rules still apply:** correct `plan_version` in `changelog_insert` calls, requirement coverage, new `plan_overview`, append to `<artifacts_directory>/planning/replan-log.md`, superseded file headers via Edit tool, phase index updates.
+3. **All standard replan rules still apply:** correct `plan_version` in `changelog_insert` calls, requirement coverage, new `plan_overview`, append to `<artifacts_directory>/process/planning/replan-log.md`, superseded file headers via Edit tool, phase index updates.
 4. **The only WI superseded is the one being decomposed.** All other active WIs remain as-is — do not mark them superseded or modify their files.
 5. **Create new WIs that together cover all requirements from the decomposed WI.** Query the decomposed WI's linked requirements and ensure every one appears in at least one new WI.
 6. **Size new WIs conservatively.** The original WI was too large, so err on the side of smaller — prefer two XS WIs over one S WI when in doubt.
@@ -204,10 +204,10 @@ Use this analysis directly when designing the new WIs. The `key_areas` map to na
 
 **Produces:**
 
-Before writing file artifacts, determine `artifacts_directory` by reading `.claude/rigor.local.md` YAML frontmatter. Default to `.sdlc` if the file is absent or the field is missing.
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). All planning artifacts go under `<artifacts_directory>/process/planning/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
 
-- Overall implementation index (`<artifacts_directory>/planning/index.md`) with phase summary, dependency graph, critical path
-- Per-phase subdirectories under `<artifacts_directory>/planning/phases/` — e.g., `<artifacts_directory>/planning/phases/phase-1/index.md`, `<artifacts_directory>/planning/phases/phase-2/index.md` — each containing an index file and self-contained WI files
+- Overall implementation index (`<artifacts_directory>/process/planning/index.md`) with phase summary, dependency graph, critical path
+- Per-phase subdirectories under `<artifacts_directory>/process/planning/phases/` — e.g., `<artifacts_directory>/process/planning/phases/phase-1/index.md`, `<artifacts_directory>/process/planning/phases/phase-2/index.md` — each containing an index file and self-contained WI files
 - Does NOT write implementation code or estimate in hours/story points
 
 **Handoff:** Submitted to **Implementation Plan Critic**. On approval, consumed by Senior Developer.

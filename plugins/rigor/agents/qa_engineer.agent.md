@@ -92,9 +92,9 @@ When tests fail:
 
 **Artifact Organization:**
 
-Before writing file artifacts, determine `artifacts_directory` by reading `.claude/rigor.local.md` YAML frontmatter. Default to `.sdlc` if the file is absent or the field is missing.
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). QA artifacts go under `<artifacts_directory>/process/qa/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
 
-- `<artifacts_directory>/qa/screenshots/` — captured screenshots from mockup comparison testing
+- `<artifacts_directory>/process/qa/screenshots/` — captured screenshots from mockup comparison testing
 - Test report entries are stored via `changelog_insert` with entity_type: "test_report"
 
 **Handoff:**

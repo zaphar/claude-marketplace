@@ -21,10 +21,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 **Inputs:**
 
 - Security audit findings from Security Auditor (query via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)`)
-- Architecture security spec — committed as markdown documentation (e.g., `docs/architecture/security.md`)
+- Architecture security spec — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/security.md`)
 - Requirements specification (security-category requirements)
 - QA test report (to verify auditor didn't duplicate QA work)
 - Project source code (spot-check the auditor's work)
+
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
 
 **What You Do:**
 

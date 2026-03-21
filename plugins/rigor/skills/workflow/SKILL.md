@@ -95,20 +95,20 @@ For each phase, follow this pattern:
 
 #### Planning Phase
 
-Before **every** planning revision, the orchestrator must handle phase artifacts appropriately based on plan version:
+Before **every** planning revision, the orchestrator must handle phase artifacts appropriately based on plan version. First, read `artifacts_directory` from the `project_status` response (it is a field on the `project` object). All planning file artifacts live under `<artifacts_directory>/process/planning/`.
 
 **Initial plan (plan_version = 1) — clean slate:**
 
 ```bash
-rm -rf planning/phases/
-mkdir -p planning/phases/
+rm -rf <artifacts_directory>/process/planning/phases/
+mkdir -p <artifacts_directory>/process/planning/phases/
 ```
 
 Same as before — no prior artifacts exist.
 
 **Replan (plan_version > 1) — selective cleanup:**
 
-Do NOT delete `planning/phases/`. Instead, handle files selectively:
+Do NOT delete `<artifacts_directory>/process/planning/phases/`. Instead, handle files selectively:
 
 1. **Completed WI files** — Never touched. The planner receives completed WI names as read-only context and must not overwrite or modify these files.
 2. **Superseded WI files** — Planner prepends a `> ⚠️ SUPERSEDED by plan version N` header to the existing file. File stays on disk for history.
@@ -123,7 +123,7 @@ changelog_query(entity_type="plan_overview", iteration_id=<id>)
 ```
 
 - This cleanup runs **before** invoking `rigor:implementation_planner`.
-- Only `planning/phases/` is affected — other files under `planning/` are not.
+- Only `<artifacts_directory>/process/planning/phases/` is affected — other files under `<artifacts_directory>/process/planning/` are not.
 - Git history preserves old content, so selective handling loses nothing.
 - After cleanup, the rest of the universal producer-critic loop applies normally.
 
@@ -381,6 +381,7 @@ When invoking an agent via the Task tool, provide context:
 
 **For Producer Agents:**
 - Current phase name
+- `artifacts_directory` from `project_status` (the `project.artifacts_directory` field) — required by any agent that reads or writes file artifacts (implementation_planner, backend_architect, ux_designer, qa_engineer, documentation_master, security_auditor, performance_auditor)
 - Prior phase data available via `changelog_query`
 - Any user notes from `project_status`
 - If revision > 0: feedback from previous critic review (via `revision_history`)
@@ -389,6 +390,7 @@ When invoking an agent via the Task tool, provide context:
 - Current revision's data (via `changelog_query` filtered by iteration_id)
 - Current revision number (from `revision_history`)
 - Prior feedback (if revision > 1, from `revision_history`)
+- `artifacts_directory` from `project_status` — required by critic agents that verify file artifacts on disk (`architecture_critic`, `ux_critic`, `documentation_critic`, `security_audit_critic`)
 
 ### 9. Implementation Phase Special Handling
 
@@ -604,7 +606,7 @@ A replan replaces non-completed work items with a new set of better-sized WIs wh
    This auto-sets `superseded_at` and is irreversible.
 
 7. **Verify replan log:**
-   Confirm the planner created an entry in `planning/replan-log.md` during step 4. If missing, the orchestrator writes it directly:
+   Confirm the planner created an entry in `<artifacts_directory>/process/planning/replan-log.md` during step 4. If missing, the orchestrator writes it directly:
    ```
    ## Replan v<N> — <date>
    **Reason:** <why the replan was needed>
@@ -659,7 +661,7 @@ A targeted replan is a constrained variant of the full replan procedure above. I
    ```
    Only the ONE target WI is superseded — NOT all actionable WIs as in full replan.
 
-7. **Verify replan log:** Same as full replan step 7 — confirm or write the `planning/replan-log.md` entry. The log should note this was a targeted replan:
+7. **Verify replan log:** Same as full replan step 7 — confirm or write the `<artifacts_directory>/process/planning/replan-log.md` entry. The log should note this was a targeted replan:
    ```
    ## Targeted Replan v<N> — <date>
    **Trigger:** Auto-replan from senior_developer REPLAN_NEEDED signal

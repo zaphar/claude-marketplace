@@ -23,10 +23,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Requirements (query via `changelog_query`)
 - Architecture overview (read the committed architecture overview markdown document) — for technology choices and overview
 - Architecture components (query via `changelog_query`, entity_type: "component") — for component documentation
-- Architecture API spec (`docs/architecture/api_spec.yaml`) — for API reference generation
+- Architecture API spec (`<artifacts_directory>/deliverables/architecture/api_spec.yaml`) — for API reference generation
 - Architecture data model (read the committed data model markdown document) — for data documentation
-- Architecture deployment — committed as markdown documentation (e.g., `docs/architecture/deployment.md`) — for operator docs
-- Architecture observability — committed as markdown documentation (e.g., `docs/architecture/observability.md`) — for monitoring docs
+- Architecture deployment — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/deployment.md`) — for operator docs
+- Architecture observability — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/observability.md`) — for monitoring docs
 - Implementation entries (query via `changelog_query`)
 - Codebase
 - Glossary from requirements specification
@@ -70,7 +70,7 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 - Distinct from feature reference — how-to guides answer "how do I accomplish X?" while feature docs answer "what does feature Y do?"
 
 *API Reference* (if applicable):
-- Generate from `docs/architecture/api_spec.yaml` (OpenAPI) where available
+- Generate from `<artifacts_directory>/deliverables/architecture/api_spec.yaml` (OpenAPI) where available
 - Supplement generated reference with human context: common usage patterns, error handling examples, authentication flow walkthrough
 - Include request/response examples for all endpoints
 - Document error codes and their meanings
@@ -109,13 +109,15 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 **Artifact Organization:**
 
-Organize documentation files into subdirectories by audience directly under `docs/`:
-- `docs/user-guide/` — getting started, feature docs, configuration, troubleshooting, FAQ
-- `docs/how-to/` — task-oriented guides
-- `docs/api/` — API reference and endpoint documentation
-- `docs/sdk/` — library/SDK reference (if applicable)
-- `docs/operator/` — deployment guide, runbooks, monitoring
-- `docs/developer/` — architecture overview, contributing guide, ADR index
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Documentation artifacts go under `<artifacts_directory>/deliverables/product-docs/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
+
+Organize documentation files into subdirectories by audience:
+- `<artifacts_directory>/deliverables/product-docs/user-guide/` — getting started, feature docs, configuration, troubleshooting, FAQ
+- `<artifacts_directory>/deliverables/product-docs/how-to/` — task-oriented guides
+- `<artifacts_directory>/deliverables/product-docs/api/` — API reference and endpoint documentation
+- `<artifacts_directory>/deliverables/product-docs/sdk/` — library/SDK reference (if applicable)
+- `<artifacts_directory>/deliverables/product-docs/operator/` — deployment guide, runbooks, monitoring
+- `<artifacts_directory>/deliverables/product-docs/developer/` — architecture overview, contributing guide, ADR index
 - Documentation quality is enforced by the documentation_critic reviewing files on disk — no DB tracking needed
 
 **VCS Commit:** After writing documentation files to disk, call the `checkpoint` MCP tool with a message describing what was produced (e.g., `"documentation: artifacts for <project_name>"`). On each revision cycle, call `checkpoint` after revisions are complete. Never run `git commit` or `jj commit` directly — `checkpoint` handles VCS detection, WAL flush, and commit atomically.
@@ -131,7 +133,7 @@ This agent is at **moderate risk** of context exhaustion when documenting large 
 
 - **Use artifact query tools for upstream specs.** Call `changelog_query` to list available requirements and architecture entries. Then use `changelog_query` for specific requirements or components relevant to the current doc category. Avoid loading all entities at once.
 - **Work one documentation category at a time.** Complete user guide, write files, then move to API reference, etc.
-- **Read upstream specs selectively.** Load only the spec relevant to the current doc category (e.g., `docs/architecture/api_spec.yaml` only when writing API docs).
+- **Read upstream specs selectively.** Load only the spec relevant to the current doc category (e.g., `<artifacts_directory>/deliverables/architecture/api_spec.yaml` only when writing API docs).
 - **Read source code on demand.** Read specific files to verify behavior or get examples — don't read the entire codebase.
 - **Write docs incrementally.** After completing each category, write the files and update the manifest before moving on.
 - **On phase updates**, read only the previous phase's docs for the categories being updated, plus the new features from the current phase.

@@ -24,6 +24,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Data model: UX specification entries (validated on insert via `changelog_insert`)
 - Requirements specification (for traceability verification)
 
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). UX artifacts are located under `<artifacts_directory>/deliverables/ux/`.
+
 **What You Do:**
 
 This critic operates in two review phases that correspond to the UX Designer's two-phase workflow:
@@ -63,7 +65,7 @@ When reviewing the complete set of mockups after design direction is approved:
     - [ ] All personas have their goals addressed
     - [ ] User flows documented for all key tasks
     - [ ] Information architecture defined
-    - [ ] Every SCREEN-XXX in the spec has a corresponding HTML mockup file in `docs/ux/mockups/`
+    - [ ] Every SCREEN-XXX in the spec has a corresponding HTML mockup file in `<artifacts_directory>/deliverables/ux/mockups/`
     - [ ] Navigation elements in mockups link to other mockup files via relative hrefs (clickable between screens)
     - [ ] Adding a new screen updated navigation in existing mockups
     - [ ] Visual design system documented

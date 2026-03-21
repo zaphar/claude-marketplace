@@ -48,20 +48,24 @@ Use /rigor:close to close it, then /rigor:new-iteration to start fresh.
 Use AskUserQuestion to prompt for:
 
 - **Project name**: Default to current directory name if not provided
-- **Artifacts directory**: Default to `.claude/rigor-artifacts`
+- **Artifacts directory**: Default to `docs/sdlc`
 - **Critic model**: What effort level should critic agents use for review?
   - **Sonnet (Recommended)** — Best balance of quality and cost
   - **Haiku** — Budget-friendly, good for small projects
   - **Opus** — Maximum rigor for mission-critical work
 
-If user wants artifacts version-controlled, suggest a non-.claude path like `./docs/sdlc-artifacts`.
-
 ### 3. Create Artifacts Directory
 
-Create the configured artifacts directory:
+Create the configured artifacts directory with the canonical subtree structure:
 
 ```bash
-mkdir -p "<artifacts_directory>"
+mkdir -p "<artifacts_directory>/process/planning/phases"
+mkdir -p "<artifacts_directory>/process/qa/screenshots"
+mkdir -p "<artifacts_directory>/process/briefs"
+mkdir -p "<artifacts_directory>/deliverables/architecture/diagrams"
+mkdir -p "<artifacts_directory>/deliverables/ux/design-system"
+mkdir -p "<artifacts_directory>/deliverables/ux/mockups"
+mkdir -p "<artifacts_directory>/deliverables/product-docs"
 ```
 
 ### 4. Initialize Project in DB
