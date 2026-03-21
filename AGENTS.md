@@ -124,6 +124,27 @@ The `work_item_transition` tool accepts `"superseded"` as a target status. This 
 
 The `changelog_insert` tool accepts an optional `plan_version` field for `work_item` and `plan_overview` entity types. It defaults to `1`. During replans, the orchestrator passes a higher plan_version (2, 3, …) to associate new WIs with the correct plan version. Agents should not set `plan_version` unless explicitly instructed to during a replan.
 
+### 11. Artifacts Directory Convention
+
+**`project.artifacts_directory`** (default `docs/sdlc`) is the single source of truth for where SDLC file artifacts are stored. All file-writing agents read it from `project_status`, never hardcode paths.
+
+The canonical subtree structure beneath `artifacts_directory`:
+
+| Subtree | Purpose | Agents |
+|---------|---------|--------|
+| `process/planning/` | Implementation plans, phase dirs, replan log | `implementation_planner` |
+| `process/qa/screenshots/` | QA test screenshots | `qa_engineer` |
+| `process/briefs/` | Investigation briefs (reserved) | — |
+| `deliverables/architecture/` | Architecture docs, diagrams, API spec | `backend_architect` |
+| `deliverables/ux/` | Design system, mockups | `ux_designer` |
+| `deliverables/product-docs/` | Audience-specific documentation | `documentation_master` |
+
+When adding a new file-writing agent, it must:
+1. Read `artifacts_directory` from project context (sourced from `project_status`)
+2. Append its fixed subtree path (never write to arbitrary locations)
+3. Run `mkdir -p` before writing any file
+4. Be listed in SKILL.md §8 context-passing section
+
 ---
 
 ## Adding a New Agent

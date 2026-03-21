@@ -115,6 +115,24 @@ rigor/
     └── test/                        # Test suite
 ```
 
+### Artifact Directory Layout
+
+File-writing agents store SDLC artifacts under a configurable root directory (default: `docs/sdlc`). This root is stored in `project.artifacts_directory` in the database and surfaced to agents via `project_status`. The canonical subtree structure:
+
+```
+<artifacts_directory>/              # default: docs/sdlc
+├── process/
+│   ├── planning/                   # Implementation plans, phase dirs, replan log
+│   ├── qa/screenshots/             # QA test screenshots
+│   └── briefs/                     # Investigation briefs (reserved)
+└── deliverables/
+    ├── architecture/               # Architecture docs, diagrams, API spec
+    ├── ux/                         # Design system, mockups
+    └── product-docs/               # Audience-specific documentation
+```
+
+All agents read `artifacts_directory` from project context — no agent hardcodes paths.
+
 ## Customization
 
 **Modifying agents:** Edit agent files in `agents/` to customize personalities and behaviors.
@@ -122,6 +140,8 @@ rigor/
 **Extending the schema:** See the checklist at the top of `mcp-server/schema.sql`. Schema changes are applied via numbered migration files in `mcp-server/migrations/` — create a new `NNN_<name>.sql` file for each change. Never modify an already-applied migration; the system enforces this with SHA-256 checksum verification. See `mcp-server/migrate.js` for implementation details.
 
 **Adding new phases:** Create producer + critic agent files, add tables to `schema.sql`, add handlers in `write-tools.js` and `read-tools.js`, and update `skills/workflow/SKILL.md`.
+
+**Artifacts directory:** The `artifacts_directory` setting is stored on the `project` table in the rigor database (default: `docs/sdlc`). It is set during `/rigor:start` or `/rigor:onboard` and persisted via the `iteration_create` MCP tool. File-writing agents read it from `project_status` — they never hardcode artifact paths. See the Artifact Directory Layout section above for the canonical subtree structure.
 
 ## Troubleshooting
 
