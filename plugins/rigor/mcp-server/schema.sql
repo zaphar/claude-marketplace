@@ -127,13 +127,17 @@ CREATE TABLE IF NOT EXISTS project (
 -- Context: Created by iteration_create. An iteration encompasses all eight phases and their revision
 -- attempts. Changelog entities reference the iteration via iteration_id (both context tables and
 -- producer-critic artifacts). Closing an iteration (status closed) signals that the work shipped
--- and a new request cycle can begin.
+-- and a new request cycle can begin. brief_path stores the path (relative to project root) of an
+-- investigation brief that seeds this iteration's requirements phase. When present, the
+-- requirements_analyst reads this file instead of conducting an interactive interview. NULL means
+-- the iteration uses the standard interview flow.
 CREATE TABLE IF NOT EXISTS iteration (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT,
-  notes TEXT NOT NULL DEFAULT ''
+  notes TEXT NOT NULL DEFAULT '',
+  brief_path TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_iteration_status ON iteration(status);
