@@ -346,4 +346,58 @@ describe("project_status", () => {
     assert.strictEqual(r.phases.length, 8);
     assert.ok(r.current_iteration);
   });
+
+  it("returns full iteration object when no active iteration exists", () => {
+    handleWriteTool("iteration_close", {
+      project_root: "/tmp/test-project",
+      iteration_id: seed.iteration_id,
+    });
+    const r = handleReadTool("project_status", { project_root: "/tmp/test-project" });
+    assert.ok(r.current_iteration, "should return closed iteration as fallback");
+    assert.strictEqual(r.current_iteration.status, "closed");
+    assert.ok(r.current_iteration.created_at, "should have full row, not just id");
+    assert.strictEqual(r.phases.length, 8);
+  });
+
+  it("returns null current_iteration when no iterations exist at all", () => {
+    db.prepare("DELETE FROM iteration").run();
+    const r = handleReadTool("project_status", { project_root: "/tmp/test-project" });
+    assert.strictEqual(r.current_iteration, null);
+    assert.deepStrictEqual(r.phases, []);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────
+// list_iterations
+// ───────────────────────────────────────────────────────────────
+
+describe("list_iterations", () => {
+  it("returns all iterations with phase counts", () => {
+    const r = handleReadTool("list_iterations", { project_root: "/tmp/test-project" });
+    assert.strictEqual(r.total, 1);
+    assert.strictEqual(r.iterations[0].phases_in_progress, 1);
+    assert.strictEqual(r.iterations[0].phases_pending, 7);
+    assert.strictEqual(r.iterations[0].phases_completed, 0);
+    assert.strictEqual(r.iterations[0].phases_skipped, 0);
+  });
+
+  it("returns empty array when no iterations exist", () => {
+    db.prepare("DELETE FROM iteration").run();
+    const r = handleReadTool("list_iterations", { project_root: "/tmp/test-project" });
+    assert.strictEqual(r.total, 0);
+    assert.deepStrictEqual(r.iterations, []);
+  });
+
+  it("reflects phase transitions in counts", () => {
+    handleWriteTool("phase_transition", {
+      project_root: "/tmp/test-project",
+      iteration_id: seed.iteration_id,
+      phase_name: "requirements",
+      status: "completed",
+    });
+    const r = handleReadTool("list_iterations", { project_root: "/tmp/test-project" });
+    assert.strictEqual(r.iterations[0].phases_completed, 1);
+    assert.strictEqual(r.iterations[0].phases_in_progress, 0);
+    assert.strictEqual(r.iterations[0].phases_pending, 7);
+  });
 });
