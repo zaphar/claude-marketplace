@@ -99,21 +99,19 @@ CREATE TABLE IF NOT EXISTS schema_version (
   checksum TEXT NOT NULL
 );
 
--- Project-level config and lifecycle (singleton — one row per repo DB)
+-- Project-level config (singleton — one row per repo DB)
 -- Domain: core
--- Purpose: Project-level config and lifecycle state. Singleton — exactly one row per database,
+-- Purpose: Project-level configuration. Singleton — exactly one row per database,
 -- enforced by CHECK(id = 1).
 -- Context: Created by iteration_create on first run (alongside the first iteration and its phases).
--- Status transitions to closed via project_update. The canonical "is this project active?" check is
--- status = 'active'. artifacts_directory stores the root path for all SDLC file artifacts,
--- relative to the project root (default: docs/sdlc).
+-- The iteration lifecycle (active/closed) is the sole authority for project activity —
+-- the project table has no status column. artifacts_directory stores the root path for all
+-- SDLC file artifacts, relative to the project root (default: docs/sdlc).
 CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  status TEXT NOT NULL,
-  closed_at TEXT,
   critic_model TEXT NOT NULL DEFAULT 'sonnet',
   notes TEXT NOT NULL DEFAULT '',
   artifacts_directory TEXT NOT NULL DEFAULT 'docs/sdlc'

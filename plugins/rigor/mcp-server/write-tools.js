@@ -30,8 +30,8 @@ function iterationCreate(args) {
 
     if (!existing) {
       db.prepare(
-        `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes, artifacts_directory)
-         VALUES (1, @project_name, @created_at, @updated_at, 'active', @critic_model, '', @artifacts_directory)`
+        `INSERT INTO project (id, project_name, created_at, updated_at, critic_model, notes, artifacts_directory)
+         VALUES (1, @project_name, @created_at, @updated_at, @critic_model, '', @artifacts_directory)`
       ).run({
         project_name: project_name || "default",
         created_at: now,
@@ -1346,14 +1346,12 @@ function commitLink(args) {
 
 function projectUpdate(args) {
   const db = getDb(args.project_root);
-  const { status, closed_at, notes, critic_model } = args;
+  const { notes, critic_model } = args;
   const now = new Date().toISOString();
 
   const sets = ["updated_at = @now"];
   const params = { now };
 
-  if (status !== undefined) { sets.push("status = @status"); params.status = status; }
-  if (closed_at !== undefined) { sets.push("closed_at = @closed_at"); params.closed_at = closed_at; }
   if (notes !== undefined) { sets.push("notes = @notes"); params.notes = notes; }
   if (critic_model !== undefined) { sets.push("critic_model = @critic_model"); params.critic_model = critic_model; }
 
@@ -1363,7 +1361,7 @@ function projectUpdate(args) {
 
   const row = db.prepare("SELECT * FROM project WHERE id = 1").get();
   if (!row) throw new Error("Project not found — run iteration_create first");
-  return { status: row.status, project_name: row.project_name };
+  return { project_name: row.project_name, notes: row.notes, critic_model: row.critic_model };
 }
 
 function blockerResolve(args) {
@@ -1487,8 +1485,8 @@ function bulkImport(args) {
       const existingProject = db.prepare("SELECT id FROM project WHERE id = 1").get();
       if (!existingProject) {
         db.prepare(
-          `INSERT INTO project (id, project_name, created_at, updated_at, status, critic_model, notes)
-           VALUES (1, @project_name, @now, @now, 'active', @critic_model, '')`
+          `INSERT INTO project (id, project_name, created_at, updated_at, critic_model, notes)
+           VALUES (1, @project_name, @now, @now, @critic_model, '')`
         ).run({
           project_name: project_name || "default",
           now,
@@ -2047,12 +2045,10 @@ export const WRITE_TOOLS = [
   },
   {
     name: "project_update",
-    description: "Updates project-level fields (status, notes, critic_model, closed_at).",
+    description: "Updates project-level fields (notes, critic_model).",
     inputSchema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ["active", "closed"] },
-        closed_at: { type: "string" },
         notes: { type: "string" },
         critic_model: { type: "string" },
       },

@@ -1469,7 +1469,7 @@ export const READ_TOOLS = [
   {
     name: "project_status",
     description:
-      "Get the full project status. Returns project metadata, the current active iteration, and all phases with status, timestamps, and revision counts. No parameters needed.",
+      "Get project overview. Returns project metadata (name, critic_model, notes, artifacts_directory), the current active iteration (if any), and all phases with status, timestamps, and revision counts. No parameters needed.",
     inputSchema: {
       type: "object",
       properties: {},

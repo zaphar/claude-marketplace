@@ -42,11 +42,10 @@ ERROR: No project found.
 Use /rigor:start to initialize a new workflow.
 ```
 
-If `status == "closed"`, stop with an error:
+If `current_iteration` is null or the iteration's status is not `"active"`, stop with an error:
 
 ```
-ERROR: This workflow is closed (iteration <iteration_id>).
-A closed workflow cannot be replanned.
+ERROR: No active iteration found.
 Use /rigor:new-iteration to start a new iteration.
 ```
 

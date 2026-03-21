@@ -79,13 +79,11 @@ Use /rigor:start-release to begin the release workflow.
 Use the `project_status` response to get:
 - Current phase
 - Phase status
-- Workflow status
 
-If `status == "closed"`, display error:
+If `current_iteration` is null or the iteration's status is not `"active"`, display error:
 
 ```
-ERROR: This workflow is closed (iteration <iteration_id>).
-A closed workflow cannot be modified.
+ERROR: No active iteration found.
 Use /rigor:new-iteration to start a new iteration.
 ```
 

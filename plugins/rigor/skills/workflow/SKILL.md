@@ -64,7 +64,7 @@ Use these MCP tools for state management:
 - `project_status` — Get current project state, iteration, and all phase statuses
 - `phase_transition` — Update phase status (pending → in_progress → completed)
 - `iteration_create` — Create a new iteration with all phases initialized
-- `project_update` — Update project-level fields (status, notes, critic_model)
+- `project_update` — Update project-level fields (notes, critic_model)
 - `iteration_close` — Close an active iteration (sets status to closed, records closed_at)
 - `revision_create` — Start a new producer-critic revision for a phase
 - `revision_update` — Record critic decision (approved/rejected) and feedback
@@ -732,7 +732,7 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 **Release Workflow Completion:**
 
-When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed, call `project_update` to set project status to "completed", and inform the user that the release workflow is complete.
+When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed and inform the user that the release workflow is complete.
 
 ### 14. Workflow Iterations
 
@@ -745,11 +745,8 @@ active → close → closed → new-iteration → active (iteration N+1)
 ```
 
 **State Fields (DB equivalents):**
-- `status`: `"active"` or `"closed"` — stored in the DB, updated via `project_update` (project-level) and `iteration_close` (iteration-level)
+- `status`: `"active"` or `"closed"` — stored on the iteration record, updated via `iteration_close`
 - `closed_at`: Tracked in the DB iteration record, set by `iteration_close`
-
-**Backward Compatibility:**
-- Missing `status` → treat as `"active"`
 
 **Iteration Cleanup:**
 
@@ -823,7 +820,7 @@ You have access to:
 - **phase_transition** (MCP tool) - Update a phase's status (pending → in_progress → completed → skipped)
 - **work_item_transition** (MCP tool) - Update a work_item row's status (pending → test_writing → implementing → completed, or any non-completed status → superseded). Takes `work_item_id` and `status`. Superseded is a terminal state (auto-sets `superseded_at`); completed WIs cannot be superseded
 - **iteration_create** (MCP tool) - Create a new iteration with all phases initialized to pending
-- **project_update** (MCP tool) - Update project-level fields (status, notes, critic_model)
+- **project_update** (MCP tool) - Update project-level fields (notes, critic_model)
 - **revision_create** (MCP tool) - Start a new producer-critic revision for a phase. Pass `iteration_id` and `phase_name` (e.g. `"requirements"`, `"implementation"`) — do not pass a raw `phase_id` integer. Returns revision_id and revision_count for escalation checks
 - **revision_update** (MCP tool) - Record critic decision (approved/rejected) and feedback for a revision
 - **changelog_insert** (MCP tool) - Record a decision or specification entry linked to an iteration. Inputs: `entity_type`, `iteration_id`, `revision_id` (accepted but ignored for all entity types except `vcs_commit`), `data`

@@ -7,7 +7,6 @@ allowed-tools:
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__iteration_close
-  - mcp__plugin_rigor_rigor-db__project_update
 ---
 
 # Close Rigorous Development Workflow
@@ -16,10 +15,10 @@ Close the current workflow iteration, marking it as completed (or partially comp
 
 ## What This Command Does
 
-1. Validates project exists and is active (not already closed)
+1. Validates project exists and has an active iteration
 2. Shows status summary
 3. Asks user for confirmation + optional closing notes
-4. Updates project in DB: marks as closed
+4. Closes the iteration in DB
 5. Displays confirmation with next-step hint
 
 ## Implementation Steps
@@ -45,10 +44,10 @@ Use /rigor:start to initialize a new workflow.
 
 Inspect the `project_status` response:
 
-- If `status == "closed"`, display error:
+- If `current_iteration` is null or the iteration's status is not `"active"`, display error:
 
 ```
-ERROR: This project is already closed.
+ERROR: No active iteration found.
 Use /rigor:new-iteration to start a new iteration.
 ```
 
@@ -96,21 +95,11 @@ Use /rigor:resume to continue working.
 
 ### 5. Update Workflow in DB
 
-First, call `iteration_close` to close the current iteration:
+Call `iteration_close` to close the current iteration:
 
 ```
 iteration_close({
   iteration_id: <iteration_id>,
-  notes: "<closing_notes_if_provided>"
-})
-```
-
-Then, call `project_update` to mark the project as closed:
-
-```
-project_update({
-  status: "closed",
-  closed_at: "<current_timestamp_ISO8601>",
   notes: "<closing_notes_if_provided>"
 })
 ```
@@ -135,5 +124,4 @@ To check status:
 ## Important Notes
 
 - Closing a workflow does not delete any artifacts or DB records
-- A closed workflow cannot be resumed; use `/rigor:new-iteration` to continue work
 - The release phases (qa, audit) are part of the same iteration in the DB and are not affected by closing the dev workflow

@@ -19,8 +19,8 @@ export function seedIteration(db) {
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO project (id, project_name, created_at, updated_at, status)
-     VALUES (1, 'test-project', ?, ?, 'active')`
+    `INSERT INTO project (id, project_name, created_at, updated_at)
+     VALUES (1, 'test-project', ?, ?)`
   ).run(now, now);
 
   const iter = db.prepare(

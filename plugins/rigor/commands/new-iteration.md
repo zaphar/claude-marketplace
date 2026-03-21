@@ -18,7 +18,7 @@ Start a new workflow iteration after closing the previous one. Resets state for 
 
 ## What This Command Does
 
-1. Validates workflow exists and is closed
+1. Validates workflow exists and has no active iteration
 2. Shows previous iteration summary
 3. Asks user for confirmation
 4. Resets state for the new iteration via `iteration_create`
@@ -47,10 +47,10 @@ Use /rigor:start to initialize a new workflow.
 
 Inspect the `project_status` response:
 
-- If `status != "closed"`, display error:
+- If `current_iteration` is not null and its status is `"active"`, display error:
 
 ```
-ERROR: The current project is still active.
+ERROR: The current iteration is still active.
 Use /rigor:close to close the current iteration before starting a new one.
 ```
 
@@ -85,7 +85,7 @@ Options:
 
 If user cancels:
 ```
-Operation cancelled. Workflow remains closed.
+Operation cancelled. No new iteration created.
 Use /rigor:new-iteration when ready to start a new iteration.
 ```
 

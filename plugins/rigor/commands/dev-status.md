@@ -52,9 +52,9 @@ Present the status in a clear, visual format:
 📋 Rigorous Dev Workflow Status
 
 Project: <project_name>
-Iteration: <iteration_id>
-Status: <active|closed>
-<if closed>Closed at: <closed_at></if>
+Iteration: <iteration_id | "None">
+Status: <current_iteration.status | "No active iteration">
+<if current_iteration and current_iteration.status == "closed">Closed at: <current_iteration.closed_at></if>
 Artifacts: <artifacts_directory>
 Created: <created_at>
 Last Updated: <updated_at>
@@ -100,8 +100,10 @@ Workflow Notes:
 Generated Artifacts:
 <use changelog_query to count entities per type and list artifact entries>
 
-<if status is "closed">
-This workflow is closed. To start a new iteration:
+<if current_iteration is null or current_iteration.status is "closed">
+<if current_iteration is null>No active iteration.</if>
+<if current_iteration.status is "closed">This iteration is closed.</if>
+To start a new iteration:
   /rigor:new-iteration
 </if>
 ```

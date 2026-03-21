@@ -323,7 +323,7 @@ describe("project_update", () => {
       notes: "Updated notes",
       critic_model: "opus",
     });
-    assert.strictEqual(result.status, "active");
+    assert.strictEqual(result.project_name, "test-project");
 
     const row = db.prepare("SELECT notes, critic_model FROM project WHERE id = 1").get();
     assert.strictEqual(row.notes, "Updated notes");
