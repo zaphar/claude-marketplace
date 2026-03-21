@@ -962,4 +962,102 @@ describe("changelog_update", () => {
       /violate a uniqueness constraint/
     );
   });
+
+  // --- intermediate_asset updates ---
+
+  it("updates intermediate_asset title", () => {
+    const asset = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { asset_type: "file_ref", title: "docs/old-path.md", content: "original content" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      entity_id: asset.id,
+      updates: { title: "docs/sdlc/new-path.md" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["title"]);
+
+    const row = db.prepare("SELECT title FROM intermediate_asset WHERE id = ?").get(asset.id);
+    assert.strictEqual(row.title, "docs/sdlc/new-path.md");
+  });
+
+  it("updates intermediate_asset content", () => {
+    const asset = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { asset_type: "file_ref", title: "content-test.md", content: "old content" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      entity_id: asset.id,
+      updates: { content: "new content" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["content"]);
+
+    const row = db.prepare("SELECT content FROM intermediate_asset WHERE id = ?").get(asset.id);
+    assert.strictEqual(row.content, "new content");
+  });
+
+  it("updates both title and content on intermediate_asset", () => {
+    const asset = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { asset_type: "file_ref", title: "docs/old.md", content: "old" },
+    });
+
+    const result = handleWriteTool("changelog_update", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      entity_id: asset.id,
+      updates: { title: "docs/sdlc/new.md", content: "new" },
+    });
+    assert.deepStrictEqual(result.updated_fields, ["title", "content"]);
+
+    const row = db.prepare("SELECT title, content FROM intermediate_asset WHERE id = ?").get(asset.id);
+    assert.strictEqual(row.title, "docs/sdlc/new.md");
+    assert.strictEqual(row.content, "new");
+  });
+
+  it("rejects immutable fields on intermediate_asset", () => {
+    const asset = handleWriteTool("changelog_insert", {
+      project_root: "/tmp/test-project",
+      entity_type: "intermediate_asset",
+      iteration_id: seed.iteration_id,
+      revision_id: seed.revision_id,
+      data: { asset_type: "file_ref", title: "immutable-test.md" },
+    });
+
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "intermediate_asset",
+        entity_id: asset.id,
+        updates: { asset_type: "diagram" },
+      }),
+      /not mutable/
+    );
+  });
+
+  it("throws on nonexistent intermediate_asset id", () => {
+    assert.throws(
+      () => handleWriteTool("changelog_update", {
+        project_root: "/tmp/test-project",
+        entity_type: "intermediate_asset",
+        entity_id: 99999,
+        updates: { title: "ghost.md" },
+      }),
+      /not found/
+    );
+  });
 });
