@@ -1310,17 +1310,19 @@ function projectStatus(args) {
   const project = db.prepare("SELECT * FROM project WHERE id = 1").get();
   if (!project) throw new Error("Project not found — run iteration_create first");
 
-  const currentIteration = db
+  let currentIteration = db
     .prepare(
       "SELECT * FROM iteration WHERE status = 'active' ORDER BY id DESC LIMIT 1"
     )
     .get();
 
-  const targetIterationId = currentIteration
-    ? currentIteration.id
-    : db
-        .prepare("SELECT id FROM iteration ORDER BY id DESC LIMIT 1")
-        .get()?.id;
+  if (!currentIteration) {
+    currentIteration = db
+      .prepare("SELECT * FROM iteration ORDER BY id DESC LIMIT 1")
+      .get();
+  }
+
+  const targetIterationId = currentIteration?.id;
 
   const phases = targetIterationId
     ? db
@@ -1337,6 +1339,30 @@ function projectStatus(args) {
     : [];
 
   return { project, current_iteration: currentIteration ?? null, phases };
+}
+
+// ---------------------------------------------------------------------------
+// Tool 6: list_iterations
+// ---------------------------------------------------------------------------
+
+function listIterations(args) {
+  const db = getDb(args.project_root);
+
+  const iterations = db
+    .prepare(
+      `SELECT i.id, i.status, i.created_at, i.closed_at, i.notes, i.brief_path,
+              COUNT(CASE WHEN p.status = 'completed' THEN 1 END) AS phases_completed,
+              COUNT(CASE WHEN p.status = 'skipped' THEN 1 END) AS phases_skipped,
+              COUNT(CASE WHEN p.status = 'in_progress' THEN 1 END) AS phases_in_progress,
+              COUNT(CASE WHEN p.status = 'pending' THEN 1 END) AS phases_pending
+       FROM iteration i
+       LEFT JOIN phase p ON p.iteration_id = i.id
+       GROUP BY i.id
+       ORDER BY i.id`
+    )
+    .all();
+
+  return { total: iterations.length, iterations };
 }
 
 // ---------------------------------------------------------------------------
@@ -1475,6 +1501,15 @@ export const READ_TOOLS = [
       properties: {},
     },
   },
+  {
+    name: "list_iterations",
+    description:
+      "List all iterations for the project. Returns every iteration with its status, timestamps, notes, and phase summary. Use this to discover iteration IDs before calling iteration_summary.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
 ];
 
 // Inject project_root into every tool schema
@@ -1502,6 +1537,8 @@ export function handleReadTool(name, args) {
       return iterationSummary(args);
     case "project_status":
       return projectStatus(args);
+    case "list_iterations":
+      return listIterations(args);
     default:
       throw new Error(`Unknown read tool: "${name}"`);
   }
