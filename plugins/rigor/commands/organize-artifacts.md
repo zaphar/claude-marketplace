@@ -60,6 +60,44 @@ The target layout is:
 | Architecture docs | `<artifacts_dir>/deliverables/architecture/` |
 | Product docs | `<artifacts_dir>/deliverables/product-docs/<audience>/` |
 
+The canonical subtree structure beneath `artifacts_directory` is:
+
+```
+<artifacts_directory>/
+├── process/
+│   ├── planning/              ← implementation_planner: indexes, phase dirs, replan-log
+│   │   ├── index.md
+│   │   ├── replan-log.md
+│   │   └── phases/
+│   │       ├── phase-1/
+│   │       │   ├── index.md
+│   │       │   └── WI-*.md
+│   │       └── phase-2/
+│   │           └── ...
+│   ├── qa/                    ← qa_engineer: test screenshots
+│   │   └── screenshots/
+│   └── briefs/                ← reserved for Plan 2 (investigation briefs)
+│       └── YYYY/MM/DD/
+│           └── <epoch>-<slug>.md
+└── deliverables/
+    ├── architecture/          ← backend_architect: overview, diagrams, api_spec, data-model
+    │   ├── overview.md
+    │   ├── data-model.md
+    │   ├── api_spec.yaml
+    │   └── diagrams/
+    │       └── *.mmd, *.png
+    ├── ux/                    ← ux_designer: design system, mockups
+    │   ├── design-system/
+    │   └── mockups/
+    └── product-docs/          ← documentation_master: all audience-specific docs
+        ├── user-guide/
+        ├── how-to/
+        ├── api/
+        ├── sdk/
+        ├── operator/
+        └── developer/
+```
+
 ---
 
 ## Step 2 — Scan for Stale Artifacts
