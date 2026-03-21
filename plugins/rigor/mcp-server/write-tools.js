@@ -1160,6 +1160,10 @@ function changelogUpdate(args) {
         "acceptance_criteria",
       ],
     },
+    intermediate_asset: {
+      table: "intermediate_asset",
+      mutableFields: ["title", "content"],
+    },
   };
 
   const config = ALLOWED_TYPES[entity_type];
@@ -1806,7 +1810,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), and approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk), and intermediate_asset records (title, content).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1820,13 +1824,14 @@ export const WRITE_TOOLS = [
             "component",
             "work_item",
             "requirement",
+            "intermediate_asset",
           ],
         },
         entity_id: {
           type: ["integer", "string"],
           description:
             "Row ID of the entity to update. Integer for audit findings, approved_dependency, " +
-            "and work_item; text ID (e.g. REQ-001, DEC-001, COMP-xxx) for requirement, adr, and component.",
+            "work_item, and intermediate_asset; text ID (e.g. REQ-001, DEC-001, COMP-xxx) for requirement, adr, and component.",
         },
         updates: {
           type: "object",
@@ -1922,7 +1927,11 @@ export const WRITE_TOOLS = [
             },
             title: {
               type: "string",
-              description: "adr: corrected decision title",
+              description: "adr or intermediate_asset: title text",
+            },
+            content: {
+              type: "string",
+              description: "intermediate_asset: asset content body",
             },
             decision: {
               type: "string",
