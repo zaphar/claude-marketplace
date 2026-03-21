@@ -78,7 +78,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:new-iteration` — Start a new iteration from a closed workflow
 
 **Investigation:**
-- `/rigor:ask` — Ask questions about the project, explore the codebase, and optionally turn findings into targeted phase updates
+- `/rigor:ask` — Investigate the project and codebase; optionally write an investigation brief and create a new iteration
 
 **Release Workflow:**
 - `/rigor:start-release` — Start QA and audit
@@ -87,7 +87,7 @@ Loads the plugin for the current session without installing.
 
 ## Q&A / Investigation
 
-The `/rigor:ask` command opens an interactive Q&A session where you can investigate the project and codebase. A read-only project analyst agent handles deep exploration while protecting the orchestrator's context. When investigation reveals needed changes, findings can be mapped to targeted phase updates that run the normal producer-critic loop.
+The `/rigor:ask` command opens an interactive Q&A session where you can investigate the project and codebase. A read-only project analyst agent handles deep exploration while protecting the orchestrator's context. When investigation reveals needed changes, say "ship it" to write an investigation brief and create a new iteration seeded with the findings. Run `/rigor:resume` to begin the standard workflow from there.
 
 ## Plan Versioning
 
@@ -124,7 +124,7 @@ File-writing agents store SDLC artifacts under a configurable root directory (de
 ├── process/
 │   ├── planning/                   # Implementation plans, phase dirs, replan log
 │   ├── qa/screenshots/             # QA test screenshots
-│   └── briefs/                     # Investigation briefs (reserved)
+│   └── briefs/                     # Investigation briefs from /rigor:ask
 └── deliverables/
     ├── architecture/               # Architecture docs, diagrams, API spec
     ├── ux/                         # Design system, mockups

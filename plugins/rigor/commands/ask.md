@@ -1,15 +1,18 @@
 ---
-description: Ask a question about the project using full codebase and rigor DB context
+description: Investigate a question about the project, write a brief, and optionally create an iteration
 allowed-tools:
   - Read
   - Bash
   - Task
+  - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
+  - rigor-db/project_status
   - mcp__plugin_rigor_rigor-db__changelog_query
-  - mcp__plugin_rigor_rigor-db__phase_transition
-  - mcp__plugin_rigor_rigor-db__revision_create
-  - mcp__plugin_rigor_rigor-db__revision_update
+  - rigor-db/changelog_query
+  - mcp__plugin_rigor_rigor-db__iteration_create
+  - rigor-db/iteration_create
   - mcp__plugin_rigor_rigor-db__checkpoint
+  - rigor-db/checkpoint
 ---
 
 # Ask a Question About the Project

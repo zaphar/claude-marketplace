@@ -1,37 +1,41 @@
 ---
 name: Project Discussion
-description: Orchestrator-level Q&A session with action mapping to phase producer-critic loops. Loaded by /rigor:ask command only, not auto-triggered.
-version: 0.1.0
+description: Orchestrator-level Q&A session with investigation brief output. Loaded by /rigor:ask command only, not auto-triggered.
+version: 0.2.0
 ---
 
 # Project Q&A Orchestration
 
-You are orchestrating an interactive Q&A session that lets users investigate their project and optionally turn findings into targeted phase updates via producer-critic loops.
+You are orchestrating an interactive Q&A session that lets users investigate their project.
+When the user is ready to act on findings, you write an investigation brief and create
+a new iteration seeded with it.
 
-This skill operates independently of the main workflow skill. It can be invoked at any time regardless of which phase the main workflow is in. It re-opens phases as needed via `phase_transition`.
+This skill operates independently of the main workflow skill.
 
 ## Glossary
 
-- **Trivial question** — Answerable with a single `project_status()` call or a `changelog_query` returning ≤ 3 entities.
-- **Substantial question** — Requires reading source files, cross-referencing multiple entity types, or querying large result sets.
-- **Action** — A concrete proposed change to a specific phase's entities (e.g., "Add input validation requirement", "Update ADR-003").
-- **Action mapping** — The process of classifying proposed actions into their target phases.
-- **Scoped producer-critic loop** — A standard producer-critic loop whose prompt and evaluation are restricted to only the specified actions, not the full phase scope.
+- **Trivial question** — Answerable with a single `project_status()` call or a
+  `changelog_query` returning ≤ 3 entities.
+- **Substantial question** — Requires reading source files, cross-referencing multiple
+  entity types, or querying large result sets.
+- **Investigation brief** — A markdown document summarizing Q&A findings and recommended
+  changes, written to disk and linked to a new iteration.
 
 ## Workflow Overview
 
-The Q&A skill has three phases, executed sequentially:
+The Q&A skill has two phases:
 
 ```
-Phase 1: Conversation Loop  →  Phase 2: Action Mapping  →  Phase 3: Phase Execution
-          (interactive)            (synthesis)                 (producer-critic loops)
+Phase 1: Conversation Loop  →  Phase 2: Brief & Iteration Creation
+          (interactive)              (on "ship it")
 ```
 
-The user may exit after Phase 1 (no actions needed) or after Phase 2 (decides not to act). Phase 3 only runs if the user confirms actions.
+The user may exit after Phase 1 (no actions needed). Phase 2 only runs
+when the user says "ship it".
 
 ## Phase 1: Conversation Loop
 
-The orchestrator drives this directly — it is a conversational loop, NOT a producer-critic loop.
+The orchestrator drives this directly — it is a conversational loop, not an agent-driven workflow.
 
 ### 1.1 Entry
 
@@ -96,7 +100,7 @@ The conversation loop continues until the user signals one of:
 - **Action phrase: "ship it"** — transition to Phase 2.
 
 When the user says "ship it" (or a close variant like "let's ship it"),
-the orchestrator immediately transitions to Phase 2: Action Mapping.
+the orchestrator immediately transitions to Phase 2: Brief & Iteration Creation.
 
 **IMPORTANT:** If the user gives an imperative directive (e.g., "get rid of X",
 "switch to Y", "consolidate on Z") WITHOUT using the action phrase, the
@@ -107,308 +111,194 @@ orchestrator should:
 
 This ensures the user explicitly controls when investigation ends and execution begins.
 
-## Phase 2: Action Mapping
+## Phase 2: Brief & Iteration Creation
 
-When the user signals they want to act on findings, the orchestrator synthesizes the conversation into concrete proposed actions.
+When the user says "ship it", the orchestrator synthesizes the conversation into an
+investigation brief, writes it to disk, and creates a new iteration seeded with it.
 
-### 2.1 Synthesize Actions
+### 2.1 Synthesize the Brief
 
-Review the accumulated Q&A conversation (questions + summarized answers) and extract concrete, actionable changes. Present as a table:
+Review the accumulated Q&A conversation (questions + summarized answers from project_analyst) and write an investigation brief. The brief is a markdown file with this structure:
 
-```
-📋 Proposed Actions
+```markdown
+# Investigation Brief
 
-| # | Phase          | Entity Types              | Action                                |
-|---|----------------|---------------------------|---------------------------------------|
-| 1 | requirements   | requirement               | Add input validation requirement      |
-| 2 | architecture   | adr                       | Update ADR-003: switch to event src   |
-| 3 | planning       | work_item                 | Replan to include new WIs             |
+## Context
+What area of the codebase was investigated and why the user initiated this investigation.
+Include project name and iteration context.
 
-Phases affected: requirements, architecture, planning
-```
+## Findings
+What was discovered during the Q&A session. Include:
+- Specific file references (file:line) from project_analyst's reports
+- Behavioral observations about the current codebase
+- Problems, inconsistencies, or gaps identified
+- Relevant entity references from the rigor DB (requirement IDs, ADR IDs, etc.) if applicable
 
-### 2.2 Action → Phase Classification Reference
+## Recommended Changes
+Plain-language description of what should change and why. This is NOT a requirements
+specification — it is an engineer's assessment of what needs to happen.
 
-Use this table to classify each proposed action into its target phase:
+Each recommendation should include:
+- What to change
+- Why it needs to change
+- What area of the codebase is affected
 
-| Entity types involved | Phase |
-|---|---|
-| persona, requirement, project_context, data_exchange, nonfunctional_requirement | `requirements` |
-| user_flow, screen, info_architecture, persona_addressed, ux_asset | `ux_design` |
-| adr, adr_decision, component, approved_dependency, requirement_trace | `architecture` |
-| work_item, plan_overview, plan_external_dependency | `planning` |
-| Code changes, test files | `implementation` |
-| Documentation files | `documentation` |
-
-If an action spans multiple phases (e.g., "add a requirement and the ADR to support it"), split it into separate per-phase actions.
-
-### 2.3 User Confirmation
-
-Ask the user which phases to skip:
-
-```
-These actions span phases: X, Y, Z. They'll execute in canonical workflow order.
-Want to skip any of these phases?
+## Scope Boundaries
+What is explicitly out of scope for this iteration. This prevents scope creep when
+the requirements_analyst and downstream agents formalize these findings.
 ```
 
-Present via `AskUserQuestion` with choices listing each affected phase plus "None — run all". For example:
+**Important constraints on brief content:**
+- The brief does NOT contain requirements, ADRs, work items, entity types, phase assignments, or any rigor-specific structure
+- It is a senior engineer's investigation notes, not a structured specification
+- Code references and evidence from project_analyst reports should be included — this prevents the requirements_analyst from needing to re-investigate the codebase
+- The brief should be comprehensive enough that the requirements_analyst can write requirements from it without additional investigation
+
+### 2.2 Determine File Path
+
+Read `artifacts_directory` from the project context (obtained via `project_status` at the start of the session).
+
+Generate the brief file path:
 
 ```
-AskUserQuestion(
-  question: "Which phases should be skipped?",
-  choices: ["requirements", "architecture", "planning", "None — run all"]
-)
+<artifacts_directory>/process/briefs/YYYY/MM/DD/<epoch>-<slug>.md
 ```
 
-If the user skips all phases, exit the skill. Otherwise, proceed to Phase 3 with the non-skipped phases.
+Where:
+- `YYYY/MM/DD` is the current date in UTC
+- `<epoch>` is the current Unix timestamp (integer seconds)
+- `<slug>` is a short kebab-case description derived from the conversation topic (e.g., `auth-refactor`, `api-validation`, `performance-bottleneck`). Keep it to 2-4 words.
 
-## Phase 3: Phase Execution
+Create the directory structure if it doesn't exist:
 
-For each non-skipped phase, in **canonical workflow order**:
+```bash
+mkdir -p "<artifacts_directory>/process/briefs/YYYY/MM/DD/"
+```
+
+Write the brief file to disk.
+
+### 2.3 Show Summary and Confirm
+
+Present the brief summary to the user:
 
 ```
-requirements → ux_design → architecture → planning → implementation → documentation
+📋 Investigation Brief
+
+File: <brief_path>
+
+Summary:
+- <1-2 sentence summary of findings>
+- <number> recommended changes identified
+- Scope: <brief scope description>
+
+This will create a new iteration seeded with this brief.
+The requirements analyst will formalize these findings into requirements,
+then the standard workflow will proceed through architecture, planning,
+and implementation.
+
+Ready to create the iteration? You can also edit the brief file first
+if you want to adjust anything.
 ```
 
-Q&A actions target development phases only. For QA/audit updates, use the release workflow (`/rigor:start-release`).
+Wait for the user to respond. If they want to edit the brief, wait for them to signal they're done. If they want to cancel, exit the skill.
 
-Execute a scoped producer-critic loop. Only phases that have actions mapped to them are executed; others are skipped entirely.
+### 2.4 Create Iteration
 
-### 3.1 Phase-to-Agent Reference
-
-| Phase | Producer Agent (`agent_type`) | Critic Agent (`agent_type`) |
-|-------|----------------|--------------|
-| Requirements | `rigor:requirements_analyst` | `rigor:requirements_critic` |
-| UX Design | `rigor:ux_designer` | `rigor:ux_critic` |
-| Architecture | `rigor:backend_architect` | `rigor:architecture_critic` |
-| Planning | `rigor:implementation_planner` | `rigor:implementation_plan_critic` |
-| Implementation (tests) | `rigor:test_writer` | `rigor:test_writer_critic` |
-| Implementation (code) | `rigor:senior_developer` | `rigor:senior_developer_critic` |
-| Documentation | `rigor:documentation_master` | `rigor:documentation_critic` |
-
-### 3.2 Scoped Producer-Critic Loop
-
-For each phase with mapped actions, execute the following steps:
-
-#### Step 1 — Re-open the phase
+Once confirmed, check if there is a currently active iteration:
 
 ```
-phase_transition(
+project_status()
+```
+
+If there is an active iteration that is NOT closed, the orchestrator must handle this. Options:
+- If the current iteration has no meaningful work (e.g., all phases still pending, no revisions), offer to close it and create a new one
+- If the current iteration has work in progress, tell the user they need to close it first via `/rigor:close` and then re-run `/rigor:ask`
+
+If there is no active iteration (or the existing one is closed), create the new iteration:
+
+```
+iteration_create(
   project_root: "<path>",
-  iteration_id: <current_iteration_id>,
-  phase_name: "<phase_name>",
-  status: "in_progress"
+  brief_path: "<relative path to brief file from project root>",
+  project_name: "<existing project name>",
+  critic_model: "<existing critic model>"
 )
 ```
 
-`phase_transition` allows re-entering completed phases — this is how Q&A actions modify already-completed work.
+**Note:** For existing projects (iteration 2+), `project_name` and `critic_model` are already set on the project row. The `iteration_create` handler uses the existing values — passing them here is for the case where no project exists yet.
 
-#### Step 2 — Create a revision
+### 2.5 Checkpoint and Exit
 
 ```
-revision_create(
+checkpoint(
   project_root: "<path>",
-  iteration_id: <current_iteration_id>,
-  phase_name: "<phase_name>",
-  agent_name: "<producer_agent_name>"
+  message: "Q&A investigation brief: <slug>"
 )
 ```
 
-#### Step 3 — Invoke the producer via Task tool
+Present the completion message:
 
 ```
-Task(
-  agent_type: "<producer_agent_type>",
-  name: "<phase>-qa-producer",
-  description: "Q&A update: <phase>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.
+✅ Iteration <N> created, seeded with investigation brief.
 
-Context: This is a targeted update from a Q&A session.
+Brief: <brief_path>
 
-Actions for this phase:
-<list of specific action descriptions mapped to this phase>
+Run /rigor:resume to begin the workflow. The requirements analyst will
+read the brief and formalize findings into requirements. From there,
+the standard workflow proceeds through all phases.
 
-Relevant findings from Q&A discussion:
-<summarized findings — NOT the full conversation>
-
-Use changelog_query to load current state before making changes. Only modify what the actions specify — do not expand scope."
-)
+You can use /rigor:skip-to to jump to a specific phase if some phases
+aren't needed.
 ```
 
-#### Step 4 — Invoke the critic via Task tool
-
-```
-Task(
-  agent_type: "<critic_agent_type>",
-  name: "<phase>-qa-critic",
-  description: "Q&A review: <phase>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.
-
-Evaluate ONLY whether the changes correctly address the specified actions. Do not evaluate completeness against the full phase scope.
-
-Actions that were requested:
-<list of specific action descriptions for this phase>
-
-Review the current revision's data via changelog_query filtered by iteration_id.",
-  model: "<critic_model from project_status>"
-)
-```
-
-> **CRITICAL:** The scoped evaluation instruction ("Evaluate ONLY whether the changes correctly address the specified actions") is essential. Without it, a critic reviewing a single new requirement would reject because "the requirements spec is incomplete." Q&A actions are surgical — the critic must evaluate them surgically.
-
-#### Step 5 — Record the verdict
-
-```
-revision_update(
-  project_root: "<path>",
-  revision_id: <current_revision_id>,
-  status: "approved" | "rejected",
-  feedback: "<critic feedback summary>"
-)
-```
-
-#### Step 6 — Branch on verdict
-
-- **Approved:**
-  1. Call `phase_transition` to mark the phase completed:
-     ```
-     phase_transition(
-       project_root: "<path>",
-       iteration_id: <current_iteration_id>,
-       phase_name: "<phase_name>",
-       status: "completed"
-     )
-     ```
-  2. Call `checkpoint` to persist state:
-     ```
-     checkpoint(
-       project_root: "<path>",
-       message: "Q&A action: <concise description of what changed>"
-     )
-     ```
-  3. Proceed to the next phase in the execution list
-
-- **Rejected + revision_count < 3:**
-  1. Loop back to Step 2 with the critic's feedback included in the next producer prompt
-  2. The next `revision_create` increments the revision count
-
-- **Rejected + revision_count >= 3:**
-  1. Escalate to the user:
-     ```
-     ⚠️  Escalation Required
-
-     The <phase> phase has gone through 3 producer-critic revisions without approval
-     for the Q&A action: <action description>.
-
-     Issues identified by critic:
-     <list of blocking issues from latest feedback>
-
-     How would you like to proceed?
-     1. Allow one more iteration with your guidance
-     2. Override critic and proceed (not recommended)
-     3. Skip this phase's actions and continue with remaining phases
-     4. Abandon remaining phase executions
-     ```
-  2. Use `AskUserQuestion` to get the user's decision
-  3. Act on the decision:
-     - Option 1: accept user guidance, loop back to Step 2
-     - Option 2: mark phase completed, proceed to next phase
-     - Option 3: skip this phase, proceed to next phase
-     - Option 4: exit the skill
-
-### 3.3 Cascading Context Between Phases
-
-When phases chain, later producers receive context about what earlier phases produced. This enables coherence across Q&A actions that span multiple phases.
-
-When invoking a producer for phase N+1, include in the prompt:
-```
-Earlier Q&A actions in this session:
-- <phase N>: <what was added/changed, e.g., "Added requirement REQ-042 for input validation">
-
-Load details via changelog_query as needed — only entity IDs and summaries are provided here.
-```
-
-Agents load the full details via `changelog_query` themselves — the orchestrator passes only IDs and one-line summaries.
-
-### 3.4 Implementation Phase Special Handling
-
-For implementation actions, follow the full implementation sub-phase sequence defined in the main workflow skill (§9 in `skills/workflow/SKILL.md`):
-
-```
-test_writer → test_writer_critic → senior_developer → senior_developer_critic
-```
-
-Do NOT simplify or skip the TDD two-step loop for Q&A actions. The same quality standards apply. The only difference is the scoped prompt — the producer and critic are told to focus on the specific actions from the Q&A session.
+Exit the skill.
 
 ## Exit Conditions
 
 The skill exits when any of the following occurs:
 
 1. **No actions needed** — User says "done" / "thanks" during the conversation loop (Phase 1). No DB state changes.
-2. **All phase executions complete** — Every non-skipped phase's producer-critic loop has been approved. All changes are checkpointed.
-3. **User abandons mid-execution** — User chooses "Abandon remaining phase executions" during an escalation. Already-completed phases retain their changes (they were checkpointed). Remaining phases are left unchanged.
-4. **User skips all phases** — User skips every proposed phase during action confirmation (Phase 2). No producer-critic loops run.
+2. **Brief created and iteration started** — Phase 2 completes successfully. Brief is on disk, iteration is created, state is checkpointed.
+3. **User cancels during confirmation** — User declines to create the iteration after seeing the brief summary. Brief file remains on disk but no iteration is created.
 
 ## Error Handling
 
-**If `project_analyst` fails or returns an error:**
-- Report the failure to the user conversationally
-- Offer to retry with a rephrased question or try a different investigation angle
-- Do NOT let the failure cascade — the conversation loop continues
-
-**If a phase execution fails (DB error, tool error):**
-- Report the specific error to the user
-- Offer to skip the failed phase and continue with remaining phases
-- Already-completed phases retain their checkpointed changes
-
-**If required prior phase data is missing:**
-- If the Q&A action references entities that don't exist yet (e.g., "update ADR-003" but ADR-003 was never created), report to the user and skip that action
-- Do NOT create prerequisite entities implicitly — that would expand scope beyond what the user requested
-
-**If DB is unavailable:**
-- Display a clear error message
-- Suggest using `/rigor:dev-status` to check state
-- Do not proceed until DB is accessible
+- **project_analyst failure** — Report the failure to the user conversationally. Offer to retry with a rephrased question. Do NOT let the failure cascade.
+- **Brief write failure** — Report the error, suggest the user check disk permissions.
+- **iteration_create failure** — Report the error, suggest checking if an active iteration needs to be closed first.
+- **Active iteration exists** — Explain the situation, suggest `/rigor:close` first.
+- **DB unavailable** — Display a clear error message. Suggest using `/rigor:dev-status` to check state.
 
 ## Relationship to Main Workflow
 
 - This skill operates **independently** of the main workflow skill (`skills/workflow/SKILL.md`).
 - It can be invoked at any time — before, during, or after the main workflow.
-- It re-opens phases as needed via `phase_transition(status: "in_progress")`. This is safe because `phase_transition` allows re-entering completed phases.
-- Changes made through Q&A actions are checkpointed and become part of the project's permanent state. The main workflow will see these changes when it resumes.
-- Q&A actions do NOT affect the main workflow's current phase pointer. If the main workflow was mid-architecture and the user runs Q&A to update a requirement, the main workflow remains in architecture when it resumes.
+- It does NOT modify phase state, create revisions, or run agent workflows — those are the workflow skill's responsibility.
+- The only DB mutation is `iteration_create` (which creates the iteration + phases) and `checkpoint`.
 
 ## Available Tools
 
-> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory (the directory where Claude Code is running).
+> **Always include `project_root` in every tool call**, set to the absolute path of the current project's root directory.
 
 You have access to:
 - **Read** — Read agent files and VCS-tracked source files (but prefer delegating file reads to `project_analyst`)
-- **Bash** — Run commands as needed
-- **Skill** — Load skills (not used within this skill)
-- **Task** — Invoke agents (primary mechanism for dispatching `project_analyst` and phase producers/critics)
-- **AskUserQuestion** — Get user decisions for phase skipping, escalation
-- **project_status** (MCP tool) — Get current project state, iteration, and all phase statuses
-- **changelog_query** (MCP tool) — Small, targeted lookups only (delegate large queries to `project_analyst`)
-- **phase_transition** (MCP tool) — Re-open and complete phases for Q&A actions
-- **revision_create** (MCP tool) — Start a new producer-critic revision for a phase
-- **revision_update** (MCP tool) — Record critic decision (approved/rejected) and feedback
-- **checkpoint** (MCP tool) — Persist state: flush SQLite WAL, commit all changes to VCS (jj or git)
+- **Bash** — Run commands (mkdir, write files)
+- **Task** — Invoke agents (project_analyst for investigation)
+- **AskUserQuestion** — Get user confirmation for iteration creation
+- **project_status** (MCP tool) — Get current project state
+- **changelog_query** (MCP tool) — Small, targeted lookups only
+- **iteration_create** (MCP tool) — Create iteration with brief_path (Phase 2 only)
+- **checkpoint** (MCP tool) — Persist state after iteration creation (Phase 2 only)
 
 ## Critical Rules
 
-1. **Context protection above all** — Never read source files directly. Never run open-ended DB queries. Always delegate to `project_analyst`.
-2. **Scoped evaluation** — Critics evaluate only the specified actions, not the full phase scope.
-3. **Canonical phase order** — Phase executions always follow: requirements → ux_design → architecture → planning → implementation → documentation.
-4. **Max 3 revisions** — After 3 producer-critic loops in any phase, escalate to user.
-5. **No scope expansion** — Producers modify only what the actions specify. If the producer discovers additional issues, it reports them but does not fix them.
-6. **Surgical changes** — This skill makes targeted updates, not comprehensive rewrites. Every prompt reinforces this constraint.
-7. **No ad-hoc planning** — NEVER create plan.md files, session SQL todos, or
-   local task lists for changes that should flow through the rigor workflow.
-   If the user requests changes, guide them to say "ship it" to trigger
-   Phase 2. All project changes go through Action Mapping → Phase Execution.
-   The rigor DB is the sole system of record for project planning and tracking.
+1. **Context protection above all** — Never read source files directly. Always delegate to project_analyst.
+2. **"Ship it" is the explicit gate** — Imperative statements do not trigger Phase 2.
+3. **No scope expansion** — The brief documents what the user discussed, nothing more.
+4. **No ad-hoc planning** — NEVER create plan.md files, session SQL todos, or local task lists for changes that should flow through the rigor workflow. If the user requests changes, guide them to say "ship it" to trigger Phase 2. All project changes go through the brief → iteration → workflow pipeline. The rigor DB is the sole system of record for project planning and tracking.
+5. **Brief is prose, not structure** — No requirements, ADRs, work items, or rigor entity types in the brief.
+6. **One iteration per "ship it"** — Each brief creates exactly one new iteration.
 
 ---
 
-**Remember:** This is a focused Q&A tool. Keep the conversation lightweight, delegate heavy investigation, and make only the changes the user explicitly approves.
+**Remember:** This is a focused Q&A tool. Keep the conversation lightweight, delegate heavy investigation, and hand off to the workflow skill for execution.

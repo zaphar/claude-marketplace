@@ -79,8 +79,33 @@ For each phase, follow this pattern:
 
 #### Requirements Phase
 
+**Brief detection:** Before invoking the requirements analyst, check if the current iteration has a `brief_path` (available from the `current_iteration` object in the `project_status` response). If `brief_path` is present, this iteration was created from a Q&A investigation and the analyst should read the brief instead of interviewing the user.
+
 1. Invoke `rigor:requirements_analyst` via the Task tool
-2. Analyst conducts conversational interview with user
+   - **If `brief_path` is present:** Include it in the producer prompt:
+     ```
+     Task(
+       agent_type: "rigor:requirements_analyst",
+       name: "requirements-from-brief",
+       description: "Requirements from investigation brief",
+       prompt: "Execute tools one at a time using the structured tool interface.
+     Never write out tool calls as XML text — use the structured tool interface directly.
+
+     This iteration was created from a Q&A investigation. Read the investigation
+     brief at: <brief_path>
+
+     brief_path: <brief_path>
+     artifacts_directory: <artifacts_directory>
+     iteration_id: <iteration_id>
+     project_name: <project_name>
+
+     Write requirements based on the brief's findings and recommended changes.
+     Do NOT conduct an interactive interview — the brief replaces the interview.
+     Respect the scope boundaries defined in the brief."
+     )
+     ```
+   - **If `brief_path` is NOT present:** Invoke the requirements_analyst with the standard interview prompt (existing behavior, no change).
+2. Analyst conducts conversational interview with user (or reads brief if brief_path was provided)
 3. Call `revision_create` with `iteration_id: <current_iteration_id>`, `phase_name: "requirements"`, and the analyst agent name
 4. Analyst records output using `changelog_insert` (requirements, user stories, acceptance criteria, etc.)
 5. Invoke `rigor:requirements_critic` via the Task tool to review via `changelog_query`
