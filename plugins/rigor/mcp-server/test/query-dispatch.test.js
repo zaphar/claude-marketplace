@@ -1117,6 +1117,8 @@ describe("queryImplementationManifest enrichment", () => {
   });
 
   it("returns empty arrays for iteration with no implementation data", () => {
+    // Close the seed iteration so the active-iteration guard allows creation.
+    db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
     // Create a fresh iteration with no implementation data
     const newIter = handleWriteTool("iteration_create", {
       project_root: "/tmp/test-project",

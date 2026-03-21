@@ -19,7 +19,7 @@ const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb(args.project_root);
-  const { project_name, critic_model, artifacts_directory } = args;
+  const { project_name, critic_model, artifacts_directory, brief_path } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
@@ -41,13 +41,19 @@ function iterationCreate(args) {
       });
     }
 
+    // Guard: no two active iterations at once
+    const activeIteration = db.prepare("SELECT id FROM iteration WHERE status = 'active'").get();
+    if (activeIteration) {
+      throw new Error("An active iteration already exists (ID: " + activeIteration.id + "). Close it before creating a new one.");
+    }
+
     // Create iteration
     const iterResult = db
       .prepare(
-        `INSERT INTO iteration (status, created_at, notes)
-         VALUES ('active', @created_at, '')`
+        `INSERT INTO iteration (status, created_at, notes, brief_path)
+         VALUES ('active', @created_at, '', @brief_path)`
       )
-      .run({ created_at: now });
+      .run({ created_at: now, brief_path: brief_path || null });
 
     const iteration_id = iterResult.lastInsertRowid;
 
@@ -65,7 +71,7 @@ function iterationCreate(args) {
 
     setInProgress.run({ now, iteration_id });
 
-    return { iteration_id };
+    return { iteration_id, brief_path: brief_path || null };
   });
 
   return run();
@@ -1716,13 +1722,14 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_create",
     description:
-      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 8 phase records and sets requirements to in_progress. Returns the new iteration_id (auto-incremented).",
+      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 8 phase records and sets requirements to in_progress. Fails if an active iteration already exists — call iteration_close first. Returns the new iteration_id (auto-incremented).",
     inputSchema: {
       type: "object",
       properties: {
         project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
         artifacts_directory: { type: "string", description: "Root directory for SDLC file artifacts, relative to project root (default: docs/sdlc). Only used when creating the project (first iteration)." },
+        brief_path: { type: "string", description: "Path to investigation brief file (relative to project root). When set, requirements_analyst reads this file instead of conducting an interactive interview." },
       },
     },
   },

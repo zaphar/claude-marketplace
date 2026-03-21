@@ -18,6 +18,8 @@ beforeEach(() => {
 describe("iteration_create", () => {
   it("creates project singleton + iteration + 8 phases", () => {
     // freshDb + seedIteration already created iteration 1 via raw SQL.
+    // Close the seed iteration so the active-iteration guard allows creation.
+    db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
     // Use handleWriteTool to create a SECOND iteration via the tool interface.
     const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project", project_name: "tool-test" });
     assert.ok(result.iteration_id);
@@ -28,6 +30,7 @@ describe("iteration_create", () => {
   });
 
   it("sets requirements phase to in_progress", () => {
+    db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
     const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project" });
     const summary = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: result.iteration_id });
     const reqPhase = summary.phases.find((p) => p.name === "requirements");
@@ -35,6 +38,7 @@ describe("iteration_create", () => {
   });
 
   it("sets all other phases to pending", () => {
+    db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
     const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project" });
     const summary = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: result.iteration_id });
     const nonReq = summary.phases.filter((p) => p.name !== "requirements");
@@ -42,6 +46,24 @@ describe("iteration_create", () => {
     for (const p of nonReq) {
       assert.strictEqual(p.status, "pending", `${p.name} should be pending`);
     }
+  });
+
+  it("rejects creation when an active iteration exists", () => {
+    assert.throws(
+      () => handleWriteTool("iteration_create", { project_root: "/tmp/test-project" }),
+      { message: /active iteration already exists/ }
+    );
+  });
+
+  it("stores brief_path when provided", () => {
+    db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
+    const result = handleWriteTool("iteration_create", {
+      project_root: "/tmp/test-project",
+      brief_path: "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md",
+    });
+    assert.strictEqual(result.brief_path, "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md");
+    const row = db.prepare("SELECT brief_path FROM iteration WHERE id = ?").get(result.iteration_id);
+    assert.strictEqual(row.brief_path, "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md");
   });
 });
 
