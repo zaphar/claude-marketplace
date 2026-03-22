@@ -1221,7 +1221,7 @@ function changelogUpdate(args) {
     },
     code_review_finding: {
       table: "code_review_finding",
-      statuses: ["open", "resolved", "accepted", "false-positive"],
+      statuses: ["open", "resolved", "accepted", "false-positive", "deferred"],
     },
   };
 

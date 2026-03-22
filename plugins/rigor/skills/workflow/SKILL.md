@@ -741,13 +741,12 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 Ask the user: "Run holistic code review?" If declined, skip with `phase_transition(status: "skipped")`.
 
-If accepted, dispatch the code review skill (see `skills/code-review/SKILL.md`) which orchestrates:
+If accepted, dispatch the code review skill (see `skills/code-review/SKILL.md`) with `iteration_id` and `revision_id`. The code review skill creates its own `code_review_run` record internally — do NOT pre-create one. The skill orchestrates:
 1. Codebase discovery and partitioning
-2. Per-partition review by `codebase_design_critic` and `codebase_idiom_critic_go`
-3. Cross-cutting review by `codebase_cross_cutting_critic`
-4. Finding synthesis and user review
-
-> **NOTE:** If `skills/code-review/SKILL.md` does not yet exist, skip code review with `phase_transition(status: "skipped")` and inform the user that the code review skill is not yet implemented.
+2. `code_review_run` creation (after discovery and partitioning produce artifact paths)
+3. Per-partition review by `codebase_design_critic` and `codebase_idiom_critic_go`
+4. Cross-cutting review by `codebase_cross_cutting_critic`
+5. Finding synthesis and user review
 
 Findings are inserted as `code_review_finding` entities. Accepted findings can seed a new iteration (see finding review flow in the code review skill).
 
