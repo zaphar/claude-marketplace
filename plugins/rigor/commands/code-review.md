@@ -4,7 +4,6 @@ allowed-tools:
   - Read
   - Bash
   - Skill
-  - Task
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__iteration_create
@@ -54,7 +53,7 @@ Check the `project_status` response for an open iteration (status `"open"`).
 No open iteration found. Creating a new iteration for this code review...
 ```
 
-Then call `iteration_create` to open a new iteration. Use a description like `"Holistic code review"`.
+Then call `iteration_create` to open a new iteration (only `project_root` is required).
 
 After creating the iteration, proceed with the new `iteration_id`.
 
