@@ -103,7 +103,8 @@ rigor/
 ├── commands/                        # Slash command definitions
 ├── skills/
 │   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)
-│   └── ask/SKILL.md                 # Q&A orchestration skill
+│   ├── ask/SKILL.md                 # Q&A orchestration skill
+│   └── code-review/SKILL.md         # Code review orchestration skill
 └── mcp-server/                      # MCP server with SQLite changelog backend
     ├── schema.sql                   # Database schema reference (source of truth for data model)
     ├── migrate.js                   # Migration engine (applies versioned SQL migrations)

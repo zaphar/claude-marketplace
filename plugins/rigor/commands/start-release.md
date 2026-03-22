@@ -13,7 +13,7 @@ allowed-tools:
 
 # Start Release Workflow
 
-Start the release workflow to run pre-release verification: QA testing and security/performance auditing.
+Start the release workflow to run pre-release verification: QA testing, security/performance auditing, and code review.
 
 ## What This Command Does
 
@@ -59,7 +59,7 @@ Use /rigor:resume to continue the development workflow.
 
 ### 3. Check for Existing Release Workflow
 
-Check the `project_status` response for release phases (qa, audit). If any release phase has status "in_progress", a release workflow is already active:
+Check the `project_status` response for release phases (qa, audit, code_review). If any release phase has status "in_progress", a release workflow is already active:
 
 ```
 ERROR: A release workflow already exists.
@@ -74,7 +74,7 @@ Call `phase_transition` to start the QA phase:
 phase_transition({ phase: "qa", status: "in_progress" })
 ```
 
-The release phases (qa, audit) already exist in the DB — they were created by `iteration_create`. No separate state file is needed.
+The release phases (qa, audit, code_review) already exist in the DB — they were created by `iteration_create`. No separate state file is needed.
 
 ### 5. Load Rigorous Dev Skill
 

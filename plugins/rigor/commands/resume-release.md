@@ -34,7 +34,7 @@ Call `project_status` to check whether release phases exist and have any activit
 project_status()
 ```
 
-Check if release phases (qa, audit) exist. If none have been started (all pending), show error suggesting /rigor:start-release:
+Check if release phases (qa, audit, code_review) exist. If none have been started (all pending), show error suggesting /rigor:start-release:
 
 ```
 ERROR: No release workflow found in this project.
@@ -74,6 +74,7 @@ Artifacts: <artifacts_directory>
 Phase Status:
 <status_indicator> QA: <status>
 <status_indicator> Audit: <status>
+<status_indicator> Code Review: <status> (optional)
 
 Resuming <current_phase> phase...
 ```
@@ -90,6 +91,7 @@ Based on the current phase and its status, invoke the appropriate agent via the 
 **Phase-to-Agent Mapping:**
 - `qa` → `rigor:qa_engineer`
 - `audit` → `rigor:security_auditor` + `rigor:performance_auditor` (parallel)
+- `code_review` → Load `skills/code-review/SKILL.md` and follow its orchestration instructions
 
 **If phase status is "in_progress":**
 - Invoke the producer agent for that phase via the Task tool (continue work)

@@ -75,6 +75,8 @@ Individual agents primarily access the data-plane tools (`changelog_query`, `cha
 
 `security_auditor.agent.md` and `performance_auditor.agent.md` do **not** have `Edit` or `Write` in their tools. This is intentional: audit findings go to the database only, not to files. Do not add file-editing tools to these agents.
 
+Similarly, `codebase_design_critic.agent.md`, `codebase_idiom_critic_go.agent.md`, and `codebase_cross_cutting_critic.agent.md` are intentionally read-only: code review findings go to the database only (via `changelog_insert`), not to files. Do not add file-editing tools to these agents.
+
 ### 5. `test_writer` and `documentation_master` — Filesystem-First Producers
 
 `test_writer.agent.md` and `documentation_master.agent.md` are **filesystem-first** producers: their primary artifacts (test files, documentation files) are written directly to the filesystem and committed to VCS, not stored as DB entries. `documentation_master` has `changelog_insert` and `changelog_query` for recording metadata (e.g., intermediate assets), while `test_writer` has only `changelog_query` (no `changelog_insert`) — it is the most filesystem-constrained producer.
