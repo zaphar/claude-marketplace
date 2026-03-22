@@ -1,5 +1,5 @@
 ---
-description: Start the release workflow (QA, audit)
+description: Start the release workflow (QA, audit, code review)
 allowed-tools:
   - Read
   - Write

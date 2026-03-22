@@ -23,7 +23,7 @@ Two workflows covering the complete SDLC:
 
 **Development:** Requirements → UX Design → Architecture → Planning → Implementation → Documentation
 
-**Release:** QA → Audit (security + performance)
+**Release:** QA → Audit (security + performance) → Code Review (optional)
 
 Each phase uses a **producer-critic pattern**: a producer agent creates artifacts, a critic agent validates them, with up to 3 revision loops before escalating to the user. All state and decisions are stored in an append-only SQLite database (`.claude/rigor.db`) for full traceability.
 
@@ -81,7 +81,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:ask` — Investigate the project and codebase; optionally write an investigation brief and create a new iteration
 
 **Release Workflow:**
-- `/rigor:start-release` — Start QA and audit
+- `/rigor:start-release` — Start QA, audit, and code review
 - `/rigor:resume-release` — Resume release workflow
 - `/rigor:release-status` — Display release progress
 
@@ -99,7 +99,7 @@ Replans can also happen automatically. When the senior developer detects an over
 
 ```
 rigor/
-├── agents/                          # 21 agent personality files (10 producer-critic pairs + 1 standalone analyst)
+├── agents/                          # 24 agent personality files (10 producer-critic pairs + 3 read-only code review producers + 1 standalone analyst)
 ├── commands/                        # Slash command definitions
 ├── skills/
 │   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)

@@ -39,8 +39,9 @@ The plugin provides two separate workflows:
 
 1. **QA** - Test → Review → Validate
 2. **Audit** - Security Audit + Performance Audit (parallel) → Validate
+3. **Code Review** - Holistic codebase review (optional, skippable) → Validate
 
-The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit). The release workflow reads dev artifacts from the same changelog database.
+The development workflow runs fast iteration loops. When you're ready to ship, the release workflow provides thorough verification (QA, security/performance audit, and optional code review). The release workflow reads dev artifacts from the same changelog database.
 
 ### Import (data bootstrapping)
 
@@ -193,8 +194,13 @@ changelog_query(entity_type="plan_overview", iteration_id=<id>)
 | QA | `rigor:qa_engineer` | `rigor:qa_critic` |
 | Audit (Security) | `rigor:security_auditor` | `rigor:security_audit_critic` |
 | Audit (Performance) | `rigor:performance_auditor` | `rigor:performance_audit_critic` |
+| Code Review (Design) | `rigor:codebase_design_critic` | — |
+| Code Review (Go idiom) | `rigor:codebase_idiom_critic_go` | — |
+| Code Review (Cross-cutting) | `rigor:codebase_cross_cutting_critic` | — |
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
+>
+> **Note:** Code review agents (`codebase_design_critic`, `codebase_idiom_critic_go`, `codebase_cross_cutting_critic`) are also **read-only producers** — they evaluate code partitions and submit findings via `changelog_insert(entity_type: "code_review_finding")`. They are dispatched per partition during the code review phase. Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis. The cross-cutting critic additionally uses `traceability_query` for requirement ↔ code cross-referencing.
 
 **When invoking agents via the Task tool, always provide these parameters:**
 
@@ -302,7 +308,7 @@ requirements → ux_design → architecture → planning → implementation → 
 
 **Release Workflow Phase Order:**
 ```
-qa → audit
+qa → audit → code_review
 ```
 
 **Special Cases:**
@@ -729,10 +735,27 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 1. **QA Phase**: Invoke `rigor:qa_engineer` via the Task tool, run tests, produce test report. Standard producer-critic loop.
 2. **Audit Phase**: Run Security and Performance audits in parallel (see Section 10). Standard producer-critic loops with remediation cycles.
+3. **Code Review Phase** (optional): Holistic codebase review — see below.
+
+### Code Review Phase (optional)
+
+Ask the user: "Run holistic code review?" If declined, skip with `phase_transition(status: "skipped")`.
+
+If accepted, dispatch the code review skill (see `skills/code-review/SKILL.md`) which orchestrates:
+1. Codebase discovery and partitioning
+2. Per-partition review by `codebase_design_critic` and `codebase_idiom_critic_go`
+3. Cross-cutting review by `codebase_cross_cutting_critic`
+4. Finding synthesis and user review
+
+> **NOTE:** If `skills/code-review/SKILL.md` does not yet exist, skip code review with `phase_transition(status: "skipped")` and inform the user that the code review skill is not yet implemented.
+
+Findings are inserted as `code_review_finding` entities. Accepted findings can seed a new iteration (see finding review flow in the code review skill).
+
+Phase completes when synthesis is done and the user has reviewed all findings.
 
 **Release Workflow Completion:**
 
-When both audit tracks' critics have approved their findings, call `phase_transition` to mark the audit phase completed and inform the user that the release workflow is complete.
+When both audit tracks' critics have approved their findings and the code_review phase has completed (or been skipped), call `phase_transition` to mark the final phase completed and inform the user that the release workflow is complete. Code review phase orchestration details are defined in `skills/code-review/SKILL.md`.
 
 ### 14. Workflow Iterations
 
