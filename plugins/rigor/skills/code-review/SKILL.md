@@ -1,6 +1,6 @@
 ---
 name: Code Review Orchestration
-description: Orchestrates holistic code review across the full codebase. Dispatched by the release workflow when the user accepts code review. Not auto-triggered.
+description: Orchestrates holistic code review across the full codebase. Dispatched by the release workflow or directly via /rigor:code-review.
 version: 0.1.0
 ---
 

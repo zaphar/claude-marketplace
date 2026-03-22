@@ -84,6 +84,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:start-release` — Start QA, audit, and code review
 - `/rigor:resume-release` — Resume release workflow
 - `/rigor:release-status` — Display release progress
+- `/rigor:code-review` — Run holistic code review (standalone, without full release workflow)
 
 ## Q&A / Investigation
 
