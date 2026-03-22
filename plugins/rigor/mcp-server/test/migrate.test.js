@@ -109,11 +109,11 @@ describe("runMigrations", () => {
       .get();
     assert.ok(projectTable, "project table should exist after migrations");
 
-    // All 43 original tables exist (exclude schema_version and sqlite_sequence which are auto-created)
+    // All 46 original tables exist (exclude schema_version and sqlite_sequence which are auto-created)
     const tableCount = db
       .prepare("SELECT COUNT(*) AS cnt FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_version', 'sqlite_sequence')")
       .get().cnt;
-    assert.strictEqual(tableCount, 43, "should have exactly 43 tables (excluding schema_version and sqlite_sequence)");
+    assert.strictEqual(tableCount, 46, "should have exactly 46 tables (excluding schema_version and sqlite_sequence)");
 
     // No leftover _old_ tables from table-recreation migrations
     const oldTables = db
@@ -159,7 +159,7 @@ describe("runMigrations", () => {
     const tableCount = db
       .prepare("SELECT COUNT(*) AS cnt FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_version', 'sqlite_sequence')")
       .get().cnt;
-    assert.strictEqual(tableCount, 43);
+    assert.strictEqual(tableCount, 46);
 
     closeDb();
   });

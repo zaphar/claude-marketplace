@@ -1,4 +1,5 @@
 import { closeDb, getDb } from "../db.js";
+import { PHASES } from "../write-tools.js";
 
 /**
  * Reset the singleton to a fresh in-memory database with schema applied.
@@ -28,10 +29,7 @@ export function seedIteration(db) {
   ).run(now);
   const iteration_id = iter.lastInsertRowid;
 
-  const phases = [
-    "requirements", "ux_design", "architecture", "planning",
-    "implementation", "documentation", "qa", "audit",
-  ];
+  const phases = PHASES;
   const insertPhase = db.prepare(
     "INSERT INTO phase (iteration_id, name, status) VALUES (?, ?, 'pending')"
   );

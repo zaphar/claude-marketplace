@@ -38,7 +38,7 @@
 --    project.id (INTEGER PK singleton enforcement).
 --
 -- ============================================================
--- DOMAIN MAP (10 domains, 44 tables)
+-- DOMAIN MAP (11 domains, 47 tables)
 -- ============================================================
 --
 -- Core (spine):       project, iteration, phase, revision, schema_version
@@ -63,6 +63,7 @@
 --                     intermediate_asset
 -- QA/Test:            test_report
 -- Audit:              security_audit_finding, performance_audit_finding
+-- Code Review:        code_review_run, code_review_finding, code_review_finding_file
 -- Documentation:      (no tables — docs are file artifacts reviewed by critic)
 --
 -- Each table below is tagged with its domain in a "-- Domain:" comment.
@@ -965,6 +966,48 @@ CREATE TABLE IF NOT EXISTS performance_audit_finding (
   status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ============================================================
+-- Domain: Code Review
+-- Purpose: Holistic codebase review findings from the optional
+--          code_review release phase. Tracks review runs (with
+--          filesystem artifact paths for discovery/partition data)
+--          and structured diagnostic findings.
+-- Context: code_review_run is one-per-execution, linked to an
+--          iteration. Findings link to runs, not iterations directly.
+--          Files are tracked in a junction table for cross-cutting
+--          findings that span multiple files.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS code_review_run (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  iteration_id INTEGER NOT NULL REFERENCES iteration(id) ON DELETE CASCADE,
+  discovery_path TEXT NOT NULL,
+  partitions_path TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'in_progress',
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS code_review_finding (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER NOT NULL REFERENCES code_review_run(id) ON DELETE CASCADE,
+  tier TEXT NOT NULL,
+  category TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  impact_level TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS code_review_finding_file (
+  finding_id INTEGER NOT NULL REFERENCES code_review_finding(id) ON DELETE CASCADE,
+  file TEXT NOT NULL,
+  PRIMARY KEY (finding_id, file)
+);
+
 -- ============================================================
 -- BLOCKER: cross-phase workflow blockers raised by agents
 -- ============================================================
@@ -1127,6 +1170,12 @@ CREATE INDEX IF NOT EXISTS idx_security_audit_finding_iteration_id
   ON security_audit_finding(iteration_id);
 CREATE INDEX IF NOT EXISTS idx_performance_audit_finding_iteration_id
   ON performance_audit_finding(iteration_id);
+
+-- Code Review domain
+CREATE INDEX IF NOT EXISTS idx_code_review_run_iteration_id
+  ON code_review_run(iteration_id);
+CREATE INDEX IF NOT EXISTS idx_code_review_finding_run_id
+  ON code_review_finding(run_id);
 
 -- Documentation domain
 

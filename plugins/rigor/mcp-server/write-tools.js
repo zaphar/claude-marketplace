@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { getDb } from "./db.js";
 import { VALID_ENTITY_TYPES } from "./read-tools.js";
 
-const PHASES = [
+export const PHASES = [
   "requirements",
   "ux_design",
   "architecture",
@@ -11,6 +11,7 @@ const PHASES = [
   "documentation",
   "qa",
   "audit",
+  "code_review",
 ];
 
 // ---------------------------------------------------------------------------
@@ -57,7 +58,7 @@ function iterationCreate(args) {
 
     const iteration_id = iterResult.lastInsertRowid;
 
-    // Create all 8 phase records
+    // Create all phase records
     const insertPhase = db.prepare(
       `INSERT INTO phase (iteration_id, name, status) VALUES (@iteration_id, @name, @status)`
     );
@@ -933,6 +934,47 @@ function insertPerformanceAuditFinding(db, iteration_id, revision_id, data) {
   return { entity_type: "performance_audit_finding", id: result.lastInsertRowid };
 }
 
+function insertCodeReviewRun(db, iteration_id, revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO code_review_run
+       (iteration_id, discovery_path, partitions_path, status)
+     VALUES (@iteration_id, @discovery_path, @partitions_path, @status)`
+  ).run({
+    iteration_id,
+    discovery_path: data.discovery_path,
+    partitions_path: data.partitions_path,
+    status: data.status ?? "in_progress"
+  });
+  return { entity_type: "code_review_run", id: result.lastInsertRowid };
+}
+
+function insertCodeReviewFinding(db, iteration_id, revision_id, data) {
+  const result = db.prepare(
+    `INSERT INTO code_review_finding
+       (run_id, tier, category, severity, title, description, impact_level, status)
+     VALUES (@run_id, @tier, @category, @severity, @title, @description, @impact_level, @status)`
+  ).run({
+    run_id: data.run_id,
+    tier: data.tier,
+    category: data.category,
+    severity: data.severity,
+    title: data.title,
+    description: data.description,
+    impact_level: data.impact_level,
+    status: data.status ?? "open"
+  });
+  const findingId = result.lastInsertRowid;
+  if (Array.isArray(data.files) && data.files.length > 0) {
+    const insertFile = db.prepare(
+      `INSERT INTO code_review_finding_file (finding_id, file) VALUES (@finding_id, @file)`
+    );
+    for (const file of data.files) {
+      insertFile.run({ finding_id: findingId, file });
+    }
+  }
+  return { entity_type: "code_review_finding", id: findingId };
+}
+
 function insertTestReport(db, iteration_id, revision_id, data) {
   const now = new Date().toISOString();
   const meta = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
@@ -1070,6 +1112,8 @@ const ENTITY_INSERT_HANDLERS = {
   project_lesson: insertProjectLesson,
   security_audit_finding: insertSecurityAuditFinding,
   performance_audit_finding: insertPerformanceAuditFinding,
+  code_review_run: insertCodeReviewRun,
+  code_review_finding: insertCodeReviewFinding,
   test_report: insertTestReport,
 };
 
@@ -1169,6 +1213,15 @@ function changelogUpdate(args) {
     intermediate_asset: {
       table: "intermediate_asset",
       mutableFields: ["title", "content"],
+    },
+    code_review_run: {
+      table: "code_review_run",
+      statuses: ["in_progress", "completed"],
+      mutableFields: ["completed_at"],
+    },
+    code_review_finding: {
+      table: "code_review_finding",
+      statuses: ["open", "resolved", "accepted", "false-positive"],
     },
   };
 
@@ -1720,7 +1773,7 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_create",
     description:
-      "Creates a new iteration. If the project doesn't exist, creates it. Creates all 8 phase records and sets requirements to in_progress. Fails if an active iteration already exists — call iteration_close first. Returns the new iteration_id (auto-incremented).",
+      "Creates a new iteration. If the project doesn't exist, creates it. Creates all phase records and sets requirements to in_progress. Fails if an active iteration already exists — call iteration_close first. Returns the new iteration_id (auto-incremented).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1815,7 +1868,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed). Also supports updating mutable fields on work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk), and intermediate_asset records (title, content).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, code_review_run, code_review_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed, in_progress → completed). Also supports updating mutable fields on code_review_run records (completed_at), work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk), and intermediate_asset records (title, content).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1824,6 +1877,8 @@ export const WRITE_TOOLS = [
           enum: [
             "security_audit_finding",
             "performance_audit_finding",
+            "code_review_run",
+            "code_review_finding",
             "adr",
             "approved_dependency",
             "component",

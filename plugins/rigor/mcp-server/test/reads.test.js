@@ -328,7 +328,7 @@ describe("iteration_summary", () => {
     });
     const r = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: seed.iteration_id });
     assert.ok(r.iteration);
-    assert.strictEqual(r.phases.length, 8);
+    assert.strictEqual(r.phases.length, 9);
     assert.ok(r.decisions);
     assert.strictEqual(r.decisions.requirements, 0);  // none inserted in this test
   });
@@ -343,7 +343,7 @@ describe("project_status", () => {
     const r = handleReadTool("project_status", { project_root: "/tmp/test-project" });
     assert.ok(r.project);
     assert.strictEqual(r.project.project_name, "test-project");
-    assert.strictEqual(r.phases.length, 8);
+    assert.strictEqual(r.phases.length, 9);
     assert.ok(r.current_iteration);
   });
 
@@ -356,7 +356,7 @@ describe("project_status", () => {
     assert.ok(r.current_iteration, "should return closed iteration as fallback");
     assert.strictEqual(r.current_iteration.status, "closed");
     assert.ok(r.current_iteration.created_at, "should have full row, not just id");
-    assert.strictEqual(r.phases.length, 8);
+    assert.strictEqual(r.phases.length, 9);
   });
 
   it("returns null current_iteration when no iterations exist at all", () => {
@@ -376,7 +376,7 @@ describe("list_iterations", () => {
     const r = handleReadTool("list_iterations", { project_root: "/tmp/test-project" });
     assert.strictEqual(r.total, 1);
     assert.strictEqual(r.iterations[0].phases_in_progress, 1);
-    assert.strictEqual(r.iterations[0].phases_pending, 7);
+    assert.strictEqual(r.iterations[0].phases_pending, 8);
     assert.strictEqual(r.iterations[0].phases_completed, 0);
     assert.strictEqual(r.iterations[0].phases_skipped, 0);
   });
@@ -398,6 +398,6 @@ describe("list_iterations", () => {
     const r = handleReadTool("list_iterations", { project_root: "/tmp/test-project" });
     assert.strictEqual(r.iterations[0].phases_completed, 1);
     assert.strictEqual(r.iterations[0].phases_in_progress, 0);
-    assert.strictEqual(r.iterations[0].phases_pending, 7);
+    assert.strictEqual(r.iterations[0].phases_pending, 8);
   });
 });

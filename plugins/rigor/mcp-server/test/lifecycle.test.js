@@ -16,7 +16,7 @@ beforeEach(() => {
 // ───────────────────────────────────────────────────────────────
 
 describe("iteration_create", () => {
-  it("creates project singleton + iteration + 8 phases", () => {
+  it("creates project singleton + iteration + 9 phases", () => {
     // freshDb + seedIteration already created iteration 1 via raw SQL.
     // Close the seed iteration so the active-iteration guard allows creation.
     db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
@@ -26,7 +26,7 @@ describe("iteration_create", () => {
 
     const status = handleReadTool("project_status", { project_root: "/tmp/test-project" });
     assert.strictEqual(status.project.project_name, "test-project"); // first wins
-    assert.strictEqual(status.phases.length, 8);
+    assert.strictEqual(status.phases.length, 9);
   });
 
   it("sets requirements phase to in_progress", () => {
@@ -42,7 +42,7 @@ describe("iteration_create", () => {
     const result = handleWriteTool("iteration_create", { project_root: "/tmp/test-project" });
     const summary = handleReadTool("iteration_summary", { project_root: "/tmp/test-project", iteration_id: result.iteration_id });
     const nonReq = summary.phases.filter((p) => p.name !== "requirements");
-    assert.strictEqual(nonReq.length, 7);
+    assert.strictEqual(nonReq.length, 8);
     for (const p of nonReq) {
       assert.strictEqual(p.status, "pending", `${p.name} should be pending`);
     }

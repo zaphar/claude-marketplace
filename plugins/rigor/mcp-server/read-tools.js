@@ -31,6 +31,8 @@ const ENTITY_TABLE = {
   performance_audit_finding: "performance_audit_finding",
   intermediate_asset: "intermediate_asset",
   vcs_commit: "vcs_commit",
+  code_review_run: "code_review_run",
+  code_review_finding: "code_review_finding",
 };
 
 // Canonical list of valid entity type names, derived from ENTITY_TABLE.
@@ -831,6 +833,59 @@ function queryVcsCommit(db, { iteration_id, ids, filters = {} }) {
   return db.prepare(sql).all(...params);
 }
 
+const CODE_REVIEW_RUN_FILTERS = {
+  discovery_path: { nullable: false },
+  partitions_path: { nullable: false },
+  status: { nullable: false },
+};
+
+function queryCodeReviewRun(db, { iteration_id, ids, filters = {} }) {
+  let sql = "SELECT * FROM code_review_run";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) { clauses.push("iteration_id = ?"); params.push(iteration_id); }
+  if (ids?.length) { clauses.push(`id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const f = applyFilters(filters, CODE_REVIEW_RUN_FILTERS, "code_review_run");
+  clauses.push(...f.clauses);
+  params.push(...f.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  return db.prepare(sql).all(...params);
+}
+
+const CODE_REVIEW_FINDING_FILTERS = {
+  run_id: { nullable: false },
+  tier: { nullable: false },
+  category: { nullable: false },
+  severity: { nullable: false },
+  title: { nullable: false },
+  description: { nullable: false },
+  impact_level: { nullable: false },
+  status: { nullable: false },
+};
+
+function queryCodeReviewFinding(db, { iteration_id, ids, filters = {}, include_related = false }) {
+  let sql = "SELECT f.* FROM code_review_finding f";
+  const clauses = [];
+  const params = [];
+  if (iteration_id != null) {
+    sql += " JOIN code_review_run r ON f.run_id = r.id";
+    clauses.push("r.iteration_id = ?");
+    params.push(iteration_id);
+  }
+  if (ids?.length) { clauses.push(`f.id IN (${ids.map(() => "?").join(",")})`); params.push(...ids); }
+  const af = applyFilters(filters, CODE_REVIEW_FINDING_FILTERS, "code_review_finding");
+  clauses.push(...af.clauses.map(c => `f.${c}`));
+  params.push(...af.params);
+  if (clauses.length) sql += " WHERE " + clauses.join(" AND ");
+  let rows = db.prepare(sql).all(...params);
+  if (!include_related) return rows;
+  const fileStmt = db.prepare("SELECT file FROM code_review_finding_file WHERE finding_id = ?");
+  return rows.map(row => ({
+    ...row,
+    files: fileStmt.all(row.id).map(r => r.file),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Query dispatch map
 // ---------------------------------------------------------------------------
@@ -862,6 +917,8 @@ const QUERY_DISPATCH = {
   performance_audit_finding: queryPerformanceAuditFinding,
   intermediate_asset: queryIntermediateAsset,
   vcs_commit: queryVcsCommit,
+  code_review_run: queryCodeReviewRun,
+  code_review_finding: queryCodeReviewFinding,
 };
 
 // ---------------------------------------------------------------------------
