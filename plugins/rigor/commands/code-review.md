@@ -107,7 +107,7 @@ Dispatching code review skill...
 
 ### Step 6: Dispatch Code Review Skill
 
-Invoke the `Skill` tool with `skill: "rigor:code-review"`.
+Invoke the `Skill` tool with `skill: "Code Review Orchestration"`.
 
 Pass this context when invoking the skill:
 
