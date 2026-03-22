@@ -162,6 +162,54 @@ changelog_insert(
 
 Capture the returned `run_id` — it is used in all subsequent steps (per-partition dispatch, cross-cutting review, synthesis).
 
+### 4.4 Query Prior Decisions (cross-run deduplication)
+
+Before dispatching critics, query all `code_review_finding` records from **all prior runs**
+across all iterations that already have a decision. This prevents critics from re-reporting
+findings that were already reviewed and decided (accepted/resolved/deferred/false-positive)
+in any prior run.
+
+```
+changelog_query(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  include_related: true
+)
+```
+
+> **Server-side vs. client-side filtering:** The `changelog_query` filter for
+> `code_review_finding` supports exact-match `status` and `run_id` filters but has no
+> negation operators (`status_not`, `run_id_not`). Therefore, query all findings globally
+> (no iteration filter) and apply two client-side exclusions:
+
+From the results, apply client-side filtering:
+
+1. **Exclude current run:** remove findings where `run_id == <current_run_id>` (these are
+   from the run about to begin — there should be none yet, but guard against it).
+2. **Exclude undecided findings:** remove findings where `status == "open"`.
+
+The remaining findings have `status` in: `accepted`, `resolved`, `false-positive`, or `deferred`.
+
+Build a `prior_decisions` list. For each decided finding, record:
+- `title` — the finding title
+- `primary_file` — the first entry in `files` (from `include_related`, if available)
+- `severity` — critical / high / medium / low
+- `status` — what decision was made (accepted / resolved / false-positive / deferred)
+
+Format as a compact table for inclusion in critic prompts:
+
+```
+title | primary_file | severity | status
+```
+
+If no prior decided findings exist, `prior_decisions` is empty and the conditional block in
+critic prompts is omitted.
+
+> **Truncation:** If the global query returns more than 50 decided findings, truncate to the
+> 50 most recent (by `created_at` desc), prioritising critical/high severity. Prepend a note
+> to the `prior_decisions` context: *"Showing 50 of &lt;total&gt; prior decided findings
+> (truncated by recency/severity)."* This prevents context bloat and avoids payload size limits.
+
 ## 5. Step 3: Per-Partition Review (parallel sub-agents)
 
 For each partition, dispatch TWO agents in parallel: a design critic and a language-specific
@@ -177,7 +225,7 @@ Task(
   agent_type: "rigor:codebase_design_critic",
   name: "design-review-<partition-index>",
   description: "Design review partition <N>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nReview these files against Tiers 1-3 (structural, correctness, consistency).\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\n<if prior_decisions provided>Prior code review findings (already decided — do not re-report unless the issue has materially changed since the decision):\n<prior_decisions list: title | file | severity | decision>\n</if>\n\nReview these files against Tiers 1-3 (structural, correctness, consistency).\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
 )
 ```
 
@@ -193,7 +241,7 @@ Task(
   agent_type: "rigor:codebase_idiom_critic_go",
   name: "idiom-review-go-<partition-index>",
   description: "Go idiom review partition <N>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nReview these Go files for idiomatic Go patterns across Tiers 1-3.\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\n<if prior_decisions provided>Prior code review findings (already decided — do not re-report unless the issue has materially changed since the decision):\n<prior_decisions list: title | file | severity | decision>\n</if>\n\nReview these Go files for idiomatic Go patterns across Tiers 1-3.\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
 )
 ```
 
@@ -214,7 +262,7 @@ Task(
   agent_type: "rigor:codebase_cross_cutting_critic",
   name: "cross-cutting-review",
   description: "Cross-cutting code review",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are performing a cross-cutting review after per-partition reviews.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nDiscovery data: <path to discovery JSON>\nPartitions: <path to partitions JSON>\n\nPartition summaries from per-partition reviews:\n<aggregated summaries from all design + idiom critics>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nEvaluate cross-cutting concerns: dependency direction, layer violations, domain alignment, API consistency, cross-cutting concern management, integration seam quality, duplication across modules.\nInsert findings via changelog_insert. Output a system-level summary."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are performing a cross-cutting review after per-partition reviews.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nDiscovery data: <path to discovery JSON>\nPartitions: <path to partitions JSON>\n\nPartition summaries from per-partition reviews:\n<aggregated summaries from all design + idiom critics>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\n<if prior_decisions provided>Prior code review findings (already decided — do not re-report unless the issue has materially changed since the decision):\n<prior_decisions list: title | file | severity | decision>\n</if>\n\nEvaluate cross-cutting concerns: dependency direction, layer violations, domain alignment, API consistency, cross-cutting concern management, integration seam quality, duplication across modules.\nInsert findings via changelog_insert. Output a system-level summary."
 )
 ```
 
@@ -239,6 +287,11 @@ changelog_query(
 Paginate if the total exceeds 100 — use `offset` to retrieve subsequent pages.
 
 ### 7.2 Deduplicate
+
+> **Scope:** This deduplication is **within-run only** — it merges duplicate findings reported
+> by different critics (design vs. idiom) in the same run. **Cross-run** deduplication is
+> handled upstream: Step 4.4 passes `prior_decisions` context to critics so they skip findings
+> that were already decided in any prior run.
 
 Findings with identical `title` AND `primary_file` (first entry in `files` array) can be
 merged. Keep the higher-severity instance and note the duplicate count.
