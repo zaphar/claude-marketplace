@@ -7,6 +7,7 @@ allowed-tools:
   - Task
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
+  - mcp__plugin_rigor_rigor-db__iteration_create
   - mcp__plugin_rigor_rigor-db__phase_transition
   - mcp__plugin_rigor_rigor-db__changelog_query
   - mcp__plugin_rigor_rigor-db__checkpoint
@@ -18,7 +19,7 @@ Run a holistic code review across the full codebase, standalone or as part of th
 
 ## What This Command Does
 
-1. Validates a project with completed implementation exists
+1. Validates a project exists; creates a new iteration if none is open
 2. Checks current code_review phase state (handles pending/skipped, in_progress, completed)
 3. Gathers security/performance audit findings as context (if any exist)
 4. Activates the code_review phase and dispatches the Code Review Orchestration skill
@@ -43,14 +44,21 @@ ERROR: No project found.
 Use /rigor:start to initialize a project before running code review.
 ```
 
-### Step 2: Validate Prerequisites
+### Step 2: Ensure an Open Iteration Exists
 
-The implementation phase must have status `"completed"`. If not, show error:
+Check the `project_status` response for an open iteration (status `"open"`).
+
+**If no open iteration exists**, inform the user and create one:
 
 ```
-ERROR: Implementation phase is not completed.
-Use /rigor:resume to continue the development workflow before running code review.
+No open iteration found. Creating a new iteration for this code review...
 ```
+
+Then call `iteration_create` to open a new iteration. Use a description like `"Holistic code review"`.
+
+After creating the iteration, proceed with the new `iteration_id`.
+
+**If an open iteration already exists**, use its `iteration_id` and proceed.
 
 ### Step 3: Check Code Review Phase Status
 
