@@ -205,10 +205,9 @@ title | primary_file | severity | status
 If no prior decided findings exist, `prior_decisions` is empty and the conditional block in
 critic prompts is omitted.
 
-> **Truncation:** If the global query returns more than 50 decided findings, truncate to the
-> 50 most recent (by `created_at` desc), prioritising critical/high severity. Prepend a note
-> to the `prior_decisions` context: *"Showing 50 of &lt;total&gt; prior decided findings
-> (truncated by recency/severity)."* This prevents context bloat and avoids payload size limits.
+> **Pagination:** `changelog_query` returns up to 100 results per page. If `total` exceeds the
+> page size, fetch subsequent pages using `offset` until all decided findings are collected.
+> Build the complete `prior_decisions` list before passing it to critics — do not truncate.
 
 ## 5. Step 3: Per-Partition Review (parallel sub-agents)
 
