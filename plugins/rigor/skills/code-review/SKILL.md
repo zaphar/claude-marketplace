@@ -39,6 +39,7 @@ When this skill is loaded, the orchestrator receives:
 - `revision_id` — current revision ID (needed for `changelog_insert` calls by sub-agents)
 - `artifacts_directory` — from `project_status`, the directory for process artifacts
 - `language_hint` — optional, detected language(s) for idiom critic selection (e.g., `["go"]`, `["go", "typescript"]`)
+- `audit_context` — optional, summary of prior security and performance audit findings from the current iteration. Used by critics to avoid duplicating known findings. Contains counts by severity and brief descriptions of critical/high findings.
 
 > **Always include `project_root` in every MCP tool call.**
 
@@ -176,7 +177,7 @@ Task(
   agent_type: "rigor:codebase_design_critic",
   name: "design-review-<partition-index>",
   description: "Design review partition <N>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\nReview these files against Tiers 1-3 (structural, correctness, consistency).\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nReview these files against Tiers 1-3 (structural, correctness, consistency).\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
 )
 ```
 
@@ -192,7 +193,7 @@ Task(
   agent_type: "rigor:codebase_idiom_critic_go",
   name: "idiom-review-go-<partition-index>",
   description: "Go idiom review partition <N>",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\nReview these Go files for idiomatic Go patterns across Tiers 1-3.\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are reviewing partition <N> of <total> in a holistic code review.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nPartition files:\n<file list with line counts>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nReview these Go files for idiomatic Go patterns across Tiers 1-3.\nInsert findings via changelog_insert. After all tiers, output a partition summary as plain text."
 )
 ```
 
@@ -213,7 +214,7 @@ Task(
   agent_type: "rigor:codebase_cross_cutting_critic",
   name: "cross-cutting-review",
   description: "Cross-cutting code review",
-  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are performing a cross-cutting review after per-partition reviews.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nDiscovery data: <path to discovery JSON>\nPartitions: <path to partitions JSON>\n\nPartition summaries from per-partition reviews:\n<aggregated summaries from all design + idiom critics>\n\nEvaluate cross-cutting concerns: dependency direction, layer violations, domain alignment, API consistency, cross-cutting concern management, integration seam quality, duplication across modules.\nInsert findings via changelog_insert. Output a system-level summary."
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are performing a cross-cutting review after per-partition reviews.\nrun_id: <run_id>\niteration_id: <iteration_id>\nrevision_id: <revision_id>\nproject_root: <project_root>\nartifacts_directory: <artifacts_directory>\n\nDiscovery data: <path to discovery JSON>\nPartitions: <path to partitions JSON>\n\nPartition summaries from per-partition reviews:\n<aggregated summaries from all design + idiom critics>\n\n<if audit_context provided>Prior audit findings (for context — do not duplicate these):\n<audit_context summary>\n</if>\n\nEvaluate cross-cutting concerns: dependency direction, layer violations, domain alignment, API consistency, cross-cutting concern management, integration seam quality, duplication across modules.\nInsert findings via changelog_insert. Output a system-level summary."
 )
 ```
 
@@ -426,6 +427,7 @@ exits. The workflow orchestrator is responsible for calling:
 
 ```
 phase_transition(
+  iteration_id: <iteration_id>,
   project_root: "<project_root>",
   phase_name: "code_review",
   status: "completed"

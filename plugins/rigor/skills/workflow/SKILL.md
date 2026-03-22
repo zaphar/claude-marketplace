@@ -741,12 +741,21 @@ The release workflow is triggered by `/rigor:start-release` and tracked in the s
 
 Ask the user: "Run holistic code review?" If declined, skip with `phase_transition(status: "skipped")`.
 
-If accepted, dispatch the code review skill (see `skills/code-review/SKILL.md`) with `iteration_id` and `revision_id`. The code review skill creates its own `code_review_run` record internally — do NOT pre-create one. The skill orchestrates:
-1. Codebase discovery and partitioning
-2. `code_review_run` creation (after discovery and partitioning produce artifact paths)
-3. Per-partition review by `codebase_design_critic` and `codebase_idiom_critic_go`
-4. Cross-cutting review by `codebase_cross_cutting_critic`
-5. Finding synthesis and user review
+If accepted:
+
+1. Call `phase_transition(iteration_id=<id>, phase_name="code_review", status="in_progress")`
+2. Query prior audit findings for context:
+   - `changelog_query(entity_type: "security_audit_finding", iteration_id: <id>)` → summarize findings (counts by severity, brief description of critical/high findings)
+   - `changelog_query(entity_type: "performance_audit_finding", iteration_id: <id>)` → summarize findings (counts by severity, brief description of critical/high findings)
+   
+   Pass the summary as `audit_context` to the code review skill so critics can reference prior security/performance findings and avoid duplication. Keep the summary concise — counts and critical/high descriptions only, not raw finding data.
+3. Dispatch the code review skill (see `skills/code-review/SKILL.md`) with `iteration_id`, `revision_id`, and `audit_context`. The code review skill creates its own `code_review_run` record internally — do NOT pre-create one. The skill orchestrates:
+   1. Codebase discovery and partitioning
+   2. `code_review_run` creation (after discovery and partitioning produce artifact paths)
+   3. Per-partition review by `codebase_design_critic` and `codebase_idiom_critic_go`
+   4. Cross-cutting review by `codebase_cross_cutting_critic`
+   5. Finding synthesis and user review
+4. After the code review skill returns, the **workflow orchestrator** calls `phase_transition(iteration_id=<id>, phase_name="code_review", status="completed")` and `checkpoint(message: "code_review: phase completed")`. The code review skill does NOT call `phase_transition` itself.
 
 Findings are inserted as `code_review_finding` entities. Accepted findings can seed a new iteration (see finding review flow in the code review skill).
 
