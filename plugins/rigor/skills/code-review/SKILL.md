@@ -164,23 +164,22 @@ Capture the returned `run_id` — it is used in all subsequent steps (per-partit
 
 ### 4.4 Query Prior Decisions (cross-run deduplication)
 
-Before dispatching critics, query all `code_review_finding` records from **all prior runs**
-across all iterations that already have a decision. This prevents critics from re-reporting
+Before dispatching critics, query all `code_review_finding` records from **prior runs**
+in the current iteration that already have a decision. This prevents critics from re-reporting
 findings that were already reviewed and decided (accepted/resolved/deferred/false-positive)
-in any prior run.
+in a prior run within this iteration.
 
 ```
 changelog_query(
   project_root: "<project_root>",
   entity_type: "code_review_finding",
+  iteration_id: <iteration_id>,
   include_related: true
 )
 ```
 
-> **Server-side vs. client-side filtering:** The `changelog_query` filter for
-> `code_review_finding` supports exact-match `status` and `run_id` filters but has no
-> negation operators (`status_not`, `run_id_not`). Therefore, query all findings globally
-> (no iteration filter) and apply two client-side exclusions:
+> **Client-side filtering:** The query returns all findings for the current iteration.
+> Apply the two client-side exclusions below to extract only prior decided findings.
 
 From the results, apply client-side filtering:
 
@@ -207,11 +206,15 @@ critic prompts is omitted.
 
 > **Pagination:** `changelog_query` returns up to 100 results per page. If `total` exceeds the
 > page size, fetch subsequent pages using `offset` until all decided findings are collected.
-> Build the complete `prior_decisions` list before passing it to critics — do not truncate.
 >
 > **Partition filtering:** The full `prior_decisions` list is built once here and filtered to
 > partition-relevant files at dispatch time (§5). The cross-cutting critic (§6) receives the
-> full global list.
+> full list.
+>
+> **Cross-iteration dedup:** `prior_decisions` is scoped to the current iteration. If you want
+> to check whether a specific finding duplicates something from a prior iteration, query
+> `changelog_query(project_root: "<project_root>", entity_type: "code_review_finding", filters: { title: "<title>" })` across
+> all iterations manually.
 
 ## 5. Step 3: Per-Partition Review (parallel sub-agents)
 
@@ -302,7 +305,7 @@ Paginate if the total exceeds 100 — use `offset` to retrieve subsequent pages.
 > **Scope:** This deduplication is **within-run only** — it merges duplicate findings reported
 > by different critics (design vs. idiom) in the same run. **Cross-run** deduplication is
 > handled upstream: Step 4.4 passes `prior_decisions` context to critics so they skip findings
-> that were already decided in any prior run.
+> that were already decided in a prior run in this iteration.
 
 Findings with identical `title` AND `primary_file` (first entry in `files` array) can be
 merged. Keep the higher-severity instance and note the duplicate count.
