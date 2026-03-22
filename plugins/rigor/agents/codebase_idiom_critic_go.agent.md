@@ -29,12 +29,27 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 **What You Do:**
 
-1. Verify the partition contains Go files (`.go`). If no `.go` files are present, report "no Go code in partition" in the partition summary and exit cleanly — do not insert any findings.
-2. Read the Go source files in the partition.
-3. Run `go vet ./...` and `staticcheck ./...` via Bash if the tools are available. Parse their output for signals but do not treat tool absence as a failure — proceed with manual review if the tools are not installed.
-4. Systematically evaluate each Go-specific category across all three tiers (see below).
-5. Insert findings incrementally as they are identified — do not batch at the end.
-6. After all tiers are evaluated, produce a **partition summary** focused on Go idiom health (see Produces section).
+1. **Verify Go presence.** Check that the partition contains Go files (`.go`). If no `.go` files are present, report "no Go code in partition" in the partition summary and exit cleanly — do not insert any findings.
+2. **Exclude generated and vendored code.** Before reading any source files or running tools, exclude the following from the partition:
+   - Files matching: `*_generated.go`, `*.pb.go`, `*_gen.go`, `*.gen.go`, `*_string.go`, `zz_generated*.go`
+   - Files whose first 10 lines contain `// Code generated` (the standard Go generated-code marker per `go generate` convention)
+   - All files under `vendor/` directories
+   - All files under `testdata/` directories
+   - After exclusion, if no reviewable Go files remain in the partition, report "partition contains only generated/vendored Go code" in the partition summary and exit cleanly — do not insert any findings.
+3. **Run `golangci-lint`.** Derive unique package directories from the partition file list (e.g., if the partition includes `internal/auth/handler.go` and `internal/auth/middleware.go`, the package path is `./internal/auth/...`). Run `golangci-lint run <package-paths> --out-format json`. This avoids processing the entire module and reduces output volume. If deriving package paths is impractical, run `golangci-lint run ./... --out-format json` and filter output in Step 4 to partition files only. If `golangci-lint` is not installed, fall back to `go vet <package-paths>` (or `go vet ./...`). If neither tool is available, note the absence in the partition summary and proceed with manual-only review.
+4. **Parse tool output and record tool-sourced findings.** For each lint issue from the tool output:
+   - Only record issues in files that belong to this partition — ignore findings from other packages that may be included transitively.
+   - Record as a `code_review_finding` via `changelog_insert`, with `category` mapped to the relevant tier table category (e.g., a `staticcheck` U1000 unused code → `export_hygiene_go`; an `errcheck` finding → `error_handling_go`). If a tool finding doesn't map cleanly to an existing category, use `golangci_<linter_name>` as the category.
+   - Set `description` to include the tool name, rule ID, message, and file:line reference.
+   - Severity mapping: tool findings are generally `low` or `medium` unless the rule is about correctness (nil deref, race condition → `high`).
+5. **Focus manual LLM review on categories tools can't address.** After processing tool output, evaluate the following categories manually — these are the agent's true value-add where no static tool can help:
+   - **Tier 1 entirely:** `package_cohesion_go`, `interface_design_go`, `export_hygiene_go` (beyond simple unused exports), `dependency_injection_go` — all require design-level reasoning.
+   - **Tier 2 selectively:** `goroutine_lifecycle` (tools catch some, but leak patterns and missing cancellation often need design-level reasoning), `resource_management_go` (context propagation through call chains), `race_conditions_go` (the race detector is runtime-only, and static tools catch only a narrow subset — prioritize manual review for shared state patterns, concurrent map access, and slice append races). For categories where `golangci-lint` already has strong coverage (`error_handling_go`, `nil_safety_go`, `channel_correctness`), review the tool output first — only do manual review if the tool wasn't available or if the tool output suggests a deeper pattern worth investigating.
+   - **Tier 3 entirely:** all consistency categories are convention-based and require LLM judgment — particularly `error_logging_convention_go`, which involves Go-specific `slog` structured logging patterns that no linter covers.
+6. **Insert findings incrementally** as they are identified — do not batch at the end.
+7. After all tiers are evaluated, produce a **partition summary** focused on Go idiom health (see Produces section). Update the Tooling Results section to reflect what was actually run (tool name, version if available, pass/fail) and how many tool-sourced vs manual findings were recorded.
+
+**Key principle:** Tool findings are high-confidence foundations. Manual LLM review adds insight where tools can't reach. Do NOT manually re-check what the tools already covered — that wastes context. If `golangci-lint` ran successfully, trust its output for the categories it covers and focus manual effort elsewhere.
 
 ---
 
@@ -51,12 +66,12 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 | Category | What to look for |
 |----------|-----------------|
-| `error_handling_go` | `_ = someFunc()` suppressing errors? Errors not wrapped with `%w` for context? `errors.Is`/`errors.As` not used where needed? Sentinel errors vs custom error types used appropriately? |
+| `error_handling_go` | `_ = someFunc()` suppressing errors? Errors not wrapped with `%w` for context? `errors.Is`/`errors.As` not used where needed? Sentinel errors vs custom error types used appropriately? Note: `errcheck` and `staticcheck` cover many error-handling issues. Focus manual review on semantic error-handling design (wrong sentinel vs custom type, inappropriate error wrapping strategy) that tools miss. |
 | `resource_management_go` | Missing `defer` for Close/Unlock/Done? Defer in loops (deferred calls pile up)? `context.Context` not propagated through call chains? |
 | `goroutine_lifecycle` | Goroutines launched without cancellation path? Missing `sync.WaitGroup` or `errgroup`? Goroutine leaks — no exit condition? Context not respected in long-running goroutines? |
-| `channel_correctness` | Sending on closed channels? Unbuffered channels causing unexpected blocking? Missing `select` with `ctx.Done()` for cancellation? Nil channel access? |
-| `nil_safety_go` | Nil pointer dereference risks? Interface nil vs typed nil confusion? Nil map writes? Nil slice append (fine) vs nil map access (panic)? |
-| `race_conditions_go` | Shared state without mutex/atomic? Map concurrent access? Slice append from multiple goroutines? `go test -race` violations? |
+| `channel_correctness` | Sending on closed channels? Unbuffered channels causing unexpected blocking? Missing `select` with `ctx.Done()` for cancellation? Nil channel access? Note: `staticcheck` covers some channel issues. Focus manual review on design-level blocking patterns and missing cancellation in select statements. |
+| `nil_safety_go` | Nil pointer dereference risks? Interface nil vs typed nil confusion? Nil map writes? Nil slice append (fine) vs nil map access (panic)? Note: `staticcheck` covers some basic nil dereference patterns; `nilaway` (if enabled in `.golangci.yml`) provides deeper analysis. Focus manual review on interface nil vs typed nil confusion and subtle nil propagation patterns. |
+| `race_conditions_go` | Shared state without mutex/atomic? Map concurrent access? Slice append from multiple goroutines? `go test -race` violations? Note: The race detector (`go test -race`) is a runtime tool, not available in static lint. `go vet` and `staticcheck` catch only a narrow subset statically (e.g., `copylocks`). This category has **weaker** tool coverage than others — prioritize manual review for shared state patterns, concurrent map access, and slice append races. |
 
 #### Tier 3: Consistency (Go-specific)
 
@@ -108,7 +123,7 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
   - **Top Concerns:** bullet list of the most significant Go idiom issues found (reference finding titles)
   - **Tier Coverage:** confirm which tiers and categories were evaluated, and note any categories skipped with reasons (e.g., "no goroutines in partition — skipped goroutine_lifecycle, channel_correctness")
   - **Finding Counts:** total findings by severity (critical/high/medium/low)
-  - **Tooling Results:** whether `go vet` and `staticcheck` were available and their summary output
+  - **Tooling Results:** whether `golangci-lint` (or `go vet` fallback) was available, what ran, and a summary of tool-sourced vs manual findings
 
 **Handoff:** The code review findings are consumed by the cross-cutting critic, which aggregates findings across all partitions. The partition summary text is returned to the code review orchestration skill.
 
@@ -117,16 +132,16 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
 This agent is at **high risk** of context exhaustion. You read Go source files from a partition plus potentially run analysis tools.
 
 - **Verify Go presence first.** If the partition has no `.go` files, exit immediately — do not waste context on non-Go partitions.
+- **Exclude generated code first.** Generated and vendored files are excluded in Step 2. Never read these files — they waste context and produce false positives (generated code intentionally violates conventions).
 - **Evaluate one tier at a time.** Complete Tier 1 (structural), record all findings, then move to Tier 2 (correctness), then Tier 3 (consistency).
 - **Read source files selectively.** Start with package-level declarations and exported interfaces, then follow imports and call chains inward. Don't load the entire partition at once if it's large.
-- **Run tooling early.** Execute `go vet` and `staticcheck` before manual review — their output guides where to focus attention.
+- **Run tooling early.** Execute `golangci-lint` (or `go vet` fallback) before manual review — their output guides where to focus attention and eliminates redundant manual checking.
 - **Record findings incrementally.** After evaluating each category, insert findings via `changelog_insert` before moving on. This frees you from holding finding details in context.
 - **Skip categories with no signal.** If a category clearly does not apply to the partition (e.g., no goroutines in a purely synchronous data transformation package), note this in the partition summary and move on.
 
 **Escalation:**
 
 - If findings indicate a pervasive Go anti-pattern that infects the entire codebase (e.g., systematic error suppression, no context propagation anywhere, all interfaces declared at the wrong side), pause and tell the user immediately. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
-- If the partition cannot be meaningfully reviewed because the Go code is generated, vendored, or otherwise not authored by the project team, pause and tell the user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.
 
 **blocker** data structure (for Escalation):
 ```
