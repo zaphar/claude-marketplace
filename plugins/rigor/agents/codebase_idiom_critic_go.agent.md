@@ -43,9 +43,9 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 | Category | What to look for |
 |----------|-----------------|
 | `package_cohesion_go` | Package does too many things? Internal packages used appropriately? Circular imports between packages? |
-| `interface_design_go` | Interfaces declared at consumer side (Go convention)? Accept interfaces, return structs pattern followed? Interfaces too large (>3-5 methods suggests splitting)? |
+| `interface_design_go` | Interfaces defined at the producer side instead of the consumer side (Go convention: define interfaces where they're consumed)? Fat interfaces (>3-5 methods) suggesting a need for decomposition into focused behavioral contracts? Premature interface wrapping when a concrete type would suffice (no second implementation, no testing seam needed)? |
 | `export_hygiene_go` | Exported symbols that should be unexported? Public API surface larger than necessary? |
-| `dependency_injection_go` | Concrete dependencies hardcoded vs injected via interfaces? Constructor functions accept interfaces? |
+| `dependency_injection_go` | Global `var` singletons that eliminate any injection point for testing? Direct instantiation of external dependencies (DB connections, HTTP clients, file system) with no seam for replacement? Packages importing concrete external packages deeply instead of accepting a behavioral interface at the boundary? Do NOT flag constructors accepting a concrete type when only one implementation exists — that is idiomatic Go. |
 
 #### Tier 2: Correctness (Go-specific)
 
