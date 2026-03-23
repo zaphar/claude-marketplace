@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./plugins/rigor/hooks/block-sqlite.sh",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

@@ -102,6 +102,9 @@ Replans can also happen automatically. When the senior developer detects an over
 rigor/
 ├── agents/                          # 25 agent personality files (10 producer-critic pairs + 3 read-only code review producers + 1 revalidation agent + 1 standalone analyst)
 ├── commands/                        # Slash command definitions
+├── hooks/                           # PreToolUse hooks (block direct SQLite access)
+│   ├── hooks.json                   # Claude Code hook config
+│   └── block-sqlite.sh             # Shared hook script (Claude Code + Copilot CLI)
 ├── skills/
 │   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)
 │   ├── ask/SKILL.md                 # Q&A orchestration skill
@@ -134,6 +137,21 @@ File-writing agents store SDLC artifacts under a configurable root directory (de
 ```
 
 All agents read `artifacts_directory` from project context — no agent hardcodes paths.
+
+## Hooks
+
+### Block Direct SQLite Access
+
+A `PreToolUse` hook prevents agents from running `sqlite3` (or any command starting with `sqlite`) directly. When triggered, the hook denies the tool call and directs the agent to use the rigor MCP server tools (`changelog_query`, `changelog_update`, `changelog_insert`, `traceability_query`, `export_findings`, etc.) instead.
+
+The hook works on both supported platforms:
+
+| Platform | Config file | Notes |
+|----------|-------------|-------|
+| Claude Code | `plugins/rigor/hooks/hooks.json` | Uses `matcher: "Bash"` to fire only on Bash tool calls. `${CLAUDE_PLUGIN_ROOT}` resolves to the plugin directory. |
+| Copilot CLI | `.github/hooks/rigor-block-sqlite.json` | Fires on all tool calls (no matcher); the script checks `toolName` internally. |
+
+Both platforms invoke the same shared script (`hooks/block-sqlite.sh`) which handles the different JSON input formats.
 
 ## Customization
 
