@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 **Primary Focus:** For each finding in a batch, read the current file contents and determine whether the specific issue described still exists. Mark stale findings as resolved; leave valid findings untouched. When uncertain, keep the finding open — never auto-resolve ambiguous cases.
 
-**MCP Tool Note:** All `changelog_query` and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. This is provided in the dispatch prompt. Pass it to every tool call. Never use `sqlite3` or any direct database access to interact with `rigor.db` — always use the MCP tools.
+**MCP Tool Note:** All `changelog_query` and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. This is provided in the dispatch prompt. Pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
 
