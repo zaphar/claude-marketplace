@@ -374,15 +374,32 @@ The user decides per finding (or per batch at the same severity level):
 - **Reject** → finding dismissed; update via `changelog_update(entity_type: "code_review_finding", id: <id>, updates: { status: "resolved" })`
 - **Defer** → acknowledge but don't act now; update via `changelog_update(entity_type: "code_review_finding", id: <id>, updates: { status: "deferred" })`
 
-For accepted findings, update status:
+For accepted or deferred findings, **optionally ask the user for resolution guidance** — a free-text
+annotation describing how the finding should be resolved (e.g., "use cenkalti/backoff/v4 for the
+fix", "defer until iteration 6 when AWS clients are wired"). If the user provides guidance, include
+it in the update; if they decline, update status only.
+
+For accepted findings, update status (with optional guidance):
 ```
 changelog_update(
   project_root: "<project_root>",
   entity_type: "code_review_finding",
   id: <finding_id>,
-  updates: { status: "accepted" }
+  updates: { status: "accepted", resolution_guidance: "<user's guidance text>" }
 )
 ```
+
+For deferred findings with guidance:
+```
+changelog_update(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  id: <finding_id>,
+  updates: { status: "deferred", resolution_guidance: "<user's guidance text>" }
+)
+```
+
+If the user declines to provide guidance, omit `resolution_guidance` from the updates object.
 
 ### 8.3 Post-Review Actions
 
@@ -413,6 +430,7 @@ After all findings are reviewed:
    ### Critical
    - **<title>** (<category>, <tier>): <description summary>
      Files: <file list>
+     Guidance: <resolution_guidance>
 
    ### High
    ...
@@ -430,6 +448,9 @@ After all findings are reviewed:
    This iteration addresses only the accepted findings from code review run <run_id>.
    Deferred and rejected findings are not in scope.
    ```
+
+   Only include the `Guidance:` line for findings where `resolution_guidance` is non-null.
+   Omit the line entirely for findings without guidance.
 
 3. Present the brief summary and offer to create a new iteration:
 
@@ -530,7 +551,7 @@ You have access to:
 - **project_status** (MCP tool) — Get current project state (artifacts_directory, project name)
 - **changelog_insert** (MCP tool) — Create `code_review_run` record (after discovery + partitioning)
 - **changelog_query** (MCP tool) — Query findings by run_id for synthesis and presentation
-- **changelog_update** (MCP tool) — Update `code_review_run` status/completed_at and `code_review_finding` status
+- **changelog_update** (MCP tool) — Update `code_review_run` status/completed_at and `code_review_finding` status/resolution_guidance
 - **iteration_create** (MCP tool) — Create a new iteration seeded with findings brief
 - **checkpoint** (MCP tool) — Persist state after iteration creation
 
