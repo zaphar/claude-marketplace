@@ -1,4 +1,6 @@
 import { getDb } from "./db.js";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 // ---------------------------------------------------------------------------
 // Entity type → primary table mapping
@@ -888,6 +890,200 @@ function queryCodeReviewFinding(db, { iteration_id, ids, filters = {}, include_r
 }
 
 // ---------------------------------------------------------------------------
+// export_findings — dump findings to markdown file on disk
+// ---------------------------------------------------------------------------
+
+const SEVERITY_ORDER_SQL = `
+  CASE f.severity
+    WHEN 'critical' THEN 1
+    WHEN 'high' THEN 2
+    WHEN 'medium' THEN 3
+    WHEN 'low' THEN 4
+    ELSE 5
+  END`;
+
+const FINDINGS_SELECT = `
+SELECT f.id, f.severity, f.tier, f.category, f.resolution_guidance,
+       f.title, f.status,
+       group_concat(DISTINCT ff.file) AS files
+FROM code_review_finding f
+LEFT JOIN code_review_finding_file ff ON ff.finding_id = f.id`;
+
+const FINDINGS_GROUP_ORDER = `
+GROUP BY f.id
+ORDER BY ${SEVERITY_ORDER_SQL}, f.id`;
+
+function buildFindingsTable(rows, { showStatus = false } = {}) {
+  if (rows.length === 0) return "_No findings._\n";
+  const header = showStatus
+    ? "| ID | Severity | Tier | Category | Title | Status | Files | Guidance |"
+    : "| ID | Severity | Tier | Category | Title | Files | Guidance |";
+  const sep = showStatus
+    ? "|----|----------|------|----------|-------|--------|-------|----------|"
+    : "|----|----------|------|----------|-------|-------|----------|";
+  const lines = rows.map(r => {
+    const files = r.files ?? "";
+    const guidance = r.resolution_guidance ?? "";
+    return showStatus
+      ? `| ${r.id} | ${r.severity} | ${r.tier} | ${r.category} | ${r.title} | ${r.status} | ${files} | ${guidance} |`
+      : `| ${r.id} | ${r.severity} | ${r.tier} | ${r.category} | ${r.title} | ${files} | ${guidance} |`;
+  });
+  return [header, sep, ...lines].join("\n") + "\n";
+}
+
+function countsBySeverity(rows) {
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const r of rows) {
+    if (r.severity in counts) counts[r.severity]++;
+  }
+  return counts;
+}
+
+function resolveIterationAndRun(db, args) {
+  let { iteration_id, run_id } = args;
+
+  if (iteration_id == null) {
+    const iter = db.prepare(
+      "SELECT id FROM iteration WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+    ).get();
+    if (!iter) throw new Error("No active iteration found. Provide iteration_id explicitly.");
+    iteration_id = iter.id;
+  }
+
+  if (run_id == null) {
+    const run = db.prepare(
+      "SELECT id FROM code_review_run WHERE iteration_id = ? ORDER BY id DESC LIMIT 1"
+    ).get(iteration_id);
+    if (!run) throw new Error(`No code review run found for iteration ${iteration_id}. Provide run_id explicitly.`);
+    run_id = run.id;
+  }
+
+  return { iteration_id, run_id };
+}
+
+function resolveOutputDir(db, project_root, output_dir) {
+  if (output_dir) {
+    const dir = path.isAbsolute(output_dir) ? output_dir : path.join(project_root, output_dir);
+    mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+  const project = db.prepare("SELECT artifacts_directory FROM project WHERE id = 1").get();
+  const artifactsDir = project?.artifacts_directory ?? "docs/sdlc";
+  const dir = path.join(project_root, artifactsDir, "process", "code-review");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function exportFindings(args) {
+  const { project_root, scope, output_dir } = args;
+  if (!project_root) throw new Error("project_root is required");
+  if (!scope) throw new Error("scope is required");
+
+  const db = getDb(project_root);
+  const dir = resolveOutputDir(db, project_root, output_dir);
+  const epoch = Math.floor(Date.now() / 1000);
+  const filePath = path.join(dir, `${epoch}-findings.md`);
+  const now = new Date().toISOString();
+
+  let markdown = "";
+  let totalCount = 0;
+  let allCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  let meta = {};
+
+  if (scope === "open") {
+    const { iteration_id, run_id } = resolveIterationAndRun(db, args);
+    const userProvidedRunId = args.run_id != null;
+    meta = { iteration_id, run_id };
+    const runFilter = userProvidedRunId ? "AND f.run_id = ?" : "";
+    const params = userProvidedRunId ? [iteration_id, run_id] : [iteration_id];
+    const rows = db.prepare(
+      `${FINDINGS_SELECT}
+       JOIN code_review_run r ON f.run_id = r.id
+       WHERE r.iteration_id = ? ${runFilter} AND f.status = 'open'
+       ${FINDINGS_GROUP_ORDER}`
+    ).all(...params);
+    totalCount = rows.length;
+    allCounts = countsBySeverity(rows);
+    markdown = `# Code Review Findings — Open (Iteration ${iteration_id})\n\n`;
+    markdown += `Generated: ${now}\nIteration: ${iteration_id}\n\n`;
+    markdown += `## Open Findings\n\n`;
+    markdown += buildFindingsTable(rows);
+
+  } else if (scope === "all") {
+    const { iteration_id, run_id } = resolveIterationAndRun(db, args);
+    const userProvidedRunId = args.run_id != null;
+    meta = { iteration_id, run_id };
+    const runFilter = userProvidedRunId ? "AND f.run_id = ?" : "";
+    const params = userProvidedRunId ? [iteration_id, run_id] : [iteration_id];
+    const openRows = db.prepare(
+      `${FINDINGS_SELECT}
+       JOIN code_review_run r ON f.run_id = r.id
+       WHERE r.iteration_id = ? ${runFilter} AND f.status = 'open'
+       ${FINDINGS_GROUP_ORDER}`
+    ).all(...params);
+    const closedRows = db.prepare(
+      `${FINDINGS_SELECT}
+       JOIN code_review_run r ON f.run_id = r.id
+       WHERE r.iteration_id = ? ${runFilter} AND f.status != 'open'
+       ${FINDINGS_GROUP_ORDER}`
+    ).all(...params);
+    totalCount = openRows.length + closedRows.length;
+    const openCounts = countsBySeverity(openRows);
+    const closedCounts = countsBySeverity(closedRows);
+    for (const k of Object.keys(allCounts)) allCounts[k] = openCounts[k] + closedCounts[k];
+    markdown = `# Code Review Findings — All (Iteration ${iteration_id})\n\n`;
+    markdown += `Generated: ${now}\nIteration: ${iteration_id}\n\n`;
+    markdown += `## Open Findings (${openRows.length})\n\n`;
+    markdown += buildFindingsTable(openRows);
+    markdown += `\n## Resolved / Accepted / Deferred / False-Positive (${closedRows.length})\n\n`;
+    markdown += buildFindingsTable(closedRows, { showStatus: true });
+
+  } else if (scope === "cross_iteration") {
+    meta = {};
+    const rows = db.prepare(
+      `SELECT f.id, f.severity, f.tier, f.category, f.resolution_guidance,
+              f.title, f.status,
+              group_concat(DISTINCT ff.file) AS files,
+              r.iteration_id
+       FROM code_review_finding f
+       LEFT JOIN code_review_finding_file ff ON ff.finding_id = f.id
+       JOIN code_review_run r ON f.run_id = r.id
+       GROUP BY f.id
+       ORDER BY r.iteration_id DESC, ${SEVERITY_ORDER_SQL}, f.id`
+    ).all();
+    totalCount = rows.length;
+    allCounts = countsBySeverity(rows);
+    markdown = `# Code Review Findings — All Iterations\n\n`;
+    markdown += `Generated: ${now}\n\n`;
+    markdown += `## All Findings (${rows.length})\n\n`;
+    if (rows.length === 0) {
+      markdown += "_No findings._\n";
+    } else {
+      const header = "| ID | Iteration | Severity | Tier | Category | Title | Status | Files | Guidance |";
+      const sep =    "|----|-----------|----------|------|----------|-------|--------|-------|----------|";
+      const lines = rows.map(r => {
+        const files = r.files ?? "";
+        const guidance = r.resolution_guidance ?? "";
+        return `| ${r.id} | ${r.iteration_id} | ${r.severity} | ${r.tier} | ${r.category} | ${r.title} | ${r.status} | ${files} | ${guidance} |`;
+      });
+      markdown += [header, sep, ...lines].join("\n") + "\n";
+    }
+  } else {
+    throw new Error(`Invalid scope: "${scope}". Must be one of: open, all, cross_iteration`);
+  }
+
+  writeFileSync(filePath, markdown, "utf8");
+
+  return {
+    file_path: filePath,
+    total: totalCount,
+    counts: allCounts,
+    scope,
+    ...meta,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Query dispatch map
 // ---------------------------------------------------------------------------
 
@@ -1568,6 +1764,37 @@ export const READ_TOOLS = [
       properties: {},
     },
   },
+  {
+    name: "export_findings",
+    description:
+      "Export code review findings to a markdown file on disk. The file contains a table with finding ID, severity, tier, category, title, files, and resolution guidance — designed for human review outside the LLM context. " +
+      "Returns the file path and severity counts (never the table content). " +
+      "Three scopes: 'open' (open findings for current iteration), 'all' (open + non-open as two tables), 'cross_iteration' (all findings across all iterations). " +
+      "Auto-detects iteration_id and run_id when omitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        scope: {
+          type: "string",
+          enum: ["open", "all", "cross_iteration"],
+          description: "What to export: 'open' = open findings for current iteration, 'all' = open + non-open as two tables, 'cross_iteration' = all findings across all iterations",
+        },
+        iteration_id: {
+          type: "integer",
+          description: "Iteration ID. Auto-detected (active iteration) if omitted.",
+        },
+        run_id: {
+          type: "integer",
+          description: "Code review run ID. Auto-detected (latest run in iteration) if omitted.",
+        },
+        output_dir: {
+          type: "string",
+          description: "Override output directory (relative to project_root or absolute). Defaults to <artifacts_directory>/process/code-review/.",
+        },
+      },
+      required: ["scope"],
+    },
+  },
 ];
 
 // Inject project_root into every tool schema
@@ -1597,6 +1824,8 @@ export function handleReadTool(name, args) {
       return projectStatus(args);
     case "list_iterations":
       return listIterations(args);
+    case "export_findings":
+      return exportFindings(args);
     default:
       throw new Error(`Unknown read tool: "${name}"`);
   }

@@ -284,37 +284,9 @@ The cross-cutting critic returns a system-level summary as plain text.
 
 ## 7. Step 5: Synthesis
 
-The orchestrator synthesizes all findings and prepares the user-facing summary.
+The orchestrator completes the run and exports findings for human review.
 
-### 7.1 Query All Findings
-
-```
-changelog_query(
-  project_root: "<project_root>",
-  entity_type: "code_review_finding",
-  filters: { run_id: <run_id> },
-  include_related: true,
-  limit: 100
-)
-```
-
-Paginate if the total exceeds 100 — use `offset` to retrieve subsequent pages.
-
-### 7.2 Deduplicate
-
-> **Scope:** This deduplication is **within-run only** — it merges duplicate findings reported
-> by different critics (design vs. idiom) in the same run. **Cross-run** deduplication is
-> handled upstream: Step 4.4 passes `prior_decisions` context to critics so they skip findings
-> that were already decided in a prior run in this iteration.
-
-Findings with identical `title` AND `primary_file` (first entry in `files` array) can be
-merged. Keep the higher-severity instance and note the duplicate count.
-
-### 7.3 Group by Severity
-
-Order findings: **critical → high → medium → low**.
-
-### 7.4 Update Run Status
+### 7.1 Update Run Status
 
 ```
 changelog_update(
@@ -325,7 +297,32 @@ changelog_update(
 )
 ```
 
-### 7.5 Present Summary
+### 7.2 Export Findings
+
+Call `export_findings` to dump findings to a markdown file on disk. This writes the file
+but does NOT return its content — the user reads it outside the LLM context.
+
+```
+export_findings(
+  project_root: "<project_root>",
+  scope: "open"
+)
+```
+
+The tool auto-detects the active iteration and latest run. It returns:
+
+```json
+{
+  "file_path": "<absolute path to generated markdown file>",
+  "total": 42,
+  "counts": { "critical": 2, "high": 8, "medium": 20, "low": 12 },
+  "scope": "open",
+  "iteration_id": 3,
+  "run_id": 1
+}
+```
+
+### 7.3 Present Summary
 
 Display to the user:
 
@@ -334,7 +331,7 @@ Display to the user:
 
 Run: <run_id>
 Partitions reviewed: <total_partitions>
-Total findings: <count>
+Total findings: <total>
 
 By severity:
   Critical: <N>
@@ -342,20 +339,84 @@ By severity:
   Medium:   <N>
   Low:      <N>
 
-Ready to review findings. Starting with critical/high severity.
+Findings exported to: <file_path>
+
+Review the file and tell me which findings you'd like to act on by their ID.
+You can:
+  - Accept findings: "accept 12, 15 with guidance: use backoff/v4"
+  - Reject findings: "reject 22, 23 — false positives"
+  - Defer findings: "defer 31, 32 until iteration 6"
+  - Discuss a finding: "tell me about finding 42"
+  - Re-export: "refresh the findings table" or "show all findings"
 ```
 
 ## 8. Finding Review Flow
 
-Present findings to the user for review. Start with critical and high severity, then
-medium and low.
+The user drives triage by referencing finding IDs from the exported markdown file.
+The orchestrator **never loads the full findings list into context** — it only fetches
+individual findings by ID when the user asks to discuss one.
 
-### 8.1 Finding Presentation
+### 8.1 Triage Loop
 
-For each finding (or batch by severity level):
+Wait for user input. The user may:
+
+**Batch status updates** — The user names specific IDs and a disposition. No need to fetch
+the findings first; update directly:
+
+- **Accept:** "accept 12, 15, 17" or "accept 12, 15 with guidance: add context.Context propagation"
+- **Reject:** "reject 22, 23" or "reject 22, 23 — false positives, generated code"
+- **Defer:** "defer 31, 32" or "defer 31 with guidance: revisit in iteration 6"
+
+For each ID in the batch, call `changelog_update`:
 
 ```
-[SEVERITY] TITLE
+// Accept (with optional guidance)
+changelog_update(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  id: <finding_id>,
+  updates: { status: "accepted", resolution_guidance: "<guidance if provided>" }
+)
+
+// Reject
+changelog_update(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  id: <finding_id>,
+  updates: { status: "resolved" }
+)
+
+// Defer (with optional guidance)
+changelog_update(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  id: <finding_id>,
+  updates: { status: "deferred", resolution_guidance: "<guidance if provided>" }
+)
+```
+
+Omit `resolution_guidance` from the updates object if the user did not provide any.
+
+After processing a batch, confirm what was done:
+```
+✅ Updated <N> findings: <IDs> → <status>
+```
+
+**Discuss a single finding** — The user asks about a specific finding by ID:
+
+Fetch only that finding:
+```
+changelog_query(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  ids: ["<finding_id>"],
+  include_related: true
+)
+```
+
+Present the finding details inline (one finding is a trivial context cost):
+```
+[SEVERITY] TITLE (ID: <id>)
 Tier: <tier> | Category: <category>
 Files: <file list>
 
@@ -364,44 +425,20 @@ Files: <file list>
 Suggested impact level: <implementation|architecture|requirements>
 ```
 
-### 8.2 User Decision
+Then wait for the user's decision on that finding.
 
-The user decides per finding (or per batch at the same severity level):
+**Re-export** — The user asks to refresh or change scope:
 
-- **Accept + Implementation** → finding will become a work item in a new iteration's planning phase
-- **Accept + Architecture** → finding requires architecture-level iteration (new iteration starts at architecture phase)
-- **Accept + Requirements** → finding requires requirements-level iteration (new iteration starts at requirements phase)
-- **Reject** → finding dismissed; update via `changelog_update(entity_type: "code_review_finding", id: <id>, updates: { status: "resolved" })`
-- **Defer** → acknowledge but don't act now; update via `changelog_update(entity_type: "code_review_finding", id: <id>, updates: { status: "deferred" })`
+- "refresh the findings table" → call `export_findings(scope: "open")`
+- "show all findings" → call `export_findings(scope: "all")`
+- "show findings across all iterations" → call `export_findings(scope: "cross_iteration")`
 
-For accepted or deferred findings, **optionally ask the user for resolution guidance** — a free-text
-annotation describing how the finding should be resolved (e.g., "use cenkalti/backoff/v4 for the
-fix", "defer until iteration 6 when AWS clients are wired"). If the user provides guidance, include
-it in the update; if they decline, update status only.
+Report the new file path and counts.
 
-For accepted findings, update status (with optional guidance):
-```
-changelog_update(
-  project_root: "<project_root>",
-  entity_type: "code_review_finding",
-  id: <finding_id>,
-  updates: { status: "accepted", resolution_guidance: "<user's guidance text>" }
-)
-```
+**Finish** — The user says they're done reviewing (e.g., "done", "that's all", "finish review").
+Proceed to §8.2.
 
-For deferred findings with guidance:
-```
-changelog_update(
-  project_root: "<project_root>",
-  entity_type: "code_review_finding",
-  id: <finding_id>,
-  updates: { status: "deferred", resolution_guidance: "<user's guidance text>" }
-)
-```
-
-If the user declines to provide guidance, omit `resolution_guidance` from the updates object.
-
-### 8.3 Post-Review Actions
+### 8.2 Post-Review Actions
 
 After all findings are reviewed:
 
@@ -529,12 +566,13 @@ responsibility.
 
 - **The orchestrator never reads full source files directly** — always delegate to sub-agents
   (`codebase_design_critic`, `codebase_idiom_critic_go`, `codebase_cross_cutting_critic`).
+- **The orchestrator never bulk-loads findings into context** — use `export_findings` to write
+  findings to a markdown file on disk. The user reads the file externally and references specific
+  finding IDs. The orchestrator only fetches individual findings by ID via `changelog_query`
+  when the user asks to discuss one.
 - **Partition summaries are accumulated as plain text** in the orchestrator context.
 - **After each batch of partitions**, the orchestrator may summarize the summaries to manage
   context size — retain key concerns, finding counts, and top issues; discard verbose detail.
-- **Keep DB queries targeted:** always use `filters: { run_id: <run_id> }` when querying
-  `code_review_finding` entities. Use `include_related: false` for counting queries, then
-  `include_related: true` only when presenting findings to the user.
 - **Partition processing is sequential in batches** (3–4 at a time), not fully parallel,
   to manage the orchestrator's context window.
 
@@ -550,8 +588,9 @@ You have access to:
 - **AskUserQuestion** — Get user decisions during finding review
 - **project_status** (MCP tool) — Get current project state (artifacts_directory, project name)
 - **changelog_insert** (MCP tool) — Create `code_review_run` record (after discovery + partitioning)
-- **changelog_query** (MCP tool) — Query findings by run_id for synthesis and presentation
+- **changelog_query** (MCP tool) — Query individual findings by ID for discussion (never bulk-load all findings)
 - **changelog_update** (MCP tool) — Update `code_review_run` status/completed_at and `code_review_finding` status/resolution_guidance
+- **export_findings** (MCP tool) — Export findings to a markdown file on disk for human review. Supports scopes: `open`, `all`, `cross_iteration`. Returns file path and severity counts — never the table content. This is the primary mechanism for presenting findings; the orchestrator never loads the full findings list into context.
 - **iteration_create** (MCP tool) — Create a new iteration seeded with findings brief
 - **checkpoint** (MCP tool) — Persist state after iteration creation
 

@@ -86,6 +86,7 @@ mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "iteration_summary":
       case "project_status":
       case "list_iterations":
+      case "export_findings":
         return okResponse(handleReadTool(name, args));
 
       default:

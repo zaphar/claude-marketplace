@@ -4,12 +4,24 @@ allowed-tools:
   - Read
   - Bash
   - Skill
+  - Task
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
+  - rigor-db/project_status
   - mcp__plugin_rigor_rigor-db__iteration_create
+  - rigor-db/iteration_create
   - mcp__plugin_rigor_rigor-db__phase_transition
+  - rigor-db/phase_transition
   - mcp__plugin_rigor_rigor-db__changelog_query
+  - rigor-db/changelog_query
+  - mcp__plugin_rigor_rigor-db__changelog_insert
+  - rigor-db/changelog_insert
+  - mcp__plugin_rigor_rigor-db__changelog_update
+  - rigor-db/changelog_update
+  - mcp__plugin_rigor_rigor-db__export_findings
+  - rigor-db/export_findings
   - mcp__plugin_rigor_rigor-db__checkpoint
+  - rigor-db/checkpoint
 ---
 
 # Run Holistic Code Review
