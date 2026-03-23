@@ -999,6 +999,7 @@ CREATE TABLE IF NOT EXISTS code_review_finding (
   description TEXT NOT NULL,
   impact_level TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
+  resolution_guidance TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

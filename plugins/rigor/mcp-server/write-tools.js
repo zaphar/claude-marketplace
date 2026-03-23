@@ -951,8 +951,8 @@ function insertCodeReviewRun(db, iteration_id, revision_id, data) {
 function insertCodeReviewFinding(db, iteration_id, revision_id, data) {
   const result = db.prepare(
     `INSERT INTO code_review_finding
-       (run_id, tier, category, severity, title, description, impact_level, status)
-     VALUES (@run_id, @tier, @category, @severity, @title, @description, @impact_level, @status)`
+       (run_id, tier, category, severity, title, description, impact_level, status, resolution_guidance)
+     VALUES (@run_id, @tier, @category, @severity, @title, @description, @impact_level, @status, @resolution_guidance)`
   ).run({
     run_id: data.run_id,
     tier: data.tier,
@@ -961,7 +961,8 @@ function insertCodeReviewFinding(db, iteration_id, revision_id, data) {
     title: data.title,
     description: data.description,
     impact_level: data.impact_level,
-    status: data.status ?? "open"
+    status: data.status ?? "open",
+    resolution_guidance: data.resolution_guidance ?? null
   });
   const findingId = result.lastInsertRowid;
   if (Array.isArray(data.files) && data.files.length > 0) {
@@ -1222,6 +1223,7 @@ function changelogUpdate(args) {
     code_review_finding: {
       table: "code_review_finding",
       statuses: ["open", "resolved", "accepted", "false-positive", "deferred"],
+      mutableFields: ["resolution_guidance"],
     },
   };
 
@@ -1868,7 +1870,7 @@ export const WRITE_TOOLS = [
   {
     name: "changelog_update",
     description:
-      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, code_review_run, code_review_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed, in_progress → completed). Also supports updating mutable fields on code_review_run records (completed_at), work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk), and intermediate_asset records (title, content).",
+      "Updates mutable fields on an existing changelog entity. Currently supports updating the status of security_audit_finding, performance_audit_finding, code_review_run, code_review_finding, adr, and approved_dependency records through their lifecycle (e.g. open → resolved, proposed → accepted, active → removed, in_progress → completed). Also supports updating mutable fields on code_review_run records (completed_at), work_item records (e.g. review_checkpoint, exit_criteria, notes, complexity, work_order, critical_path_sequence, phase_number, requirements), adr records (title, decision, rationale, context, consequences, research_sources), component records (name, purpose, component_type), requirement records (description, rationale, priority, category, acceptance_criteria), approved_dependency records (package, version_constraint, purpose, justification, adr_id, license, category, maintenance_activity, community_adoption, transitive_deps, single_maintainer_risk), intermediate_asset records (title, content), and code_review_finding records (resolution_guidance).",
     inputSchema: {
       type: "object",
       properties: {
@@ -2076,6 +2078,10 @@ export const WRITE_TOOLS = [
               type: "array",
               items: { type: "string" },
               description: "requirement: updated acceptance criteria (string array, replaces existing)",
+            },
+            resolution_guidance: {
+              type: "string",
+              description: "code_review_finding: human triage guidance on how to resolve this finding",
             },
           },
         },

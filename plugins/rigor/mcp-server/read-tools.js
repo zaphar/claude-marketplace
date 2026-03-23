@@ -861,6 +861,7 @@ const CODE_REVIEW_FINDING_FILTERS = {
   description: { nullable: false },
   impact_level: { nullable: false },
   status: { nullable: false },
+  resolution_guidance: { nullable: true },
 };
 
 function queryCodeReviewFinding(db, { iteration_id, ids, filters = {}, include_related = false }) {
