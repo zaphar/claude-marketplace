@@ -78,6 +78,27 @@ function iterationCreate(args) {
   return run();
 }
 
+function iterationUpdate(args) {
+  const db = getDb(args.project_root);
+  const { iteration_id, brief_path } = args;
+
+  const run = db.transaction(() => {
+    const row = db.prepare("SELECT id, status, brief_path FROM iteration WHERE id = @iteration_id").get({ iteration_id });
+    if (!row) throw new Error(`Iteration with id=${iteration_id} not found`);
+    if (row.status !== "active") throw new Error(`Iteration ${iteration_id} is not active (current status: ${row.status})`);
+
+    if (row.brief_path !== null) {
+      throw new Error(`Iteration ${iteration_id} already has a brief_path set ('${row.brief_path}'). Append to the existing brief file instead of overwriting.`);
+    }
+
+    db.prepare("UPDATE iteration SET brief_path = @brief_path WHERE id = @iteration_id").run({ brief_path, iteration_id });
+
+    return { iteration_id, brief_path };
+  });
+
+  return run();
+}
+
 function phaseTransition(args) {
   const db = getDb(args.project_root);
   const {
@@ -1787,6 +1808,19 @@ export const WRITE_TOOLS = [
     },
   },
   {
+    name: "iteration_update",
+    description:
+      "Sets brief_path on an existing active iteration. Only succeeds when brief_path is currently NULL — returns an error if already set, directing the caller to append to the existing brief file instead.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        iteration_id: { type: "integer", description: "The iteration ID to update" },
+        brief_path: { type: "string", description: "Path to investigation brief file, relative to project root" },
+      },
+      required: ["iteration_id", "brief_path"],
+    },
+  },
+  {
     name: "phase_transition",
     description: "Transitions a phase's status (pending → in_progress → completed | skipped).",
     inputSchema: {
@@ -2209,6 +2243,8 @@ export function handleWriteTool(name, args) {
   switch (name) {
     case "iteration_create":
       return iterationCreate(args);
+    case "iteration_update":
+      return iterationUpdate(args);
     case "phase_transition":
       return phaseTransition(args);
     case "work_item_transition":

@@ -66,6 +66,7 @@ mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "iteration_create":
+      case "iteration_update":
       case "phase_transition":
       case "work_item_transition":
       case "revision_create":
