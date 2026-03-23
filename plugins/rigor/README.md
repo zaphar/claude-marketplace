@@ -153,6 +153,26 @@ The hook works on both supported platforms:
 
 Both platforms invoke the same shared script (`hooks/block-sqlite.sh`) which handles the different JSON input formats.
 
+## Hard Constraint: No Direct Database Access
+
+Agents must never run `sqlite3` or any other database client directly. All reads and writes
+to the rigor database must use the MCP tools (`changelog_query`, `changelog_insert`,
+`changelog_update`, `traceability_query`, `export_findings`, etc.).
+
+This constraint is enforced at runtime by a PreToolUse hook (see [Hooks](#hooks) above) that
+blocks any bash command starting with `sqlite` and directs the agent to use MCP tools instead.
+
+If an agent encounters a task it cannot complete using the available MCP tools, it should stop
+and output:
+
+```
+STOP — MCP Tool Limitation
+What I was trying to do: <operation>
+Why I cannot do it: <tool gap or error>
+What the plugin needs: <missing capability>
+Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
+```
+
 ## Customization
 
 **Modifying agents:** Edit agent files in `agents/` to customize personalities and behaviors.

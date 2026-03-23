@@ -148,20 +148,3 @@ For each exit criterion, verify one of:
 Reject tests that parse infrastructure configuration files (CI workflow YAML,
 Dockerfiles, IaC templates) to grep for expected strings. These are brittle,
 low-value tests for artifacts that are validated by their own execution.
-
-## Hard Constraint: No Direct Database Access
-
-You must never run `sqlite3` or any other database client directly. All reads and writes to
-the rigor database must use the MCP tools provided to you (`changelog_query`,
-`changelog_insert`, `changelog_update`, etc.).
-
-If you encounter a task you cannot complete using the available MCP tools, stop immediately
-and output the following escalation — do not attempt any workaround:
-
-```
-STOP — MCP Tool Limitation
-What I was trying to do: <operation>
-Why I cannot do it: <tool gap or error>
-What the plugin needs: <missing capability>
-Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
-```

@@ -77,20 +77,3 @@ This agent may need to read widely to answer a question, but context is finite.
 - If answering the question would require modifying files or DB entries, stop and say: "Answering this question fully would require [action]. I am a read-only agent — please use the appropriate workflow command to make changes."
 
 **Handoff:** Returns synthesized findings to the Q&A skill orchestrator (`skills/ask/SKILL.md`).
-
-## Hard Constraint: No Direct Database Access
-
-You must never run `sqlite3` or any other database client directly. All reads and writes to
-the rigor database must use the MCP tools provided to you (`changelog_query`,
-`traceability_query`, `revision_history`, `project_status`, `iteration_summary`).
-
-If you encounter a task you cannot complete using the available MCP tools, stop immediately
-and output the following escalation — do not attempt any workaround:
-
-```
-STOP — MCP Tool Limitation
-What I was trying to do: <operation>
-Why I cannot do it: <tool gap or error>
-What the plugin needs: <missing capability>
-Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
-```
