@@ -197,10 +197,13 @@ changelog_query(entity_type="plan_overview", iteration_id=<id>)
 | Code Review (Design) | `rigor:codebase_design_critic` | — |
 | Code Review (Go idiom) | `rigor:codebase_idiom_critic_go` | — |
 | Code Review (Cross-cutting) | `rigor:codebase_cross_cutting_critic` | — |
+| Code Review (Revalidation) | `rigor:code_review_revalidator` | — |
 
 > **Note:** Auditor agents (`security_auditor`, `performance_auditor`) are **read-only producers** — they do not have Edit/Write file tools. Instead of writing files, they submit their findings exclusively via MCP tools (`changelog_insert` with entity types `security_audit_finding` and `performance_audit_finding`). Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis.
 >
 > **Note:** Code review agents (`codebase_design_critic`, `codebase_idiom_critic_go`, `codebase_cross_cutting_critic`) are also **read-only producers** — they evaluate code partitions and submit findings via `changelog_insert(entity_type: "code_review_finding")`. They are dispatched per partition during the code review phase. Their tool lists intentionally include only Read, Grep, Glob, and Bash for code analysis. The cross-cutting critic additionally uses `traceability_query` for requirement ↔ code cross-referencing.
+>
+> **Note:** The revalidation agent (`code_review_revalidator`) is a **read-only revalidation agent** — unlike the three code review critics above which use `changelog_insert` to create new findings, the revalidator uses `changelog_update` to resolve stale findings after the developer has addressed them. It does not use `changelog_insert`. Its tool list intentionally includes only Read, Grep, Glob, and Bash for code analysis.
 
 **When invoking agents via the Task tool, always provide these parameters:**
 

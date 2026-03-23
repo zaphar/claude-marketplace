@@ -17,17 +17,20 @@ handles `phase_transition`).
 
 ## 1. Overview
 
-The code review pipeline has five steps:
+The code review pipeline has six steps:
 
 ```
 Step 1: Discovery (bash)  →  Step 2: Partitioning (orchestrator logic)
     →  Step 3: Per-Partition Review (parallel sub-agents)
     →  Step 4: Cross-Cutting Review (sub-agent)
-    →  Step 5: Synthesis + Finding Review (orchestrator + user)
+    →  Step 5: Synthesis
+    →  Step 5.5: Revalidate Open Findings (conditional, sub-agent)
+    →  Step 6: Finding Review (orchestrator + user)
 ```
 
 Findings are recorded as `code_review_finding` entities in the database via sub-agents.
-After synthesis, the user reviews findings and decides which to accept, reject, or defer.
+After synthesis, stale findings are auto-resolved via revalidation, then the user reviews
+remaining findings and decides which to accept, reject, or defer.
 Accepted findings can seed a new iteration at the appropriate phase depth.
 
 ## 2. Inputs
@@ -348,7 +351,120 @@ You can:
   - Defer findings: "defer 31, 32 until iteration 6"
   - Discuss a finding: "tell me about finding 42"
   - Re-export: "refresh the findings table" or "show all findings"
+  - Revalidate: "refresh findings" or "revalidate"
 ```
+
+## 7.5. Step 5.5: Revalidate Open Findings
+
+After exporting findings but before presenting triage to the user, check whether any open
+findings have become stale (the underlying code was fixed since the review started). This
+step is **conditional** — it only runs if files referenced by open findings have changed.
+
+This same subroutine is also callable from the triage loop (§8.1) when the user says
+"refresh findings", "revalidate", or similar.
+
+### 7.5.1 Query Open Findings
+
+```
+changelog_query(
+  project_root: "<project_root>",
+  entity_type: "code_review_finding",
+  iteration_id: <iteration_id>,
+  include_related: true
+)
+```
+
+> **Pagination:** If `total` exceeds the page size, fetch subsequent pages using `offset`
+> until all findings are collected.
+
+Client-side filter: keep only findings where `status == "open"`.
+
+### 7.5.2 Detect Changed Files
+
+Query the current run's `started_at` timestamp from the `code_review_run` record:
+
+```
+changelog_query(
+  project_root: "<project_root>",
+  entity_type: "code_review_run",
+  ids: ["<run_id>"]
+)
+```
+
+Extract the `started_at` value. Then detect which files changed since the review started:
+
+```bash
+git log --format=%H --after="<started_at>" -- <space-separated list of all files referenced by open findings>
+```
+
+If this returns no commits → **skip revalidation entirely**, proceed to triage (§8).
+
+### 7.5.3 Identify Stale Candidates
+
+From the open findings, identify which ones reference any of the changed files. These are
+"stale candidates" — findings that *might* no longer apply because the underlying code changed.
+
+If no open findings reference changed files → skip revalidation, proceed to triage.
+
+### 7.5.4 Batch Stale Candidates
+
+Group stale candidates into batches using intelligent file-overlap clustering:
+
+1. **Build a file→findings map:** For each changed file, list which stale-candidate findings
+   reference it.
+
+2. **Greedily merge by file overlap:** Starting from the finding with the most file references,
+   merge any finding that shares ≥1 file into the same cluster. Continue until no more merges
+   are possible.
+
+3. **Cap cluster size:** If a cluster exceeds ~15 findings or ~30 unique files (whichever limit
+   hits first), split it at the boundary — keep the current cluster and start a new one with
+   the remaining findings.
+
+4. **Bundle singletons:** Remaining findings with no file overlap with any cluster are bundled
+   into catch-all batches of ~15 findings each.
+
+### 7.5.5 Dispatch Revalidator Batches
+
+For each batch, generate a change summary per finding's files:
+
+```bash
+git diff --stat <commit_before_started_at>..HEAD -- <files>
+```
+
+Then dispatch the revalidator agent:
+
+```
+Task(
+  agent_type: "rigor:code_review_revalidator",
+  name: "revalidate-batch-<batch-index>",
+  description: "Revalidate open findings batch <N>",
+  prompt: "Execute tools one at a time using the structured tool interface. Never write out tool calls as XML text — use the structured tool interface directly.\n\nYou are revalidating open code review findings against the current file contents.\nproject_root: <project_root>\n\nFindings to revalidate:\n<for each finding in batch>\n  - id: <id>\n    title: <title>\n    description: <description>\n    severity: <severity>\n    tier: <tier>\n    category: <category>\n    files: <file list>\n    changes_since_review: <git diff --stat summary for this finding's files>\n</for each>\n\nFor each finding, read the current file contents and determine whether the described issue still exists. Output a structured verdict per finding."
+)
+```
+
+### 7.5.6 Collect Results and Report
+
+Aggregate results across all batches. Report a summary:
+
+```
+🔄 Revalidation Complete
+
+Findings evaluated: <N>
+Still valid:        <N>
+Stale (auto-resolved): <N>
+```
+
+If any findings were resolved, re-export to update the on-disk findings file:
+
+```
+export_findings(
+  project_root: "<project_root>",
+  scope: "open"
+)
+```
+
+Report the updated file path and counts, then proceed to triage (§8).
 
 ## 8. Finding Review Flow
 
@@ -434,6 +550,13 @@ Then wait for the user's decision on that finding.
 - "show findings across all iterations" → call `export_findings(scope: "cross_iteration")`
 
 Report the new file path and counts.
+
+**Revalidate** — The user says "refresh findings", "revalidate", or similar:
+
+Run the revalidation subroutine from §7.5 (steps 7.5.1–7.5.6). This re-checks all open
+findings against the current file contents, auto-resolves stale findings, and re-exports.
+After revalidation completes, re-present the updated summary and counts to the user, then
+continue the triage loop.
 
 **Finish** — The user says they're done reviewing (e.g., "done", "that's all", "finish review").
 Proceed to §8.2.
@@ -584,7 +707,7 @@ responsibility.
 You have access to:
 - **Read** — Read discovery/partition JSON files and agent output (but never read source files directly)
 - **Bash** — Run discovery commands (find, wc, grep), create directories, write JSON/markdown files
-- **Task** — Invoke sub-agents (`codebase_design_critic`, `codebase_idiom_critic_go`, `codebase_cross_cutting_critic`)
+- **Task** — Invoke sub-agents (`codebase_design_critic`, `codebase_idiom_critic_go`, `codebase_cross_cutting_critic`, `code_review_revalidator`)
 - **AskUserQuestion** — Get user decisions during finding review
 - **project_status** (MCP tool) — Get current project state (artifacts_directory, project name)
 - **changelog_insert** (MCP tool) — Create `code_review_run` record (after discovery + partitioning)

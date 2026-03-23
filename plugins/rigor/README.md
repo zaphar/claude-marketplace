@@ -100,7 +100,7 @@ Replans can also happen automatically. When the senior developer detects an over
 
 ```
 rigor/
-├── agents/                          # 24 agent personality files (10 producer-critic pairs + 3 read-only code review producers + 1 standalone analyst)
+├── agents/                          # 25 agent personality files (10 producer-critic pairs + 3 read-only code review producers + 1 revalidation agent + 1 standalone analyst)
 ├── commands/                        # Slash command definitions
 ├── skills/
 │   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)
