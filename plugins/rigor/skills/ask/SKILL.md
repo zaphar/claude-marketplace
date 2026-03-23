@@ -1,14 +1,14 @@
 ---
 name: Project Discussion
 description: Orchestrator-level Q&A session with investigation brief output. Loaded by /rigor:ask command only, not auto-triggered.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Project Q&A Orchestration
 
 You are orchestrating an interactive Q&A session that lets users investigate their project.
-When the user is ready to act on findings, you write an investigation brief and create
-a new iteration seeded with it.
+When the user is ready to act on findings, you write an investigation brief and either
+create a new iteration or attach the findings to the current active iteration.
 
 This skill operates independently of the main workflow skill.
 
@@ -19,14 +19,14 @@ This skill operates independently of the main workflow skill.
 - **Substantial question** — Requires reading source files, cross-referencing multiple
   entity types, or querying large result sets.
 - **Investigation brief** — A markdown document summarizing Q&A findings and recommended
-  changes, written to disk and linked to a new iteration.
+  changes, written to disk and linked to an iteration (new or existing).
 
 ## Workflow Overview
 
 The Q&A skill has two phases:
 
 ```
-Phase 1: Conversation Loop  →  Phase 2: Brief & Iteration Creation
+Phase 1: Conversation Loop  →  Phase 2: Brief & Iteration Attachment
           (interactive)              (on "ship it")
 ```
 
@@ -100,7 +100,7 @@ The conversation loop continues until the user signals one of:
 - **Action phrase: "ship it"** — transition to Phase 2.
 
 When the user says "ship it" (or a close variant like "let's ship it"),
-the orchestrator immediately transitions to Phase 2: Brief & Iteration Creation.
+the orchestrator immediately transitions to Phase 2: Brief & Iteration Attachment.
 
 **IMPORTANT:** If the user gives an imperative directive (e.g., "get rid of X",
 "switch to Y", "consolidate on Z") WITHOUT using the action phrase, the
@@ -111,14 +111,25 @@ orchestrator should:
 
 This ensures the user explicitly controls when investigation ends and execution begins.
 
-## Phase 2: Brief & Iteration Creation
+## Phase 2: Brief & Iteration Attachment
 
 When the user says "ship it", the orchestrator synthesizes the conversation into an
-investigation brief, writes it to disk, and creates a new iteration seeded with it.
+investigation brief and attaches it to an iteration — creating a new iteration only
+if none is active.
+
+**Three scenarios** (determined by `project_status()` at the start of this phase):
+
+| Scenario | Active iteration? | `brief_path` | Action |
+|----------|-------------------|--------------|--------|
+| A — New iteration | No | N/A | Create brief file → `iteration_create` |
+| B — Attach brief | Yes | NULL | Create brief file → `iteration_update` |
+| C — Append to brief | Yes | Already set | Append to existing brief file (no DB mutation) |
 
 ### 2.1 Synthesize the Brief
 
-Review the accumulated Q&A conversation (questions + summarized answers from project_analyst) and write an investigation brief. The brief is a markdown file with this structure:
+Review the accumulated Q&A conversation (questions + summarized answers from project_analyst) and write an investigation brief.
+
+**For Scenario A or B** (creating a new brief file), use this structure:
 
 ```markdown
 # Investigation Brief
@@ -148,15 +159,51 @@ What is explicitly out of scope for this iteration. This prevents scope creep wh
 the requirements_analyst and downstream agents formalize these findings.
 ```
 
-**Important constraints on brief content:**
+**For Scenario C** (appending to an existing brief file), use this structure:
+
+```markdown
+---
+
+## Investigation: YYYY-MM-DD — <slug>
+
+### Context
+What area of the codebase was investigated and why the user initiated this investigation.
+Include project name and iteration context.
+
+### Findings
+What was discovered during the Q&A session. Include:
+- Specific file references (file:line) from project_analyst's reports
+- Behavioral observations about the current codebase
+- Problems, inconsistencies, or gaps identified
+- Relevant entity references from the rigor DB (requirement IDs, ADR IDs, etc.) if applicable
+
+### Recommended Changes
+Plain-language description of what should change and why. This is NOT a requirements
+specification — it is an engineer's assessment of what needs to happen.
+
+Each recommendation should include:
+- What to change
+- Why it needs to change
+- What area of the codebase is affected
+
+### Scope Boundaries
+What is explicitly out of scope for this iteration. This prevents scope creep when
+the requirements_analyst and downstream agents formalize these findings.
+```
+
+Note: When appending, the section uses `##` as its top-level heading (since `#` is the document title), and subsections use `###`. The `---` horizontal rule separates investigations visually. The `YYYY-MM-DD` date and `<slug>` identify this investigation session.
+
+**Important constraints on brief content (all scenarios):**
 - The brief does NOT contain requirements, ADRs, work items, entity types, phase assignments, or any rigor-specific structure
 - It is a senior engineer's investigation notes, not a structured specification
 - Code references and evidence from project_analyst reports should be included — this prevents the requirements_analyst from needing to re-investigate the codebase
 - The brief should be comprehensive enough that the requirements_analyst can write requirements from it without additional investigation
 
-### 2.2 Determine File Path
+### 2.2 Determine File Path and Write Brief
 
 Read `artifacts_directory` from the project context (obtained via `project_status` at the start of the session).
+
+**Scenario A or B** — creating a new brief file:
 
 Generate the brief file path:
 
@@ -177,9 +224,15 @@ mkdir -p "<artifacts_directory>/process/briefs/YYYY/MM/DD/"
 
 Write the brief file to disk.
 
+**Scenario C** — appending to an existing brief file:
+
+Use the `brief_path` returned by `project_status()`. The file already exists at that path (relative to the project root). Append the content synthesized in step 2.1 (which starts with `---`) to the end of the existing file.
+
 ### 2.3 Show Summary and Confirm
 
-Present the brief summary to the user:
+Present the brief summary to the user. The confirmation message varies by scenario:
+
+**Scenario A** (new iteration):
 
 ```
 📋 Investigation Brief
@@ -200,21 +253,54 @@ Ready to create the iteration? You can also edit the brief file first
 if you want to adjust anything.
 ```
 
+**Scenario B** (attach brief to existing iteration):
+
+```
+📋 Investigation Brief
+
+File: <brief_path>
+
+Summary:
+- <1-2 sentence summary of findings>
+- <number> recommended changes identified
+- Scope: <brief scope description>
+
+This will attach the brief to iteration <N>.
+The requirements analyst will formalize these findings into requirements,
+then the standard workflow will proceed through architecture, planning,
+and implementation.
+
+Ready to attach? You can also edit the brief file first
+if you want to adjust anything.
+```
+
+**Scenario C** (append to existing brief):
+
+```
+📋 Investigation Findings Appended
+
+File: <brief_path>
+
+Summary:
+- <1-2 sentence summary of new findings>
+- <number> recommended changes identified
+- Scope: <brief scope description>
+
+This will append findings to the existing brief for iteration <N>.
+The requirements analyst will read all investigation sections when
+formalizing requirements.
+
+Ready to proceed? You can also edit the brief file first
+if you want to adjust anything.
+```
+
 Wait for the user to respond. If they want to edit the brief, wait for them to signal they're done. If they want to cancel, exit the skill.
 
-### 2.4 Create Iteration
+### 2.4 Create or Attach Iteration
 
-Once confirmed, check if there is a currently active iteration:
+Once confirmed, execute the appropriate DB mutation based on the scenario determined at the start of Phase 2:
 
-```
-project_status()
-```
-
-If there is an active iteration that is NOT closed, the orchestrator must handle this. Options:
-- If the current iteration has no meaningful work (e.g., all phases still pending, no revisions), offer to close it and create a new one
-- If the current iteration has work in progress, tell the user they need to close it first via `/rigor:close` and then re-run `/rigor:ask`
-
-If there is no active iteration (or the existing one is closed), create the new iteration:
+**Scenario A** — no active iteration → create one:
 
 ```
 iteration_create(
@@ -227,6 +313,20 @@ iteration_create(
 
 **Note:** For existing projects (iteration 2+), `project_name` and `critic_model` are already set on the project row. The `iteration_create` handler uses the existing values — passing them here is for the case where no project exists yet.
 
+**Scenario B** — active iteration with NULL `brief_path` → attach:
+
+```
+iteration_update(
+  project_root: "<path>",
+  iteration_id: <N>,
+  brief_path: "<relative path to brief file from project root>"
+)
+```
+
+**Scenario C** — active iteration with `brief_path` already set → no DB call needed:
+
+The file was already appended to on disk in step 2.2. The existing `brief_path` on the iteration still points to the correct file. No database mutation is required.
+
 ### 2.5 Checkpoint and Exit
 
 ```
@@ -236,7 +336,9 @@ checkpoint(
 )
 ```
 
-Present the completion message:
+Present the completion message appropriate to the scenario:
+
+**Scenario A:**
 
 ```
 ✅ Iteration <N> created, seeded with investigation brief.
@@ -251,6 +353,32 @@ You can use /rigor:skip-to to jump to a specific phase if some phases
 aren't needed.
 ```
 
+**Scenario B:**
+
+```
+✅ Investigation brief attached to iteration <N>.
+
+Brief: <brief_path>
+
+Run /rigor:resume to begin the workflow. The requirements analyst will
+read the brief and formalize findings into requirements. From there,
+the standard workflow proceeds through all phases.
+
+You can use /rigor:skip-to to jump to a specific phase if some phases
+aren't needed.
+```
+
+**Scenario C:**
+
+```
+✅ Findings appended to investigation brief for iteration <N>.
+
+Brief: <brief_path>
+
+Run /rigor:resume to continue the workflow. The requirements analyst will
+read all investigation sections when formalizing requirements.
+```
+
 Exit the skill.
 
 ## Exit Conditions
@@ -258,15 +386,16 @@ Exit the skill.
 The skill exits when any of the following occurs:
 
 1. **No actions needed** — User says "done" / "thanks" during the conversation loop (Phase 1). No DB state changes.
-2. **Brief created and iteration started** — Phase 2 completes successfully. Brief is on disk, iteration is created, state is checkpointed.
-3. **User cancels during confirmation** — User declines to create the iteration after seeing the brief summary. Brief file remains on disk but no iteration is created.
+2. **Brief created and iteration started** — Phase 2 completes successfully (Scenario A). Brief is on disk, iteration is created, state is checkpointed.
+3. **Brief attached or appended** — Phase 2 completes successfully (Scenario B or C). Brief is on disk and linked to the existing iteration, state is checkpointed.
+4. **User cancels during confirmation** — User declines after seeing the brief summary. Brief file remains on disk but no iteration is created or modified.
 
 ## Error Handling
 
 - **project_analyst failure** — Report the failure to the user conversationally. Offer to retry with a rephrased question. Do NOT let the failure cascade.
 - **Brief write failure** — Report the error, suggest the user check disk permissions.
-- **iteration_create failure** — Report the error, suggest checking if an active iteration needs to be closed first.
-- **Active iteration exists** — Explain the situation, suggest `/rigor:close` first.
+- **iteration_create failure** — Report the error. This should only be called in Scenario A (no active iteration).
+- **iteration_update failure** — The iteration's `brief_path` is already set. Append to the existing brief file instead (Scenario C). This should not happen if the orchestrator follows the flow correctly — it means `project_status` was not checked before choosing the scenario.
 - **DB unavailable** — Display a clear error message. Suggest using `/rigor:dev-status` to check state.
 
 ## Relationship to Main Workflow
@@ -274,7 +403,7 @@ The skill exits when any of the following occurs:
 - This skill operates **independently** of the main workflow skill (`skills/workflow/SKILL.md`).
 - It can be invoked at any time — before, during, or after the main workflow.
 - It does NOT modify phase state, create revisions, or run agent workflows — those are the workflow skill's responsibility.
-- The only DB mutation is `iteration_create` (which creates the iteration + phases) and `checkpoint`.
+- The only DB mutations are `iteration_create`, `iteration_update` (to attach a brief to an existing iteration), and `checkpoint`.
 
 ## Available Tools
 
@@ -287,7 +416,8 @@ You have access to:
 - **AskUserQuestion** — Get user confirmation for iteration creation
 - **project_status** (MCP tool) — Get current project state
 - **changelog_query** (MCP tool) — Small, targeted lookups only
-- **iteration_create** (MCP tool) — Create iteration with brief_path (Phase 2 only)
+- **iteration_create** (MCP tool) — Create iteration with brief_path (Phase 2, Scenario A only)
+- **iteration_update** (MCP tool) — Set brief_path on an existing active iteration (Phase 2, Scenario B only — when brief_path is NULL)
 - **checkpoint** (MCP tool) — Persist state after iteration creation (Phase 2 only)
 
 ## Critical Rules
@@ -297,7 +427,7 @@ You have access to:
 3. **No scope expansion** — The brief documents what the user discussed, nothing more.
 4. **No ad-hoc planning** — NEVER create plan.md files, session SQL todos, or local task lists for changes that should flow through the rigor workflow. If the user requests changes, guide them to say "ship it" to trigger Phase 2. All project changes go through the brief → iteration → workflow pipeline. The rigor DB is the sole system of record for project planning and tracking.
 5. **Brief is prose, not structure** — No requirements, ADRs, work items, or rigor entity types in the brief.
-6. **One iteration per "ship it"** — Each brief creates exactly one new iteration.
+6. **"Ship it" attaches to the current iteration when possible** — Only creates a new iteration if none is active. When an active iteration exists, the brief is attached or appended to it.
 
 ---
 

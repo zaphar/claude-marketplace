@@ -11,6 +11,8 @@ allowed-tools:
   - rigor-db/changelog_query
   - mcp__plugin_rigor_rigor-db__iteration_create
   - rigor-db/iteration_create
+  - mcp__plugin_rigor_rigor-db__iteration_update
+  - rigor-db/iteration_update
   - mcp__plugin_rigor_rigor-db__checkpoint
   - rigor-db/checkpoint
 ---
