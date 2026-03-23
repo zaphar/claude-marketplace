@@ -78,7 +78,7 @@ Loads the plugin for the current session without installing.
 - `/rigor:new-iteration` — Start a new iteration from a closed workflow
 
 **Investigation:**
-- `/rigor:ask` — Investigate the project and codebase; optionally write an investigation brief and create a new iteration
+- `/rigor:ask` — Investigate the project and codebase; optionally write an investigation brief and create or update an iteration
 
 **Release Workflow:**
 - `/rigor:start-release` — Start QA, audit, and code review
@@ -88,7 +88,7 @@ Loads the plugin for the current session without installing.
 
 ## Q&A / Investigation
 
-The `/rigor:ask` command opens an interactive Q&A session where you can investigate the project and codebase. A read-only project analyst agent handles deep exploration while protecting the orchestrator's context. When investigation reveals needed changes, say "ship it" to write an investigation brief and create a new iteration seeded with the findings. Run `/rigor:resume` to begin the standard workflow from there.
+The `/rigor:ask` command opens an interactive Q&A session where you can investigate the project and codebase. A read-only project analyst agent handles deep exploration while protecting the orchestrator's context. When investigation reveals needed changes, say "ship it" to write an investigation brief and either create a new iteration or attach findings to the current one. Run `/rigor:resume` to begin the standard workflow from there.
 
 ## Plan Versioning
 
@@ -172,6 +172,16 @@ Why I cannot do it: <tool gap or error>
 What the plugin needs: <missing capability>
 Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
 ```
+
+## MCP Tools
+
+The rigor MCP server exposes read and write tools for all workflow state. Key iteration lifecycle tools:
+
+- **`iteration_create`** — Creates a new iteration with all phases initialized. Fails if an active iteration already exists — call `iteration_close` first.
+- **`iteration_update`** — Sets `brief_path` on an existing active iteration (only when `brief_path` is currently NULL).
+- **`iteration_close`** — Closes an active iteration (sets status to `closed`, records `closed_at`).
+
+See `mcp-server/write-tools.js` and `mcp-server/read-tools.js` for the full set of available tools.
 
 ## Customization
 
