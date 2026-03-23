@@ -50,10 +50,9 @@ if [ -z "$command" ]; then
   exit 0
 fi
 
-# --- Check if the command starts with "sqlite" (case-insensitive, trim leading whitespace) ---
+# --- Check if the command contains "sqlite" anywhere (case-insensitive) ---
 
-trimmed=$(echo "$command" | sed 's/^[[:space:]]*//')
-if echo "$trimmed" | grep -iq '^sqlite'; then
+if echo "$command" | grep -iq 'sqlite'; then
   # Deny the tool call
   jq -n --arg reason "$DENY_REASON" '{
     "permissionDecision": "deny",
