@@ -1,9 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+import { randomUUID } from "node:crypto";
+import { createServer as createHttpServer } from "node:http";
 import { WRITE_TOOLS, handleWriteTool } from "./write-tools.js";
 import { READ_TOOLS, handleReadTool } from "./read-tools.js";
 
@@ -116,14 +119,173 @@ export function createServer() {
   return mcpServer;
 }
 
-async function main() {
-  const transport = new StdioServerTransport();
-  const server = createServer();
-  await server.connect(transport);
-  console.error("rigor-mcp server running on stdio");
+// ---------------------------------------------------------------------------
+// HTTP transport (StreamableHTTP, one McpServer per session)
+// ---------------------------------------------------------------------------
+
+/**
+ * Collect the full request body from an IncomingMessage.
+ * @param {import("node:http").IncomingMessage} req
+ * @returns {Promise<string>}
+ */
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
+    req.on("error", reject);
+  });
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+/**
+ * Send a JSON-RPC error response.
+ * @param {import("node:http").ServerResponse} res
+ * @param {number} statusCode
+ * @param {string} message
+ */
+function jsonRpcError(res, statusCode, message) {
+  res.writeHead(statusCode, { "Content-Type": "application/json" });
+  res.end(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      error: { code: -32000, message },
+      id: null,
+    })
+  );
+}
+
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Start an HTTP server that routes /mcp to StreamableHTTPServerTransport
+ * instances, one per session.
+ * @param {number} port
+ */
+export function startHttpServer(port) {
+  /** @type {Map<string, StreamableHTTPServerTransport>} */
+  const sessions = new Map();
+  /** @type {Map<string, ReturnType<typeof setTimeout>>} */
+  const sessionTimers = new Map();
+
+  const httpServer = createHttpServer(async (req, res) => {
+    const url = new URL(req.url, `http://localhost:${port}`);
+
+    if (url.pathname !== "/mcp") {
+      jsonRpcError(res, 404, "Not found");
+      return;
+    }
+
+    const method = req.method;
+
+    try {
+      if (method === "POST") {
+        const bodyText = await readBody(req);
+        let body;
+        try {
+          body = JSON.parse(bodyText);
+        } catch {
+          jsonRpcError(res, 400, "Invalid JSON");
+          return;
+        }
+
+        const sessionId = req.headers["mcp-session-id"];
+
+        if (sessionId) {
+          // Existing session — delegate to its transport
+          const transport = sessions.get(sessionId);
+          if (!transport) {
+            jsonRpcError(res, 404, "Session not found");
+            return;
+          }
+          // Reset idle timer on activity
+          clearTimeout(sessionTimers.get(sessionId));
+          sessionTimers.set(sessionId, setTimeout(() => {
+            const t = sessions.get(sessionId);
+            if (t) t.close();
+          }, SESSION_TTL_MS));
+          await transport.handleRequest(req, res, body);
+        } else if (isInitializeRequest(body)) {
+          // New session — spin up a fresh server + transport
+          const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+          });
+
+          transport.onclose = () => {
+            const sid = transport.sessionId;
+            if (sid) {
+              clearTimeout(sessionTimers.get(sid));
+              sessionTimers.delete(sid);
+              sessions.delete(sid);
+              console.error(`[http] session closed: ${sid}`);
+            }
+          };
+
+          transport.onerror = (err) => {
+            console.error(`[http] transport error (${transport.sessionId}):`, err);
+          };
+
+          const server = createServer();
+          await server.connect(transport);
+
+          // handleRequest sends the initialize response and sets sessionId
+          await transport.handleRequest(req, res, body);
+
+          if (transport.sessionId) {
+            sessions.set(transport.sessionId, transport);
+            sessionTimers.set(transport.sessionId, setTimeout(() => {
+              console.error(`[http] session timed out: ${transport.sessionId}`);
+              transport.close();
+            }, SESSION_TTL_MS));
+            console.error(`[http] session created: ${transport.sessionId}`);
+          }
+        } else {
+          jsonRpcError(res, 400, "Bad request: missing session ID");
+        }
+      } else if (method === "GET" || method === "DELETE") {
+        const sessionId = req.headers["mcp-session-id"];
+        if (!sessionId) {
+          jsonRpcError(res, 400, "Bad request: missing session ID");
+          return;
+        }
+        const transport = sessions.get(sessionId);
+        if (!transport) {
+          jsonRpcError(res, 404, "Session not found");
+          return;
+        }
+        // Reset idle timer on activity
+        clearTimeout(sessionTimers.get(sessionId));
+        sessionTimers.set(sessionId, setTimeout(() => {
+          const t = sessions.get(sessionId);
+          if (t) t.close();
+        }, SESSION_TTL_MS));
+        await transport.handleRequest(req, res);
+      } else {
+        jsonRpcError(res, 405, "Method not allowed");
+      }
+    } catch (err) {
+      console.error("[http] request error:", err);
+      if (!res.headersSent) {
+        jsonRpcError(res, 500, "Internal server error");
+      }
+    }
+  });
+
+  httpServer.listen(port, () => {
+    console.error(`rigor-mcp server running on http://localhost:${port}/mcp`);
+  });
+
+  const shutdown = async () => {
+    console.error("[http] shutting down...");
+    const closePromises = [];
+    for (const [sid, transport] of sessions) {
+      clearTimeout(sessionTimers.get(sid));
+      closePromises.push(transport.close().catch(() => {}));
+    }
+    await Promise.all(closePromises);
+    sessions.clear();
+    sessionTimers.clear();
+    httpServer.close(() => process.exit(0));
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}

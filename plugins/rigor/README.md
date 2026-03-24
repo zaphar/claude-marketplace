@@ -116,7 +116,8 @@ rigor/
     ├── db.js                        # Database initialization (WAL mode, foreign keys, runs migrations)
     ├── write-tools.js               # Write tools (changelog_insert, phase_transition, etc.)
     ├── read-tools.js                # Read tools (changelog_query, traceability_query, etc.)
-    ├── server.js                    # MCP server entry point
+    ├── server.js                    # MCP server library (createServer, startHttpServer)
+    ├── main.js                      # Entry point (CLI flag selects stdio or HTTP transport)
     └── test/                        # Test suite
 ```
 
