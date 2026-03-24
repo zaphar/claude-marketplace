@@ -82,6 +82,55 @@ For each phase, follow this pattern:
 
 **Brief detection:** Before invoking the requirements analyst, check if the current iteration has a `brief_path` (available from the `current_iteration` object in the `project_status` response). If `brief_path` is present, this iteration was created from a Q&A investigation and the analyst should read the brief instead of interviewing the user.
 
+**Brief append re-entry:** When resuming a workflow where the requirements phase is already `completed`, check whether the brief has been updated since requirements were finalized. This handles the case where `/rigor:ask` appended new investigation sections to an existing brief on an active iteration (each appended section has a dated header: `## Investigation: YYYY-MM-DD — <slug>`).
+
+Detection logic (run when deciding which phase to work on next):
+
+1. Call `project_status()` to get current state
+2. Check: Is `current_iteration.brief_path` set AND is the requirements phase `completed`?
+3. If both are true, compare the brief file's last-modified time against the requirements phase `completed_at` timestamp:
+   ```bash
+   stat -c %Y <brief_path> 2>/dev/null || stat -f %m <brief_path>  # Unix epoch of last modification (Linux || macOS)
+   ```
+   Parse `completed_at` to a Unix epoch and compare. If the file was modified **after** requirements completed, re-entry is needed. If not, the brief was already fully processed — skip to the next phase as normal. (Note: git operations can update mtime without content changes — this is harmless since the incremental analyst will find no new sections and report that no new requirements are needed.)
+
+Re-entry procedure (only when the file modification check confirms new content):
+
+1. Using the `completed_at` timestamp from the detection check above, call `phase_transition(iteration_id, phase_name: "requirements", status: "in_progress")` to re-open the phase
+3. Invoke the requirements analyst with an **incremental prompt**:
+   ```
+   Task(
+     agent_type: "rigor:requirements_analyst",
+     name: "incremental-requirements",
+     description: "Incremental requirements from appended brief",
+     prompt: "Execute tools one at a time using the structured tool interface.
+   Never write out tool calls as XML text — use the structured tool interface directly.
+
+   This is an INCREMENTAL requirements pass. The brief has new investigation
+   sections appended after the requirements phase was previously completed.
+
+   brief_path: <brief_path>
+   artifacts_directory: <artifacts_directory>
+   iteration_id: <iteration_id>
+   project_name: <project_name>
+   requirements_completed_at: <completed_at timestamp from requirements phase>
+
+   IMPORTANT: This is not a full requirements pass. The brief contains multiple
+   investigation sections separated by '---' horizontal rules, each with a header
+   like '## Investigation: YYYY-MM-DD — <slug>'.
+
+   Only process sections dated AFTER <requirements_completed_at>.
+   Query existing requirements via changelog_query to understand what's already
+   been specified. Produce only NEW requirements for findings not yet covered.
+   Do NOT duplicate existing requirements.
+   Respect scope boundaries from all sections."
+   )
+   ```
+4. After the incremental analyst completes, follow the normal critic flow: call `revision_create`, invoke `rigor:requirements_critic`, call `revision_update`, and handle approval/rejection with the standard escalation rules (max 3 revisions, then escalate to user)
+5. On approval, call `phase_transition` to mark requirements `completed` again and call `checkpoint` with message "requirements: incremental pass completed (brief re-entry)"
+
+**Important:** This re-entry check must happen BEFORE the orchestrator skips the requirements phase as already-completed. If re-entry is not needed (brief unmodified), proceed to the next incomplete phase as normal.
+
 1. Invoke `rigor:requirements_analyst` via the Task tool
    - **If `brief_path` is present:** Include it in the producer prompt:
      ```
