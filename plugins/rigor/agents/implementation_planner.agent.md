@@ -163,7 +163,7 @@ When `plan_version > 1`, this is a **replan** — you are revising an existing p
    ```
 6. **Update phase index files** to reflect only active WIs (completed + new, not superseded).
 7. **Mark superseded WI files:** Prepend a `> ⚠️ SUPERSEDED by plan version <N>` header to each superseded WI file using the Edit tool. Do not delete superseded files — they serve as historical records.
-8. **Append to `<artifacts_directory>/process/planning/replan-log.md`** with: version number, date, reason for replan, list of superseded WIs, list of newly created WIs. Create the file if it doesn't exist.
+8. **Append to `<artifacts_directory>/process/planning/iteration-<iteration_id>/replan-log.md`** with: version number, date, reason for replan, list of superseded WIs, list of newly created WIs. Create the file if it doesn't exist.
 
 **Scope:** Pass 1 and Pass 2 still apply but are scoped to the new/changed WIs only — do NOT redo the entire plan. Completed phases and WIs are untouched.
 
@@ -184,7 +184,7 @@ When `plan_version > 1` and the orchestrator specifies a **single WI** to decomp
 
 1. **Decompose ONLY the specified WI.** Do NOT modify, restructure, or re-scope any other pending or active WIs. The scope of this replan is exactly one WI.
 2. **Use the senior developer's codebase analysis as primary input.** The senior dev already explored the codebase and identified complexity drivers during their implementation attempt — do not re-explore the same code. Their findings are authoritative.
-3. **All standard replan rules still apply:** correct `plan_version` in `changelog_insert` calls, requirement coverage, new `plan_overview`, append to `<artifacts_directory>/process/planning/replan-log.md`, superseded file headers via Edit tool, phase index updates.
+3. **All standard replan rules still apply:** correct `plan_version` in `changelog_insert` calls, requirement coverage, new `plan_overview`, append to `<artifacts_directory>/process/planning/iteration-<iteration_id>/replan-log.md`, superseded file headers via Edit tool, phase index updates.
 4. **The only WI superseded is the one being decomposed.** All other active WIs remain as-is — do not mark them superseded or modify their files.
 5. **Create new WIs that together cover all requirements from the decomposed WI.** Query the decomposed WI's linked requirements and ensure every one appears in at least one new WI.
 6. **Size new WIs conservatively.** The original WI was too large, so err on the side of smaller — prefer two XS WIs over one S WI when in doubt.
@@ -204,10 +204,45 @@ Use this analysis directly when designing the new WIs. The `key_areas` map to na
 
 **Produces:**
 
-Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). All planning artifacts go under `<artifacts_directory>/process/planning/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
+Before writing file artifacts, determine `artifacts_directory` and `iteration_id` from the project context provided by the orchestrator (sourced from `project_status`). Compute the planning root:
 
-- Overall implementation index (`<artifacts_directory>/process/planning/index.md`) with phase summary, dependency graph, critical path
-- Per-phase subdirectories under `<artifacts_directory>/process/planning/phases/` — e.g., `<artifacts_directory>/process/planning/phases/phase-1/index.md`, `<artifacts_directory>/process/planning/phases/phase-2/index.md` — each containing an index file and self-contained WI files
+```bash
+ARTIFACTS_DIR="<artifacts_directory>"   # from project context, e.g. "docs/sdlc"
+ITERATION_ID="<iteration_id>"          # from project context, e.g. "4"
+PLAN_ROOT="${ARTIFACTS_DIR}/process/planning/iteration-${ITERATION_ID}"
+```
+
+All planning artifacts go under `${PLAN_ROOT}/`. Before writing any file, ensure the target directory exists with `mkdir -p`. Use Bash only for `mkdir -p`; use Write and Edit tools for all file creation and modification.
+
+- Overall implementation index: `${PLAN_ROOT}/index.md` — phase summary, dependency graph, critical path
+- Per-phase subdirectories: `${PLAN_ROOT}/phases/phase-<N>/` — each containing an index file and self-contained WI files
+  - Phase index: `${PLAN_ROOT}/phases/phase-1/index.md`
+  - Work item files: `${PLAN_ROOT}/phases/phase-1/WI-001.md`
+- Replan log (replan only): `${PLAN_ROOT}/replan-log.md`
+
+**Worked example.** If artifacts_directory is `docs/sdlc` and iteration_id is `4`:
+
+```
+docs/sdlc/process/planning/iteration-4/index.md
+docs/sdlc/process/planning/iteration-4/replan-log.md
+docs/sdlc/process/planning/iteration-4/phases/phase-1/index.md
+docs/sdlc/process/planning/iteration-4/phases/phase-1/WI-001.md
+```
+
+These are all **wrong** — do NOT produce paths like these:
+
+```
+docs/sdlc/process/planning/phases/phase-1/WI-001.md           ← missing iteration scope
+docs/sdlc/process/planning/iteration-4/WI-001.md               ← missing phases/ directory
+docs/sdlc/planning/iteration-4/phases/phase-1/WI-001.md        ← missing process/ prefix
+docs/sdlc/process/planning/index.md                             ← missing iteration scope
+```
+
+**Path rules (mandatory):**
+- All planning paths MUST include `process/planning/iteration-<iteration_id>/`
+- Phase files MUST be under `phases/phase-<N>/` within the iteration directory
+- WI files go inside their phase directory, not at the iteration root
+- `index.md` at the iteration root is the overall plan; `index.md` inside each phase dir is the phase index
 - Does NOT write implementation code or estimate in hours/story points
 
 **Handoff:** Submitted to **Implementation Plan Critic**. On approval, consumed by Senior Developer.
