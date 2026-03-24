@@ -205,24 +205,56 @@ Read `artifacts_directory` from the project context (obtained via `project_statu
 
 **Scenario A or B** — creating a new brief file:
 
-Generate the brief file path:
+Choose a `<slug>` (kebab-case) — since the brief file may accumulate multiple investigation sections over time (via Scenario C appending), use a **generic name** rather than encoding the first investigation's topic. Use `investigation-brief` as the slug, or `iteration-<N>-brief` where N is the iteration ID.
 
-```
-<artifacts_directory>/process/briefs/YYYY/MM/DD/<epoch>-<slug>.md
-```
-
-Where:
-- `YYYY/MM/DD` is the current date in UTC
-- `<epoch>` is the current Unix timestamp (integer seconds)
-- `<slug>` is a short kebab-case description derived from the conversation topic (e.g., `auth-refactor`, `api-validation`, `performance-bottleneck`). Keep it to 2-4 words.
-
-Create the directory structure if it doesn't exist:
+Then compute the canonical path by running these bash commands **exactly** (substitute only the two variable values on the first two lines):
 
 ```bash
-mkdir -p "<artifacts_directory>/process/briefs/YYYY/MM/DD/"
+# 1. Set inputs — substitute these two values only
+ARTIFACTS_DIR="<artifacts_directory>"   # from project_status, e.g. "docs/sdlc"
+SLUG="<slug>"                           # e.g. "investigation-brief" or "iteration-3-brief"
+
+# 2. Compute date components (UTC) — do NOT modify these lines
+DATE_PATH=$(date -u '+%Y/%m/%d')        # e.g. "2026/03/24"
+EPOCH=$(date +%s)                       # Unix seconds (10 digits), e.g. "1774310400"
+
+# 3. Assemble canonical path — do NOT deviate from this structure
+BRIEF_DIR="${ARTIFACTS_DIR}/process/briefs/${DATE_PATH}"
+BRIEF_PATH="${BRIEF_DIR}/${EPOCH}-${SLUG}.md"
+
+# 4. Create directory and write brief
+mkdir -p "${BRIEF_DIR}"
 ```
 
-Write the brief file to disk.
+Then write the brief content to `${BRIEF_PATH}` using the Write tool or `cat`:
+
+```bash
+cat > "${BRIEF_PATH}" << 'BRIEF_EOF'
+<brief content here>
+BRIEF_EOF
+```
+
+**Worked example.** If `artifacts_directory` is `docs/sdlc`, today is 2026-03-24 UTC, epoch is `1774310400`, and slug is `investigation-brief`, the path MUST be:
+
+```
+docs/sdlc/process/briefs/2026/03/24/1774310400-investigation-brief.md
+```
+
+These are all **wrong** — do NOT produce paths like these:
+
+```
+docs/sdlc/briefs/investigation-brief.md                          ← missing process/ prefix and date hierarchy
+docs/sdlc/process/briefs/2026-03-24/1774310400-investigation-brief.md  ← dashes instead of directory separators in date
+docs/sdlc/process/briefs/investigation-brief.md                  ← missing date hierarchy entirely
+docs/sdlc/process/briefs/2026/03/24/1774310400000-investigation-brief.md ← milliseconds (13 digits) instead of seconds (10 digits)
+```
+
+**Path rules (mandatory):**
+- The path MUST contain `process/briefs/` — not just `briefs/`
+- The date MUST be split into three directory levels: `YYYY/MM/DD` (not `YYYY-MM-DD` as a single directory name)
+- Month and day MUST be zero-padded: `03` not `3`
+- Epoch MUST be Unix seconds (10 digits), not milliseconds (13 digits)
+- The `brief_path` stored in the DB is relative to the project root — no leading `/`, no absolute path
 
 **Scenario C** — appending to an existing brief file:
 
