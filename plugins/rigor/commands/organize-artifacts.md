@@ -65,15 +65,16 @@ The canonical subtree structure beneath `artifacts_directory` is:
 ```
 <artifacts_directory>/
 ├── process/
-│   ├── planning/              ← implementation_planner: indexes, phase dirs, replan-log
-│   │   ├── index.md
-│   │   ├── replan-log.md
-│   │   └── phases/
-│   │       ├── phase-1/
-│   │       │   ├── index.md
-│   │       │   └── WI-*.md
-│   │       └── phase-2/
-│   │           └── ...
+│   ├── planning/              ← implementation_planner: per-iteration plans
+│   │   └── iteration-<N>/
+│   │       ├── index.md
+│   │       ├── replan-log.md
+│   │       └── phases/
+│   │           ├── phase-1/
+│   │           │   ├── index.md
+│   │           │   └── WI-*.md
+│   │           └── phase-2/
+│   │               └── ...
 │   ├── qa/                    ← qa_engineer: test screenshots
 │   │   └── screenshots/
 │   └── briefs/                ← reserved for Plan 2 (investigation briefs)
@@ -326,7 +327,7 @@ since `ux_asset` entries are identified by name, this will update the existing r
 
 ## Step 6 — Update Work Item Files
 
-WI files in `<artifacts_dir>/process/planning/phases/` may inline mockup filenames in
+WI files in `<artifacts_dir>/process/planning/iteration-<iteration_id>/phases/` may inline mockup filenames in
 their UX context sections.
 
 Use Grep to search for old prefixes inside all WI files:
@@ -340,7 +341,7 @@ grep -r "docs/architecture/" <artifacts_dir>/process/planning/
 
 For each match, use Edit to replace the old path prefix with the new one in place.
 
-Also check `<artifacts_dir>/process/planning/replan-log.md` for any old path references
+Also check `<artifacts_dir>/process/planning/iteration-<iteration_id>/replan-log.md` for any old path references
 and update them the same way.
 
 ---
@@ -363,8 +364,8 @@ DB records updated:
   2 ux_asset entities (path)
 
 WI files edited:
-  <artifacts_dir>/process/planning/phases/phase-1/WI-001.md
-  <artifacts_dir>/process/planning/phases/phase-1/WI-002.md
+  <artifacts_dir>/process/planning/iteration-<N>/phases/phase-1/WI-001.md
+  <artifacts_dir>/process/planning/iteration-<N>/phases/phase-1/WI-002.md
 
 Nothing found:
   screenshots/, api_spec.yaml, docs intermediate segments

@@ -142,5 +142,5 @@ The workflow skill's §11 handles the rest: re-opening the planning phase, invok
 
 - Completed work items are **never** superseded — the DB enforces this constraint
 - Each replan increments the plan version (v1 → v2 → v3, etc.)
-- The replan log at `<artifacts_directory>/process/planning/replan-log.md` records what changed and why
+- The replan log at `<artifacts_directory>/process/planning/iteration-<iteration_id>/replan-log.md` records what changed and why
 - Use `/rigor:dev-status` after replanning to verify the new state

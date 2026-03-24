@@ -59,7 +59,7 @@ Use AskUserQuestion to prompt for:
 Create the configured artifacts directory with the canonical subtree structure:
 
 ```bash
-mkdir -p "<artifacts_directory>/process/planning/phases"
+mkdir -p "<artifacts_directory>/process/planning"
 mkdir -p "<artifacts_directory>/process/qa/screenshots"
 mkdir -p "<artifacts_directory>/process/briefs"
 mkdir -p "<artifacts_directory>/deliverables/architecture/diagrams"

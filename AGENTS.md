@@ -134,7 +134,7 @@ The canonical subtree structure beneath `artifacts_directory`:
 
 | Subtree | Purpose | Agents |
 |---------|---------|--------|
-| `process/planning/` | Implementation plans, phase dirs, replan log | `implementation_planner` |
+| `process/planning/iteration-<N>/` | Implementation plans, phase dirs, replan log (per iteration) | `implementation_planner` |
 | `process/qa/screenshots/` | QA test screenshots | `qa_engineer` |
 | `process/briefs/` | Investigation briefs from `/rigor:ask` | ask skill |
 | `deliverables/architecture/` | Architecture docs, diagrams, API spec | `backend_architect` |
