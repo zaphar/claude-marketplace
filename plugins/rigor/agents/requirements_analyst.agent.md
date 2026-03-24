@@ -31,6 +31,29 @@ investigation brief file.
 7. You may use `changelog_query` to check for existing requirements from prior
    iterations that are relevant to the brief's findings
 
+**If `brief_path` is provided WITH `requirements_completed_at`** (incremental mode):
+
+This is an incremental requirements pass — the brief has new investigation sections
+appended after requirements were previously completed.
+
+1. Read the brief file at the given path
+2. The brief contains multiple investigation sections separated by `---` horizontal rules,
+   each with a header like `## Investigation: YYYY-MM-DD — <slug>`
+3. Identify which sections are NEW: only process sections with dates AFTER the
+   `requirements_completed_at` timestamp. Earlier sections were already covered in
+   the previous requirements pass.
+4. Query existing requirements via `changelog_query(entity_type: "requirement",
+   iteration_id: <current>)` to understand what's already been specified
+5. Produce only NEW requirements for findings in the new sections that are not yet
+   covered by existing requirements
+6. Do NOT duplicate, modify, or re-insert existing requirements
+7. Use the same `changelog_insert` format as the standard brief-driven mode
+8. Respect scope boundaries from ALL sections (including old ones — scope boundaries
+   are cumulative)
+9. If the new sections don't warrant any additional requirements (e.g., they cover
+   areas already fully specified), report that no new requirements are needed and
+   mark the revision as complete
+
 **If `brief_path` is NOT provided (or is NULL):**
 
 Proceed with the standard interactive interview as described below.
