@@ -109,6 +109,7 @@ rigor/
 │   ├── workflow/SKILL.md            # Orchestration skill (main workflow logic)
 │   ├── ask/SKILL.md                 # Q&A orchestration skill
 │   └── code-review/SKILL.md         # Code review orchestration skill
+├── start-server.sh                  # Convenience launcher for HTTP transport mode
 └── mcp-server/                      # MCP server with SQLite changelog backend
     ├── schema.sql                   # Database schema reference (source of truth for data model)
     ├── migrate.js                   # Migration engine (applies versioned SQL migrations)
@@ -183,6 +184,42 @@ The rigor MCP server exposes read and write tools for all workflow state. Key it
 - **`iteration_close`** — Closes an active iteration (sets status to `closed`, records `closed_at`).
 
 See `mcp-server/write-tools.js` and `mcp-server/read-tools.js` for the full set of available tools.
+
+## HTTP Transport
+
+By default the MCP server runs over **stdio** (Claude Code spawns it automatically — no configuration needed). HTTP transport is available for environments where stdio is unreliable: Copilot CLI long-running sessions, containerized deployments, or any setup where the MCP client and server run in separate processes.
+
+### Starting the server
+
+```bash
+# Convenience launcher (installs deps, then starts):
+./start-server.sh
+
+# Direct:
+cd mcp-server && node main.js --http
+
+# Docker entrypoint — pass --http as the CMD argument.
+```
+
+### Workspace `.mcp.json` override
+
+Add a workspace-level `.mcp.json` to point the client at the running HTTP server:
+
+```json
+{
+  "rigor-db": {
+    "type": "http",
+    "url": "http://localhost:3100",
+    "tools": ["*"]
+  }
+}
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RIGOR_MCP_PORT` | `3100` | Port the HTTP server listens on |
 
 ## Customization
 
