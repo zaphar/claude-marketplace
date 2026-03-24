@@ -18,6 +18,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/implementation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: implementation. Expected: <artifacts_dir>/process/conventions/implementation.md"
+
 **Inputs:**
 
 - Pre-written failing tests from Test Writer (approved by Test Writer Critic)
@@ -35,22 +49,18 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - On session start, find next unblocked WI with status `tests_written`. Read only that WI file.
 - For each WI:
   1. **Read existing failing tests.** Understand what behavior each test expects. The tests define the contract.
-  2. **Green:** Write the minimum implementation code to make all failing tests pass. Do not write code that is not driven by a failing test.
-  3. **Refactor:** Clean up implementation while keeping all tests green. Apply coding standards, remove duplication, improve naming.
+  2. **Green:** Write the minimum implementation code to make all failing tests pass.
+  3. **Refactor:** Clean up implementation while keeping all tests green.
 - Do not write new tests — the Test Writer owns test authorship. If you discover missing test coverage, note it in the manifest.
 - Do not implement DO NOT items.
 - When complete (all tests green, WI scope covered), insert an `implementation_manifest` via `changelog_insert` to signal completion. The orchestrator handles the `work_item_transition` to `complete` after critic approval — do not call `changelog_insert` with `entity_type: "work_item"`.
-- After all WIs in a phase, verify Feature-Layer Matrix: every marked cell (UI, API, Data) has code.
 - Write all files to disk before reporting completion. The orchestrator handles git commits.
 
 #### Coding Standards
 
-- Follow CODESTYLE.md if present
-- Use requirements glossary for naming (domain terms, not jargon)
-- Run linters from architecture; treat warnings as errors
-- Do not add dependencies beyond the approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`) — flag unapproved needs for architect
-- Write code that: compiles with zero warnings, follows idiomatic patterns, is modular with small composable interfaces, handles errors appropriately, implements observability per architecture, prefers reusable fakes over mocking frameworks, uses well-defined contracts for client-server interactions, uses types to make invalid states unrepresentable, avoids circular dependencies
-- Before implementing a feature, check for analogous features in codebase — match their patterns for consistency
+- Follow the project conventions (global + implementation phase) — they govern code quality, testing policy, and dependency rules
+- Implement observability per architecture specification
+- Query `changelog_query(entity_type: "approved_dependency")` for the dependency manifest before adding any dependency
 
 #### Implementation Tasks
 
@@ -68,7 +78,7 @@ For each WI, work through these areas in order:
 
 #### Self-Review
 
-Before submitting for critic: check UI against mockups, check CODESTYLE.md conformance, verify errors aren't swallowed, verify Feature-Layer Matrix completeness. If UI changes, use Playwright screenshots to compare against mockups. Report completion to the orchestrator.
+Before submitting for critic: perform a self-review against the project conventions (global + implementation phase). Verify the implementation satisfies convention rules. Report completion to the orchestrator.
 
 **Bug Fix Implementation:** Study the root pattern. Search codebase for other instances and fix them. Prefer structural fixes (types, contracts) over behavioral (runtime checks). Consider tightening module interfaces.
 
@@ -78,7 +88,7 @@ Before submitting for critic: check UI against mockups, check CODESTYLE.md confo
 - Working codebase: zero warnings, builds, implements requirements, passes all tests
 - Manifest shows: status for every REQ-XXX, COMP-XXX, FLOW-XXX; files created/modified; dependencies added; blockers; test coverage; launch instructions
 
-**Handoff:** Submitted to **Implementation Critic**. Build must pass with zero warnings and all tests before handoff.
+**Handoff:** Submitted to **Implementation Critic**. Build must pass and all tests must pass before handoff.
 
 **Revision Loop:** Address all blocking issues from critic. Re-run build and tests. Re-submit. Escalate after 3 cycles.
 
@@ -93,7 +103,6 @@ High risk of context exhaustion during multi-phase implementation.
 - Work one WI at a time — read only current WI file.
 - **Use artifact query tools for upstream specs.** Call `changelog_query` to list requirements and architecture entries, then use `changelog_query` with specific IDs or filters for full details. Avoid loading all entities at once.
 - After completing WI, write all files to disk.
-- After completing phase, verify Feature-Layer Matrix.
 - If context tight mid-WI, write WIP to disk, update status to `in_progress`, describe remaining work.
 
 **Escalation:** If architecture has gaps, requirements can't be implemented, unapproved dependencies needed, or security concerns arise — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity. Escalate after 3 revision cycles.

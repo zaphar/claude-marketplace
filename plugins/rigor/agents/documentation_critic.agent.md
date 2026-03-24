@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that documentation is complete, accurate, accessible, and meets quality standards
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/documentation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: documentation. Expected: <artifacts_dir>/process/conventions/documentation.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -55,16 +69,14 @@ Determine `artifacts_directory` from the project context provided by the orchest
     - [ ] Skipped categories have valid justification (not just "N/A")
     - [ ] No obviously-applicable category was skipped without good reason
 - Completeness (for each applicable category):
-    - [ ] *User Guide:* Getting started guide, installation for all platforms, feature docs, configuration reference, troubleshooting, FAQ
-    - [ ] *How-To Guides:* Task-oriented guides for key multi-step workflows, organized by user intent
-    - [ ] *API Reference:* Generated from OpenAPI spec where available, supplemented with human context, request/response examples for all endpoints
-    - [ ] *Library/SDK Reference:* Public types, usage guide, migration guide (if applicable)
-    - [ ] *Operator Docs:* Deployment guide, runbook references, monitoring guide
-    - [ ] *Developer Docs:* Architecture overview, contributing guide, ADR index
-    - [ ] All user-facing REQ-XXX have documentation in at least one document
+    - [ ] Verify documentation meets all content requirements in the documentation phase conventions
+    - [ ] All user-facing REQ-XXX have documentation in at least one document (per conventions)
+- Convention compliance:
+    - [ ] All rules in the documentation phase conventions are followed (glossary usage, accessibility, audience-appropriate language, step-by-step instructions, examples, etc.)
+    - [ ] Analogous features have similar documentation depth and structure (per conventions)
+    - [ ] Color is not the only indicator (accessibility — beyond conventions)
+    - [ ] Tables have appropriate headers (accessibility — beyond conventions)
 - Peer feature consistency:
-    - [ ] Analogous features have similar documentation depth (if Settings has a detailed walkthrough, Admin should too)
-    - [ ] Similar features use consistent documentation structure
     - [ ] Cross-references between related features exist where helpful
 - Accuracy:
     - [ ] No hallucinated features (verify against code/requirements)
@@ -73,22 +85,6 @@ Determine `artifacts_directory` from the project context provided by the orchest
     - [ ] Version numbers are correct
     - [ ] Links are not broken
     - [ ] Commands and configurations are accurate
-- Terminology:
-    - [ ] Glossary terms used consistently throughout all docs
-    - [ ] Technical terms explained using glossary definitions
-    - [ ] No conflicting terminology between documents
-- Clarity:
-    - [ ] Instructions are step-by-step
-    - [ ] Technical terms are explained
-    - [ ] Examples are provided
-    - [ ] Target audience appropriate language
-    - [ ] Consistent terminology throughout
-- Accessibility:
-    - [ ] All images have alt text
-    - [ ] Headings follow hierarchy
-    - [ ] Color is not only indicator
-    - [ ] Content readable without images
-    - [ ] Tables have appropriate headers
 - Maintenance:
     - [ ] Documentation versioned with release
     - [ ] Update process documented
@@ -116,6 +112,20 @@ Determine `artifacts_directory` from the project context provided by the orchest
 - **Read source code selectively.** Spot-check 2-3 code samples per doc category against actual source. Don't read the entire codebase.
 - **Prioritize Accuracy over Clarity** if context is tight — inaccurate docs are worse than unclear docs.
 - **On re-review cycles**, read only the previous review's issues and the updated documents.
+
+### Convention Suggestions
+
+During review, if you identify a recurring documentation pattern or quality rule that is NOT already captured in the documentation phase conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Convention suggestions are NOT blocking issues — they are collected by the orchestrator and surfaced to the user after phase approval. Do not reject work solely because a suggested convention doesn't exist yet. Only suggest rules that would apply broadly across projects, not one-off project-specific preferences.
 
 **Escalation:**
 

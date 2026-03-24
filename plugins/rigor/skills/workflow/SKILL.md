@@ -1,7 +1,7 @@
 ---
 name: Rigorous Development Workflow
 description: This skill should be loaded by commands only, not auto-triggered. Orchestrates a complete SDLC with producer-critic validation.
-version: 0.11.0
+version: 0.12.0
 ---
 
 # Rigorous Development Workflow Orchestration
@@ -21,6 +21,7 @@ You are orchestrating a rigorous Software Development Life Cycle (SDLC) workflow
 - **Analyze** — Examine the requirements for gaps.
 - **Design** — Propose solutions to things.
 - **Review** — Look for bugs in code or divergences from the plan or requirements. Applies to documentation as well.
+- **Convention** — A user-customizable rule or guideline stored in `<artifacts_directory>/process/conventions/`. Convention files are markdown with optional YAML frontmatter. The orchestrator is the single writer of convention files; agents read them but never edit them directly.
 
 ## Workflow Overview
 
@@ -226,12 +227,14 @@ NOT: docs/sdlc/process/planning/iteration-4/WI-001.md           ← missing phas
 3. Producer conducts interview (if needed) and records output using `changelog_insert` (decisions, ADRs, components, specs, etc.)
 4. Invoke the critic agent for the phase via the Task tool
 5. Critic reviews by querying the current revision's data via `changelog_query`
-6. Call `revision_update` with approved/rejected status and critic feedback
-7. **If approved:**
+6. **Parse convention suggestions** from the critic's output — see §15.4 for details. Collect any `CONVENTION_SUGGESTION:` blocks but do not act on them yet.
+7. Call `revision_update` with approved/rejected status and critic feedback
+8. **If approved:**
    - Call `phase_transition` to mark phase completed
    - Call `checkpoint` with message "<phase_name>: phase completed and approved"
+   - **Surface pending convention suggestions** to the user if any were collected during this phase (see §15.4)
    - Transition to next phase
-8. **If rejected:**
+9. **If rejected:**
    - If revision_count < 3: loop back to step 1 with feedback (next `revision_create` call)
    - If revision_count >= 3: escalate to user for guidance
 
@@ -363,10 +366,11 @@ When transitioning between phases:
 1. Verify current phase is "completed" (via `project_status`)
 2. Call `phase_transition` with the next phase and status `"in_progress"`
 3. Call `checkpoint` with message describing the phase completion (e.g., "requirements: phase completed and approved")
-4. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
-5. **Compact context** before invoking the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
-6. Invoke the producer agent for the new phase via the Task tool
-7. Inform user of transition
+4. **Convention check (mandatory)** — Before invoking the producer, verify convention files exist for the entering phase. See §15.2 for the full procedure. If convention files are missing, resolve the gap before proceeding.
+5. Call `revision_create` with `iteration_id: <current_iteration_id>` and `phase_name: <next_phase_name>` for the new phase's first producer
+6. **Compact context** before invoking the next phase's agent. The completed phase's interview, feedback, and iteration details are captured in the DB — they don't need to remain in working context.
+7. Invoke the producer agent for the new phase via the Task tool
+8. Inform user of transition
 
 **Development Workflow Phase Order:**
 ```
@@ -484,6 +488,13 @@ When invoking an agent via the Task tool, provide context:
 - Prior phase data available via `changelog_query`
 - Any user notes from `project_status`
 - If revision > 0: feedback from previous critic review (via `revision_history`)
+- **Convention file paths** (always include both):
+  ```
+  Convention files:
+  - Global: <artifacts_dir>/process/conventions/global.md
+  - Phase: <artifacts_dir>/process/conventions/<phase_convention_filename>
+  ```
+  Where `<phase_convention_filename>` is the phase name mapped per §15 (e.g., `ux-design.md` for `ux_design`, `code-review.md` for `code_review`). These paths MUST be included in every producer prompt — agents read them to apply project-specific rules.
 
 **For Critic Agents:**
 - Current revision's data (via `changelog_query` filtered by iteration_id)
@@ -491,10 +502,35 @@ When invoking an agent via the Task tool, provide context:
 - Prior feedback (if revision > 1, from `revision_history`)
 - `artifacts_directory` from `project_status` — required by critic agents that verify file artifacts on disk (`architecture_critic`, `ux_critic`, `documentation_critic`, `security_audit_critic`)
 - `iteration_id` — for verifying iteration-scoped artifact paths
+- **Convention file paths** (always include both):
+  ```
+  Convention files:
+  - Global: <artifacts_dir>/process/conventions/global.md
+  - Phase: <artifacts_dir>/process/conventions/<phase_convention_filename>
+  ```
+  Critics use conventions to validate that producer output follows project-specific rules. This enables `CONVENTION_SUGGESTION` feedback (see §15.4).
 
 ### 9. Implementation Phase Special Handling
 
 The implementation phase uses sub-phase directories instead of iteration directories. Each sub-phase corresponds to a phase defined in the implementation plan and has its own producer-critic loop.
+
+**Implementation Convention Overrides:**
+
+Before entering the implementation phase (after the convention check in §6/§15.2 has confirmed convention files exist), the orchestrator reads the YAML frontmatter from `<artifacts_dir>/process/conventions/implementation.md` to determine workflow overrides. Parse the YAML block between the opening `---` and closing `---` at the top of the file.
+
+| Key | Default | Values | Effect |
+|-----|---------|--------|--------|
+| `skip_test_writing` | `false` | `true`/`false` | Skip the test-writing sub-step entirely |
+| `test_execution` | `in_loop` | `in_loop`, `manual`, `ci_only` | When tests run |
+| `skip_ui_validation` | `false` | `true`/`false` | Skip Playwright screenshot checks |
+
+Commented-out keys (lines starting with `#` inside the frontmatter) use their default values. Only uncommented keys override behavior.
+
+**Override effects on the sub-phase loop:**
+
+- **`skip_test_writing: true`** — Skip the entire Step 1 (test_writer → test_writer_critic loop). After calling `work_item_transition({ status: "test_writing" })`, immediately call `work_item_transition({ status: "implementing" })` and proceed directly to Step 2 (senior_developer). Do not invoke `rigor:test_writer` or `rigor:test_writer_critic`.
+- **`test_execution: manual` or `ci_only`** — The orchestrator does NOT run tests as part of the implementation loop. The senior developer and critic validate via alternative means described in the implementation conventions (e.g., manual test instructions, CI pipeline checks). Include `test_execution: <value>` in the senior developer and critic prompts so they know tests are not run in-loop.
+- **`skip_ui_validation: true`** — The senior developer and senior_developer_critic skip Playwright screenshot validation. Include `skip_ui_validation: true` in their prompts so they omit this check.
 
 **Determining Sub-phases:**
 - Query active work items: `changelog_query(entity_type="work_item", iteration_id=<current_iteration_id>, filters={superseded: false, status_not: "completed"})`
@@ -868,6 +904,200 @@ When working in a new iteration, agents should be aware of:
 - `close` refuses to operate on already-closed workflows
 - `new-iteration` refuses to operate on active workflows
 
+### 15. Conventions System
+
+Convention files are user-customizable markdown documents that define project-specific rules, patterns, and guidelines. They live in `<artifacts_directory>/process/conventions/` and are read by every agent during every phase. The orchestrator is the **single writer** of convention files — agents never edit them directly.
+
+**Convention file set:**
+
+| File | Applies to |
+|------|-----------|
+| `global.md` | All phases — read by every agent |
+| `requirements.md` | Requirements phase |
+| `ux-design.md` | UX Design phase |
+| `architecture.md` | Architecture phase |
+| `planning.md` | Planning phase |
+| `implementation.md` | Implementation phase (has YAML frontmatter for workflow overrides — see §9) |
+| `documentation.md` | Documentation phase |
+| `qa.md` | QA phase |
+| `audit.md` | Audit phase |
+| `code-review.md` | Code Review phase |
+
+**Phase name to convention filename mapping:**
+
+| Phase name (DB) | Convention filename |
+|-----------------|-------------------|
+| `requirements` | `requirements.md` |
+| `ux_design` | `ux-design.md` |
+| `architecture` | `architecture.md` |
+| `planning` | `planning.md` |
+| `implementation` | `implementation.md` |
+| `documentation` | `documentation.md` |
+| `qa` | `qa.md` |
+| `audit` | `audit.md` |
+| `code_review` | `code-review.md` |
+
+Rule: replace underscores with hyphens in the phase name to get the convention filename.
+
+**Default convention files** are bundled with the plugin at `defaults/conventions/` relative to the plugin root. To locate them at runtime, use the path resolved from the plugin's installation directory (the same root used by `${CLAUDE_PLUGIN_ROOT}` in `.mcp.json`). In SKILL.md context, the orchestrator reads defaults by path:
+```
+<plugin_root>/defaults/conventions/<filename>
+```
+Where `<plugin_root>` is the directory containing the `agents/`, `commands/`, `skills/`, and `defaults/` directories. The orchestrator can discover this by reading the path of any loaded agent file and resolving `../defaults/conventions/` relative to the `agents/` directory.
+
+#### 15.1 Convention Seeding (Start/Onboard Flow)
+
+After project initialization (`iteration_create`) and artifact directory creation, but **before entering the first phase**, seed convention files:
+
+1. Create the conventions directory:
+   ```bash
+   mkdir -p "<artifacts_directory>/process/conventions"
+   ```
+
+2. Present the user with a choice:
+   ```
+   📋 Convention Setup
+
+   Convention files define project-specific rules that all agents follow.
+   Default conventions are provided — you can customize them now or accept defaults.
+
+   How would you like to proceed?
+   1. Accept defaults for everything (recommended for first-time users)
+   2. Review and customize each convention file
+   ```
+
+3. **If "Accept defaults for everything":**
+   - Copy each default convention file from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/process/conventions/`
+   - For each phase the project will use (i.e., not in `skip_phases`), print a brief one-line acknowledgment:
+     ```
+     Seeding default conventions for global...
+     Seeding default conventions for requirements...
+     Seeding default conventions for ux-design...
+     Seeding default conventions for architecture...
+     Seeding default conventions for planning...
+     Seeding default conventions for implementation...
+     Seeding default conventions for documentation...
+     ```
+   - Always seed `global.md` regardless of `skip_phases`
+   - Skip seeding files for phases in `skip_phases`
+
+4. **If "Review and customize":**
+   - Seed `global.md` first — read the default file content and show it to the user:
+     ```
+     📄 Global Conventions (applies to all phases):
+
+     <content of defaults/conventions/global.md>
+
+     Accept these defaults, or provide your customizations?
+     ```
+   - If the user accepts: copy the default as-is
+   - If the user provides modifications: write the user's version
+   - Repeat for each phase convention file (only for phases not in `skip_phases`), in phase order
+
+5. Call `checkpoint` with message "conventions: seeded convention files"
+
+**Important:** Convention seeding happens exactly once per project — during initial `/rigor:start` or `/rigor:onboard`. Subsequent iterations reuse the existing convention files. The `/rigor:new-iteration` command does NOT re-seed conventions.
+
+#### 15.2 Phase-Entry Convention Check (Mandatory)
+
+When the orchestrator enters any phase, **before invoking the producer agent**, it MUST verify that convention files exist:
+
+1. Determine the convention filename for the entering phase using the mapping table above
+2. Check if both files exist:
+   ```bash
+   test -f "<artifacts_dir>/process/conventions/global.md" && echo "global OK"
+   test -f "<artifacts_dir>/process/conventions/<phase_convention_filename>" && echo "phase OK"
+   ```
+
+3. **If both files exist:** Proceed normally — include their paths in the agent context per §8.
+
+4. **If either file is missing:** Prompt the user:
+   ```
+   ⚠️  Convention files missing
+
+   The following convention files are required but not found:
+   - <list of missing files>
+
+   How would you like to proceed?
+   1. Use default conventions (copy from plugin defaults)
+   2. Collaborate to write custom conventions
+   ```
+
+   - **Option 1:** Copy the missing file(s) from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/process/conventions/` and proceed.
+   - **Option 2:** Show the default content as a starting point, let the user provide modifications, write the result, and proceed.
+
+5. Convention files are a **hard requirement** — agents will stop if they cannot read them. Never skip this check or proceed without resolving missing files.
+
+#### 15.3 Migration for Existing Projects (Resume Flow)
+
+When resuming a project via `/rigor:resume`, after loading the project state and before continuing the current phase, check if the conventions directory exists:
+
+```bash
+test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+```
+
+**If the directory is missing** (project predates the conventions system):
+
+```
+📋 Convention Setup Required
+
+This project predates the conventions system. Convention files define
+project-specific rules that all agents follow.
+
+Would you like to set up conventions now?
+1. Accept defaults for everything (recommended)
+2. Review and customize each convention file
+3. Skip for now (agents will prompt when entering each phase)
+```
+
+- **Options 1 and 2:** Follow the same seeding procedure as §15.1, using the current project's `skip_phases` (query from `project_status` — phases with status `"skipped"` are skip_phases).
+- **Option 3:** Skip seeding entirely. The phase-entry check (§15.2) will catch missing files and prompt the user on a per-phase basis as they enter each phase.
+
+After seeding, call `checkpoint` with message "conventions: migrated convention files for existing project".
+
+#### 15.4 Convention Suggestion Collection
+
+Critics may include `CONVENTION_SUGGESTION:` blocks in their output to propose new or modified convention rules based on patterns observed during review.
+
+**Collection (during producer-critic loop):**
+
+After each critic review (step 6 in the universal producer-critic loop, §2), parse the critic's output for blocks matching this format:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Collect all suggestions found in the critic's output into a transient list for the current phase. Multiple suggestions may appear in a single critic response. If the critic's output contains no `CONVENTION_SUGGESTION:` blocks, there is nothing to collect.
+
+**Surfacing (at phase transitions):**
+
+At phase completion (step 8 in the universal producer-critic loop), if there are pending convention suggestions collected during this phase, surface them to the user:
+
+```
+📝 Convention Suggestions
+
+The <critic_name> suggested <N> convention update(s) during the <phase_name> phase:
+
+1. [<file>] <rule>
+   Rationale: <rationale>
+
+2. [<file>] <rule>
+   Rationale: <rationale>
+
+Accept any of these? (Enter numbers to accept, "all" to accept all, "none" to reject all, or modify individually)
+```
+
+- **If user accepts a suggestion:** The orchestrator appends the rule to the relevant convention file (`<artifacts_dir>/process/conventions/<file>`). Append to the end of the file as a new bullet point (`- <rule>`).
+- **If user rejects:** Discard the suggestion — no file changes.
+- **If user modifies:** The orchestrator writes the user's modified version to the convention file.
+- Call `checkpoint` with message "conventions: updated <file> with accepted suggestions" after writing any accepted/modified suggestions.
+
+**Important:** Convention suggestions are transient — they are collected during a phase and either accepted or discarded at phase completion. They are NOT stored in the database. The convention files themselves are the persistent record of accepted rules.
+
 ## Critical Rules
 
 1. **Never skip validation** - Every artifact must be approved by its critic
@@ -879,6 +1109,7 @@ When working in a new iteration, agents should be aware of:
 7. **User escalation** - When stuck, involve the user for guidance
 8. **Never answer for the user** - When an agent needs user input (interviews, preferences, decisions, clarifications), always surface the question to the human. Do not infer answers from prior artifacts or make decisions on the user's behalf.
 9. **Never invoke sqlite3 directly** — No agent, skill, or command may run `sqlite3` or any other direct database client against `.claude/rigor.db`. All database interactions must use the provided MCP tools. If an MCP tool is insufficient, stop immediately and surface the limitation to the user using the structured escalation format. Do not attempt workarounds.
+10. **Orchestrator owns convention files** — Only the orchestrator writes to convention files in `<artifacts_directory>/process/conventions/`. Agents read convention files but never create, modify, or delete them. Convention suggestions from critics are collected by the orchestrator and require explicit user approval before being written (see §15.4).
 
 ## Error Handling
 

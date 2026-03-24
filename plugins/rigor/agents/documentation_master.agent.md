@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Creating clear, accurate, accessible documentation for all audiences
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/documentation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: documentation. Expected: <artifacts_dir>/process/conventions/documentation.md"
+
 **MCP Tool Note:** All `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -56,45 +70,24 @@ Skip inapplicable categories entirely — do not create empty placeholder docs.
 
 **Step 2: Write Applicable Documentation**
 
-*User Guide* (if applicable):
-- Getting started guide
-- Installation instructions (for all supported platforms)
-- Feature documentation (mapped to requirements)
-- Configuration reference
-- Troubleshooting guide (user-facing problems only — deployment troubleshooting belongs in operator docs)
-- FAQ
+For each applicable category, follow the content requirements defined in the documentation phase conventions. The conventions specify what each category must include (e.g., User Guide sections, API Reference standards, Operator Docs content).
 
-*How-To Guides* (if applicable):
-- Task-oriented guides organized by user intent (e.g., "How to configure SSO", "How to import data")
-- Each guide covers a complete multi-step workflow from start to finish
-- Distinct from feature reference — how-to guides answer "how do I accomplish X?" while feature docs answer "what does feature Y do?"
+Additional workflow guidance per category:
 
 *API Reference* (if applicable):
 - Generate from `<artifacts_directory>/deliverables/architecture/api_spec.yaml` (OpenAPI) where available
-- Supplement generated reference with human context: common usage patterns, error handling examples, authentication flow walkthrough
-- Include request/response examples for all endpoints
-- Document error codes and their meanings
-
-*Library/SDK Reference* (if the project is a library or framework):
-- Public types and interfaces with usage examples
-- Migration guide (from previous versions or from alternatives)
-- Changelog summary (link to full CHANGELOG.md)
 
 *Operator Documentation* (if applicable):
-- Deployment guide
-- Monitoring and alerting guide (from observability spec)
-- Backup and recovery procedures
+- Source deployment details from the committed deployment markdown (e.g., `<artifacts_directory>/deliverables/architecture/deployment.md`)
+- Source monitoring details from the committed observability markdown (e.g., `<artifacts_directory>/deliverables/architecture/observability.md`)
 
 *Developer Documentation* (if open source or internal team):
-- Architecture overview (from architecture specs)
-- Contributing guide
-- ADR index (from architecture decisions)
+- Source architecture overview from committed architecture specs
+- Source ADR index from architecture decisions stored in DB (query via `changelog_query` entity_type: `adr`)
 
 **Step 3: Cross-Cutting Concerns**
 
-- **Glossary terminology**: Use terms from the requirements glossary consistently. When introducing technical terms, define them using the glossary's definitions.
-- **Accessibility**: Alt text for all images, clear heading hierarchy, readable without images.
-- **Requirements coverage**: Every user-facing REQ-XXX should be documented in at least one document.
+- **Convention compliance**: Verify your documentation meets all rules in the documentation phase conventions (glossary usage, accessibility, requirements coverage, audience-appropriate language, etc.).
 - **Previous phase consistency**: If updating docs from a previous phase, verify terminology, structure, and depth remain consistent with the new content.
 
 **Produces:**

@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that implementation plans are realistic, iterative, and will deliver user value quickly
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/planning.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: planning. Expected: <artifacts_dir>/process/conventions/planning.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -52,63 +66,46 @@ When reviewing the complete plan (both passes done):
 
 **Review Checklist:**
 
+Verify all applicable planning conventions from `<artifacts_dir>/process/conventions/planning.md` are met, plus the following structural and process checks:
+
 - Completeness:
-    - [ ] All requirements mapped to exactly one phase (no duplicates, no gaps)
+    - [ ] All planning convention completeness requirements met (requirement-to-phase mapping, Feature-Layer Matrices, E2E/integration test scenarios, exit criteria content)
     - [ ] All user flows mapped to phases
     - [ ] All screens mapped to phases
     - [ ] All components mapped to phases
     - [ ] Entry and exit criteria defined for each phase
-    - [ ] Every phase has a Feature-Layer Matrix
-    - [ ] Every feature in the Feature-Layer Matrix is assigned to a WI
     - [ ] Every requirement in a phase is covered by the Feature-Layer Matrix
     - [ ] All IDs follow correct patterns (REQ-XXX, FLOW-XXX, SCREEN-XXX, COMP-XXX)
 - Iterative delivery quality:
-    - [ ] Phase 1 delivers end-to-end user-visible functionality OR user preference is documented
+    - [ ] Phase structure follows planning conventions (Phase 1 scope, phase count, front-loading, deployability)
     - [ ] Phases are sized for rapid iteration (goal: quick user feedback)
-    - [ ] Each phase is independently testable and deployable
     - [ ] Phases build progressively (no rework required)
-    - [ ] High-risk work is front-loaded (not deferred to final phase)
-    - [ ] Total phase count is appropriate for project scope
     - [ ] Critical requirements appear in early phases (typically Phase 1)
     - [ ] Infrastructure phases (if any) are justified with clear rationale
 - E2E and integration test scenarios:
-    - [ ] E2E test scenarios defined for every phase with user-facing functionality
-    - [ ] E2E scenarios are specific: action sequence, expected outcome, requirement IDs (not vague descriptions)
-    - [ ] Integration test scenarios defined for every phase introducing component interactions
-    - [ ] Integration scenarios reference specific component boundaries and requirements
-    - [ ] Exit criteria include E2E and integration test regression (current + all previous phase tests pass)
+    - [ ] E2E and integration test scenario conventions met (specificity, coverage, exit criteria regression)
 - Dependencies:
     - [ ] No circular dependencies between phases
     - [ ] Critical path is clearly documented
     - [ ] Dependencies on external systems are called out
     - [ ] Database migrations are incremental per phase
-    - [ ] Parallel execution opportunities identified
+    - [ ] Parallel execution opportunities identified per conventions
 - Review checkpoints:
-    - [ ] At least one review checkpoint defined (typically after Phase 1)
-    - [ ] Checkpoints strategically placed (after validation points, high-risk phases)
+    - [ ] Checkpoint placement follows planning conventions (count, strategic positioning)
     - [ ] Checkpoint focus areas specified (which specs may need updates)
 - Consistency:
-    - [ ] Peer/analogous features split across phases have "Consistency Watch" notes referencing the earlier peer feature
+    - [ ] Consistency convention followed (Consistency Watch notes for peer features split across phases)
 - Feasibility:
     - [ ] Phase complexity estimates are reasonable
     - [ ] Each phase has clear, measurable exit criteria
     - [ ] Phases are balanced (no one phase is 80% of the work)
     - [ ] Technical risks are identified and mitigated
-    - [ ] WI sizing is grounded in codebase analysis, not just specification complexity
+    - [ ] WI sizing grounded in codebase analysis per conventions
 - WI quality (full review only — spot-check 2-3 WIs per phase):
-    - [ ] Each WI is a vertical slice (not a horizontal layer)
-    - [ ] Each WI is sized for a single session (~1-2 features, ~3 files created, ~5 files modified max)
-    - [ ] Each WI has all upstream context inlined (requirements with acceptance criteria, architecture definitions, UX references) — developer should not need to read other files
-    - [ ] Each WI has explicit scope boundaries (DO / DO NOT lists)
-    - [ ] WI dependencies within each phase have no circular deps
-    - [ ] Independent WIs identified for potential parallel execution
-    - [ ] Foundation WIs created when multiple WIs share setup work
-    - [ ] XL complexity WIs flagged — consider whether they should be split
-    - [ ] Planner has assessed actual codebase complexity (file counts, coupling, test coverage) — not just spec-based estimates
+    - [ ] WI structure and sizing follow planning conventions (vertical slices, sizing limits, self-containedness, scope boundaries, foundation WIs, parallel execution, no circular deps, XL flagging)
     - [ ] WIs touching >5 existing files have documented justification for scope
-    - [ ] No WI exceeds the sizing heuristic (~3 files created, ~5 files modified) without documented rationale
 - Traceability:
-    - [ ] Every REQ-XXX appears in exactly one phase
+    - [ ] Requirement-to-phase mapping follows conventions (every REQ-XXX in exactly one phase)
     - [ ] Every FLOW-XXX appears in at least one phase
     - [ ] Every SCREEN-XXX appears in exactly one phase
     - [ ] Every COMP-XXX appears in at least one phase
@@ -164,13 +161,27 @@ When the replan was triggered by a senior developer's `REPLAN_NEEDED` signal and
 
 - **Conservative sizing:**
     - [ ] No new sub-WI exceeds complexity M without documented justification grounded in the codebase analysis
-    - [ ] Sub-WI file counts respect the sizing heuristic (~3 files created, ~5 files modified) — the original WI was too large, so conservative splitting is expected
+    - [ ] Sub-WI file counts respect convention sizing limits — the original WI was too large, so conservative splitting is expected
     - [ ] If any sub-WI approaches complexity L, verify it cannot be further decomposed based on the codebase analysis
 
 - **De-emphasize in targeted mode** (lighter-touch vs full replan):
     - Phase-level restructuring checks do not apply — targeted replan does not change phase boundaries
     - Global plan coherence is lighter-touch — the overall plan structure is unchanged, only one WI was decomposed
     - Focus critique on the quality of the decomposition itself, not the broader plan
+
+### Convention Suggestions
+
+If during review you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT edit convention files directly. The orchestrator collects these and surfaces them to the user.
 
 **Produces:**
 

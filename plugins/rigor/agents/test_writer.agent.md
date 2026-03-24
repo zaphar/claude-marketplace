@@ -18,6 +18,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/implementation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: implementation. Expected: <artifacts_dir>/process/conventions/implementation.md"
+
 **Inputs:**
 
 - Implementation plan (phase indexes and WI files) - approved by Implementation Plan Critic
@@ -42,36 +56,14 @@ Linked requirements (visible via `requirements` on the work item) exist for
 traceability. Use them to understand context and intent, but do not treat their
 acceptance criteria as an additional test checklist.
 
-##### Exit criteria classification
-
-Not all exit criteria are verifiable via the project's automated test suite.
-Classify each exit criterion before writing tests:
-
-- **Test-suite-verifiable**: Can be asserted by running a test in the project's
-  test framework. Examples: "function returns correct output", "build succeeds",
-  "config validation rejects invalid input". Write a test for these.
-
-- **Execution-validated**: Proved correct by the artifact running in its target
-  environment. Examples: "CI pipeline runs all steps", "Dockerfile builds a
-  runnable image", "Terraform plan applies cleanly". Do NOT write test-framework
-  tests for these. Instead, document them in your output as execution-validated
-  and state the expected validation mechanism.
-
-When in doubt, ask: "Would a developer write a test for this, or would they
-just run it and see if it works?" If the latter, it's execution-validated.
-
 #### WI-Based Workflow
 
 - On session start, find next unblocked WI with status `not_started`. Read only that WI file.
 - For each WI:
-  1. Read the WI's DO list and exit criteria thoroughly. Classify each exit criterion as test-suite-verifiable or execution-validated (see Test Derivation above).
-  2. **Audit existing tests** — before writing anything, search for existing tests that cover the same behaviors, modules, or exit criteria this WI touches. For each relevant existing test, decide:
-     - **Keep as-is**: behavior unchanged, test still valid
-     - **Modify**: behavior changes — update assertions, setup, or descriptions to match the new contract. The test must still be in a failing state after modification.
-     - **Delete**: test covers behavior being intentionally removed; deleting is preferable to leaving a test that passes for the wrong reason
-     - Document each decision with a brief comment if the reason isn't obvious
+  1. Read the WI's DO list and exit criteria thoroughly. Classify each exit criterion as test-suite-verifiable or execution-validated per conventions.
+  2. **Audit existing tests** — before writing anything, review existing tests in scope per conventions (keep, modify, or delete each relevant test).
   3. Write failing tests covering every test-suite-verifiable exit criterion, verification step, edge case, and error condition not already addressed by kept/modified tests. Document each execution-validated exit criterion with its expected validation mechanism.
-  4. Write minimal type stubs and interfaces needed for compilation — signatures only, no logic. Stub bodies must panic, throw, or return zero values.
+  4. Write minimal type stubs and interfaces needed for compilation per conventions.
   5. Run the test suite. Confirm:
      - All new and modified tests fail (Red state)
      - They fail for the right reason (not implemented, not compile/syntax error)
@@ -82,24 +74,9 @@ just run it and see if it works?" If the latter, it's execution-validated.
 
 #### Constraints
 
-- **No implementation logic.** Stubs contain only signatures, panics, throws, or zero-value returns. No business logic, data access, API handler logic, or algorithmic code.
 - Test fixtures, fakes, and test helpers are allowed — these are test infrastructure, not implementation.
 - Follow CODESTYLE.md if present.
-- Use requirements glossary for naming (domain terms, not jargon).
 - Do not add dependencies beyond the approved dependency manifest (query via `changelog_query`, entity_type: `approved_dependency`) — flag unapproved needs for architect.
-- Do not use mocking frameworks in your tests. Use Fakes or In Memory doubles.
-  Mocking frameworks are evil and destructive to the long term health of a codebase.
-
-#### Test Design Principles
-
-- One test per test-suite-verifiable exit criterion minimum
-- Assert on behavior and contracts, not implementation details
-- Tests must be isolated and deterministic
-- Use descriptive names that document what behavior is being verified
-- Cover edge cases and error conditions, not just happy paths
-- No test duplication — each test verifies a distinct behavior
-- For serialized objects, include round-trip tests
-- For API endpoints, include integration tests for request/response flows
 
 #### Self-Review
 

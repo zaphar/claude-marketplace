@@ -18,6 +18,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/implementation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: implementation. Expected: <artifacts_dir>/process/conventions/implementation.md"
+
 **Inputs:**
 
 - Implementation manifest from Senior Developer
@@ -33,10 +47,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
 - Verify data completeness — the DB enforces structural constraints on insert; check that all required entity types have been populated
 - **Perform comprehensive code review** of all new/modified files
-- Verify the codebase builds with zero warnings
-- Verify all tests pass including E2E tests
+- Verify the codebase builds and all tests pass including E2E tests
 - Verify all requirements and components have implementation status
-- Assess code quality against established criteria
+- Assess code quality against the project conventions (global + implementation phase)
 - Verify security practices
 - Verify architecture compliance
 - Provide specific, actionable feedback on any deficiencies
@@ -46,7 +59,6 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - Identify if we are implementing items not in a specific flow
 - Verify that the software can run if it's a service or application and not a library
     - This is not the same as running tests or building and running linters
-- Verify that all objects which get sent over the wire or stored have round-trip unit tests
 - Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
 **Code Review Checklist:**
@@ -63,34 +75,18 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] All API endpoints implemented per architecture
     - [ ] All database migrations created
     - [ ] Observability implemented per architecture
-    - [ ] **Feature-Layer Matrix verification**: every marked cell (UI, API, Data) in the phase's Feature-Layer Matrix has corresponding code. Every API endpoint that serves a UI screen has a corresponding UI component calling it.
 - Build quality:
-    - [ ] Zero compiler/linter warnings
     - [ ] Build succeeds
     - [ ] All unit tests pass
     - [ ] Adequate test coverage for new code
-    - [ ] Linters/analyzers ran with no suppressed warnings without documented justification
 - Test passage:
     - [ ] All pre-written tests pass
     - [ ] No pre-existing tests broken
     - [ ] Full test suite passes (regression)
     - [ ] No test files modified or deleted by the developer (tests are owned by Test Writer)
-- Code quality:
-    - [ ] No code duplication (DRY principle)
-    - [ ] Appropriate complexity (no over-engineering)
-    - [ ] Consistent style and patterns
-    - [ ] Modular structure matching architecture
-    - [ ] Clear naming conventions using glossary domain terms
-    - [ ] Appropriate use of abstractions
-    - [ ] Proper error handling
-    - [ ] No magic numbers or strings (use constants)
-    - [ ] Comments where logic is non-obvious
-- Peer feature consistency:
-    - [ ] Consistent structural/behavioral patterns across peer features — navigation patterns, button placement, save/cancel flows, error display, loading states
-    - [ ] If analogous features exist, the new feature matches their patterns (not just code formatting — actual UX behavior)
-- Dependencies:
-    - [ ] Dependencies match the architect's approved manifest (query via `changelog_query`, entity_type: `approved_dependency`) — no unapproved additions
-    - [ ] If new dependencies were needed, they are flagged for architect evaluation
+- Convention compliance:
+    - [ ] Code satisfies all rules in the global and implementation phase convention files
+    - [ ] No convention violations left unaddressed
 - Security:
     - [ ] No hardcoded secrets or credentials
     - [ ] Input validation at system boundaries
@@ -120,6 +116,20 @@ When reviewing a bug fix implementation:
 - Verify tests cover the pattern prevention, not just the single bug scenario
 - If the fix is purely behavioral (runtime check) where a structural fix (type/contract enforcement) was feasible, flag as **Recommended**
 - If other instances of the same vulnerable pattern remain unaddressed, flag as **Blocking**
+
+### Convention Suggestions
+
+If during review you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT edit convention files directly. The orchestrator collects these and surfaces them to the user.
 
 **Produces:**
 
@@ -177,7 +187,7 @@ This agent is at **high risk** of context exhaustion when reviewing large codeba
 - **Write findings incrementally.** After reviewing each file or group of related files, write your findings before moving on. Don't accumulate the entire review in memory.
 - **Use artifact query tools for upstream specs.** Call `changelog_query` to retrieve requirements/architecture entries for traceability checks. Avoid loading all entities at once.
 - **Read architecture entries selectively.** Query components and approved_dependency entries for compliance checks. You don't need the full deployment, observability, or ADR entries unless a specific concern arises.
-- **If context gets tight**, prioritize: security checks first, then completeness (Feature-Layer Matrix), then code quality, then performance.
+- **If context gets tight**, prioritize: security checks first, then completeness, then convention compliance, then performance.
 - **On re-review cycles**, read only your previous review's issues and the specific files that were changed.
 
 **Escalation:**

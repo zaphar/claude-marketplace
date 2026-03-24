@@ -15,6 +15,7 @@ allowed-tools:
   - mcp__plugin_rigor_rigor-db__revision_create
   - mcp__plugin_rigor_rigor-db__revision_update
   - mcp__plugin_rigor_rigor-db__changelog_insert
+  - mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 # Onboard Existing Codebase to Rigorous Development Workflow
@@ -118,16 +119,31 @@ iteration_create({
 
 No YAML state file is written.
 
-### 5. Load Rigorous Dev Skill
+### 5. Seed Convention Files
+
+After project initialization and before loading the workflow skill, seed convention files per SKILL.md §15.1:
+
+1. Create the conventions directory:
+   ```bash
+   mkdir -p "<artifacts_directory>/process/conventions"
+   ```
+
+2. Ask the user whether to accept defaults or customize (see §15.1 for the full choice flow).
+
+3. Copy or write convention files from the plugin's `defaults/conventions/` directory to `<artifacts_directory>/process/conventions/`. Use the `skip_phases` from step 4 to determine which phase convention files to skip seeding.
+
+4. Call `checkpoint` with message "conventions: seeded convention files".
+
+### 6. Load Rigorous Dev Skill
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill for orchestration context. This provides the phase transition rules, artifact management patterns, and producer-critic loop mechanics.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
-### 6. Run UX Design Documentation (Visual Projects Only)
+### 7. Run UX Design Documentation (Visual Projects Only)
 
-**Skip this step entirely if the project is non-visual.** Proceed directly to step 7.
+**Skip this step entirely if the project is non-visual.** Proceed directly to step 8.
 
-#### 6a. Invoke UX Designer with Documentation Mode Override
+#### 7a. Invoke UX Designer with Documentation Mode Override
 
 Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation Mode Overrides** that replace the agent's normal interview-driven behavior:
 
@@ -165,7 +181,7 @@ Invoke `rigor:ux_designer` via the Task tool, then apply these **Documentation M
 - `user_flows` (required, minItems: 1): Infer flows from routing configuration, navigation structure, and page/screen organization. Create at least one flow documenting a primary user journey found in the code.
 - `requirements_mapping` (required, minItems: 1): Create placeholder entries with `REQ-001`, `REQ-002`, etc. describing inferred functionality areas discovered in the codebase. Each entry should describe what the code does, not what it should do.
 
-#### 6b. Run UX Critic with Onboarding Override
+#### 7b. Run UX Critic with Onboarding Override
 
 Invoke `rigor:ux_critic` via the Task tool, then apply these **Onboarding Critic Overrides**:
 
@@ -183,7 +199,7 @@ Invoke `rigor:ux_critic` via the Task tool, then apply these **Onboarding Critic
 - Accept placeholder `REQ-XXX` entries in `requirements_mapping`
 - Accept placeholder `PERSONA-XXX` entries inferred from codebase
 
-#### 6c. Producer-Critic Loop
+#### 7c. Producer-Critic Loop
 
 Run the standard producer-critic loop (up to 3 iterations):
 
@@ -195,9 +211,9 @@ Run the standard producer-critic loop (up to 3 iterations):
 
 After approval, transition to architecture phase: set `architecture.status: "in_progress"`, `architecture.started_at`, update `current_phase: "architecture"`.
 
-### 7. Run Architecture Documentation
+### 8. Run Architecture Documentation
 
-#### 7a. Invoke Backend Architect with Documentation Mode Override
+#### 8a. Invoke Backend Architect with Documentation Mode Override
 
 Invoke `rigor:backend_architect` via the Task tool, then apply these **Documentation Mode Overrides**:
 
@@ -250,7 +266,7 @@ Invoke `rigor:backend_architect` via the Task tool, then apply these **Documenta
 - `components` (required, minItems: 1): Map discovered source modules to `COMP-XXX` identifiers
 - Technology choices: Record as `approved_dependency` entries with appropriate `category` values (e.g., `backend-language`, `database`); rationale can note "existing codebase choice"
 
-#### 7b. Run Architecture Critic with Onboarding Override
+#### 8b. Run Architecture Critic with Onboarding Override
 
 Invoke `rigor:architecture_critic` via the Task tool, then apply these **Onboarding Critic Overrides**:
 
@@ -267,7 +283,7 @@ Invoke `rigor:architecture_critic` via the Task tool, then apply these **Onboard
 - Accept `"onboarding-inferred"` as valid for `requirements_version` and `ux_specification_version`
 - Accept placeholder `REQ-XXX` entries in `requirements_mapping`
 
-#### 7c. Producer-Critic Loop
+#### 8c. Producer-Critic Loop
 
 Run the standard producer-critic loop (up to 3 iterations):
 
@@ -277,7 +293,7 @@ Run the standard producer-critic loop (up to 3 iterations):
 4. If rejected: send feedback to architect, increment `iteration_count`, loop (max 3)
 5. If 3 iterations without approval: escalate to user
 
-### 8. Finalize State
+### 9. Finalize State
 
 After both documentation phases complete (or just architecture for non-visual projects), call `phase_transition` to start the requirements phase:
 
@@ -287,7 +303,7 @@ phase_transition({ phase: "requirements", status: "in_progress" })
 
 The previous phases (ux_design, architecture) are already tracked in the DB by the producer-critic loops above. No separate state file is needed.
 
-### 9. Success Message
+### 10. Success Message
 
 Display a clear summary:
 
@@ -314,5 +330,5 @@ If the user indicates the project has no visual UI (CLI tool, library, API-only 
 
 1. Skip UX design entirely — mark as `"skipped"` with note `"Non-visual project — no UX design needed"`
 2. Set `current_phase: "architecture"` in initial state
-3. Run only the architecture documentation (step 7)
+3. Run only the architecture documentation (step 8)
 4. Finalize state with `current_phase: "requirements"` as normal

@@ -12,6 +12,20 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 **Primary Focus:** Catch cross-cutting problems that individual partition reviewers cannot see. Every finding must involve two or more modules or a system-wide pattern. Do NOT duplicate partition-level design or idiom findings — focus exclusively on inter-module concerns.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/code-review.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: code_review. Expected: <artifacts_dir>/process/conventions/code-review.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `traceability_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -31,7 +45,7 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 3. Read public API surfaces to assess cross-module consistency.
 4. When rigor DB context is available (`run_id` provided with iteration context), use `changelog_query` to load requirements (`entity_type: "requirement"`), architecture decisions (`entity_type: "adr_decision"`), and components (`entity_type: "component"`) for domain alignment checks.
 5. Use `traceability_query` to check requirement → component → code traceability gaps.
-6. Systematically evaluate each cross-cutting category (see below).
+6. Systematically evaluate each cross-cutting category as defined in the project conventions.
 7. Insert findings incrementally as they are identified — do not batch at the end.
 8. After all categories are evaluated, produce a **system-level summary** (see Produces section).
 9. Do NOT duplicate partition-level findings — focus exclusively on inter-module concerns.
@@ -43,17 +57,11 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 #### Cross-Cutting Evaluation Categories
 
-All categories are **Tier 1: Structural** — cross-cutting concerns are inherently architectural.
+All categories are **Tier 1: Structural** — cross-cutting concerns are inherently architectural. Evaluation criteria are defined in the project conventions. Use these DB category values in `changelog_insert` calls:
 
-| Category | What to look for |
-|----------|-----------------|
-| `dependency_direction` | Across the entire dependency graph: do dependencies flow toward stable abstractions? Are there circular dependency chains? Does business logic depend on infrastructure? |
-| `layer_violations` | Across module boundaries: are architectural layers respected? Do modules bypass intended interfaces and reach into implementation details of other modules? |
-| `domain_alignment` | Using rigor DB context (requirements, ADRs, components): do the code's modules map to the stated domain model? Are there domain concepts in requirements that have no corresponding code module? Are there code modules that correspond to no stated requirement? |
-| `api_consistency` | Across public module interfaces: are naming conventions consistent? Do similar modules expose similar API patterns? Are error handling strategies consistent at module boundaries? |
-| `cross_cutting_concern_management` | How are concerns like logging, auth, config, error handling managed across modules? Are they centralized or scattered? Consistent or ad-hoc? |
-| `integration_seam_quality` | At the boundaries between modules: are integration points well-defined? Are there implicit contracts (e.g., shared globals, assumed file paths, magic strings) that should be explicit interfaces? |
-| `cross_module_duplication` | Structurally similar code in different modules that suggests a missing shared abstraction? |
+`dependency_direction`, `layer_violations`, `domain_alignment`, `api_consistency`, `cross_cutting_concern_management`, `integration_seam_quality`, `cross_module_duplication`
+
+Refer to project conventions for what to evaluate in each category.
 
 ---
 
@@ -66,7 +74,7 @@ For each finding, call:
 changelog_insert(project_root: "<absolute path to project root>", entity_type: "code_review_finding", iteration_id: <current>, data: {
   run_id: <run_id from dispatch prompt>,
   tier: "structural",
-  category: "<snake_case category from the table above>",
+  category: "<snake_case category from the evaluation categories list>",
   severity: "critical" | "high" | "medium" | "low",
   title: "<concise one-line summary>",
   description: "<diagnostic detail with evidence — which modules are involved, what the dependency/violation pattern is, citations from partition summaries. For domain alignment: cite specific requirements/ADRs and the code modules that should (but don't) map to them.>",
@@ -123,3 +131,17 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
   raised_by: "codebase-cross-cutting-critic"       // required: agent name
 })
 ```
+
+### Convention Suggestions
+
+If during review you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT edit convention files directly. The orchestrator collects these and surfaces them to the user.

@@ -12,6 +12,20 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 
 **Primary Focus:** For each finding in a batch, read the current file contents and determine whether the specific issue described still exists. Mark stale findings as resolved; leave valid findings untouched. When uncertain, keep the finding open — never auto-resolve ambiguous cases.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/code-review.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: code_review. Expected: <artifacts_dir>/process/conventions/code-review.md"
+
 **MCP Tool Note:** All `changelog_query` and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. This is provided in the dispatch prompt. Pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -84,3 +98,17 @@ This agent operates on a bounded batch (capped at ~15 findings or ~30 unique fil
 
 - If a finding references files that no longer exist and the finding's scope is ambiguous (could apply to renamed/moved files), mark `STILL_VALID` and note the ambiguity in the rationale. The user will resolve it during triage.
 - If the batch contains findings with contradictory descriptions (e.g., two findings about the same file that cannot both be true), note the contradiction in the summary and mark both `STILL_VALID`.
+
+### Convention Suggestions
+
+If during review you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT edit convention files directly. The orchestrator collects these and surfaces them to the user.

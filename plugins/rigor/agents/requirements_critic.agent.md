@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that requirements specifications are complete, consistent, and meet quality standards
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/requirements.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: requirements. Expected: <artifacts_dir>/process/conventions/requirements.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -36,17 +50,16 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Review Checklist:**
 
+- Conventions compliance:
+    - [ ] All outputs comply with requirements conventions (ID formats, quality criteria, interview process rules)
+    - [ ] Convention-mandated artifacts present (glossary, decisions, risks, acceptance criteria, priorities, stakeholders, success criteria, MVP delineation)
 - Schema validation:
     - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
-    - [ ] All IDs follow REQ-XXX pattern
 - Completeness:
     - [ ] Problem statement defined
     - [ ] User personas identified
-    - [ ] Stakeholders identified (decision-makers, end users, approvers)
     - [ ] Inputs and outputs specified
-    - [ ] Project-level success criteria established (distinct from per-requirement acceptance criteria)
-    - [ ] MVP scope vs full vision clearly delineated
     - [ ] Security needs addressed
     - [ ] Usability needs addressed
     - [ ] Performance needs addressed
@@ -60,20 +73,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] Constraints documented
     - [ ] Assumptions listed
     - [ ] Out-of-scope section includes topics explicitly skipped as N/A
-    - [ ] All requirements prioritized
-    - [ ] All requirements have acceptance criteria
     - [ ] Quality standards defined (coverage thresholds, performance targets)
-    - [ ] Glossary present with domain-specific terms
-    - [ ] Key decisions recorded with reasoning
-    - [ ] Risks/tensions identified
 - Consistency:
     - [ ] No requirements contradict each other
     - [ ] Priorities are coherent (dependencies respected)
     - [ ] Terminology is consistent throughout and matches glossary definitions
 - Quality:
-    - [ ] Each requirement is testable (has measurable acceptance criteria)
-    - [ ] Each requirement is actionable (can be implemented)
-    - [ ] Each requirement is unambiguous (single interpretation)
     - [ ] Requirements are appropriately scoped (not too broad, not too narrow)
 
 **Produces:**
@@ -95,6 +100,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - Process the specification one section at a time. Start with the overview and problem statement, then requirements, then each supporting section (glossary, constraints, risks, etc.).
 - On re-review cycles, read only your previous review's issues and the specific sections that were revised — don't re-read the entire spec from scratch.
 - Write review findings as you work through each section rather than accumulating everything before writing.
+
+### Convention Suggestions
+
+If during review you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT edit convention files directly. The orchestrator collects these and surfaces them to the user.
 
 **Escalation:**
 

@@ -18,6 +18,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_directory>/process/conventions/global.md`
+2. Phase: `<artifacts_directory>/process/conventions/architecture.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: architecture. Expected: <artifacts_directory>/process/conventions/architecture.md"
+
 **Inputs:**
 
 - Backend architecture entries from Backend Architect (query via changelog_query)
@@ -31,7 +45,7 @@ Determine `artifacts_directory` from the project context provided by the orchest
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number to maintain review history.
 - Validate architecture entries for completeness and correctness (data integrity enforced by DB constraints on insert)
-- Verify all technical requirements are mapped to architectural elements
+- Verify compliance with project conventions (global and architecture phase)
 - Assess architecture quality against established criteria
 - Provide specific, actionable feedback on any deficiencies
 - Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
@@ -42,27 +56,18 @@ Determine `artifacts_directory` from the project context provided by the orchest
     - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
+- Convention compliance:
+    - [ ] All rules in `<artifacts_directory>/process/conventions/architecture.md` followed
+    - [ ] All applicable rules in `<artifacts_directory>/process/conventions/global.md` followed
 - Completeness:
     - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); `<artifacts_directory>/deliverables/architecture/api_spec.yaml` file artifact if APIs exist
     - [ ] Architecture configuration (security, deployment, observability) committed as markdown documents
     - [ ] Architecture narrative committed as a markdown document — overview, style, communication patterns, and design principles
     - [ ] Architecture diagrams committed as repository files (at minimum one component-level diagram)
-    - [ ] Data model committed as a markdown document — entities, attributes, relationships, and cardinality
+    - [ ] Data model committed as a markdown document
     - [ ] All technical requirements mapped to architectural elements (check via `traceability_query`)
-    - [ ] Technology choices documented with rationale and current research citations — recorded in ADRs and as `approved_dependency` entries with `category` for grouping
-    - [ ] Technology recommendations include source links (official docs, release notes, benchmarks) — not just training-data knowledge
-    - [ ] Uncertainty flagged where current information could not be found
-    - [ ] All components defined with clear interfaces (query via `changelog_query` entity_type: `component`)
-    - [ ] Integration test boundaries defined for inter-component interactions — boundary type, interacting components, and expected behavior specified
-    - [ ] Data model complete — entities, attributes (with types and nullability), and relationships documented in the committed data model markdown document
-    - [ ] API specification complete with machine-readable OpenAPI spec (`<artifacts_directory>/deliverables/architecture/api_spec.yaml`) that is valid OpenAPI 3.x
-    - [ ] Deployment architecture addresses all target scenarios
-    - [ ] Observability strategy defined
-    - [ ] Security architecture defined with authentication and authorization approach documented with trade-off reasoning
     - [ ] All architectural decisions recorded as individual adr entity entries (query via changelog_query with entity_type: "adr"); formal decisions recorded via adr_decision entity with selected alternative and rationale
-    - [ ] Linters and static analyzers specified with tool names, configuration, and build pipeline integration
-    - [ ] Linter rulesets start strict/pedantic — relaxations documented with justification in an ADR
-    - [ ] Pagination strategy documented with reasoning
+    - [ ] Approved dependency manifest exists (query via `changelog_query` entity_type: `approved_dependency`)
 - Architecture quality:
     - [ ] Is the architecture achievable with the chosen technology?
     - [ ] Is each component actionable and implementable?
@@ -79,22 +84,10 @@ Determine `artifacts_directory` from the project context provided by the orchest
     - [ ] Data model includes all entities needed by screens
     - [ ] API response shapes match UX data requirements
 - API design:
-    - [ ] APIs are consistent and follow conventions
-    - [ ] Cross-endpoint uniformity: error response shapes (status codes, error body structure) are identical across all endpoints
-    - [ ] Authentication/authorization patterns applied uniformly across all endpoints
-    - [ ] Input validation approach is consistent across all endpoints
     - [ ] Error handling is well-defined
     - [ ] Versioning strategy defined
 - Dependencies:
-    - [ ] Approved dependency manifest exists (query via `changelog_query` entity_type: `approved_dependency`)
-    - [ ] Every third-party dependency has a documented justification and ADR reference
-    - [ ] Dependency health assessed for each (maintenance activity, community adoption, transitive dependency count, license, single-maintainer risk)
-    - [ ] No dependency chosen when a reasonable in-house implementation would suffice
     - [ ] User's dependency risk tolerance from requirements constraints was respected
-- Traceability:
-    - [ ] Every REQ-XXX has corresponding architectural coverage
-    - [ ] Component dependencies form a valid DAG (no cycles)
-    - [ ] ADRs justify significant decisions
 
 **Bug Fix Review (when applicable):**
 
@@ -114,6 +107,20 @@ When reviewing architecture for a bug fix iteration:
     - **Blocking**: Must fix before approval — any checklist failure, quality gap, or substantive improvement the architect should reasonably deliver
     - **Recommended**: Should fix, but not blocking
     - **Suggestion**: Truly optional enhancements that don't affect correctness, completeness, or quality
+
+### Convention Suggestions
+
+When you identify a recurring project-specific pattern during review that isn't captured in any convention file, include a `CONVENTION_SUGGESTION:` block in your review:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Do NOT modify convention files directly. The orchestrator will triage suggestions.
 
 **Handoff:**
 

@@ -8,6 +8,7 @@ allowed-tools:
   - Task
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__iteration_summary
+  - mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 # Resume Rigorous Development Workflow
@@ -79,12 +80,22 @@ Completed Phases:
 Resuming <current_phase> phase...
 ```
 
-### 5. Load Rigorous Dev Skill
+### 5. Check Convention Migration
+
+Before loading the workflow skill, check if the conventions directory exists (see SKILL.md §15.3):
+
+```bash
+test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+```
+
+If missing, prompt the user to set up conventions. This handles projects that predate the conventions system. See §15.3 for the full migration procedure.
+
+### 6. Load Rigorous Dev Skill
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
-### 6. Continue Current Phase
+### 7. Continue Current Phase
 
 Based on the current phase and its status, invoke the appropriate agent via the Task tool:
 
@@ -96,7 +107,7 @@ Based on the current phase and its status, invoke the appropriate agent via the 
 - Should not happen; workflow should have advanced to next phase
 - Display error and suggest running `/rigor:dev-status` to check state
 
-### 7. Context Handoff
+### 8. Context Handoff
 
 When invoking the agent, provide context from the `project_status` response about:
 - What artifacts already exist

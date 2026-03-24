@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that all tests fail correctly, cover every test-suite-verifiable exit criterion from the work item, document execution-validated criteria, and contain no implementation logic
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/implementation.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: implementation. Expected: <artifacts_dir>/process/conventions/implementation.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -59,22 +73,29 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] Every verification step has a test
     - [ ] Every execution-validated exit criterion is documented with a stated validation mechanism
     - [ ] No brittle infrastructure-config-parsing tests (YAML grep, Dockerfile content assertions)
-    - [ ] Edge cases and error conditions covered
-    - [ ] For serialized objects: round-trip tests present
-    - [ ] For API endpoints: integration tests for request/response flows
-- No implementation logic:
-    - [ ] Stubs contain only signatures, panics, throws, or zero-value returns
-    - [ ] No business logic in any stub
-    - [ ] No data access or query logic in any stub
-    - [ ] No API handler logic in any stub
+- Convention compliance:
+    - [ ] Stub boundary rules, test design rules, and mocking policy per project conventions
     - [ ] Test fixtures and fakes are test infrastructure only
-- Test quality:
-    - [ ] Tests are isolated (no shared mutable state between tests)
-    - [ ] Tests are deterministic (no timing, random, or network dependencies)
-    - [ ] Assertions are meaningful — test behavior/contracts, not implementation details
-    - [ ] Test names are descriptive and document the expected behavior
-    - [ ] No duplicate tests verifying the same behavior
-    - [ ] Test do not use mocking frameworks and instead leverage shared In Memory Fakes or Doubles.
+
+### Convention Suggestions
+
+During review, if you identify a recurring pattern, anti-pattern, or project-specific
+rule that **is not already covered** by existing conventions but **should be**, emit a
+`CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Guidelines:
+- Only suggest rules that would apply **across iterations**, not one-off fixes
+- Check existing conventions first — do not duplicate
+- Prefer phase conventions over global unless the rule is truly cross-phase
+- Keep rules atomic and actionable — one convention per suggestion
 
 **Produces:**
 
@@ -135,7 +156,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 - If same issues persist after 3 revision cycles, pause and report the recurring issues to the user. Instruct the orchestrator to record a blocker via `changelog_insert(entity_type: "blocker")` with the description and severity.
 - If exit criteria are untestable or ambiguously classified, flag immediately to the user.
 
-## Coverage Validation
+### Coverage Validation
 
 Validate test coverage against the work item's `exit_criteria`, not against
 acceptance criteria on linked requirements.

@@ -9,6 +9,7 @@ allowed-tools:
   - AskUserQuestion
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__iteration_create
+  - mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 # Start Rigorous Development Workflow
@@ -83,12 +84,27 @@ iteration_create({
 
 This creates the project record, the first iteration, and all phase rows (requirements, ux_design, architecture, planning, implementation, documentation) with requirements set to `in_progress` and the rest `pending`. No YAML state file is written.
 
-### 5. Load Rigorous Dev Skill
+### 5. Seed Convention Files
+
+After project initialization and before loading the workflow skill, seed convention files per SKILL.md §15.1:
+
+1. Create the conventions directory:
+   ```bash
+   mkdir -p "<artifacts_directory>/process/conventions"
+   ```
+
+2. Ask the user whether to accept defaults or customize (see §15.1 for the full choice flow).
+
+3. Copy or write convention files from the plugin's `defaults/conventions/` directory to `<artifacts_directory>/process/conventions/`.
+
+4. Call `checkpoint` with message "conventions: seeded convention files".
+
+### 6. Load Rigorous Dev Skill
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
-### 6. Start Requirements Phase
+### 7. Start Requirements Phase
 
 Inform the user that the workflow has started and invoke the requirements_analyst agent via the Task tool:
 

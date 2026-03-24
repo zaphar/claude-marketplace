@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that test reports and test suites are complete, reliable, and meet quality standards
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/qa.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: qa. Expected: <artifacts_dir>/process/conventions/qa.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -32,10 +46,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 **What You Do:**
 
 - Before starting, check for previous review iterations. Append each new review with a dated heading and revision number.
-- Verify all acceptance criteria have test coverage
-- Verify coverage thresholds are met
-- Assess test quality against established criteria
+- Verify all convention rules are satisfied (read conventions first, then check each rule)
 - Verify the unified traceability matrix is complete and consistent
+- Assess test quality against the review checklist below
 - Provide specific, actionable feedback on any deficiencies
 - Record significant lessons or recurring patterns by instructing the orchestrator to insert a `project_lesson` via `changelog_insert(entity_type: "project_lesson")` with the phase_name, category, and lesson text. Set `recurring: 1` if the pattern has been observed before.
 
@@ -45,41 +58,24 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - [ ] Data completeness: all required fields populated in changelog entries
     - [ ] All required fields present
     - [ ] All REQ-XXX have test status entries
-- E2E test coverage:
-    - [ ] Every planner-defined E2E test scenario has a corresponding Playwright test
-    - [ ] QA added edge cases and negative paths beyond what the planner specified
-    - [ ] Cross-feature consistency tests exist (analogous screens compared for structural consistency in navigation, buttons, save/cancel flows, error display, loading states)
-    - [ ] No flaky E2E tests (or flagged with explanation if unavoidable)
-    - [ ] E2E tests use test fixture automation and clean up after themselves
-- Integration test coverage:
-    - [ ] Developer-written integration tests cover component interaction boundaries from architecture components (query via `changelog_query` with entity_type: "component")
-    - [ ] Planner-defined integration test scenarios have corresponding tests
-    - [ ] Integration tests set up and tear down their own data
-- Acceptance criteria coverage:
-    - [ ] Every REQ-XXX has acceptance criteria tested
-    - [ ] Every acceptance criterion has pass/fail status
-    - [ ] 100% acceptance criteria coverage achieved
-- Code coverage:
-    - [ ] Line coverage >= minimum from quality standards (default 80%)
-    - [ ] Branch coverage >= minimum from quality standards (default 70%)
-- Visual verification:
-    - [ ] Screenshots captured for implemented screens
-    - [ ] Screenshots compared to mockups with issues documented
-    - [ ] Invisible text or component issues identified
+- Convention compliance:
+    - [ ] All rules in project conventions (global + qa phase) are satisfied
+    - [ ] E2E tests follow convention standards for framework, coverage, and cleanup
+    - [ ] Integration tests meet convention standards for boundary coverage and data lifecycle
+    - [ ] Coverage thresholds meet convention minimums
+    - [ ] Screenshot/visual verification meets convention requirements
+    - [ ] Test failure documentation meets convention format
 - Traceability matrix:
-    - [ ] Unified traceability matrix exists (requirement → UX screen → architecture component → source code → test ID)
+    - [ ] Unified traceability matrix exists with convention-required columns
     - [ ] Every requirement has a complete trace through all columns
     - [ ] Matrix is consistent with test report pass/fail statuses
     - [ ] No orphaned tests (tests without a requirement link)
 - Test quality:
-    - [ ] Tests are isolated (no interdependencies)
-    - [ ] Tests are deterministic
     - [ ] Test suite runs in reasonable time
     - [ ] No duplicated test logic
     - [ ] Test names clearly describe what is being tested
     - [ ] Assertions are meaningful (not just "no exception")
 - Documentation:
-    - [ ] Test failures have reproduction steps
     - [ ] Blockers identify affected requirements with severity
     - [ ] Recommendations are actionable
 
@@ -91,6 +87,23 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
     - **Blocking**: Must fix before approval (missing acceptance criteria coverage, critical test failures, incomplete traceability matrix, missing planner-defined scenarios)
     - **Recommended**: Should fix, but not blocking (test quality issues, missing edge cases)
     - **Suggestion**: Optional improvements
+
+### Convention Suggestions
+
+During review, if you identify a recurring quality issue, best practice, or
+anti-pattern that is NOT already covered by the project conventions, emit a
+`CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+The orchestrator will collect these for the user to review and potentially
+add to the project conventions.
 
 **Handoff:**
 

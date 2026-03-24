@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Creating a phased implementation plan that prioritizes getting interactive software into users' hands quickly through highly iterative cycles
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/planning.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: planning. Expected: <artifacts_dir>/process/conventions/planning.md"
+
 **MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -52,13 +66,7 @@ Before producing the plan, explore the actual codebase to ground sizing decision
 - **Assess coupling:** Use Grep to check import/dependency density — how many files import a module being changed? High fan-in modules mean more touch points and higher risk.
 - **Count touch points:** For each prospective WI, tally files to create + files to modify. This is the primary sizing input.
 - **Check test coverage:** Look for existing test files (`**/*test*`, `**/*spec*`) that would need updating when source files change. Each modified source file with existing tests adds test-update work.
-- **Apply sizing heuristic with real data:** A well-sized WI should target ~3 files created, ~5 files modified max. If codebase analysis shows a WI would touch 15 files, it needs splitting.
-- **Complexity ratings grounded in evidence:** XS/S/M/L/XL ratings must reflect actual file counts and coupling, not guesswork:
-    - **XS:** 1-2 files touched, no cross-module coupling
-    - **S:** 3-4 files touched, single-module scope
-    - **M:** 5-7 files touched, 1-2 module boundaries
-    - **L:** 8-12 files touched, multiple module boundaries or high fan-in
-    - **XL:** 13+ files touched — flag for splitting
+- **Apply sizing heuristic:** Use convention-defined size limits and complexity ratings (XS–XL). If codebase analysis shows a WI exceeds the threshold, split it.
 
 **Greenfield exception:** If the codebase doesn't exist yet (first iteration with no existing code), sizing is based on specs alone — the current default behavior. Skip codebase analysis and note in the plan_overview that sizing is spec-based.
 
@@ -77,24 +85,18 @@ Use the requirements glossary for consistent terminology throughout.
 Read all upstream specs and produce phase-level structure:
 
 - Validate input specifications are complete and approved
-- Design an iterative implementation strategy:
-    - Prioritize user-visible value in early phases (unless user indicated otherwise)
-    - Create vertical slices (UI → API → Database) where possible
-    - Minimize dependencies between phases; front-load risky work
-- Break into phases (typically 3-5):
-    - **Phase 1**: MVP scope from requirements
-    - **Phase 2-N**: Progressive enhancement
-    - Each phase independently testable and deployable
+- Design an iterative implementation strategy per project conventions
+- Break into phases per convention guidance (phase count, scope, deployability)
 - Each phase index file contains:
     - Phase type: `feature` or `infrastructure`
     - Requirements (REQ-XXX), user flows (FLOW-XXX), screens (SCREEN-XXX), components (COMP-XXX) addressed
     - API endpoints and database migrations needed
     - **Work item table** with IDs, titles, status, dependencies, complexity, assigned requirements
-    - **WI dependency graph** (no circular deps)
-    - **Feature-Layer Matrix** — every feature × layer (UI, API, Data) with implementing WI
-    - **E2E test scenarios** — user action sequences, expected outcomes, requirements validated
-    - **Integration test scenarios** — component boundaries, expected behavior, requirements validated
-    - Entry/exit criteria (exit: all E2E + integration tests pass, all previous tests pass, all Feature-Layer Matrix cells covered, all WIs complete)
+    - **WI dependency graph**
+    - **Feature-Layer Matrix**
+    - **E2E test scenarios**
+    - **Integration test scenarios**
+    - Entry/exit criteria (per convention requirements)
     - Parallel execution opportunities and checkpoint designation
 - Produce overall index with phase summary, dependency graph, critical path
 - **Pass 1 complete when** all phase indexes and overall index exist on disk
@@ -120,11 +122,8 @@ Expand each phase's WI list into self-contained files. This is mechanical — as
 
 ##### WI Design Principles
 
-- Each WI: vertical slice through the stack, not a horizontal layer
+- Follow project convention sizing and structural rules (vertical slices, sizing limits, foundation WIs, parallel execution)
 - Tightly coupled features belong in one WI
-- Create foundation WIs when multiple WIs share setup work
-- Size each WI for a single conversation (~1-2 features, ~3 files created, ~5 modified max)
-- Independent WIs can be implemented in parallel
 
 ---
 

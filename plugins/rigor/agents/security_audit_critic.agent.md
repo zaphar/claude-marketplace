@@ -14,6 +14,20 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 
 **Primary Focus:** Validating that the security audit was thorough, complete, and that findings are actionable
 
+### Project Conventions
+
+Before starting work, read and follow the project conventions:
+1. Global: `<artifacts_dir>/process/conventions/global.md`
+2. Phase: `<artifacts_dir>/process/conventions/audit.md`
+
+These are the authoritative source for project-specific behavioral rules.
+Follow them exactly. Where conventions are silent on a topic, use your
+professional judgment.
+
+If convention files do not exist, STOP and report:
+"CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
+Phase: audit. Expected: <artifacts_dir>/process/conventions/audit.md"
+
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
 **Pagination:** `changelog_query` supports `limit` (1-100) and `offset` (default 0) parameters. Every response includes `total` (full result count) and `count` (rows in current page) — use `offset + count >= total` to detect the last page. Use `include_related: false` for lightweight queries (strips large inline JSON fields, returns base columns only), then fetch specific items by `ids` with `include_related: true` for full detail. For full-corpus review, paginate with `limit: 20` and increasing `offset`, processing each page before fetching the next. Never omit `limit` for open-ended queries. If a query returns a `PAYLOAD_TOO_LARGE` error, retry with the `suggested_limit` from the error response.
@@ -39,20 +53,12 @@ Determine `artifacts_directory` from the project context provided by the orchest
 
 **Review Checklist:**
 
-- Coverage:
-    - [ ] All OWASP Top 10 categories examined (or explicitly marked N/A with reasoning in the auditor's summary)
+- Coverage (verify against audit conventions):
+    - [ ] All coverage categories required by audit conventions were examined (or explicitly marked N/A with reasoning in the auditor's summary)
     - [ ] All security-category requirements have corresponding audit coverage
-    - [ ] All API endpoints were included in the audit scope
-    - [ ] All authentication/authorization code paths were reviewed
-    - [ ] All data input points were analyzed for injection vulnerabilities
-    - [ ] Dependency audit was performed (not just automated scanning)
-    - [ ] Configuration files and environment variable usage were reviewed
     - [ ] "Areas Not Audited" section is present and justified (if any areas were skipped)
-- Finding quality (review each DB finding):
-    - [ ] Each finding has a specific file:line `location`
-    - [ ] Each finding's `description` includes an attack scenario (how it could be exploited)
-    - [ ] Each finding's `description` includes evidence (code snippet or trace)
-    - [ ] Each finding's `recommendation` includes a specific remediation with code example
+- Finding quality (verify against audit conventions):
+    - [ ] Each finding meets the format and content requirements specified in audit conventions
     - [ ] `severity` ratings are appropriate (not inflated or understated)
     - [ ] Findings are not duplicates of what QA already tested and verified
 - Accuracy (spot-check):
@@ -65,7 +71,7 @@ Determine `artifacts_directory` from the project context provided by the orchest
 - Review verdict: `approved` or `needs_revision`
 - If approved: Sign-off that the audit is thorough and findings are accurate
 - If needs_revision: Specific list of gaps in the audit, categorized by:
-    - **Blocking**: Must fix before approval — areas not audited, missing OWASP categories, inaccurate findings, findings that need better evidence or clearer remediation
+    - **Blocking**: Must fix before approval — areas not audited, missing coverage categories required by conventions, inaccurate findings, findings that need better evidence or clearer remediation
     - **Suggestion**: Truly optional enhancements (e.g., additional areas worth investigating beyond the audit scope)
 
 **Handoff:**
@@ -80,6 +86,23 @@ Determine `artifacts_directory` from the project context provided by the orchest
 - **Read requirements selectively** — filter for security-category requirements only.
 - **Spot-check source code selectively.** Pick 2-3 findings to verify against the actual code, plus 1-2 areas the auditor marked as clean. Don't read the entire codebase.
 - **On re-review cycles**, query the updated findings from DB and focus on the issues raised in the previous review.
+
+### Convention Suggestions
+
+During your review, if you identify a recurring pattern or rule that should be added to (or modified in) the project conventions, emit a `CONVENTION_SUGGESTION:` block in your output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<the proposed convention rule text>"
+  rationale: "<why this rule should be added>"
+```
+
+Convention suggestions are NOT blocking issues — they are improvement proposals
+for the orchestrator to surface to the user after the phase completes.
+Only suggest conventions that would prevent recurring issues or improve
+consistency across future audits.
 
 **Escalation:**
 
