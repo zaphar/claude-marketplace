@@ -1,0 +1,26 @@
+# Code Review Conventions
+
+- Evaluate code against three tiers: structural/architectural, correctness, and consistency
+- Every finding must cite specific file paths and explain why the pattern is problematic
+- Findings diagnose problems — they do not suggest fixes
+- Findings must be detailed enough that a planner can derive a fix without re-analyzing the code
+- Structural tier: evaluate responsibility cohesion, dependency direction, layer violations, abstraction quality, API surface minimality, and domain alignment
+- Correctness tier: evaluate error handling, resource lifecycle, concurrency correctness, null/empty safety, input validation, and edge case coverage
+- Consistency tier: evaluate pattern consistency, naming consistency, code duplication, dead code, and complexity hotspots
+- Dependencies must flow toward stable abstractions — business logic must not import transport or framework concerns
+- No circular dependency chains
+- Each module must own one clear concept — flag catch-all "util" or "helpers" modules
+- Public symbols that should be internal must be flagged
+- Errors must not be silently discarded or swallowed
+- 🔧 Same problem must be solved the same way throughout the codebase — mixed approaches without documented rationale are findings
+- Cross-cutting concerns (logging, auth, config, error handling) must be managed consistently across modules — centralized, not scattered
+- Cross-module findings must involve two or more modules or describe a system-wide pattern
+- 🔧 Go-specific: interfaces defined at the consumer side, not the producer side
+- 🔧 Go-specific: error strings lowercase, no trailing punctuation
+- 🔧 Go-specific: errors wrapped with %w for context; use errors.Is/errors.As
+- 🔧 Go-specific: context.Context propagated through call chains
+- 🔧 Go-specific: MixedCaps naming, proper acronym casing (URL not Url, ID not Id), no package name stuttering
+- Go-specific: no global var singletons that eliminate injection points for testing
+- Go-specific: exclude generated code (*_generated.go, *.pb.go) and vendored code from review
+- Classify finding severity as critical, high, medium, or low
+- Classify finding impact as implementation, architecture, or requirements

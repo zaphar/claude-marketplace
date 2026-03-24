@@ -1,0 +1,22 @@
+# Global Conventions
+
+- Don't swallow errors — handle or propagate every error explicitly
+- Prefer explicit over implicit
+- Name things after what they do, not how they're implemented
+- Use domain terms from the project glossary for naming, not implementation jargon
+- No hardcoded secrets, credentials, or API keys in source code
+- No magic numbers or strings — use named constants
+- Consistent formatting — use the project's formatter and linter
+- Treat linter warnings as errors — zero warnings policy
+- 🔧 Start with strict/pedantic linter rulesets; relax only with documented justification
+- 🔧 Minimize external dependencies — build in-house when reasonable; take dependencies only when DIY is significantly costlier
+- Every third-party dependency requires a documented justification
+- Before implementing a feature, check for analogous features in the codebase and match their patterns for consistency
+- No code duplication — extract shared abstractions when structurally similar code appears
+- Add comments where logic is non-obvious
+- Document public APIs
+- Input validation at every system boundary
+- No logging of sensitive data
+- Resources (connections, file handles, streams) must be reliably closed on all paths including error paths
+- Peer features must use consistent structural and behavioral patterns
+- Follow the project's CODESTYLE.md if one exists

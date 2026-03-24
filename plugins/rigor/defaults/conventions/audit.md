@@ -1,0 +1,22 @@
+# Audit Conventions
+
+- Audit is phase-scoped — focus on code introduced or modified in the current phase and any new attack surface it creates
+- Do not re-audit unchanged code from previous phases that was already approved
+- Review the QA test report first — do not duplicate work QA already verified
+- 🔧 Remediation threshold: any high or critical finding, or 5+ medium findings accumulated across both security and performance audits, triggers a remediation cycle
+- Security audit must cover all OWASP Top 10 categories (or explicitly mark N/A with reasoning)
+- Trace all user inputs through the code to their use points for injection analysis
+- Review authentication and authorization patterns across all endpoints — not just the ones QA tested
+- Check every system boundary for input validation: API endpoints, file uploads, URL parameters, headers, cookies
+- Search for hardcoded secrets, API keys in source, credentials in config files, secrets in logs, tokens in URLs
+- Audit installed dependencies against the approved manifest — check for known CVEs, abandoned packages, suspicious maintainer changes, transitive vulnerabilities
+- Verify error responses do not leak implementation details, stack traces, or internal paths
+- Every security finding must include: severity, file:line location, attack scenario, evidence, and specific remediation with code example
+- Performance audit must cover: database/data access, memory and resource management, concurrency/async patterns, API response patterns, algorithm/data structure choices
+- Detect N+1 query patterns, missing indexes, full table scans, and connection management issues
+- Identify unnecessary allocations in hot paths, unbounded collection growth, and missing caching opportunities
+- Identify chatty APIs, missing pagination on list endpoints, and over-fetching in response payloads
+- Every performance finding must include: severity, file:line location, impact estimate, evidence, and specific remediation with code example
+- Include metric_name, baseline_value, and actual_value when quantifiable metrics are available
+- Findings are classified as critical, high, medium, low, or informational
+- Every audit must include an "Areas Not Audited" section with justification for any skipped areas

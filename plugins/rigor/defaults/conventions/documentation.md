@@ -1,0 +1,22 @@
+# Documentation Conventions
+
+- Determine which documentation categories apply before writing: User Guide, How-To Guides, API Reference, Library/SDK Reference, Operator Docs, Developer Docs
+- Skip inapplicable categories entirely — do not create empty placeholder documents
+- 🔧 User Guide must include: getting started guide, installation for all supported platforms, feature documentation mapped to requirements, configuration reference, troubleshooting guide, FAQ
+- How-To Guides are task-oriented and organized by user intent — distinct from feature reference docs
+- 🔧 API Reference must be generated from OpenAPI spec where available, supplemented with human context: common usage patterns, error handling examples, authentication flow walkthrough
+- Include request/response examples for all API endpoints
+- Document error codes and their meanings
+- Library/SDK Reference must include: public types with usage examples, migration guide, changelog summary
+- Operator Docs must include: deployment guide, monitoring and alerting guide, backup and recovery procedures
+- Developer Docs must include: architecture overview, contributing guide, ADR index
+- Use glossary terms consistently throughout all documentation
+- Define technical terms using the glossary's definitions when introducing them
+- All images must have alt text
+- Headings must follow a clear hierarchy
+- Content must be readable without images
+- 🔧 Every user-facing requirement must be documented in at least one document
+- Analogous features must have similar documentation depth and structure
+- Step-by-step instructions for all procedures
+- Provide examples for all non-trivial concepts
+- Use audience-appropriate language for each documentation category

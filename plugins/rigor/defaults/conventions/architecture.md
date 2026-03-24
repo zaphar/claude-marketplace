@@ -1,0 +1,24 @@
+# Architecture Conventions
+
+- Scan the workspace for existing code, frameworks, and infrastructure before designing — factor these in rather than starting from scratch
+- Conduct technology interviews before making decisions — ask about preferred language/stack, existing infrastructure, team experience, hosting preferences
+- Research technologies via live web sources before recommending — cite sources, flag uncertainty explicitly
+- Record every significant architectural decision as an ADR with context, alternatives considered, and rationale
+- 🔧 Prefer strongly typed, compile-time checked languages; require strictest typing configuration for flexible languages
+- 🔧 Select and configure linters/analyzers with strict rulesets
+- Define clear component responsibilities with well-defined interfaces
+- Define integration test boundaries for every inter-component interaction: boundary type, interacting components, and expected behavior
+- 🔧 Default to server-side sessions with secure cookies over JWTs for authentication
+- 🔧 Default to keyset/cursor-based pagination over offset/limit
+- Design API specifications using OpenAPI 3.x as the authoritative contract
+- Cross-endpoint uniformity: error response shapes, status codes, and error body structure must be identical across all endpoints
+- Authentication and authorization patterns applied uniformly across all endpoints
+- Input validation approach consistent across all endpoints
+- Document data model with entities, attributes (including types and nullability), relationships, and cardinality
+- Design observability: logging, metrics, tracing, and health checks
+- Design security architecture: authentication, authorization, data protection, secrets management
+- Every third-party dependency must have a health assessment: maintenance activity, community adoption, transitive dependency count, license, single-maintainer risk
+- Map every technical requirement to an architectural element
+- Component dependencies must form a valid DAG — no circular dependencies
+- Document deployment architecture for all target scenarios
+- 🔧 Document pagination strategy with reasoning

@@ -1,0 +1,21 @@
+# QA Conventions
+
+- Build a unified traceability matrix: requirement → UX screen → architecture component → source code → test ID
+- Implement E2E tests as Playwright tests from planner-defined scenarios
+- Add edge cases and negative paths beyond what the planner specified
+- 🔧 E2E tests must use test fixture automation and clean up any data they create or seed
+- Tests must be isolated — no interdependencies between tests
+- Tests must be deterministic — no timing, random, or network flakiness
+- Identify and fix or flag flaky tests
+- Cross-feature consistency testing: compare peer/analogous screens for structural consistency in navigation, buttons, save/cancel flows, error display, loading states
+- 🔧 Line coverage minimum: 80%
+- 🔧 Branch coverage minimum: 70%
+- Acceptance criteria coverage: 100% required
+- Capture screenshots of implemented screens using Playwright and compare against mockups
+- Identify invisible text or component issues in screenshots
+- Document all test failures with: steps to reproduce, expected vs actual behavior, affected requirements
+- Test report must show pass/fail status for every acceptance criterion of every requirement
+- Test report must include stdout and stderr from test runner output
+- 🔧 All critical and major blockers must be resolved before handoff
+- Verify developer-written integration tests cover component interaction boundaries from the architecture
+- Verify all integration tests set up and tear down their own data

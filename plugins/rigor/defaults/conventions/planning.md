@@ -1,0 +1,24 @@
+# Planning Conventions
+
+- Conduct a delivery expectations interview before producing the plan
+- 🔧 Prioritize user-visible value in early phases — Phase 1 delivers end-to-end user-visible functionality
+- 🔧 Prefer vertical slices (UI through DB per feature) over layer-by-layer decomposition
+- 🔧 Target 3–5 phases for a typical project; each phase independently testable and deployable
+- Front-load risky or uncertain work — do not defer it to the final phase
+- Minimize dependencies between phases
+- Every phase must have a Feature-Layer Matrix: every feature × layer (UI, API, Data) with implementing work item
+- Every phase must have defined E2E test scenarios: user action sequences, expected outcomes, requirement IDs
+- Every phase must have defined integration test scenarios: component boundaries, expected behavior, requirement IDs
+- Phase exit criteria must include: all E2E and integration tests pass, all previous tests pass, all Feature-Layer Matrix cells covered, all work items complete
+- 🔧 Size each work item for a single conversation: ~1–2 features, ~3 files created, ~5 files modified max
+- Complexity ratings must reflect actual file counts and coupling, not guesswork (XS: 1–2 files; S: 3–4; M: 5–7; L: 8–12; XL: 13+ — flag XL for splitting)
+- Each work item must be a vertical slice through the stack, not a horizontal layer
+- Create foundation work items when multiple work items share setup work
+- Independent work items should be identified for potential parallel execution
+- No circular dependencies between work items within a phase
+- Work item files must be self-contained: inline all upstream context (requirements with acceptance criteria, architecture definitions, UX references) so the developer needs no other files
+- Every work item must have explicit scope boundaries (DO / DO NOT lists)
+- Every requirement must appear in exactly one phase — no duplicates, no gaps
+- 🔧 Place at least one review checkpoint (typically after Phase 1) at strategic validation points
+- For existing codebases, ground sizing in codebase analysis: file counts, coupling density, existing test coverage
+- Peer features split across phases must have "Consistency Watch" notes referencing the earlier peer feature
