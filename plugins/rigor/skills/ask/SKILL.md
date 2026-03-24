@@ -417,7 +417,7 @@ You have access to:
 - **project_status** (MCP tool) — Get current project state
 - **changelog_query** (MCP tool) — Small, targeted lookups only
 - **iteration_create** (MCP tool) — Create iteration with brief_path (Phase 2, Scenario A only)
-- **iteration_update** (MCP tool) — Set brief_path on an existing active iteration (Phase 2, Scenario B only — when brief_path is NULL)
+- **iteration_update** (MCP tool) — Set brief_path on an existing active iteration (Phase 2, Scenario B only — when brief_path is NULL; pass `force: true` to correct an incorrect path)
 - **checkpoint** (MCP tool) — Persist state after iteration creation (Phase 2 only)
 
 ## Critical Rules

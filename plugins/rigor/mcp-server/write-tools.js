@@ -80,15 +80,15 @@ function iterationCreate(args) {
 
 function iterationUpdate(args) {
   const db = getDb(args.project_root);
-  const { iteration_id, brief_path } = args;
+  const { iteration_id, brief_path, force } = args;
 
   const run = db.transaction(() => {
     const row = db.prepare("SELECT id, status, brief_path FROM iteration WHERE id = @iteration_id").get({ iteration_id });
     if (!row) throw new Error(`Iteration with id=${iteration_id} not found`);
     if (row.status !== "active") throw new Error(`Iteration ${iteration_id} is not active (current status: ${row.status})`);
 
-    if (row.brief_path !== null) {
-      throw new Error(`Iteration ${iteration_id} already has a brief_path set ('${row.brief_path}'). Append to the existing brief file instead of overwriting.`);
+    if (row.brief_path !== null && !force) {
+      throw new Error(`Iteration ${iteration_id} already has a brief_path set ('${row.brief_path}'). Append to the existing brief file instead of overwriting. Pass force: true to override (e.g. to correct an incorrect path).`);
     }
 
     db.prepare("UPDATE iteration SET brief_path = @brief_path WHERE id = @iteration_id").run({ brief_path, iteration_id });
@@ -1810,12 +1810,13 @@ export const WRITE_TOOLS = [
   {
     name: "iteration_update",
     description:
-      "Sets brief_path on an existing active iteration. Only succeeds when brief_path is currently NULL — returns an error if already set, directing the caller to append to the existing brief file instead.",
+      "Sets brief_path on an existing active iteration. By default, only succeeds when brief_path is currently NULL — returns an error if already set, directing the caller to append to the existing brief file instead. Pass force: true to override (e.g. to correct an incorrect path).",
     inputSchema: {
       type: "object",
       properties: {
         iteration_id: { type: "integer", description: "The iteration ID to update" },
         brief_path: { type: "string", description: "Path to investigation brief file, relative to project root" },
+        force: { type: "boolean", description: "When true, overwrite an existing brief_path (e.g. to correct an incorrect path). Default: false." },
       },
       required: ["iteration_id", "brief_path"],
     },

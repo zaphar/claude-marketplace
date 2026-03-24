@@ -178,7 +178,7 @@ Work has stopped. Please resolve the plugin limitation and re-invoke this agent.
 The rigor MCP server exposes read and write tools for all workflow state. Key iteration lifecycle tools:
 
 - **`iteration_create`** — Creates a new iteration with all phases initialized. Fails if an active iteration already exists — call `iteration_close` first.
-- **`iteration_update`** — Sets `brief_path` on an existing active iteration (only when `brief_path` is currently NULL).
+- **`iteration_update`** — Sets `brief_path` on an existing active iteration (errors if `brief_path` is already set unless `force: true` is passed).
 - **`iteration_close`** — Closes an active iteration (sets status to `closed`, records `closed_at`).
 
 See `mcp-server/write-tools.js` and `mcp-server/read-tools.js` for the full set of available tools.
