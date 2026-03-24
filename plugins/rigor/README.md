@@ -102,6 +102,8 @@ Replans can also happen automatically. When the senior developer detects an over
 rigor/
 ├── agents/                          # 25 agent personality files (10 producer-critic pairs + 3 read-only code review producers + 1 revalidation agent + 1 standalone analyst)
 ├── commands/                        # Slash command definitions
+├── defaults/
+│   └── conventions/                 # Default convention files (seeded into projects)
 ├── hooks/                           # PreToolUse hooks (block direct SQLite access)
 │   ├── hooks.json                   # Claude Code hook config
 │   └── block-sqlite.sh             # Shared hook script (Claude Code + Copilot CLI)
@@ -129,6 +131,7 @@ File-writing agents store SDLC artifacts under a configurable root directory (de
 ```
 <artifacts_directory>/              # default: docs/sdlc
 ├── process/
+│   ├── conventions/                # Project convention files (global + per-phase)
 │   ├── planning/                   # Implementation plans, phase dirs, replan log
 │   ├── qa/screenshots/             # QA test screenshots
 │   └── briefs/                     # Investigation briefs from /rigor:ask
@@ -154,6 +157,86 @@ The hook works on both supported platforms:
 | Copilot CLI | `.github/hooks/rigor-block-sqlite.json` | Fires on all tool calls (no matcher); the script checks `toolName` internally. |
 
 Both platforms invoke the same shared script (`hooks/block-sqlite.sh`) which handles the different JSON input formats.
+
+## Conventions
+
+Convention files are per-project behavioral rules that agents read at runtime. They separate **project decisions** (testing philosophy, coding standards, decomposition strategy) from **agent identity** (role, workflow mechanics, output format). This lets you customize how agents behave on your project without editing agent files.
+
+### Convention File Layout
+
+Convention files live at `<artifacts_directory>/process/conventions/` (where `artifacts_directory` defaults to `docs/sdlc`). The full set:
+
+| File | Applies to |
+|------|-----------|
+| `global.md` | All phases — read by every agent |
+| `requirements.md` | Requirements phase |
+| `ux-design.md` | UX Design phase |
+| `architecture.md` | Architecture phase |
+| `planning.md` | Planning phase |
+| `implementation.md` | Implementation phase (includes workflow overrides — see below) |
+| `documentation.md` | Documentation phase |
+| `qa.md` | QA phase |
+| `audit.md` | Audit phase |
+| `code-review.md` | Code Review phase |
+
+Phase names map to filenames by replacing underscores with hyphens (e.g., `ux_design` → `ux-design.md`, `code_review` → `code-review.md`).
+
+### Convention File Format
+
+Each file is a flat bullet list of rules, optionally preceded by YAML frontmatter (used only in `implementation.md` for workflow overrides). Example:
+
+```markdown
+# Architecture Conventions
+
+- Scan the workspace for existing code before designing
+- Prefer composition over inheritance
+- Document all public API contracts
+```
+
+The 🔧 marker on a bullet indicates an opinionated default that users are especially likely to customize (e.g., `- 🔧 Do not use mocking frameworks — use fakes or in-memory doubles instead`).
+
+### Default Conventions
+
+Default convention files ship with the plugin at `defaults/conventions/` (10 files: `global.md` + 9 phase files). These are copied into the project during initial setup and serve as a starting point for customization.
+
+### Seeding Conventions
+
+During `/rigor:start` or `/rigor:onboard`, after project initialization but before entering the first phase, the orchestrator prompts the user:
+
+1. **Accept defaults** — copies all default convention files into the project
+2. **Review and customize** — shows each default file for the user to accept or modify
+
+Convention seeding happens once per project. Subsequent iterations (`/rigor:new-iteration`) reuse the existing convention files.
+
+### Workflow Overrides
+
+`implementation.md` supports YAML frontmatter with workflow override keys:
+
+| Key | Values | Effect |
+|-----|--------|--------|
+| `skip_test_writing` | `true` / `false` (default) | Skips the test-writing sub-phase entirely |
+| `test_execution` | `in_loop` (default) / `manual` / `ci_only` | Controls whether the orchestrator runs tests during the implementation loop |
+| `skip_ui_validation` | `true` / `false` (default) | Skips Playwright screenshot comparison for UI work |
+
+The orchestrator reads these overrides when entering the implementation phase and adjusts the workflow accordingly. See SKILL.md §9 and §15 for full details.
+
+### Convention Suggestions from Critics
+
+Critic agents may propose new convention rules based on patterns they observe during review. They emit structured `CONVENTION_SUGGESTION` blocks in their output:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<proposed rule>"
+  rationale: "<why this rule should exist>"
+```
+
+The orchestrator collects these during the phase and surfaces them to the user at phase transitions. Only suggestions the user explicitly accepts are written to convention files. The orchestrator is the **single writer** of convention files — agents never edit them directly.
+
+### Migration for Existing Projects
+
+Projects that predate the conventions system are prompted during `/rigor:resume` to set up conventions (accept defaults, customize, or defer). If deferred, the phase-entry convention check prompts per-phase as agents need them.
 
 ## Hard Constraint: No Direct Database Access
 

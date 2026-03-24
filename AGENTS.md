@@ -134,6 +134,7 @@ The canonical subtree structure beneath `artifacts_directory`:
 
 | Subtree | Purpose | Agents |
 |---------|---------|--------|
+| `process/conventions/` | Project convention files (global + per-phase) | orchestrator (single writer) |
 | `process/planning/iteration-<N>/` | Implementation plans, phase dirs, replan log (per iteration) | `implementation_planner` |
 | `process/qa/screenshots/` | QA test screenshots | `qa_engineer` |
 | `process/briefs/` | Investigation briefs from `/rigor:ask` | ask skill |
@@ -149,6 +150,46 @@ When adding a new file-writing agent, it must:
 
 ---
 
+### 12. Convention File Handling
+
+All 24 workflow agents (every producer and critic) read convention files before starting work — the global conventions (`global.md`) and the phase-specific conventions for the current phase. Convention files live at `<artifacts_dir>/process/conventions/<phase>.md`.
+
+If convention files are absent, agents stop immediately with a `CONVENTION_FILES_MISSING` diagnostic — there are no fallback defaults at runtime. The orchestrator is responsible for seeding convention files before the first phase (see README.md Conventions section).
+
+**Phase name to convention filename mapping:** replace underscores with hyphens in the DB phase name to get the filename. Specifically: `ux_design` → `ux-design.md`, `code_review` → `code-review.md`, and all others map directly (e.g., `requirements` → `requirements.md`, `implementation` → `implementation.md`).
+
+### 13. Convention Suggestions
+
+All critic agents include `CONVENTION_SUGGESTION` instructions. When a critic observes a recurring pattern or missing rule during review, it emits a structured block:
+
+```
+CONVENTION_SUGGESTION:
+  file: global.md | <phase>.md
+  action: add | modify
+  rule: "<proposed rule>"
+  rationale: "<why this rule should exist>"
+```
+
+This is the canonical §15.4 format from SKILL.md. **Only critics have this capability** — producer agents do NOT emit `CONVENTION_SUGGESTION` blocks.
+
+The orchestrator is the **single writer** of convention files. Agents never edit convention files directly. Suggestions are collected during the producer-critic loop and surfaced to the user at phase transitions, where the user can accept, modify, or reject each one.
+
+### 14. Agent Identity vs Convention Split
+
+Agent files and convention files serve different purposes:
+
+| Belongs in agent file (identity) | Belongs in convention file (project decision) |
+|----------------------------------|-----------------------------------------------|
+| Role and personality | Testing philosophy (TDD, mocking policy) |
+| Workflow mechanics (revision loop, escalation) | Decomposition strategy (WI sizing, phase priorities) |
+| MCP tool usage and output format | Coding standards (naming, formatting, linting) |
+| Producer-critic handoff protocol | Quality criteria (coverage thresholds, review focus) |
+| Escalation conditions | Domain-specific rules (API style, dependency policy) |
+
+When adding rules to agents, classify each rule: if it's about **how the agent operates** (identity), it goes in the agent file. If it's about **what the project values** (project decision), it goes in a convention file. Mixing these concerns makes agents non-reusable across projects.
+
+---
+
 ## Adding a New Agent
 
 When creating a new agent:
@@ -157,7 +198,9 @@ When creating a new agent:
 2. For MCP tools, always add both naming conventions (see invariant #1)
 3. If it is a critic, include `changelog_update` in both formats (see invariant #2)
 4. Do not add orchestrator-only tools (see invariant #3)
-5. Update `plugins/rigor/README.md` to document the new agent
+5. Add the `### Project Conventions` preamble that reads global + phase convention files (see invariant #12)
+6. If it is a critic, add `### Convention Suggestions` with the §15.4 format block (see invariant #13)
+7. Update `plugins/rigor/README.md` to document the new agent
 
 ## Modifying the MCP Server
 
