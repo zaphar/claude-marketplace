@@ -10,6 +10,7 @@ allowed-tools:
   - mcp__plugin_rigor_rigor-db__project_status
   - mcp__plugin_rigor_rigor-db__iteration_create
   - mcp__plugin_rigor_rigor-db__iteration_summary
+  - mcp__plugin_rigor_rigor-db__checkpoint, rigor-db/checkpoint
 ---
 
 # New Iteration — Rigorous Development Workflow
@@ -102,7 +103,17 @@ iteration_create({
 
 The DB retains all records from previous iterations — nothing is deleted.
 
-### 6. Load Rigorous Dev Skill and Begin Requirements Phase
+### 6. Check Convention Migration
+
+Before loading the workflow skill, check if the conventions directory exists (see SKILL.md §15.3):
+
+```bash
+test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+```
+
+If missing, prompt the user to set up conventions. This handles projects that predate the conventions system. See §15.3 for the full migration procedure.
+
+### 7. Load Rigorous Dev Skill and Begin Requirements Phase
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill and start the Requirements phase, informing the agent about the prior iteration.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.

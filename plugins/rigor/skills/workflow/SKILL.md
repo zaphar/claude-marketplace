@@ -1028,9 +1028,9 @@ When the orchestrator enters any phase, **before invoking the producer agent**, 
 
 5. Convention files are a **hard requirement** — agents will stop if they cannot read them. Never skip this check or proceed without resolving missing files.
 
-#### 15.3 Migration for Existing Projects (Resume Flow)
+#### 15.3 Migration for Existing Projects (Resume / New-Iteration Flow)
 
-When resuming a project via `/rigor:resume`, after loading the project state and before continuing the current phase, check if the conventions directory exists:
+When resuming a project via `/rigor:resume` or starting a new iteration via `/rigor:new-iteration`, after loading the project state and before continuing the current phase, check if the conventions directory exists:
 
 ```bash
 test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
