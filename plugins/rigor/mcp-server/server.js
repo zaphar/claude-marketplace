@@ -7,30 +7,6 @@ import {
 import { WRITE_TOOLS, handleWriteTool } from "./write-tools.js";
 import { READ_TOOLS, handleReadTool } from "./read-tools.js";
 
-// ---------------------------------------------------------------------------
-// McpServer setup
-//
-// We use McpServer (the recommended high-level API) but register tool handlers
-// via its underlying Server instance. This is the documented escape hatch for
-// advanced use cases — our tools define inputSchema as raw JSON Schema objects,
-// which McpServer.registerTool() cannot consume (it expects Zod schemas).
-// See: "For advanced usage (like sending notifications or setting custom
-// request handlers), use the underlying Server instance available via the
-// `server` property."
-// ---------------------------------------------------------------------------
-
-const mcpServer = new McpServer(
-  { name: "rigor-mcp", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
-
-mcpServer.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    ...WRITE_TOOLS,
-    ...READ_TOOLS,
-  ],
-}));
-
 /**
  * Format a successful result as a text content response.
  * @param {any} data
@@ -59,54 +35,91 @@ function errResponse(err) {
   };
 }
 
-mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name } = request.params;
-  const args = request.params.arguments || {};
+// ---------------------------------------------------------------------------
+// Server factory
+//
+// createServer() returns a fully-configured McpServer instance. It can be
+// called multiple times to create independent servers — HTTP transport needs
+// one server per session, while stdio uses a single long-lived instance.
+//
+// We use McpServer (the recommended high-level API) but register tool handlers
+// via its underlying Server instance. This is the documented escape hatch for
+// advanced use cases — our tools define inputSchema as raw JSON Schema objects,
+// which McpServer.registerTool() cannot consume (it expects Zod schemas).
+// See: "For advanced usage (like sending notifications or setting custom
+// request handlers), use the underlying Server instance available via the
+// `server` property."
+// ---------------------------------------------------------------------------
 
-  try {
-    switch (name) {
-      case "iteration_create":
-      case "iteration_update":
-      case "phase_transition":
-      case "work_item_transition":
-      case "revision_create":
-      case "revision_update":
-      case "changelog_insert":
-      case "changelog_update":
-      case "commit_link":
-      case "project_update":
-      case "blocker_resolve":
-      case "iteration_close":
-      case "bulk_import":
-      case "checkpoint":
-        return okResponse(handleWriteTool(name, args));
+/**
+ * Create a fully-configured McpServer with all tool handlers registered.
+ * @returns {McpServer}
+ */
+export function createServer() {
+  const mcpServer = new McpServer(
+    { name: "rigor-mcp", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
 
-      case "changelog_query":
-      case "traceability_query":
-      case "revision_history":
-      case "iteration_summary":
-      case "project_status":
-      case "list_iterations":
-      case "export_findings":
-        return okResponse(handleReadTool(name, args));
+  mcpServer.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: [
+      ...WRITE_TOOLS,
+      ...READ_TOOLS,
+    ],
+  }));
 
-      default:
-        return errResponse(`Unknown tool: ${name}`);
+  mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name } = request.params;
+    const args = request.params.arguments || {};
+
+    try {
+      switch (name) {
+        case "iteration_create":
+        case "iteration_update":
+        case "phase_transition":
+        case "work_item_transition":
+        case "revision_create":
+        case "revision_update":
+        case "changelog_insert":
+        case "changelog_update":
+        case "commit_link":
+        case "project_update":
+        case "blocker_resolve":
+        case "iteration_close":
+        case "bulk_import":
+        case "checkpoint":
+          return okResponse(handleWriteTool(name, args));
+
+        case "changelog_query":
+        case "traceability_query":
+        case "revision_history":
+        case "iteration_summary":
+        case "project_status":
+        case "list_iterations":
+        case "export_findings":
+          return okResponse(handleReadTool(name, args));
+
+        default:
+          return errResponse(`Unknown tool: ${name}`);
+      }
+    } catch (err) {
+      if (err.code === "PAYLOAD_TOO_LARGE") {
+        return {
+          content: [{ type: "text", text: JSON.stringify(err.details, null, 2) }],
+          isError: true,
+        };
+      }
+      return errResponse(err);
     }
-  } catch (err) {
-    if (err.code === "PAYLOAD_TOO_LARGE") {
-      return {
-        content: [{ type: "text", text: JSON.stringify(err.details, null, 2) }],
-        isError: true,
-      };
-    }
-    return errResponse(err);
-  }
-});
+  });
+
+  return mcpServer;
+}
 
 async function main() {
   const transport = new StdioServerTransport();
-  await mcpServer.connect(transport);
+  const server = createServer();
+  await server.connect(transport);
   console.error("rigor-mcp server running on stdio");
 }
 
