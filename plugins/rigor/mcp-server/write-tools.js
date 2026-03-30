@@ -1675,12 +1675,13 @@ function detectVcs(projectRoot) {
 }
 
 function checkpointJj(args, wal) {
-  // Check for working-copy changes
+  // Check for working-copy changes using full diff (not --stat, which can
+  // report files with no actual content changes such as metadata-only diffs).
   try {
-    const status = execFileSync("jj", ["diff", "--stat"], {
+    const diff = execFileSync("jj", ["diff"], {
       cwd: args.project_root, stdio: "pipe",
     }).toString().trim();
-    if (!status) {
+    if (!diff) {
       return {
         message: "Checkpoint complete. WAL flushed. No changes to commit.",
         wal,
