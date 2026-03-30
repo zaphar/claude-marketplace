@@ -79,12 +79,39 @@ Phase Status:
 Resuming <current_phase> phase...
 ```
 
-### 5. Load Rigorous Dev Skill
+### 5. Check Layout Upgrade
+
+Before loading the workflow skill, check if the project uses the old unified artifact layout:
+
+```bash
+test -d "<artifacts_directory>/deliverables" && echo "OLD_DELIVERABLES"
+test -d "<artifacts_directory>/process" && echo "OLD_PROCESS"
+test -d "<artifacts_directory>/process/conventions" && echo "OLD_CONVENTIONS"
+```
+
+If **any** of these detect the old layout, warn the user and recommend running the upgrade:
+
+```
+⚠ This project uses the old artifact layout (deliverables/ and process/ subdirectories
+under artifacts_directory). The plugin now uses a split layout with separate
+artifacts_directory and process_directory.
+
+Run /rigor:organize-artifacts to upgrade your layout. This will:
+  - Move deliverables up one level (drop deliverables/ prefix)
+  - Move conventions from process/ to artifacts root
+  - Let you choose where ephemeral workflow files live
+
+You can continue without upgrading, but agents may not find existing files.
+```
+
+Ask the user whether to continue or run organize-artifacts first. If they choose to upgrade, stop and let them run `/rigor:organize-artifacts`. If they choose to continue, proceed with the warning noted.
+
+### 6. Load Rigorous Dev Skill
 
 Invoke the `Skill` tool with `skill: "rigor:workflow"` to load the workflow skill with the current release state context.
 Do not use any other parameter name (e.g. `name`) — the required parameter is `skill`.
 
-### 6. Continue Current Phase
+### 7. Continue Current Phase
 
 Based on the current phase and its status, invoke the appropriate agent via the Task tool:
 
@@ -100,7 +127,7 @@ Based on the current phase and its status, invoke the appropriate agent via the 
 - Should not happen; workflow should have advanced to next phase
 - Display error and suggest running `/rigor:release-status` to check state
 
-### 7. Context Handoff
+### 8. Context Handoff
 
 When invoking the agent, provide context about:
 - What dev workflow artifacts exist (from `project_status` and `changelog_query` responses)

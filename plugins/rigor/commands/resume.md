@@ -80,12 +80,39 @@ Completed Phases:
 Resuming <current_phase> phase...
 ```
 
-### 5. Check Convention Migration
+### 5. Check Layout Upgrade
 
-Before loading the workflow skill, check if the conventions directory exists (see SKILL.md §15.3):
+Before loading the workflow skill, check if the project uses the old unified artifact layout:
 
 ```bash
-test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+test -d "<artifacts_directory>/deliverables" && echo "OLD_DELIVERABLES"
+test -d "<artifacts_directory>/process" && echo "OLD_PROCESS"
+test -d "<artifacts_directory>/process/conventions" && echo "OLD_CONVENTIONS"
+```
+
+If **any** of these detect the old layout, warn the user and recommend running the upgrade:
+
+```
+⚠ This project uses the old artifact layout (deliverables/ and process/ subdirectories
+under artifacts_directory). The plugin now uses a split layout with separate
+artifacts_directory and process_directory.
+
+Run /rigor:organize-artifacts to upgrade your layout. This will:
+  - Move deliverables up one level (drop deliverables/ prefix)
+  - Move conventions from process/ to artifacts root
+  - Let you choose where ephemeral workflow files live
+
+You can continue without upgrading, but agents may not find existing files.
+```
+
+Ask the user whether to continue or run organize-artifacts first. If they choose to upgrade, stop and let them run `/rigor:organize-artifacts`. If they choose to continue, proceed with the warning noted.
+
+### 5b. Check Convention Migration
+
+Check if the conventions directory exists at the current expected location (see SKILL.md §15.3):
+
+```bash
+test -d "<artifacts_directory>/conventions" && echo "EXISTS" || echo "MISSING"
 ```
 
 If missing, prompt the user to set up conventions. This handles projects that predate the conventions system. See §15.3 for the full migration procedure.

@@ -21,8 +21,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/implementation.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/implementation.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -30,7 +30,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: implementation. Expected: <artifacts_dir>/process/conventions/implementation.md"
+Phase: implementation. Expected: <artifacts_dir>/conventions/implementation.md"
 
 **Inputs:**
 

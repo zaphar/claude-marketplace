@@ -69,7 +69,7 @@ Closed at: <closed_at>
 Phase Results:
 <for each phase: name, status, artifact_path if present>
 
-Persistent artifacts (ux_design/, architecture/) will remain in place.
+Persistent artifacts (conventions/, architecture/, ux/, product-docs/) will remain in place.
 ```
 
 ### 4. Ask for Confirmation
@@ -103,12 +103,39 @@ iteration_create({
 
 The DB retains all records from previous iterations — nothing is deleted.
 
-### 6. Check Convention Migration
+### 6. Check Layout Upgrade
 
-Before loading the workflow skill, check if the conventions directory exists (see SKILL.md §15.3):
+Before loading the workflow skill, check if the project uses the old unified artifact layout:
 
 ```bash
-test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+test -d "<artifacts_directory>/deliverables" && echo "OLD_DELIVERABLES"
+test -d "<artifacts_directory>/process" && echo "OLD_PROCESS"
+test -d "<artifacts_directory>/process/conventions" && echo "OLD_CONVENTIONS"
+```
+
+If **any** of these detect the old layout, warn the user and recommend running the upgrade:
+
+```
+⚠ This project uses the old artifact layout (deliverables/ and process/ subdirectories
+under artifacts_directory). The plugin now uses a split layout with separate
+artifacts_directory and process_directory.
+
+Run /rigor:organize-artifacts to upgrade your layout. This will:
+  - Move deliverables up one level (drop deliverables/ prefix)
+  - Move conventions from process/ to artifacts root
+  - Let you choose where ephemeral workflow files live
+
+You can continue without upgrading, but agents may not find existing files.
+```
+
+Ask the user whether to continue or run organize-artifacts first. If they choose to upgrade, stop and let them run `/rigor:organize-artifacts`. If they choose to continue, proceed with the warning noted.
+
+### 6b. Check Convention Migration
+
+Check if the conventions directory exists at the current expected location (see SKILL.md §15.3):
+
+```bash
+test -d "<artifacts_directory>/conventions" && echo "EXISTS" || echo "MISSING"
 ```
 
 If missing, prompt the user to set up conventions. This handles projects that predate the conventions system. See §15.3 for the full migration procedure.
@@ -122,19 +149,19 @@ Do not use any other parameter name (e.g. `name`) — the required parameter is 
 Workflow iteration <new_iteration_id> started!
 
 Project: <project_name>
-Persistent artifacts remain in place: ux_design/, architecture/ (if they exist)
+Persistent artifacts remain in place: conventions/, architecture/, ux/, product-docs/ (if they exist)
 
 Starting Requirements Phase...
 Invoking Requirements Analyst agent...
 ```
 
 Provide the Requirements Analyst with context:
-- Persistent artifacts (UX design, architecture) remain in the current directory as starting points
+- Persistent artifacts (conventions, architecture, UX, product-docs) remain under artifacts_directory as starting points
 - The analyst should reference prior requirements but conduct a fresh interview to capture changes
 
 Then invoke `rigor:requirements_analyst` via the Task tool to begin the conversational interview.
 
 ## Important Notes
 
-- Persistent artifacts (ux_design, architecture) stay in place and are re-evaluated by their respective phases
+- Persistent artifacts (conventions, architecture, ux, product-docs) stay in place and are re-evaluated by their respective phases
 - The DB retains all previous iteration data; `iteration_create` adds new rows for the new iteration without removing old ones

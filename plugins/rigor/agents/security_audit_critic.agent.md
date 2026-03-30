@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/audit.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/audit.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: audit. Expected: <artifacts_dir>/process/conventions/audit.md"
+Phase: audit. Expected: <artifacts_dir>/conventions/audit.md"
 
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
@@ -35,12 +35,12 @@ Phase: audit. Expected: <artifacts_dir>/process/conventions/audit.md"
 **Inputs:**
 
 - Security audit findings from Security Auditor (query via `changelog_query(entity_type: "security_audit_finding", iteration_id: <current>)`)
-- Architecture security spec — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/security.md`)
+- Architecture security spec — committed as markdown documentation (e.g., `<artifacts_directory>/architecture/security.md`)
 - Requirements specification (security-category requirements)
 - QA test report (to verify auditor didn't duplicate QA work)
 - Project source code (spot-check the auditor's work)
 
-Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/architecture/`.
 
 **What You Do:**
 

@@ -21,7 +21,7 @@ You are orchestrating a rigorous Software Development Life Cycle (SDLC) workflow
 - **Analyze** — Examine the requirements for gaps.
 - **Design** — Propose solutions to things.
 - **Review** — Look for bugs in code or divergences from the plan or requirements. Applies to documentation as well.
-- **Convention** — A user-customizable rule or guideline stored in `<artifacts_directory>/process/conventions/`. Convention files are markdown with optional YAML frontmatter. The orchestrator is the single writer of convention files; agents read them but never edit them directly.
+- **Convention** — A user-customizable rule or guideline stored in `<artifacts_directory>/conventions/`. Convention files are markdown with optional YAML frontmatter. The orchestrator is the single writer of convention files; agents read them but never edit them directly.
 
 ## Workflow Overview
 
@@ -171,13 +171,13 @@ Re-entry procedure (only when the file modification check confirms new content):
 
 #### Planning Phase
 
-Before **every** planning revision, the orchestrator must handle phase artifacts appropriately based on plan version. First, read `artifacts_directory` from the `project_status` response (it is a field on the `project` object) and `iteration_id` from `current_iteration.id`. Planning file artifacts are iteration-scoped — each iteration gets its own directory under `<artifacts_directory>/process/planning/iteration-<iteration_id>/`.
+Before **every** planning revision, the orchestrator must handle phase artifacts appropriately based on plan version. First, read `artifacts_directory` and `process_directory` from the `project_status` response (they are fields on the `project` object) and `iteration_id` from `current_iteration.id`. Planning file artifacts are iteration-scoped — each iteration gets its own directory under `<process_directory>/planning/iteration-<iteration_id>/`.
 
 **Initial plan (plan_version = 1) — clean slate:**
 
 ```bash
 # Compute planning root for this iteration
-PLAN_ROOT="<artifacts_directory>/process/planning/iteration-<iteration_id>"
+PLAN_ROOT="<process_directory>/planning/iteration-<iteration_id>"
 rm -rf "${PLAN_ROOT}"
 mkdir -p "${PLAN_ROOT}/phases"
 ```
@@ -186,7 +186,7 @@ Same as before — no prior artifacts exist.
 
 **Replan (plan_version > 1) — selective cleanup:**
 
-Do NOT delete `${PLAN_ROOT}/phases/` (where `PLAN_ROOT` is `<artifacts_directory>/process/planning/iteration-<iteration_id>`). Instead, handle files selectively:
+Do NOT delete `${PLAN_ROOT}/phases/` (where `PLAN_ROOT` is `<process_directory>/planning/iteration-<iteration_id>`). Instead, handle files selectively:
 
 1. **Completed WI files** — Never touched. The planner receives completed WI names as read-only context and must not overwrite or modify these files.
 2. **Superseded WI files** — Planner prepends a `> ⚠️ SUPERSEDED by plan version N` header to the existing file. File stays on disk for history.
@@ -205,18 +205,18 @@ changelog_query(entity_type="plan_overview", iteration_id=<id>)
 - Git history preserves old content, so selective handling loses nothing.
 - After cleanup, the rest of the universal producer-critic loop applies normally.
 
-Example: If artifacts_directory is "docs/sdlc" and iteration_id is 4, the planning root is:
+Example: If process_directory is ".sdlc" and iteration_id is 4, the planning root is:
 
-  docs/sdlc/process/planning/iteration-4/
+  .sdlc/planning/iteration-4/
 
 Files go under:
-  docs/sdlc/process/planning/iteration-4/index.md
-  docs/sdlc/process/planning/iteration-4/replan-log.md
-  docs/sdlc/process/planning/iteration-4/phases/phase-1/index.md
-  docs/sdlc/process/planning/iteration-4/phases/phase-1/WI-001.md
+  .sdlc/planning/iteration-4/index.md
+  .sdlc/planning/iteration-4/replan-log.md
+  .sdlc/planning/iteration-4/phases/phase-1/index.md
+  .sdlc/planning/iteration-4/phases/phase-1/WI-001.md
 
-NOT: docs/sdlc/process/planning/phases/phase-1/WI-001.md       ← missing iteration scope
-NOT: docs/sdlc/process/planning/iteration-4/WI-001.md           ← missing phases/ directory
+NOT: .sdlc/planning/phases/phase-1/WI-001.md       ← missing iteration scope
+NOT: .sdlc/planning/iteration-4/WI-001.md           ← missing phases/ directory
 
 #### All Phases (Universal Producer-Critic Loop)
 
@@ -483,7 +483,8 @@ When invoking an agent via the Task tool, provide context:
 
 **For Producer Agents:**
 - Current phase name
-- `artifacts_directory` from `project_status` (the `project.artifacts_directory` field) — required by any agent that reads or writes file artifacts (implementation_planner, backend_architect, ux_designer, qa_engineer, documentation_master, security_auditor, performance_auditor)
+- `artifacts_directory` from `project_status` (the `project.artifacts_directory` field) — required by any agent that reads or writes persistent deliverable artifacts (backend_architect, ux_designer, documentation_master, security_auditor, performance_auditor)
+- `process_directory` from `project_status` (the `project.process_directory` field) — required by any agent that reads or writes ephemeral workflow artifacts (implementation_planner, qa_engineer)
 - `iteration_id` from `project_status` (the `current_iteration.id` field) — required by agents that write iteration-scoped file artifacts (implementation_planner, backend_architect, ux_designer, qa_engineer, documentation_master)
 - Prior phase data available via `changelog_query`
 - Any user notes from `project_status`
@@ -491,8 +492,8 @@ When invoking an agent via the Task tool, provide context:
 - **Convention file paths** (always include both):
   ```
   Convention files:
-  - Global: <artifacts_dir>/process/conventions/global.md
-  - Phase: <artifacts_dir>/process/conventions/<phase_convention_filename>
+  - Global: <artifacts_dir>/conventions/global.md
+  - Phase: <artifacts_dir>/conventions/<phase_convention_filename>
   ```
   Where `<phase_convention_filename>` is the phase name mapped per §15 (e.g., `ux-design.md` for `ux_design`, `code-review.md` for `code_review`). These paths MUST be included in every producer prompt — agents read them to apply project-specific rules.
 
@@ -500,13 +501,14 @@ When invoking an agent via the Task tool, provide context:
 - Current revision's data (via `changelog_query` filtered by iteration_id)
 - Current revision number (from `revision_history`)
 - Prior feedback (if revision > 1, from `revision_history`)
-- `artifacts_directory` from `project_status` — required by critic agents that verify file artifacts on disk (`architecture_critic`, `ux_critic`, `documentation_critic`, `security_audit_critic`)
+- `artifacts_directory` from `project_status` — required by critic agents that verify deliverable file artifacts on disk (`architecture_critic`, `ux_critic`, `documentation_critic`, `security_audit_critic`)
+- `process_directory` from `project_status` — required by critic agents that verify process file artifacts (`implementation_plan_critic`, `qa_critic`)
 - `iteration_id` — for verifying iteration-scoped artifact paths
 - **Convention file paths** (always include both):
   ```
   Convention files:
-  - Global: <artifacts_dir>/process/conventions/global.md
-  - Phase: <artifacts_dir>/process/conventions/<phase_convention_filename>
+  - Global: <artifacts_dir>/conventions/global.md
+  - Phase: <artifacts_dir>/conventions/<phase_convention_filename>
   ```
   Critics use conventions to validate that producer output follows project-specific rules. This enables `CONVENTION_SUGGESTION` feedback (see §15.4).
 
@@ -516,7 +518,7 @@ The implementation phase uses sub-phase directories instead of iteration directo
 
 **Implementation Convention Overrides:**
 
-Before entering the implementation phase (after the convention check in §6/§15.2 has confirmed convention files exist), the orchestrator reads the YAML frontmatter from `<artifacts_dir>/process/conventions/implementation.md` to determine workflow overrides. Parse the YAML block between the opening `---` and closing `---` at the top of the file.
+Before entering the implementation phase (after the convention check in §6/§15.2 has confirmed convention files exist), the orchestrator reads the YAML frontmatter from `<artifacts_dir>/conventions/implementation.md` to determine workflow overrides. Parse the YAML block between the opening `---` and closing `---` at the top of the file.
 
 | Key | Default | Values | Effect |
 |-----|---------|--------|--------|
@@ -742,7 +744,7 @@ A replan replaces non-completed work items with a new set of better-sized WIs wh
    This auto-sets `superseded_at` and is irreversible.
 
 7. **Verify replan log:**
-   Confirm the planner created an entry in `<artifacts_directory>/process/planning/iteration-<iteration_id>/replan-log.md` during step 4. If missing, the orchestrator writes it directly:
+   Confirm the planner created an entry in `<process_directory>/planning/iteration-<iteration_id>/replan-log.md` during step 4. If missing, the orchestrator writes it directly:
    ```
    ## Replan v<N> — <date>
    **Reason:** <why the replan was needed>
@@ -797,7 +799,7 @@ A targeted replan is a constrained variant of the full replan procedure above. I
    ```
    Only the ONE target WI is superseded — NOT all actionable WIs as in full replan.
 
-7. **Verify replan log:** Same as full replan step 7 — confirm or write the `<artifacts_directory>/process/planning/iteration-<iteration_id>/replan-log.md` entry. The log should note this was a targeted replan:
+7. **Verify replan log:** Same as full replan step 7 — confirm or write the `<process_directory>/planning/iteration-<iteration_id>/replan-log.md` entry. The log should note this was a targeted replan:
    ```
    ## Targeted Replan v<N> — <date>
    **Trigger:** Auto-replan from senior_developer REPLAN_NEEDED signal
@@ -906,7 +908,7 @@ When working in a new iteration, agents should be aware of:
 
 ### 15. Conventions System
 
-Convention files are user-customizable markdown documents that define project-specific rules, patterns, and guidelines. They live in `<artifacts_directory>/process/conventions/` and are read by every agent during every phase. The orchestrator is the **single writer** of convention files — agents never edit them directly.
+Convention files are user-customizable markdown documents that define project-specific rules, patterns, and guidelines. They live in `<artifacts_directory>/conventions/` and are read by every agent during every phase. The orchestrator is the **single writer** of convention files — agents never edit them directly.
 
 **Convention file set:**
 
@@ -951,7 +953,7 @@ After project initialization (`iteration_create`) and artifact directory creatio
 
 1. Create the conventions directory:
    ```bash
-   mkdir -p "<artifacts_directory>/process/conventions"
+   mkdir -p "<artifacts_directory>/conventions"
    ```
 
 2. Present the user with a choice:
@@ -967,7 +969,7 @@ After project initialization (`iteration_create`) and artifact directory creatio
    ```
 
 3. **If "Accept defaults for everything":**
-   - Copy each default convention file from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/process/conventions/`
+   - Copy each default convention file from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/conventions/`
    - For each phase the project will use (i.e., not in `skip_phases`), print a brief one-line acknowledgment:
      ```
      Seeding default conventions for global...
@@ -1005,8 +1007,8 @@ When the orchestrator enters any phase, **before invoking the producer agent**, 
 1. Determine the convention filename for the entering phase using the mapping table above
 2. Check if both files exist:
    ```bash
-   test -f "<artifacts_dir>/process/conventions/global.md" && echo "global OK"
-   test -f "<artifacts_dir>/process/conventions/<phase_convention_filename>" && echo "phase OK"
+   test -f "<artifacts_dir>/conventions/global.md" && echo "global OK"
+   test -f "<artifacts_dir>/conventions/<phase_convention_filename>" && echo "phase OK"
    ```
 
 3. **If both files exist:** Proceed normally — include their paths in the agent context per §8.
@@ -1023,7 +1025,7 @@ When the orchestrator enters any phase, **before invoking the producer agent**, 
    2. Collaborate to write custom conventions
    ```
 
-   - **Option 1:** Copy the missing file(s) from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/process/conventions/` and proceed.
+   - **Option 1:** Copy the missing file(s) from `<plugin_root>/defaults/conventions/` to `<artifacts_directory>/conventions/` and proceed.
    - **Option 2:** Show the default content as a starting point, let the user provide modifications, write the result, and proceed.
 
 5. Convention files are a **hard requirement** — agents will stop if they cannot read them. Never skip this check or proceed without resolving missing files.
@@ -1033,7 +1035,7 @@ When the orchestrator enters any phase, **before invoking the producer agent**, 
 When resuming a project via `/rigor:resume` or starting a new iteration via `/rigor:new-iteration`, after loading the project state and before continuing the current phase, check if the conventions directory exists:
 
 ```bash
-test -d "<artifacts_directory>/process/conventions" && echo "EXISTS" || echo "MISSING"
+test -d "<artifacts_directory>/conventions" && echo "EXISTS" || echo "MISSING"
 ```
 
 **If the directory is missing** (project predates the conventions system):
@@ -1091,7 +1093,7 @@ The <critic_name> suggested <N> convention update(s) during the <phase_name> pha
 Accept any of these? (Enter numbers to accept, "all" to accept all, "none" to reject all, or modify individually)
 ```
 
-- **If user accepts a suggestion:** The orchestrator appends the rule to the relevant convention file (`<artifacts_dir>/process/conventions/<file>`). Append to the end of the file as a new bullet point (`- <rule>`).
+- **If user accepts a suggestion:** The orchestrator appends the rule to the relevant convention file (`<artifacts_dir>/conventions/<file>`). Append to the end of the file as a new bullet point (`- <rule>`).
 - **If user rejects:** Discard the suggestion — no file changes.
 - **If user modifies:** The orchestrator writes the user's modified version to the convention file.
 - Call `checkpoint` with message "conventions: updated <file> with accepted suggestions" after writing any accepted/modified suggestions.
@@ -1109,7 +1111,7 @@ Accept any of these? (Enter numbers to accept, "all" to accept all, "none" to re
 7. **User escalation** - When stuck, involve the user for guidance
 8. **Never answer for the user** - When an agent needs user input (interviews, preferences, decisions, clarifications), always surface the question to the human. Do not infer answers from prior artifacts or make decisions on the user's behalf.
 9. **Never invoke sqlite3 directly** — No agent, skill, or command may run `sqlite3` or any other direct database client against `.claude/rigor.db`. All database interactions must use the provided MCP tools. If an MCP tool is insufficient, stop immediately and surface the limitation to the user using the structured escalation format. Do not attempt workarounds.
-10. **Orchestrator owns convention files** — Only the orchestrator writes to convention files in `<artifacts_directory>/process/conventions/`. Agents read convention files but never create, modify, or delete them. Convention suggestions from critics are collected by the orchestrator and require explicit user approval before being written (see §15.4).
+10. **Orchestrator owns convention files** — Only the orchestrator writes to convention files in `<artifacts_directory>/conventions/`. Agents read convention files but never create, modify, or delete them. Convention suggestions from critics are collected by the orchestrator and require explicit user approval before being written (see §15.4).
 
 ## Error Handling
 

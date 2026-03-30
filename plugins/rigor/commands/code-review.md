@@ -113,6 +113,7 @@ Starting Holistic Code Review
 
 Project: <project_name>
 Artifacts: <artifacts_directory>
+Process:   <process_directory>
 
 Dispatching code review skill...
 ```
@@ -126,6 +127,7 @@ Pass this context when invoking the skill:
 - `iteration_id`: current iteration ID (from project_status)
 - `revision_id`: latest revision ID (from project_status, may be null if no dev revisions exist)
 - `artifacts_directory`: from project_status
+- `process_directory`: from project_status
 - `language_hint`: auto-detect from project root (check for `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, etc.) or leave empty for language-agnostic mode
 - `audit_context`: summary from Step 4 (omit if empty)
 

@@ -40,7 +40,8 @@ When this skill is loaded, the orchestrator receives:
 - `project_root` — absolute path to the project root (directory containing `.claude/`)
 - `iteration_id` — current iteration ID
 - `revision_id` — current revision ID (needed for `changelog_insert` calls by sub-agents)
-- `artifacts_directory` — from `project_status`, the directory for process artifacts
+- `artifacts_directory` — from `project_status`, the root directory for persistent deliverable artifacts
+- `process_directory` — from `project_status`, the root directory for ephemeral workflow artifacts (code-review output goes here)
 - `language_hint` — optional, detected language(s) for idiom critic selection (e.g., `["go"]`, `["go", "typescript"]`)
 - `audit_context` — optional, summary of prior security and performance audit findings from the current iteration. Used by critics to avoid duplicating known findings. Contains counts by severity and brief descriptions of critical/high findings.
 
@@ -87,14 +88,14 @@ grep -r '^import\|^require\|^from' --include='*.go' --include='*.ts' --include='
 
 Write a JSON file to:
 ```
-<artifacts_directory>/process/code-review/YYYY/MM/DD/<epoch>-discovery.json
+<process_directory>/code-review/YYYY/MM/DD/<epoch>-discovery.json
 ```
 
 Where `YYYY/MM/DD` is the current UTC date and `<epoch>` is the current Unix timestamp (integer seconds).
 
 Create the directory structure first:
 ```bash
-mkdir -p "<artifacts_directory>/process/code-review/YYYY/MM/DD/"
+mkdir -p "<process_directory>/code-review/YYYY/MM/DD/"
 ```
 
 The discovery file contains:
@@ -124,7 +125,7 @@ The orchestrator partitions the discovered files — no sub-agent dispatch.
 
 Write a JSON file to:
 ```
-<artifacts_directory>/process/code-review/YYYY/MM/DD/<epoch>-partitions.json
+<process_directory>/code-review/YYYY/MM/DD/<epoch>-partitions.json
 ```
 
 Use the same `YYYY/MM/DD` date directory as the discovery file.
@@ -574,7 +575,7 @@ After all findings are reviewed:
 
 2. Generate a findings brief at:
    ```
-   <artifacts_directory>/process/code-review/YYYY/MM/DD/<epoch>-findings-brief.md
+   <process_directory>/code-review/YYYY/MM/DD/<epoch>-findings-brief.md
    ```
 
    The brief summarizes all accepted findings:

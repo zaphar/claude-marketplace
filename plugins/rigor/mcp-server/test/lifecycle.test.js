@@ -55,15 +55,43 @@ describe("iteration_create", () => {
     );
   });
 
+  it("stores process_directory when provided on first iteration", () => {
+    // Delete the seed project so iteration_create creates it fresh
+    db.prepare("DELETE FROM project WHERE id = 1").run();
+    db.prepare("DELETE FROM phase").run();
+    db.prepare("DELETE FROM iteration").run();
+    const result = handleWriteTool("iteration_create", {
+      project_root: "/tmp/test-project",
+      project_name: "pd-test",
+      process_directory: ".build/process",
+    });
+    assert.ok(result.iteration_id);
+    const status = handleReadTool("project_status", { project_root: "/tmp/test-project" });
+    assert.strictEqual(status.project.process_directory, ".build/process");
+  });
+
+  it("defaults process_directory to .sdlc for new projects", () => {
+    db.prepare("DELETE FROM project WHERE id = 1").run();
+    db.prepare("DELETE FROM phase").run();
+    db.prepare("DELETE FROM iteration").run();
+    const result = handleWriteTool("iteration_create", {
+      project_root: "/tmp/test-project",
+      project_name: "pd-default-test",
+    });
+    assert.ok(result.iteration_id);
+    const status = handleReadTool("project_status", { project_root: "/tmp/test-project" });
+    assert.strictEqual(status.project.process_directory, ".sdlc");
+  });
+
   it("stores brief_path when provided", () => {
     db.prepare("UPDATE iteration SET status = 'closed', closed_at = datetime('now') WHERE id = ?").run(seed.iteration_id);
     const result = handleWriteTool("iteration_create", {
       project_root: "/tmp/test-project",
-      brief_path: "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md",
+      brief_path: ".sdlc/briefs/2026/03/21/1711036850-auth-refactor.md",
     });
-    assert.strictEqual(result.brief_path, "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md");
+    assert.strictEqual(result.brief_path, ".sdlc/briefs/2026/03/21/1711036850-auth-refactor.md");
     const row = db.prepare("SELECT brief_path FROM iteration WHERE id = ?").get(result.iteration_id);
-    assert.strictEqual(row.brief_path, "docs/sdlc/process/briefs/2026/03/21/1711036850-auth-refactor.md");
+    assert.strictEqual(row.brief_path, ".sdlc/briefs/2026/03/21/1711036850-auth-refactor.md");
   });
 });
 
@@ -328,6 +356,24 @@ describe("project_update", () => {
     const row = db.prepare("SELECT notes, critic_model FROM project WHERE id = 1").get();
     assert.strictEqual(row.notes, "Updated notes");
     assert.strictEqual(row.critic_model, "opus");
+  });
+
+  it("updates process_directory", () => {
+    handleWriteTool("project_update", {
+      project_root: "/tmp/test-project",
+      process_directory: ".build/scratch",
+    });
+    const row = db.prepare("SELECT process_directory FROM project WHERE id = 1").get();
+    assert.strictEqual(row.process_directory, ".build/scratch");
+  });
+
+  it("updates artifacts_directory", () => {
+    handleWriteTool("project_update", {
+      project_root: "/tmp/test-project",
+      artifacts_directory: "docs/v2",
+    });
+    const row = db.prepare("SELECT artifacts_directory FROM project WHERE id = 1").get();
+    assert.strictEqual(row.artifacts_directory, "docs/v2");
   });
 });
 

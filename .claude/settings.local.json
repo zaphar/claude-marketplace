@@ -50,7 +50,9 @@
       "Bash(grep -n \"getDb\\(\\)\" *.js)",
       "Bash(find /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor -name \"plugin.json\" -o -name \".mcp.json\" | xargs cat 2>/dev/null)",
       "Bash(cd /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/agents && sed -i '' 's/mcp__rigor-db__/mcp__plugin_rigor_rigor-db__/g' *.md && sed -i '' 's/, rigor-db\\\\/[a-z_]*//g' *.md && echo \"done\")",
-      "Bash(cd /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/agents && sed -i '' 's/mcp__plugin_rigor_rigor-db__\\\\\\([a-z_]*\\\\\\)/mcp__plugin_rigor_rigor-db__\\\\1, rigor-db\\\\/\\\\1/g' *.md && echo \"done\")"
+      "Bash(cd /Users/zaphar/projects/personal/claude-zaphar/plugins/rigor/agents && sed -i '' 's/mcp__plugin_rigor_rigor-db__\\\\\\([a-z_]*\\\\\\)/mcp__plugin_rigor_rigor-db__\\\\1, rigor-db\\\\/\\\\1/g' *.md && echo \"done\")",
+      "Bash(while read:*)",
+      "Bash(do sed:*)"
     ]
   }
 }

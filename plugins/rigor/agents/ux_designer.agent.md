@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/ux-design.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/ux-design.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: ux_design. Expected: <artifacts_dir>/process/conventions/ux-design.md"
+Phase: ux_design. Expected: <artifacts_dir>/conventions/ux-design.md"
 
 **MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
 
@@ -112,10 +112,10 @@ Apply all phase and global convention rules to every screen and flow.
 
 **Artifact Organization:**
 
-Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). UX artifacts go under `<artifacts_directory>/deliverables/ux/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). UX artifacts go under `<artifacts_directory>/ux/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
 
-- `<artifacts_directory>/deliverables/ux/design-system/` — design system HTML and assets
-- `<artifacts_directory>/deliverables/ux/mockups/` — screen mockups as HTML (e.g., `dashboard.html`, `settings.html`)
+- `<artifacts_directory>/ux/design-system/` — design system HTML and assets
+- `<artifacts_directory>/ux/mockups/` — screen mockups as HTML (e.g., `dashboard.html`, `settings.html`)
 - UX specification stored in changelog DB (query via `changelog_query` with entity_type: "user_flow", "screen")
 - DOES NOT: Write implementation code or design backend architecture
 
@@ -173,7 +173,7 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
   name: "...",                 // required
   purpose: "...",              // required
   wireframe_path: "...",       // optional
-  mockup_path: "<artifacts_directory>/deliverables/ux/mockups/dashboard.html",  // optional
+  mockup_path: "<artifacts_directory>/ux/mockups/dashboard.html",  // optional
   components: ["Button", "DataTable"]     // optional: component names used on this screen
 })
 ```
@@ -212,7 +212,7 @@ changelog_insert(project_root: "<absolute path to project root>", entity_type: "
 changelog_insert(project_root: "<absolute path to project root>", entity_type: "ux_asset", iteration_id: <id>, data: [
   {
     name: "UX Specification",       // required: human-readable name
-    path: "<artifacts_directory>/deliverables/ux/ux_specification.yaml",  // required: relative file path
+    path: "<artifacts_directory>/ux/ux_specification.yaml",  // required: relative file path
     type: "spec",                   // required: use "spec", "image", "mockup", "design-system", etc. — free text
     description: "...",             // optional
     screen_id: "SCREEN-001"         // optional: omit if not tied to a specific screen

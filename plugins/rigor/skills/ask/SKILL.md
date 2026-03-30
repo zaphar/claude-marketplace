@@ -210,8 +210,8 @@ Choose a `<slug>` (kebab-case) — since the brief file may accumulate multiple 
 Then compute the canonical path by running these bash commands **exactly** (substitute only the two variable values on the first two lines):
 
 ```bash
-# 1. Set inputs — substitute these two values only
-ARTIFACTS_DIR="<artifacts_directory>"   # from project_status, e.g. "docs/sdlc"
+# 1. Set inputs — substitute these three values only
+PROCESS_DIR="<process_directory>"       # from project_status, e.g. ".sdlc"
 SLUG="<slug>"                           # e.g. "investigation-brief" or "iteration-3-brief"
 
 # 2. Compute date components (UTC) — do NOT modify these lines
@@ -219,7 +219,7 @@ DATE_PATH=$(date -u '+%Y/%m/%d')        # e.g. "2026/03/24"
 EPOCH=$(date +%s)                       # Unix seconds (10 digits), e.g. "1774310400"
 
 # 3. Assemble canonical path — do NOT deviate from this structure
-BRIEF_DIR="${ARTIFACTS_DIR}/process/briefs/${DATE_PATH}"
+BRIEF_DIR="${PROCESS_DIR}/briefs/${DATE_PATH}"
 BRIEF_PATH="${BRIEF_DIR}/${EPOCH}-${SLUG}.md"
 
 # 4. Create directory and write brief
@@ -234,23 +234,23 @@ cat > "${BRIEF_PATH}" << 'BRIEF_EOF'
 BRIEF_EOF
 ```
 
-**Worked example.** If `artifacts_directory` is `docs/sdlc`, today is 2026-03-24 UTC, epoch is `1774310400`, and slug is `investigation-brief`, the path MUST be:
+**Worked example.** If `process_directory` is `.sdlc`, today is 2026-03-24 UTC, epoch is `1774310400`, and slug is `investigation-brief`, the path MUST be:
 
 ```
-docs/sdlc/process/briefs/2026/03/24/1774310400-investigation-brief.md
+.sdlc/briefs/2026/03/24/1774310400-investigation-brief.md
 ```
 
 These are all **wrong** — do NOT produce paths like these:
 
 ```
-docs/sdlc/briefs/investigation-brief.md                          ← missing process/ prefix and date hierarchy
-docs/sdlc/process/briefs/2026-03-24/1774310400-investigation-brief.md  ← dashes instead of directory separators in date
-docs/sdlc/process/briefs/investigation-brief.md                  ← missing date hierarchy entirely
-docs/sdlc/process/briefs/2026/03/24/1774310400000-investigation-brief.md ← milliseconds (13 digits) instead of seconds (10 digits)
+docs/sdlc/briefs/investigation-brief.md                          ← missing process_directory and date hierarchy
+.sdlc/briefs/2026-03-24/1774310400-investigation-brief.md  ← dashes instead of directory separators in date
+.sdlc/briefs/investigation-brief.md                  ← missing date hierarchy entirely
+.sdlc/briefs/2026/03/24/1774310400000-investigation-brief.md ← milliseconds (13 digits) instead of seconds (10 digits)
 ```
 
 **Path rules (mandatory):**
-- The path MUST contain `process/briefs/` — not just `briefs/`
+- The path MUST be rooted at `<process_directory>/briefs/`
 - The date MUST be split into three directory levels: `YYYY/MM/DD` (not `YYYY-MM-DD` as a single directory name)
 - Month and day MUST be zero-padded: `03` not `3`
 - Epoch MUST be Unix seconds (10 digits), not milliseconds (13 digits)

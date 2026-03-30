@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/qa.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/qa.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: qa. Expected: <artifacts_dir>/process/conventions/qa.md"
+Phase: qa. Expected: <artifacts_dir>/conventions/qa.md"
 
 **MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
 
@@ -83,9 +83,9 @@ When tests fail:
 
 **Artifact Organization:**
 
-Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). QA artifacts go under `<artifacts_directory>/process/qa/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). QA artifacts go under `<process_directory>/qa/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
 
-- `<artifacts_directory>/process/qa/screenshots/` — captured screenshots from mockup comparison testing
+- `<process_directory>/qa/screenshots/` — captured screenshots from mockup comparison testing
 - Test report entries are stored via `changelog_insert` with entity_type: "test_report"
 
 **Handoff:**

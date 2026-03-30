@@ -54,6 +54,7 @@ Release Workflow Status
 Project: <project_name>
 Status: <active|completed>
 Artifacts: <artifacts_directory>
+Process:   <process_directory>
 Created: <created_at>
 Last Updated: <updated_at>
 

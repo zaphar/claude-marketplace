@@ -56,6 +56,7 @@ Iteration: <iteration_id | "None">
 Status: <current_iteration.status | "No active iteration">
 <if current_iteration and current_iteration.status == "closed">Closed at: <current_iteration.closed_at></if>
 Artifacts: <artifacts_directory>
+Process:   <process_directory>
 Created: <created_at>
 Last Updated: <updated_at>
 

@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/ux-design.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/ux-design.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: ux_design. Expected: <artifacts_dir>/process/conventions/ux-design.md"
+Phase: ux_design. Expected: <artifacts_dir>/conventions/ux-design.md"
 
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
@@ -38,7 +38,7 @@ Phase: ux_design. Expected: <artifacts_dir>/process/conventions/ux-design.md"
 - Data model: UX specification entries (validated on insert via `changelog_insert`)
 - Requirements specification (for traceability verification)
 
-Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). UX artifacts are located under `<artifacts_directory>/deliverables/ux/`.
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). UX artifacts are located under `<artifacts_directory>/ux/`.
 
 **What You Do:**
 
@@ -73,7 +73,7 @@ When reviewing the complete set of mockups after design direction is approved:
     - [ ] All required fields present
     - [ ] All IDs follow correct patterns (FLOW-XXX, SCREEN-XXX, PERSONA-XXX)
 - Convention compliance:
-    - [ ] Read phase conventions (`<artifacts_dir>/process/conventions/ux-design.md`) and global conventions (`<artifacts_dir>/process/conventions/global.md`)
+    - [ ] Read phase conventions (`<artifacts_dir>/conventions/ux-design.md`) and global conventions (`<artifacts_dir>/conventions/global.md`)
     - [ ] Every convention rule is verifiably satisfied or explicitly justified as not applicable
     - [ ] Design system, accessibility, mockup fidelity, responsive behavior, and interaction design all comply with convention rules
 - Completeness (Phase 2 only):

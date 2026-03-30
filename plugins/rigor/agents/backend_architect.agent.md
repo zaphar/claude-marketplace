@@ -21,8 +21,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_directory>/process/conventions/global.md`
-2. Phase: `<artifacts_directory>/process/conventions/architecture.md`
+1. Global: `<artifacts_directory>/conventions/global.md`
+2. Phase: `<artifacts_directory>/conventions/architecture.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -30,7 +30,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: architecture. Expected: <artifacts_directory>/process/conventions/architecture.md"
+Phase: architecture. Expected: <artifacts_directory>/conventions/architecture.md"
 
 **Inputs:**
 
@@ -72,12 +72,12 @@ Ask one question at a time. Read requirements first — don't re-ask settled dec
 
 Modular DB entries, each validated by DB constraints on insert:
 
-Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts go under `<artifacts_directory>/deliverables/architecture/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
+Before writing file artifacts, determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts go under `<artifacts_directory>/architecture/`. Before writing any file, ensure the target directory exists: `mkdir -p <target_directory>`.
 
-- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`, `adr_decision`); `<artifacts_directory>/deliverables/architecture/api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
-- Architecture narrative (overview, principles) — committed as a markdown document (e.g., `<artifacts_directory>/deliverables/architecture/overview.md`), NOT stored in the database
-- Architecture diagrams — committed as files under `<artifacts_directory>/deliverables/architecture/diagrams/` (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
-- Data model design — committed as a markdown document (e.g., `<artifacts_directory>/deliverables/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database
+- Architecture entries stored in DB via `changelog_insert`, queried via `changelog_query` (entity types: `component`, `approved_dependency`, `adr`, `adr_decision`); `<artifacts_directory>/architecture/api_spec.yaml` (OpenAPI 3.x) as a file artifact; traceability via `traceability_query`
+- Architecture narrative (overview, principles) — committed as a markdown document (e.g., `<artifacts_directory>/architecture/overview.md`), NOT stored in the database
+- Architecture diagrams — committed as files under `<artifacts_directory>/architecture/diagrams/` (e.g., Mermaid `.mmd` or PNG), NOT stored in the database
+- Data model design — committed as a markdown document (e.g., `<artifacts_directory>/architecture/data-model.md`) with entities, attributes, relationships, and cardinality. NOT stored in the database
 - Technology inventory — technology choices (language, frameworks, database, CI/CD, etc.) are documented in ADRs and tracked as `approved_dependency` entries (using the `category` column for logical grouping such as `backend-language`, `database`, `ci-cd`)
 
 Each entry is self-contained — downstream agents load only what they need. Does NOT write implementation code or design UI/UX.
@@ -98,7 +98,7 @@ Moderate risk of context exhaustion with extensive requirements/UX specs.
 
 - **Use DB query tools for upstream specs.** Call `changelog_query` with entity_type to list requirements or UX entities. Query specific items by ID for details. Avoid loading all entities at once.
 - Read UX selectively (flows and traceability, not design system or mockups).
-- Record each architecture entry as you complete its topic (write `<artifacts_directory>/deliverables/architecture/api_spec.yaml` separately).
+- Record each architecture entry as you complete its topic (write `<artifacts_directory>/architecture/api_spec.yaml` separately).
 - Research one technology at a time; write ADR before researching next.
 
 **Escalation:** If requirements are ambiguous/conflicting, technology constraints block requirements, or UX can't be supported — pause, tell user. Instruct the orchestrator to record a blocker via `changelog_insert(project_root: "<absolute path to project root>", entity_type: "blocker")` with the description and severity.

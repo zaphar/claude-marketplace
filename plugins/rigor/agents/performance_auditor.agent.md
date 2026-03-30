@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_rigor_rigor-db__changelog_query, rigo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/audit.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/audit.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: audit. Expected: <artifacts_dir>/process/conventions/audit.md"
+Phase: audit. Expected: <artifacts_dir>/conventions/audit.md"
 
 **MCP Tool Note:** All `changelog_insert` and `changelog_query` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/`. Determine this at session start and pass it to every tool call.
 
@@ -35,15 +35,15 @@ Phase: audit. Expected: <artifacts_dir>/process/conventions/audit.md"
 **Inputs:**
 
 - Project source code
-- Architecture observability spec — committed as markdown documentation (e.g., `<artifacts_directory>/deliverables/architecture/observability.md`)
-- Architecture data model (read the committed data model markdown document, e.g., `<artifacts_directory>/deliverables/architecture/data-model.md`)
-- Architecture API spec (`<artifacts_directory>/deliverables/architecture/api_spec.yaml`)
+- Architecture observability spec — committed as markdown documentation (e.g., `<artifacts_directory>/architecture/observability.md`)
+- Architecture data model (read the committed data model markdown document, e.g., `<artifacts_directory>/architecture/data-model.md`)
+- Architecture API spec (`<artifacts_directory>/architecture/api_spec.yaml`)
 - Architecture dependencies manifest (query via `changelog_query` with entity_type: "approved_dependency")
 - Requirements specification (performance-category requirements and quality standards)
 - QA test report (to understand what QA already benchmarked)
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns, anti-patterns, and conventions
 
-Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/architecture/`.
 
 **Distinction from QA:**
 

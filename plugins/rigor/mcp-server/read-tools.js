@@ -967,9 +967,9 @@ function resolveOutputDir(db, project_root, output_dir) {
     mkdirSync(dir, { recursive: true });
     return dir;
   }
-  const project = db.prepare("SELECT artifacts_directory FROM project WHERE id = 1").get();
-  const artifactsDir = project?.artifacts_directory ?? "docs/sdlc";
-  const dir = path.join(project_root, artifactsDir, "process", "code-review");
+  const project = db.prepare("SELECT process_directory FROM project WHERE id = 1").get();
+  const processDir = project?.process_directory ?? ".sdlc";
+  const dir = path.join(project_root, processDir, "code-review");
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -1749,7 +1749,7 @@ export const READ_TOOLS = [
   {
     name: "project_status",
     description:
-      "Get project overview. Returns project metadata (name, critic_model, notes, artifacts_directory), the current active iteration (if any), and all phases with status, timestamps, and revision counts. No parameters needed.",
+      "Get project overview. Returns project metadata (name, critic_model, notes, artifacts_directory, process_directory), the current active iteration (if any), and all phases with status, timestamps, and revision counts. No parameters needed.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -1789,7 +1789,7 @@ export const READ_TOOLS = [
         },
         output_dir: {
           type: "string",
-          description: "Override output directory (relative to project_root or absolute). Defaults to <artifacts_directory>/process/code-review/.",
+          description: "Override output directory (relative to project_root or absolute). Defaults to <process_directory>/code-review/.",
         },
       },
       required: ["scope"],

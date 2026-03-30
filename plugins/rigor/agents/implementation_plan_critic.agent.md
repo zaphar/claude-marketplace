@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/planning.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/planning.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: planning. Expected: <artifacts_dir>/process/conventions/planning.md"
+Phase: planning. Expected: <artifacts_dir>/conventions/planning.md"
 
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
@@ -66,7 +66,7 @@ When reviewing the complete plan (both passes done):
 
 **Review Checklist:**
 
-Verify all applicable planning conventions from `<artifacts_dir>/process/conventions/planning.md` are met, plus the following structural and process checks:
+Verify all applicable planning conventions from `<artifacts_dir>/conventions/planning.md` are met, plus the following structural and process checks:
 
 - Completeness:
     - [ ] All planning convention completeness requirements met (requirement-to-phase mapping, Feature-Layer Matrices, E2E/integration test scenarios, exit criteria content)

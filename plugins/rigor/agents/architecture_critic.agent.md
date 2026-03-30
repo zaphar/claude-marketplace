@@ -21,8 +21,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_directory>/process/conventions/global.md`
-2. Phase: `<artifacts_directory>/process/conventions/architecture.md`
+1. Global: `<artifacts_directory>/conventions/global.md`
+2. Phase: `<artifacts_directory>/conventions/architecture.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -30,7 +30,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: architecture. Expected: <artifacts_directory>/process/conventions/architecture.md"
+Phase: architecture. Expected: <artifacts_directory>/conventions/architecture.md"
 
 **Inputs:**
 
@@ -39,7 +39,7 @@ Phase: architecture. Expected: <artifacts_directory>/process/conventions/archite
 - Requirements specification (for traceability verification)
 - UX specification (for API and data model verification)
 
-Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/architecture/`.
 
 **What You Do:**
 
@@ -57,10 +57,10 @@ Determine `artifacts_directory` from the project context provided by the orchest
     - [ ] All required fields present in each file
     - [ ] All IDs follow correct patterns (COMP-XXX, ADR-XXX, REQ-XXX)
 - Convention compliance:
-    - [ ] All rules in `<artifacts_directory>/process/conventions/architecture.md` followed
-    - [ ] All applicable rules in `<artifacts_directory>/process/conventions/global.md` followed
+    - [ ] All rules in `<artifacts_directory>/conventions/architecture.md` followed
+    - [ ] All applicable rules in `<artifacts_directory>/conventions/global.md` followed
 - Completeness:
-    - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); `<artifacts_directory>/deliverables/architecture/api_spec.yaml` file artifact if APIs exist
+    - [ ] All expected architecture entities present in DB: component, adr, requirement_trace, approved_dependency (query each via changelog_query); `<artifacts_directory>/architecture/api_spec.yaml` file artifact if APIs exist
     - [ ] Architecture configuration (security, deployment, observability) committed as markdown documents
     - [ ] Architecture narrative committed as a markdown document — overview, style, communication patterns, and design principles
     - [ ] Architecture diagrams committed as repository files (at minimum one component-level diagram)

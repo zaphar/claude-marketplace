@@ -106,8 +106,11 @@ CREATE TABLE IF NOT EXISTS schema_version (
 -- enforced by CHECK(id = 1).
 -- Context: Created by iteration_create on first run (alongside the first iteration and its phases).
 -- The iteration lifecycle (active/closed) is the sole authority for project activity —
--- the project table has no status column. artifacts_directory stores the root path for all
--- SDLC file artifacts, relative to the project root (default: docs/sdlc).
+-- the project table has no status column. artifacts_directory stores the root path for
+-- persistent deliverable artifacts (architecture, ux, product-docs, conventions), relative
+-- to the project root (default: docs/sdlc). process_directory stores the root path for
+-- ephemeral workflow artifacts (planning, qa, briefs, code-review), relative to the project
+-- root (default: .sdlc).
 CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   project_name TEXT NOT NULL,
@@ -115,7 +118,8 @@ CREATE TABLE IF NOT EXISTS project (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   critic_model TEXT NOT NULL DEFAULT 'sonnet',
   notes TEXT NOT NULL DEFAULT '',
-  artifacts_directory TEXT NOT NULL DEFAULT 'docs/sdlc'
+  artifacts_directory TEXT NOT NULL DEFAULT 'docs/sdlc',
+  process_directory TEXT NOT NULL DEFAULT '.sdlc'
 );
 
 -- Iterations: each request to change the system

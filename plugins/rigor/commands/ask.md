@@ -53,6 +53,7 @@ From the `project_status` response, extract:
 - **Current iteration ID**
 - **Active phase** (and its status)
 - **Artifacts directory**
+- **Process directory**
 
 These are the only values you pass forward — do not query additional data.
 
@@ -67,6 +68,7 @@ Project: <project_name>
 Iteration: <iteration_id>
 Active Phase: <phase_name> (<phase_status>)
 Artifacts: <artifacts_directory>
+Process:   <process_directory>
 
 🔍 Q&A session active. Ask me anything about the project or codebase.
 Say "ship it" when you're ready to turn findings into tracked actions.

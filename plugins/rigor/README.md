@@ -126,22 +126,26 @@ rigor/
 
 ### Artifact Directory Layout
 
-File-writing agents store SDLC artifacts under a configurable root directory (default: `docs/sdlc`). This root is stored in `project.artifacts_directory` in the database and surfaced to agents via `project_status`. The canonical subtree structure:
+File-writing agents store artifacts under two configurable root directories, both stored in the database and surfaced via `project_status`:
+
+- **`artifacts_directory`** (default: `docs/sdlc`) — persistent deliverable artifacts that ship with the project
+- **`process_directory`** (default: `.sdlc`) — ephemeral workflow artifacts (safe to discard after iteration)
 
 ```
 <artifacts_directory>/              # default: docs/sdlc
-├── process/
-│   ├── conventions/                # Project convention files (global + per-phase)
-│   ├── planning/                   # Implementation plans, phase dirs, replan log
-│   ├── qa/screenshots/             # QA test screenshots
-│   └── briefs/                     # Investigation briefs from /rigor:ask
-└── deliverables/
-    ├── architecture/               # Architecture docs, diagrams, API spec
-    ├── ux/                         # Design system, mockups
-    └── product-docs/               # Audience-specific documentation
+├── conventions/                    # Project convention files (global + per-phase)
+├── architecture/                   # Architecture docs, diagrams, API spec
+├── ux/                             # Design system, mockups
+└── product-docs/                   # Audience-specific documentation
+
+<process_directory>/                # default: .sdlc
+├── planning/                       # Implementation plans, phase dirs, replan log
+├── qa/screenshots/                 # QA test screenshots
+├── code-review/                    # Code review discovery, partitions, findings
+└── briefs/                         # Investigation briefs from /rigor:ask
 ```
 
-All agents read `artifacts_directory` from project context — no agent hardcodes paths.
+All agents read `artifacts_directory` and `process_directory` from project context — no agent hardcodes paths.
 
 ## Hooks
 
@@ -164,7 +168,7 @@ Convention files are per-project behavioral rules that agents read at runtime. T
 
 ### Convention File Layout
 
-Convention files live at `<artifacts_directory>/process/conventions/` (where `artifacts_directory` defaults to `docs/sdlc`). The full set:
+Convention files live at `<artifacts_directory>/conventions/` (where `artifacts_directory` defaults to `docs/sdlc`). The full set:
 
 | File | Applies to |
 |------|-----------|

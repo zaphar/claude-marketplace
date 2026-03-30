@@ -20,7 +20,7 @@ export const PHASES = [
 
 function iterationCreate(args) {
   const db = getDb(args.project_root);
-  const { project_name, critic_model, artifacts_directory, brief_path } = args;
+  const { project_name, critic_model, artifacts_directory, process_directory, brief_path } = args;
   const now = new Date().toISOString();
 
   const run = db.transaction(() => {
@@ -31,14 +31,15 @@ function iterationCreate(args) {
 
     if (!existing) {
       db.prepare(
-        `INSERT INTO project (id, project_name, created_at, updated_at, critic_model, notes, artifacts_directory)
-         VALUES (1, @project_name, @created_at, @updated_at, @critic_model, '', @artifacts_directory)`
+        `INSERT INTO project (id, project_name, created_at, updated_at, critic_model, notes, artifacts_directory, process_directory)
+         VALUES (1, @project_name, @created_at, @updated_at, @critic_model, '', @artifacts_directory, @process_directory)`
       ).run({
         project_name: project_name || "default",
         created_at: now,
         updated_at: now,
         critic_model: critic_model || "sonnet",
         artifacts_directory: artifacts_directory || "docs/sdlc",
+        process_directory: process_directory || ".sdlc",
       });
     }
 
@@ -1430,6 +1431,8 @@ function projectUpdate(args) {
 
   if (notes !== undefined) { sets.push("notes = @notes"); params.notes = notes; }
   if (critic_model !== undefined) { sets.push("critic_model = @critic_model"); params.critic_model = critic_model; }
+  if (args.artifacts_directory !== undefined) { sets.push("artifacts_directory = @artifacts_directory"); params.artifacts_directory = args.artifacts_directory; }
+  if (args.process_directory !== undefined) { sets.push("process_directory = @process_directory"); params.process_directory = args.process_directory; }
 
   db.prepare(
     `UPDATE project SET ${sets.join(", ")} WHERE id = 1`
@@ -1437,7 +1440,7 @@ function projectUpdate(args) {
 
   const row = db.prepare("SELECT * FROM project WHERE id = 1").get();
   if (!row) throw new Error("Project not found — run iteration_create first");
-  return { project_name: row.project_name, notes: row.notes, critic_model: row.critic_model };
+  return row;
 }
 
 function blockerResolve(args) {
@@ -1803,7 +1806,8 @@ export const WRITE_TOOLS = [
       properties: {
         project_name: { type: "string", description: "Project name (used if project must be created)" },
         critic_model: { type: "string", description: "Critic model name (default: sonnet)" },
-        artifacts_directory: { type: "string", description: "Root directory for SDLC file artifacts, relative to project root (default: docs/sdlc). Only used when creating the project (first iteration)." },
+        artifacts_directory: { type: "string", description: "Root directory for persistent deliverable artifacts (architecture, ux, product-docs, conventions), relative to project root (default: docs/sdlc). Only used when creating the project (first iteration)." },
+        process_directory: { type: "string", description: "Root directory for ephemeral workflow artifacts (planning, qa, briefs, code-review), relative to project root (default: .sdlc). Only used when creating the project (first iteration)." },
         brief_path: { type: "string", description: "Path to investigation brief file (relative to project root). When set, requirements_analyst reads this file instead of conducting an interactive interview." },
       },
     },
@@ -2142,12 +2146,14 @@ export const WRITE_TOOLS = [
   },
   {
     name: "project_update",
-    description: "Updates project-level fields (notes, critic_model).",
+    description: "Updates project-level fields (notes, critic_model, artifacts_directory, process_directory).",
     inputSchema: {
       type: "object",
       properties: {
         notes: { type: "string" },
         critic_model: { type: "string" },
+        artifacts_directory: { type: "string", description: "Root directory for persistent deliverable artifacts, relative to project root." },
+        process_directory: { type: "string", description: "Root directory for ephemeral workflow artifacts, relative to project root." },
       },
     },
   },

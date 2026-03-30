@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__plugin_rigor_rigor-db__changelo
 ### Project Conventions
 
 Before starting work, read and follow the project conventions:
-1. Global: `<artifacts_dir>/process/conventions/global.md`
-2. Phase: `<artifacts_dir>/process/conventions/documentation.md`
+1. Global: `<artifacts_dir>/conventions/global.md`
+2. Phase: `<artifacts_dir>/conventions/documentation.md`
 
 These are the authoritative source for project-specific behavioral rules.
 Follow them exactly. Where conventions are silent on a topic, use your
@@ -26,7 +26,7 @@ professional judgment.
 
 If convention files do not exist, STOP and report:
 "CONVENTION_FILES_MISSING: Cannot proceed without project conventions.
-Phase: documentation. Expected: <artifacts_dir>/process/conventions/documentation.md"
+Phase: documentation. Expected: <artifacts_dir>/conventions/documentation.md"
 
 **MCP Tool Note:** All `changelog_insert`, `changelog_query`, and `changelog_update` calls require `project_root: <absolute path to project root>` — the directory containing `.claude/` Determine this at session start and pass it to every tool call.
 
@@ -43,7 +43,7 @@ Phase: documentation. Expected: <artifacts_dir>/process/conventions/documentatio
 - Review feedback from previous iterations (if any)
 - Prior lessons — query via `changelog_query(entity_type: "project_lesson")` for relevant patterns and anti-patterns
 
-Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/deliverables/architecture/`.
+Determine `artifacts_directory` from the project context provided by the orchestrator (sourced from `project_status`). Architecture artifacts are located under `<artifacts_directory>/architecture/`.
 
 **What You Do:**
 
@@ -108,7 +108,7 @@ Determine `artifacts_directory` from the project context provided by the orchest
 
 - **Read the documentation index and files in full** — they're your primary review target.
 - **Read documentation files one category at a time.** Complete the review for user guide, then move to API docs, etc.
-- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `<artifacts_directory>/deliverables/architecture/api_spec.yaml` only when reviewing API docs).
+- **Read upstream specs selectively.** Load only what's needed to verify the current document's accuracy (e.g., `<artifacts_directory>/architecture/api_spec.yaml` only when reviewing API docs).
 - **Read source code selectively.** Spot-check 2-3 code samples per doc category against actual source. Don't read the entire codebase.
 - **Prioritize Accuracy over Clarity** if context is tight — inaccurate docs are worse than unclear docs.
 - **On re-review cycles**, read only the previous review's issues and the updated documents.
